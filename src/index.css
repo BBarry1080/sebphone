@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-seb-cyan: #00B4CC;
+  --color-seb-navy: #1B2A4A;
+  --color-seb-gray: #F5F5F5;
+  --color-seb-green: #22C55E;
+  --color-seb-orange: #F97316;
+  --color-seb-red: #EF4444;
+  --font-poppins: 'Poppins', sans-serif;
+  --font-inter: 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #333333;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', sans-serif;
+}

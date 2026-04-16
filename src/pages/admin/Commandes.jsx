@@ -1,0 +1,285 @@
+import { useState, useEffect } from 'react'
+import { X, Package } from 'lucide-react'
+import { supabase, isSupabaseReady } from '../../lib/supabase'
+
+const STATUS_CONFIG = {
+  en_attente:   { label: 'En attente',   cls: 'bg-yellow-100 text-yellow-800' },
+  acompte_paye: { label: 'Acompte payé', cls: 'bg-blue-100 text-blue-800' },
+  confirme:     { label: 'Confirmé',     cls: 'bg-green-100 text-green-800' },
+  recupere:     { label: 'Récupéré',     cls: 'bg-gray-100 text-gray-700' },
+  annule:       { label: 'Annulé',       cls: 'bg-red-100 text-red-700' },
+}
+const FILTERS = [null, 'en_attente', 'acompte_paye', 'confirme', 'recupere', 'annule']
+const FILTER_LABELS = { null: 'Tous', ...Object.fromEntries(Object.entries(STATUS_CONFIG).map(([k, v]) => [k, v.label])) }
+
+function StatusBadge({ status }) {
+  const cfg = STATUS_CONFIG[status] || { label: status, cls: 'bg-gray-100 text-gray-700' }
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${cfg.cls}`}>{cfg.label}</span>
+  )
+}
+
+/* ─── DETAIL PANEL ─── */
+function OrderPanel({ order, onClose, onRefetch }) {
+  const [saving, setSaving] = useState(false)
+
+  const updateStatus = async (newStatus) => {
+    if (!isSupabaseReady) return
+    if (!window.confirm(`Mettre le statut en "${STATUS_CONFIG[newStatus]?.label}" ?`)) return
+    setSaving(true)
+    await supabase.from('orders').update({ status: newStatus }).eq('id', order.id)
+    if (newStatus === 'annule') {
+      await supabase.from('phones').update({ status: 'disponible' }).eq('id', order.phone_id)
+    }
+    onRefetch()
+    setSaving(false)
+  }
+
+  const handleCancel = async () => {
+    if (!isSupabaseReady) return
+    if (!window.confirm('Annuler cette commande et remettre le téléphone en stock ?')) return
+    setSaving(true)
+    await supabase.from('orders').update({ status: 'annule' }).eq('id', order.id)
+    await supabase.from('phones').update({ status: 'disponible' }).eq('id', order.phone_id)
+    onRefetch()
+    setSaving(false)
+    onClose()
+  }
+
+  const clientName = order.customer
+    ? `${order.customer.first_name} ${order.customer.last_name}`
+    : order.customer_name || '—'
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative bg-white w-full max-w-[420px] h-full overflow-y-auto shadow-2xl flex flex-col z-10">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="font-poppins font-bold text-[#1B2A4A]">Commande #{order.id}</h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 px-6 py-5 space-y-5">
+          {/* Statut */}
+          <div className="flex items-center gap-3">
+            <StatusBadge status={order.status} />
+            <span className="text-xs text-[#888]">
+              {order.created_at ? new Date(order.created_at).toLocaleDateString('fr-BE') : ''}
+            </span>
+          </div>
+
+          {/* Client */}
+          <div className="bg-[#F8F9FA] rounded-xl p-4 space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#888] mb-2">Client</p>
+            <p className="font-semibold text-[#1B2A4A]">{clientName}</p>
+            {order.customer?.email && <p className="text-sm text-[#555]">{order.customer.email}</p>}
+            {order.customer?.phone && <p className="text-sm text-[#555]">{order.customer.phone}</p>}
+          </div>
+
+          {/* Téléphone */}
+          <div className="bg-[#F8F9FA] rounded-xl p-4 space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#888] mb-2">Téléphone</p>
+            <p className="font-semibold text-[#1B2A4A]">
+              {order.phone?.brand} {order.phone?.name || '—'}
+            </p>
+            {order.phone?.grade && (
+              <p className="text-sm text-[#555]">Grade {order.phone.grade} · {order.phone.storage}</p>
+            )}
+            <p className="font-bold text-[#1B2A4A]">
+              {order.deposit_paid != null ? `Acompte : ${order.deposit_paid}€` : ''}
+            </p>
+          </div>
+
+          {/* Livraison */}
+          <div className="bg-[#F8F9FA] rounded-xl p-4 space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#888] mb-2">Livraison</p>
+            <p className="text-sm font-medium text-[#1B2A4A]">
+              {order.delivery_mode === 'livraison' ? '🚚 Livraison' : '🏪 Click & Collect'}
+            </p>
+            {order.delivery_address && (
+              <p className="text-sm text-[#555]">{order.delivery_address}</p>
+            )}
+            {order.pickup_date && (
+              <p className="text-sm text-[#555]">
+                Date prévue : {new Date(order.pickup_date).toLocaleDateString('fr-BE')}
+              </p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="space-y-2 pt-2">
+            {order.status === 'en_attente' && (
+              <button
+                onClick={() => updateStatus('confirme')}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 text-sm"
+              >
+                ✓ Confirmer la commande
+              </button>
+            )}
+            {(order.status === 'acompte_paye' || order.status === 'confirme') && (
+              <button
+                onClick={() => updateStatus('recupere')}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 text-sm"
+              >
+                ✓ Marquer comme récupéré
+              </button>
+            )}
+            {order.status !== 'annule' && (
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 text-sm"
+              >
+                ✗ Annuler + remettre en stock
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── PAGE PRINCIPALE ─── */
+export default function Commandes() {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeFilter, setActiveFilter] = useState(null)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+
+  const fetchOrders = async () => {
+    setLoading(true)
+    if (!isSupabaseReady) {
+      setOrders([])
+      setLoading(false)
+      return
+    }
+    const { data } = await supabase
+      .from('orders')
+      .select('*, phone:phones(name, brand, grade, storage), customer:customers(first_name, last_name, email, phone)')
+      .order('created_at', { ascending: false })
+    setOrders(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchOrders()
+
+    if (!isSupabaseReady) return
+
+    const channel = supabase
+      .channel('admin-orders-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchOrders)
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [])
+
+  const filtered = activeFilter
+    ? orders.filter((o) => o.status === activeFilter)
+    : orders
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Commandes</h1>
+        <p className="text-sm text-[#555555] mt-0.5">{orders.length} commande{orders.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Filter pills */}
+      <div className="flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <button
+            key={String(f)}
+            onClick={() => setActiveFilter(f)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer ${
+              activeFilter === f
+                ? 'bg-[#1B2A4A] text-white'
+                : 'bg-white border border-gray-200 text-[#555555] hover:border-[#1B2A4A]'
+            }`}
+          >
+            {FILTER_LABELS[String(f)]}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin w-8 h-8 border-4 border-[#00B4CC] border-t-transparent rounded-full" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 text-sm text-[#888]">Aucune commande</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-[#F8F9FA] border-b border-gray-100">
+                <tr>
+                  {['#', 'Client', 'Téléphone', 'Mode', 'Acompte', 'Date', 'Statut', 'Voir'].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555555] uppercase tracking-wide">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((o) => {
+                  const clientName = o.customer
+                    ? `${o.customer.first_name} ${o.customer.last_name}`
+                    : o.customer_name || '—'
+                  return (
+                    <tr key={o.id} className="hover:bg-[#F8F9FA] transition-colors">
+                      <td className="px-4 py-3 text-[#888] font-mono text-xs">#{o.id}</td>
+                      <td className="px-4 py-3 font-medium text-[#1B2A4A]">{clientName}</td>
+                      <td className="px-4 py-3 text-[#555]">
+                        {o.phone?.brand} {o.phone?.name || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-[#555]">
+                        {o.delivery_mode === 'livraison' ? '🚚 Livraison' : '🏪 Click & Collect'}
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-[#1B2A4A]">
+                        {o.deposit_paid != null ? `${o.deposit_paid}€` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-[#888]">
+                        {o.created_at ? new Date(o.created_at).toLocaleDateString('fr-BE') : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={o.status} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setSelectedOrder(o)}
+                          className="text-xs font-medium text-[#00B4CC] hover:underline cursor-pointer"
+                        >
+                          Détails →
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Detail panel */}
+      {selectedOrder && (
+        <OrderPanel
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onRefetch={() => {
+            fetchOrders()
+            setSelectedOrder(null)
+          }}
+        />
+      )}
+    </div>
+  )
+}
