@@ -9,7 +9,8 @@ import Boutique from './pages/Boutique';
 import Occasions from './pages/Occasions';
 import Reconditiones from './pages/Reconditiones';
 import Rachat from './pages/Rachat';
-import PhoneDetailPage from './pages/PhoneDetailPage';
+import PhoneDetailPage from './pages/PhoneDetailPage'
+import ModelDetailPage from './pages/ModelDetailPage';
 import Reservation from './pages/Reservation';
 import Cart from './pages/Cart';
 import ProtectedRoute from './components/admin/ProtectedRoute';
@@ -58,6 +59,9 @@ export default function App() {
           } />
           <Route path="/telephone/:id" element={
             <Layout><PhoneDetailPage /></Layout>
+          } />
+          <Route path="/modele/:modelSlug" element={
+            <Layout><ModelDetailPage /></Layout>
           } />
           <Route path="/reservation/:id" element={
             <Layout><Reservation /></Layout>

@@ -34,7 +34,7 @@ export default function PhoneGrid({ phones, view = 'grid' }) {
     <>
       {/* Grid or list */}
       {view === 'list' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {paged.map((phone) => (
             <PhoneListCard key={phone.id} phone={phone} onClick={setSelected} />
           ))}

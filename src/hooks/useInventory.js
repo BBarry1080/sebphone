@@ -24,7 +24,7 @@ export function useInventory(filters = {}) {
     // ── Mode Supabase ────────────────────────────────────────────────
     let query = supabase
       .from('phones')
-      .select('*, model:phone_models(*)')
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (filters.condition) query = query.eq('condition', filters.condition)
