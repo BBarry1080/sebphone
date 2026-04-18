@@ -4,6 +4,7 @@ import { ArrowRight, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react'
 import { bestSellers as fallbackBestSellers } from '../../data/bestSellers';
 import { usePhoneModels } from '../../hooks/usePhoneModels';
 import StarRating from '../ui/StarRating';
+import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 
 const MAX_VISIBLE_COLORS = 4;
 
@@ -36,13 +37,21 @@ function ColorDots({ colors, active, onSelect }) {
 function BestSellerCard({ phone }) {
   const [activeColor, setActiveColor] = useState(0);
   const color = phone.colors[activeColor];
+  const imgSrc = color.image || getPhoneImage(phone.name, color.name);
 
   return (
     <div className="flex-shrink-0 w-[200px] sm:w-[240px] bg-white border border-gray-100 rounded-2xl p-4 hover:border-[#00B4CC] hover:shadow-lg transition-all duration-200 flex flex-col gap-3 cursor-pointer">
       {/* Image */}
       <div className="h-44 bg-[#F9F9F9] rounded-xl flex items-center justify-center relative overflow-hidden">
-        {color.image ? (
-          <img src={color.image} alt={`${phone.name} ${color.name}`} className="object-contain w-full h-full" loading="lazy" />
+        {imgSrc !== PLACEHOLDER ? (
+          <img
+            key={imgSrc}
+            src={imgSrc}
+            alt={`${phone.name} ${color.name}`}
+            className="object-contain w-full h-full"
+            loading="lazy"
+            onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+          />
         ) : (
           <div className="flex flex-col items-center gap-2 text-[#00B4CC] opacity-30">
             <Smartphone size={56} strokeWidth={1} />

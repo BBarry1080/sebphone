@@ -54,27 +54,33 @@ function SidebarContent({
   filterStatus, setFilterStatus,
   priceRange, setPriceRange,
   onReset,
+  phones = [],
 }) {
+  const count = (fn) => phones.filter(fn).length;
+
   const brands = [
-    { value: 'Apple',   label: 'Apple',   count: 7 },
-    { value: 'Samsung', label: 'Samsung', count: 5 },
-  ];
+    { value: 'Apple',   label: 'Apple',   count: count((p) => p.brand === 'Apple') },
+    { value: 'Samsung', label: 'Samsung', count: count((p) => p.brand === 'Samsung') },
+  ].filter((b) => b.count > 0);
+
   const conditions = [
-    { value: 'neuf',          label: 'Neuf',          count: 3 },
-    { value: 'reconditionne', label: 'Reconditionné',  count: 6 },
-    { value: 'occasion',      label: 'Occasion',       count: 3 },
-  ];
+    { value: 'neuf',          label: 'Neuf',         count: count((p) => p.condition === 'neuf') },
+    { value: 'reconditionne', label: 'Reconditionné', count: count((p) => p.condition === 'reconditionne') },
+    { value: 'occasion',      label: 'Occasion',      count: count((p) => p.condition === 'occasion') },
+  ].filter((c) => c.count > 0);
+
   const statuses = [
-    { value: 'disponible', label: 'En stock', count: 9 },
-    { value: 'reserve',    label: 'Réservé',  count: 2 },
-    { value: 'vendu',      label: 'Vendu',    count: 1 },
-  ];
+    { value: 'disponible', label: 'En stock', count: count((p) => p.status === 'disponible') },
+    { value: 'reserve',    label: 'Réservé',  count: count((p) => p.status === 'reserve') },
+    { value: 'vendu',      label: 'Vendu',    count: count((p) => p.status === 'vendu') },
+  ].filter((s) => s.count > 0);
+
   const gradesList = [
-    { value: 'parfait',   label: 'Parfait (Grade 4)' },
-    { value: 'tres_bon',  label: 'Très bon (Grade 3)' },
-    { value: 'correct',   label: 'Correct (Grade 2)' },
-    { value: 'imparfait', label: 'Imparfait (Grade 1)' },
-  ];
+    { value: 'A+', label: 'A+ — Parfait',    count: count((p) => p.grade === 'A+') },
+    { value: 'A',  label: 'A — Très bon',    count: count((p) => p.grade === 'A') },
+    { value: 'B',  label: 'B — Correct',     count: count((p) => p.grade === 'B') },
+    { value: 'C',  label: 'C — Imparfait',   count: count((p) => p.grade === 'C') },
+  ].filter((g) => g.count > 0);
 
   return (
     <div className="flex flex-col">
@@ -128,13 +134,15 @@ function SidebarContent({
         </div>
       </Section>
 
-      <Section title="Grade" defaultOpen={false}>
-        <div className="flex flex-col gap-1.5">
-          {gradesList.map((g) => (
-            <CheckRow key={g.value} label={g.label} checked={false} onChange={() => {}} />
-          ))}
-        </div>
-      </Section>
+      {gradesList.length > 0 && (
+        <Section title="Grade" defaultOpen={false}>
+          <div className="flex flex-col gap-1.5">
+            {gradesList.map((g) => (
+              <CheckRow key={g.value} label={g.label} count={g.count} checked={false} onChange={() => {}} />
+            ))}
+          </div>
+        </Section>
+      )}
 
       <button
         onClick={onReset}
@@ -156,6 +164,7 @@ export function MobileFilterBar({
   filterStatus, setFilterStatus,
   sortBy, setSortBy,
   total,
+  phones = [],
 }) {
   const [priceRange, setPriceRange] = useState([0, 1500]);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -241,6 +250,7 @@ export function MobileFilterBar({
             filterStatus={filterStatus} setFilterStatus={setFilterStatus}
             priceRange={priceRange} setPriceRange={setPriceRange}
             onReset={onReset}
+            phones={phones}
           />
         </div>
         <div className="p-5 border-t border-gray-100 bg-white">
@@ -265,6 +275,7 @@ export default function FilterSidebar({
   filterCondition, setFilterCondition,
   filterStatus, setFilterStatus,
   search, setSearch,
+  phones = [],
 }) {
   const [priceRange, setPriceRange] = useState([0, 1500]);
 
@@ -300,6 +311,7 @@ export default function FilterSidebar({
         filterStatus={filterStatus} setFilterStatus={setFilterStatus}
         priceRange={priceRange} setPriceRange={setPriceRange}
         onReset={onReset}
+        phones={phones}
       />
     </aside>
   );

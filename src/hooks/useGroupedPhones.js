@@ -1,14 +1,14 @@
 import { useState, useMemo } from 'react'
 import { useGroupedInventory } from './useGroupedInventory'
 
-export function useGroupedPhones(initialCondition = null) {
+export function useGroupedPhones(initialCondition = null, initialBrand = null) {
   const [search, setSearch]               = useState('')
   const [filterCondition, setFilterCondition] = useState(initialCondition)
-  const [filterBrand, setFilterBrand]     = useState(null)
+  const [filterBrand, setFilterBrand]     = useState(initialBrand)
   const [filterStatus, setFilterStatus]   = useState(null)
   const [sortBy, setSortBy]               = useState('alpha_asc')
 
-  const { groupedModels, loading, error } = useGroupedInventory({
+  const { groupedModels, phones, loading, error } = useGroupedInventory({
     condition: filterCondition,
     brand:     filterBrand,
     status:    filterStatus,
@@ -42,13 +42,14 @@ export function useGroupedPhones(initialCondition = null) {
 
   return {
     groups,
+    phones,
     totalPhones,
     loading,
     error,
-    search,        setSearch,
+    search,          setSearch,
     filterCondition, setFilterCondition,
-    filterBrand,   setFilterBrand,
-    filterStatus,  setFilterStatus,
-    sortBy,        setSortBy,
+    filterBrand,     setFilterBrand,
+    filterStatus,    setFilterStatus,
+    sortBy,          setSortBy,
   }
 }

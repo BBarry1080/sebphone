@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Smartphone } from 'lucide-react'
+import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 
 export const colorToHex = (colorName) => {
   const map = {
@@ -40,9 +42,14 @@ const conditionColor = {
 /* ── Grouped model card (catalogue) ── */
 function GroupCard({ group }) {
   const navigate = useNavigate()
-  const imageUrl = group.bestPhone?.image_url
-    || group.bestPhone?.images?.[0]
-    || null
+  const [selectedColor, setSelectedColor] = useState(group.colors?.[0] || null)
+
+  const imgSrc = getPhoneImage(group.model, selectedColor)
+
+  const handleColorClick = (e, color) => {
+    e.stopPropagation()
+    setSelectedColor(color)
+  }
 
   return (
     <div
@@ -51,11 +58,14 @@ function GroupCard({ group }) {
     >
       {/* Image */}
       <div className="w-[100px] h-[100px] flex-shrink-0 bg-gray-50 rounded-xl flex items-center justify-center overflow-hidden">
-        {imageUrl && imageUrl !== '/images/placeholder.jpg' ? (
-          <img src={imageUrl} alt={group.model} className="w-full h-full object-contain p-2" loading="lazy" />
-        ) : (
-          <Smartphone size={40} className="text-[#00B4CC] opacity-25" strokeWidth={1} />
-        )}
+        <img
+          key={imgSrc}
+          src={imgSrc}
+          alt={`${group.model} ${selectedColor || ''}`}
+          className="w-full h-full object-contain p-2"
+          loading="lazy"
+          onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+        />
       </div>
 
       {/* Infos */}
@@ -79,19 +89,24 @@ function GroupCard({ group }) {
           </div>
         )}
 
-        {/* Pastilles couleur */}
+        {/* Pastilles couleur cliquables */}
         {group.colors.length > 0 && (
           <div className="flex items-center gap-1.5 mt-1.5">
-            {group.colors.slice(0, 5).map((c) => (
-              <span
+            {group.colors.slice(0, 6).map((c) => (
+              <button
                 key={c}
-                className="w-3.5 h-3.5 rounded-full border border-gray-300 flex-shrink-0"
+                onClick={(e) => handleColorClick(e, c)}
+                className={`rounded-full border-2 flex-shrink-0 transition-transform cursor-pointer ${
+                  selectedColor === c
+                    ? 'w-5 h-5 border-[#1B2A4A] scale-110'
+                    : 'w-3.5 h-3.5 border-gray-300 hover:border-gray-500'
+                }`}
                 style={{ background: colorToHex(c) }}
                 title={c}
               />
             ))}
-            {group.colors.length > 5 && (
-              <span className="text-[10px] text-gray-400">+{group.colors.length - 5}</span>
+            {group.colors.length > 6 && (
+              <span className="text-[10px] text-gray-400">+{group.colors.length - 6}</span>
             )}
           </div>
         )}
@@ -106,8 +121,12 @@ function GroupCard({ group }) {
   )
 }
 
-/* ── Individual phone card (detail pages, backward compat) ── */
+/* ── Individual phone card (backward compat) ── */
 function PhoneCard({ phone, onClick }) {
+  const imgSrc = getPhoneImage(
+    (typeof phone.model === 'string' ? phone.model : phone.model?.name) || phone.name,
+    phone.color
+  )
   const colors = phone.color ? [phone.color] : []
 
   return (
@@ -116,8 +135,14 @@ function PhoneCard({ phone, onClick }) {
       className="w-full bg-white border border-gray-100 rounded-2xl p-4 flex gap-4 items-center hover:border-[#00B4CC] hover:shadow-md transition-all duration-200 cursor-pointer"
     >
       <div className="w-[100px] h-[100px] flex-shrink-0 bg-gray-50 rounded-xl flex items-center justify-center overflow-hidden">
-        {phone.images?.[0] && phone.images[0] !== '/images/placeholder.jpg' ? (
-          <img src={phone.images[0]} alt={phone.name} className="w-full h-full object-contain p-2" loading="lazy" />
+        {imgSrc !== PLACEHOLDER ? (
+          <img
+            src={imgSrc}
+            alt={phone.name}
+            className="w-full h-full object-contain p-2"
+            loading="lazy"
+            onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+          />
         ) : (
           <Smartphone size={40} className="text-[#00B4CC] opacity-25" strokeWidth={1} />
         )}
@@ -155,7 +180,6 @@ function PhoneCard({ phone, onClick }) {
   )
 }
 
-/* ── Default export : auto-détecte group vs phone ── */
 export default function PhoneListCard({ group, phone, onClick }) {
   if (group) return <GroupCard group={group} />
   return <PhoneCard phone={phone} onClick={onClick} />

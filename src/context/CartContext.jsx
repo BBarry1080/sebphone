@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import { supabase, isSupabaseReady } from '../lib/supabase';
 
 const CartContext = createContext(null);
 
@@ -28,14 +29,49 @@ export function CartProvider({ children }) {
 
   const clearCart = useCallback(() => setItems([]), []);
 
-  const VALID_COUPONS = { 'SEBPHONE10': 10, 'BIENVENUE': 20, 'POUPETTE': 20 };
-  const applyCoupon = useCallback((code) => {
-    const discount = VALID_COUPONS[code.toUpperCase()];
-    if (discount) {
-      setCoupon({ code: code.toUpperCase(), discount });
+  const FALLBACK_COUPONS = {
+    'SEBPHONE10': { type: 'percent', value: 10 },
+    'BIENVENUE':  { type: 'percent', value: 15 },
+    'PROMO20':    { type: 'fixed',   value: 20 },
+    'POUPETTE':   { type: 'fixed',   value: 20 },
+  };
+
+  const applyCoupon = useCallback(async (code, currentSubtotal = 0) => {
+    const upper = code.trim().toUpperCase();
+    if (!upper) return false;
+
+    if (!isSupabaseReady) {
+      const promo = FALLBACK_COUPONS[upper];
+      if (!promo) return false;
+      const discount = promo.type === 'percent'
+        ? Math.round(currentSubtotal * promo.value / 100)
+        : promo.value;
+      setCoupon({ code: upper, discount });
       return true;
     }
-    return false;
+
+    const { data } = await supabase
+      .from('promo_codes')
+      .select('*')
+      .eq('code', upper)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (!data) return false;
+    if (data.expires_at && new Date(data.expires_at) < new Date()) return false;
+    if (data.max_uses != null && data.uses_count >= data.max_uses) return false;
+    if (data.min_order && currentSubtotal < data.min_order) return false;
+
+    const discount = data.type === 'percent'
+      ? Math.round(currentSubtotal * data.value / 100)
+      : data.value;
+    setCoupon({ code: data.code, discount });
+
+    supabase.from('promo_codes')
+      .update({ uses_count: (data.uses_count || 0) + 1 })
+      .eq('id', data.id);
+
+    return true;
   }, []);
 
   const removeCoupon = useCallback(() => setCoupon(null), []);

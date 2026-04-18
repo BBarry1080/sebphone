@@ -2,219 +2,256 @@ export const IPHONE_DATABASE = [
   {
     model: "iPhone 6",
     storages: ["16Go", "64Go", "128Go"],
-    colors: ["Argent", "Or", "Gris sidéral"]
+    colors: ["Argent", "Or", "Gris sidéral"],
+    imageUrl: null,
   },
   {
     model: "iPhone 6 Plus",
     storages: ["16Go", "64Go", "128Go"],
-    colors: ["Argent", "Or", "Gris sidéral"]
+    colors: ["Argent", "Or", "Gris sidéral"],
+    imageUrl: null,
   },
   {
     model: "iPhone 6s",
     storages: ["16Go", "32Go", "64Go", "128Go"],
-    colors: ["Argent", "Or", "Gris sidéral", "Or rose"]
+    colors: ["Argent", "Or", "Gris sidéral", "Or rose"],
+    imageUrl: null,
   },
   {
     model: "iPhone 6s Plus",
     storages: ["16Go", "32Go", "64Go", "128Go"],
-    colors: ["Argent", "Or", "Gris sidéral", "Or rose"]
+    colors: ["Argent", "Or", "Gris sidéral", "Or rose"],
+    imageUrl: null,
   },
   {
     model: "iPhone SE (2016)",
     storages: ["16Go", "32Go", "64Go", "128Go"],
-    colors: ["Argent", "Or", "Gris sidéral", "Or rose"]
+    colors: ["Argent", "Or", "Gris sidéral", "Or rose"],
+    imageUrl: null,
   },
   {
     model: "iPhone 7",
     storages: ["32Go", "128Go", "256Go"],
-    colors: ["Noir", "Noir de jais", "Argent", "Or", "Or rose", "Rouge"]
+    colors: ["Noir", "Noir de jais", "Argent", "Or", "Or rose", "Rouge"],
+    imageUrl: null,
   },
   {
     model: "iPhone 7 Plus",
     storages: ["32Go", "128Go", "256Go"],
-    colors: ["Noir", "Noir de jais", "Argent", "Or", "Or rose", "Rouge"]
+    colors: ["Noir", "Noir de jais", "Argent", "Or", "Or rose", "Rouge"],
+    imageUrl: "/images/iphones/iphone-7-plus-noir-de-jais.png",
   },
   {
     model: "iPhone 8",
     storages: ["64Go", "256Go"],
-    colors: ["Argent", "Or", "Gris sidéral"]
+    colors: ["Argent", "Or", "Gris sidéral"],
+    imageUrl: "/images/iphones/iphone-8-argent.png",
   },
   {
     model: "iPhone 8 Plus",
     storages: ["64Go", "256Go"],
-    colors: ["Argent", "Or", "Gris sidéral"]
+    colors: ["Argent", "Or", "Gris sidéral"],
+    imageUrl: "/images/iphones/iphone-8-plus-argent.png",
   },
   {
     model: "iPhone SE (2020)",
     storages: ["64Go", "128Go", "256Go"],
-    colors: ["Noir", "Blanc", "Rouge"]
+    colors: ["Noir", "Blanc", "Rouge"],
+    imageUrl: "/images/iphones/iphone-se-2020-blanc.png",
   },
   {
     model: "iPhone X",
     storages: ["64Go", "256Go"],
-    colors: ["Argent", "Gris sidéral"]
+    colors: ["Argent", "Gris sidéral"],
+    imageUrl: "/images/iphones/iphone-x-argent.png",
   },
   {
     model: "iPhone XR",
     storages: ["64Go", "128Go", "256Go"],
-    colors: ["Noir", "Blanc", "Rouge", "Bleu", "Jaune", "Corail"]
+    colors: ["Noir", "Blanc", "Rouge", "Bleu", "Jaune", "Corail"],
+    imageUrl: "/images/iphones/iphone-xr-noir.png",
   },
   {
     model: "iPhone XS",
     storages: ["64Go", "256Go", "512Go"],
-    colors: ["Argent", "Or", "Gris sidéral"]
+    colors: ["Argent", "Or", "Gris sidéral"],
+    imageUrl: "/images/iphones/iphone-xs-argent.png",
   },
   {
     model: "iPhone XS Max",
     storages: ["64Go", "256Go", "512Go"],
-    colors: ["Argent", "Or", "Gris sidéral"]
+    colors: ["Argent", "Or", "Gris sidéral"],
+    imageUrl: "/images/iphones/iphone-xs-max-argent.png",
   },
   {
     model: "iPhone 11",
     storages: ["64Go", "128Go", "256Go"],
-    colors: ["Noir", "Blanc", "Rouge", "Vert", "Jaune", "Violet"]
+    colors: ["Noir", "Blanc", "Rouge", "Vert", "Jaune", "Violet"],
+    imageUrl: "/images/iphones/iphone-11-noir.png",
   },
   {
     model: "iPhone 11 Pro",
     storages: ["64Go", "256Go", "512Go"],
-    colors: ["Argent", "Or", "Gris sidéral", "Vert nuit"]
+    colors: ["Argent", "Or", "Gris sidéral", "Vert nuit"],
+    imageUrl: "/images/iphones/iphone-11-pro-argent.png",
   },
   {
     model: "iPhone 11 Pro Max",
     storages: ["64Go", "256Go", "512Go"],
-    colors: ["Argent", "Or", "Gris sidéral", "Vert nuit"]
+    colors: ["Argent", "Or", "Gris sidéral", "Vert nuit"],
+    imageUrl: "/images/iphones/iphone-11-pro-max-argent.png",
   },
   {
     model: "iPhone SE (2022)",
     storages: ["64Go", "128Go", "256Go"],
-    colors: ["Minuit", "Lumière stellaire", "Rouge"]
+    colors: ["Minuit", "Lumière stellaire", "Rouge"],
+    imageUrl: "/images/iphones/iphone-se-2022-minuit.png",
   },
   {
     model: "iPhone 12 mini",
     storages: ["64Go", "128Go", "256Go"],
-    colors: ["Noir", "Blanc", "Rouge", "Vert", "Bleu", "Violet"]
+    colors: ["Noir", "Blanc", "Rouge", "Vert", "Bleu", "Violet"],
+    imageUrl: "/images/iphones/iphone-12-mini-noir.png",
   },
   {
     model: "iPhone 12",
     storages: ["64Go", "128Go", "256Go"],
-    colors: ["Noir", "Blanc", "Rouge", "Vert", "Bleu", "Violet"]
+    colors: ["Noir", "Blanc", "Rouge", "Vert", "Bleu", "Violet"],
+    imageUrl: "/images/iphones/iphone-12-noir.png",
   },
   {
     model: "iPhone 12 Pro",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Argent", "Or", "Graphite", "Bleu Pacifique"]
+    colors: ["Argent", "Or", "Graphite", "Bleu Pacifique"],
+    imageUrl: "/images/iphones/iphone-12-pro-argent.png",
   },
   {
     model: "iPhone 12 Pro Max",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Argent", "Or", "Graphite", "Bleu Pacifique"]
+    colors: ["Argent", "Or", "Graphite", "Bleu Pacifique"],
+    imageUrl: "/images/iphones/iphone-12-pro-max-argent.png",
   },
   {
     model: "iPhone 13 mini",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Minuit", "Lumière stellaire", "Rouge", "Bleu", "Rose", "Vert"]
+    colors: ["Minuit", "Lumière stellaire", "Rouge", "Bleu", "Rose", "Vert"],
+    imageUrl: "/images/iphones/iphone-13-mini-minuit.png",
   },
   {
     model: "iPhone 13",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Minuit", "Lumière stellaire", "Rouge", "Bleu", "Rose", "Vert"]
+    colors: ["Minuit", "Lumière stellaire", "Rouge", "Bleu", "Rose", "Vert"],
+    imageUrl: "/images/iphones/iphone-13-minuit.png",
   },
   {
     model: "iPhone 13 Pro",
     storages: ["128Go", "256Go", "512Go", "1To"],
-    colors: ["Argent", "Or", "Graphite", "Bleu alpin", "Vert alpin"]
+    colors: ["Argent", "Or", "Graphite", "Bleu alpin", "Vert alpin"],
+    imageUrl: "/images/iphones/iphone-13-pro-graphite.png",
   },
   {
     model: "iPhone 13 Pro Max",
     storages: ["128Go", "256Go", "512Go", "1To"],
-    colors: ["Argent", "Or", "Graphite", "Bleu alpin", "Vert alpin"]
+    colors: ["Argent", "Or", "Graphite", "Bleu alpin", "Vert alpin"],
+    imageUrl: "/images/iphones/iphone-13-pro-max-graphite.png",
   },
   {
     model: "iPhone 14",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Minuit", "Lumière stellaire", "Rouge", "Bleu", "Violet", "Jaune"]
+    colors: ["Minuit", "Lumière stellaire", "Rouge", "Bleu", "Violet", "Jaune"],
+    imageUrl: "/images/iphones/iphone-14-minuit.png",
   },
   {
     model: "iPhone 14 Plus",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Minuit", "Lumière stellaire", "Rouge", "Bleu", "Violet", "Jaune"]
+    colors: ["Minuit", "Lumière stellaire", "Rouge", "Bleu", "Violet", "Jaune"],
+    imageUrl: "/images/iphones/iphone-14-plus-minuit.png",
   },
   {
     model: "iPhone 14 Pro",
     storages: ["128Go", "256Go", "512Go", "1To"],
-    colors: ["Violet intense", "Or", "Argent", "Noir spatial"]
+    colors: ["Violet intense", "Or", "Argent", "Noir spatial"],
+    imageUrl: "/images/iphones/iphone-14-pro-noir-cosmos.png",
   },
   {
     model: "iPhone 14 Pro Max",
     storages: ["128Go", "256Go", "512Go", "1To"],
-    colors: ["Violet intense", "Or", "Argent", "Noir spatial"]
+    colors: ["Violet intense", "Or", "Argent", "Noir spatial"],
+    imageUrl: "/images/iphones/iphone-14-pro-max-noir-cosmos.png",
   },
   {
     model: "iPhone 15",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Noir", "Rose", "Jaune", "Vert", "Bleu"]
+    colors: ["Noir", "Rose", "Jaune", "Vert", "Bleu"],
+    imageUrl: "/images/iphones/iphone-15-noir.png",
   },
   {
     model: "iPhone 15 Plus",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Noir", "Rose", "Jaune", "Vert", "Bleu"]
+    colors: ["Noir", "Rose", "Jaune", "Vert", "Bleu"],
+    imageUrl: "/images/iphones/iphone-15-plus-noir.png",
   },
   {
     model: "iPhone 15 Pro",
     storages: ["128Go", "256Go", "512Go", "1To"],
-    colors: ["Titane naturel", "Titane bleu", "Titane blanc", "Titane noir"]
+    colors: ["Titane naturel", "Titane bleu", "Titane blanc", "Titane noir"],
+    imageUrl: "/images/iphones/iphone-15-pro-titane-naturel.png",
   },
   {
     model: "iPhone 15 Pro Max",
     storages: ["256Go", "512Go", "1To"],
-    colors: ["Titane naturel", "Titane bleu", "Titane blanc", "Titane noir"]
+    colors: ["Titane naturel", "Titane bleu", "Titane blanc", "Titane noir"],
+    imageUrl: "/images/iphones/iphone-15-pro-max-titane-naturel.png",
   },
   {
     model: "iPhone 16",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Noir", "Blanc", "Rose", "Bleu outremer", "Vert jade"]
+    colors: ["Noir", "Blanc", "Rose", "Bleu outremer", "Vert jade"],
+    imageUrl: "/images/iphones/iphone-16-noir.png",
   },
   {
     model: "iPhone 16 Plus",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Noir", "Blanc", "Rose", "Bleu outremer", "Vert jade"]
+    colors: ["Noir", "Blanc", "Rose", "Bleu outremer", "Vert jade"],
+    imageUrl: "/images/iphones/iphone-16-plus-noir.png",
   },
   {
     model: "iPhone 16 Pro",
     storages: ["128Go", "256Go", "512Go", "1To"],
-    colors: ["Titane naturel", "Titane blanc", "Titane noir", "Titane désert"]
+    colors: ["Titane naturel", "Titane blanc", "Titane noir", "Titane désert"],
+    imageUrl: "/images/iphones/iphone-16-pro-titane-noir.png",
   },
   {
     model: "iPhone 16 Pro Max",
     storages: ["256Go", "512Go", "1To"],
-    colors: ["Titane naturel", "Titane blanc", "Titane noir", "Titane désert"]
+    colors: ["Titane naturel", "Titane blanc", "Titane noir", "Titane désert"],
+    imageUrl: "/images/iphones/iphone-16-pro-max-titane-noir.png",
   },
   {
     model: "iPhone 17",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Argent", "Noir", "Rose", "Bleu ciel"]
+    colors: ["Argent", "Noir", "Rose", "Bleu ciel"],
+    imageUrl: "/images/iphones/iphone-17-noir.png",
   },
   {
     model: "iPhone 17 Plus",
     storages: ["128Go", "256Go", "512Go"],
-    colors: ["Argent", "Noir", "Rose", "Bleu ciel"]
+    colors: ["Argent", "Noir", "Rose", "Bleu ciel"],
+    imageUrl: null,
   },
   {
     model: "iPhone 17 Pro",
     storages: ["256Go", "512Go", "1To"],
-    colors: ["Argent", "Orange cosmique", "Bleu intense"]
+    colors: ["Argent", "Orange cosmique", "Bleu intense"],
+    imageUrl: "/images/iphones/iphone-17-pro-orange-cosmique.png",
   },
   {
     model: "iPhone 17 Pro Max",
     storages: ["256Go", "512Go", "1To"],
-    colors: ["Argent", "Orange cosmique", "Bleu intense"]
-  }
+    colors: ["Argent", "Orange cosmique", "Bleu intense"],
+    imageUrl: "/images/iphones/iphone-17-pro-max-orange-cosmique.png",
+  },
 ]
 
-// Les 4 magasins SebTelecom
-export const MAGASINS = [
-  { id: "anderlecht", label: "Seb Telecom — Anderlecht" },
-  { id: "molenbeek",  label: "Seb Telecom — Molenbeek" },
-  { id: "rue-neuve",  label: "Seb Telecom — Rue Neuve (Bruxelles)" },
-  { id: "louise",     label: "Seb Telecom — Louise (Bruxelles)" }
-]
+// Source unique des magasins — éditer dans src/utils/magasins.js
+export { MAGASINS_LIST as MAGASINS } from '../utils/magasins'

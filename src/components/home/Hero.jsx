@@ -84,9 +84,9 @@ export default function Hero() {
               className="flex items-center gap-8 mt-10"
             >
               {[
-                { value: '500+', label: 'Téléphones vendus' },
-                { value: '6 mois', label: 'Garantie' },
-                { value: '24h', label: 'Livraison' },
+                { value: '2000+', label: 'Téléphones vendus' },
+                { value: '24 mois', label: 'Garantie' },
+                { value: '1h-24h max', label: 'Livraison' },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <p className="text-white font-bold text-xl">{stat.value}</p>
@@ -161,7 +161,7 @@ export default function Hero() {
               <Shield size={20} className="text-[#22C55E]" />
               <div>
                 <p className="text-[#1B2A4A] font-bold text-xs">Certifié</p>
-                <p className="text-[#555555] text-[10px]">Garantie 6 mois</p>
+                <p className="text-[#555555] text-[10px]">Garantie 24 mois</p>
               </div>
             </motion.div>
           </motion.div>

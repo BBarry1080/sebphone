@@ -47,5 +47,5 @@ export function useGroupedInventory(filters = {}) {
     }))
   }, [phones])
 
-  return { groupedModels, loading, error }
+  return { groupedModels, phones, loading, error }
 }

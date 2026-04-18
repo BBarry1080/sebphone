@@ -26,9 +26,9 @@ export default function Cart() {
   const [note, setNote] = useState('');
   const [shippingOpen, setShippingOpen] = useState(false);
 
-  const handleCoupon = () => {
+  const handleCoupon = async () => {
     if (!couponInput.trim()) return;
-    const ok = applyCoupon(couponInput);
+    const ok = await applyCoupon(couponInput, subtotal);
     if (!ok) setCouponError('Code invalide. Essayez SEBPHONE10 ou BIENVENUE.');
     else setCouponError('');
   };

@@ -18,7 +18,8 @@ import AdminLayout from './components/admin/AdminLayout';
 import AdminLogin from './pages/admin/AdminLogin';
 import Dashboard from './pages/admin/Dashboard';
 import Stock from './pages/admin/Stock';
-import Commandes from './pages/admin/Commandes';
+import Commandes from './pages/admin/Commandes'
+import PromoCodes from './pages/admin/PromoCodes';
 
 function Layout({ children }) {
   return (
@@ -47,6 +48,12 @@ export default function App() {
           } />
           <Route path="/boutique" element={
             <Layout><Boutique /></Layout>
+          } />
+          <Route path="/iphone" element={
+            <Layout><Boutique defaultBrand="Apple" /></Layout>
+          } />
+          <Route path="/samsung" element={
+            <Layout><Boutique defaultBrand="Samsung" /></Layout>
           } />
           <Route path="/occasions" element={
             <Layout><Occasions /></Layout>
@@ -90,6 +97,7 @@ export default function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="stock" element={<Stock />} />
             <Route path="commandes" element={<Commandes />} />
+            <Route path="promoCodes" element={<PromoCodes />} />
             <Route path="clients" element={
               <div className="text-center py-20 text-[#888]">Page Clients — à venir</div>
             } />

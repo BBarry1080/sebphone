@@ -17,8 +17,8 @@ function SebLogo() {
 
 const navLinks = [
   { to: '/',              label: 'Accueil',       end: true },
-  { to: '/boutique',      label: 'iPhone',        end: false },
-  { to: '/boutique?brand=Samsung', label: 'Samsung', end: false },
+  { to: '/iphone',   label: 'iPhone',  end: false },
+  { to: '/samsung',  label: 'Samsung', end: false },
   { to: '/occasions',     label: 'Occasions',     end: false },
   { to: '/reconditiones', label: 'Reconditionnés', end: false },
   { to: '/rachat',        label: 'Rachat',        end: false },

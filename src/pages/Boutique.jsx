@@ -3,15 +3,15 @@ import FilterSidebar, { MobileFilterBar, SortDropdown } from '../components/cata
 import PhoneListCard from '../components/catalogue/PhoneListCard'
 import Spinner from '../components/ui/Spinner'
 
-export default function Boutique() {
+export default function Boutique({ defaultBrand = null }) {
   const {
-    groups, totalPhones, loading, error,
+    groups, phones, totalPhones, loading, error,
     search, setSearch,
     filterCondition, setFilterCondition,
     filterBrand, setFilterBrand,
     filterStatus, setFilterStatus,
     sortBy, setSortBy,
-  } = useGroupedPhones()
+  } = useGroupedPhones(null, defaultBrand)
 
   return (
     <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 pb-24 md:pb-12">
@@ -34,6 +34,7 @@ export default function Boutique() {
         filterStatus={filterStatus} setFilterStatus={setFilterStatus}
         sortBy={sortBy} setSortBy={setSortBy}
         total={totalPhones}
+        phones={phones}
       />
 
       <div className="flex gap-8 items-start">
@@ -44,6 +45,7 @@ export default function Boutique() {
           filterStatus={filterStatus} setFilterStatus={setFilterStatus}
           sortBy={sortBy} setSortBy={setSortBy}
           total={totalPhones}
+          phones={phones}
         />
 
         <div className="flex-1 min-w-0 w-full">

@@ -3,11 +3,12 @@
 
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Smartphone } from 'lucide-react'
+import { ArrowLeft, Smartphone, CheckCircle, MapPin } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../lib/supabase'
 import { phonesMock } from '../data/phonesMock'
 import Spinner from '../components/ui/Spinner'
 import { colorToHex } from '../components/catalogue/PhoneListCard'
+import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 
 function gradeScore(grade) {
   return { 'A+': 4, 'A': 3, 'B': 2, 'C': 1 }[grade] || 0
@@ -19,6 +20,8 @@ const GRADE_STYLE = {
   'B':  'bg-orange-100 text-orange-700 border-orange-200',
   'C':  'bg-red-100 text-red-600 border-red-200',
 }
+
+import { MAGASINS } from '../utils/magasins'
 
 function BatteryBar({ value }) {
   if (!value) return <span className="text-gray-400 text-xs">—</span>
@@ -117,7 +120,7 @@ export default function ModelDetailPage() {
     : modelSlug.replace(/-/g, ' ')
 
   const minPrice = filtered.length > 0 ? Math.min(...filtered.map((p) => p.price)) : null
-  const imageUrl = bestPhone?.image_url || bestPhone?.images?.[0] || null
+  const imageUrl = getPhoneImage(modelName, filterColor || bestPhone?.color)
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-6 pb-28 md:pb-12">
@@ -151,8 +154,13 @@ export default function ModelDetailPage() {
           <div className="flex flex-col sm:flex-row gap-6 mb-8">
             {/* Image */}
             <div className="w-full sm:w-48 h-48 bg-gray-50 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {imageUrl && imageUrl !== '/images/placeholder.jpg' ? (
-                <img src={imageUrl} alt={modelName} className="w-full h-full object-contain p-4" />
+              {imageUrl !== PLACEHOLDER ? (
+                <img
+                  src={imageUrl}
+                  alt={modelName}
+                  className="w-full h-full object-contain p-4"
+                  onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+                />
               ) : (
                 <Smartphone size={80} className="text-[#00B4CC] opacity-20" strokeWidth={1} />
               )}
@@ -208,6 +216,44 @@ export default function ModelDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Neuf badges */}
+          {bestPhone?.condition === 'neuf' && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {['Sous scellé', 'Garantie 1 an Apple', 'Garantie 2 ans SebPhone'].map((t) => (
+                <span key={t} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-full font-medium">
+                  <CheckCircle size={11} />
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Magasins Click & Collect */}
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <MapPin size={12} className="text-[#00B4CC]" /> Click &amp; Collect
+            </p>
+            {bestPhone?.magasins?.length > 0 ? (
+              <div className="space-y-1.5">
+                {bestPhone.magasins.map((id) => {
+                  const mag = MAGASINS[id];
+                  if (!mag) return null;
+                  return (
+                    <div key={id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
+                      <MapPin size={14} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-[#1B2A4A]">{mag.nom}</p>
+                        <p className="text-xs text-gray-400">{mag.adresse}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400">Disponible dans tous nos magasins</p>
+            )}
           </div>
 
           {/* ── SECTION BASSE — Tableau de sélection ── */}
@@ -266,7 +312,11 @@ export default function ModelDetailPage() {
                               <BatteryBar value={phone.battery_health} />
                             </td>
                             <td className="px-4 py-3 max-w-[200px]">
-                              <p className="text-xs text-[#555] line-clamp-2">{partsText}</p>
+                              {phone.condition === 'neuf' ? (
+                                <p className="text-xs text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple</p>
+                              ) : (
+                                <p className="text-xs text-[#555] line-clamp-2">{partsText}</p>
+                              )}
                               {(phone.storage || phone.color) && (
                                 <p className="text-[11px] text-[#888] mt-0.5">
                                   {[phone.storage, phone.color].filter(Boolean).join(' · ')}
@@ -278,7 +328,10 @@ export default function ModelDetailPage() {
                             </td>
                             <td className="px-4 py-3">
                               <button
-                                onClick={() => navigate(`/reservation/${phone.id}`)}
+                                onClick={() => {
+                                  console.log('ID téléphone:', phone.id, phone);
+                                  navigate(`/reservation/${phone.id}`);
+                                }}
                                 className="px-4 py-2 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
                               >
                                 Choisir →
@@ -324,12 +377,19 @@ export default function ModelDetailPage() {
                           {(phone.storage || phone.color) && (
                             <p>{[phone.storage, phone.color].filter(Boolean).join(' · ')}</p>
                           )}
-                          <p>{partsText}</p>
+                          {phone.condition === 'neuf' ? (
+                            <p className="text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>
+                          ) : (
+                            <p>{partsText}</p>
+                          )}
                           <BatteryBar value={phone.battery_health} />
                         </div>
 
                         <button
-                          onClick={() => navigate(`/reservation/${phone.id}`)}
+                          onClick={() => {
+                            console.log('ID téléphone:', phone.id, phone);
+                            navigate(`/reservation/${phone.id}`);
+                          }}
                           className="w-full py-2.5 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
                         >
                           Choisir cet appareil →

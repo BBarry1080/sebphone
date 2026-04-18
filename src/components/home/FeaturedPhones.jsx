@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { phones } from '../../data/phones';
-import PhoneCard from '../ui/PhoneCard';
-import PhoneDetail from '../catalogue/PhoneDetail';
+import { Smartphone } from 'lucide-react';
+import { supabase, isSupabaseReady } from '../../lib/supabase';
+import { phonesMock } from '../../data/phonesMock';
+import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 import { ArrowRight } from 'lucide-react';
 
 const conditionFilters = [
@@ -11,20 +12,113 @@ const conditionFilters = [
   { value: 'neuf',          label: 'Neuf' },
   { value: 'reconditionne', label: 'Reconditionné' },
   { value: 'occasion',      label: 'Occasion' },
-  { value: 'Apple',         label: 'Apple' },
-  { value: 'Samsung',       label: 'Samsung' },
 ];
+
+const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' };
+const conditionColor = {
+  neuf:          'bg-blue-100 text-blue-700',
+  reconditionne: 'bg-cyan-100 text-cyan-700',
+  occasion:      'bg-orange-100 text-orange-700',
+};
+
+function PhoneCard({ phone, index }) {
+  const navigate = useNavigate();
+  const modelName = typeof phone.model === 'string' ? phone.model : phone.model?.name || phone.name || '';
+  const imgSrc = getPhoneImage(modelName, phone.color);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4, delay: index * 0.06 }}
+      onClick={() => navigate(`/modele/${modelName.toLowerCase().replace(/\s+/g, '-')}`)}
+      className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3 hover:border-[#00B4CC] hover:shadow-md transition-all duration-200 cursor-pointer"
+    >
+      {/* Image */}
+      <div className="h-36 bg-[#F9F9F9] rounded-xl flex items-center justify-center overflow-hidden">
+        {imgSrc !== PLACEHOLDER ? (
+          <img
+            src={imgSrc}
+            alt={modelName}
+            className="h-full w-full object-contain p-3"
+            loading="lazy"
+            onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
+          />
+        ) : (
+          <Smartphone size={48} className="text-[#00B4CC] opacity-20" strokeWidth={1} />
+        )}
+      </div>
+
+      {/* Condition badge */}
+      {phone.condition && (
+        <span className={`self-start text-[10px] font-semibold px-2 py-0.5 rounded-full ${conditionColor[phone.condition] || 'bg-gray-100 text-gray-600'}`}>
+          {conditionLabel[phone.condition] || phone.condition}
+        </span>
+      )}
+
+      {/* Name */}
+      <p className="font-poppins font-bold text-[#1B2A4A] text-sm leading-tight">{modelName}</p>
+
+      {/* Extra info per condition */}
+      {phone.condition === 'reconditionne' && phone.parts?.length > 0 && (
+        <p className="text-xs text-gray-400 -mt-1">
+          Pièces changées : {phone.parts.map((p) => p.part_type || p.part_name || p).filter(Boolean).join(', ')}
+        </p>
+      )}
+      {phone.condition === 'occasion' && phone.battery_health && (
+        <p className="text-xs text-gray-400 -mt-1">🔋 Batterie : {phone.battery_health}%</p>
+      )}
+
+      {/* Storage pill */}
+      {phone.storage && (
+        <span className="self-start text-[11px] border border-gray-200 rounded-md px-2 py-0.5 text-gray-600 font-medium">
+          {phone.storage}
+        </span>
+      )}
+
+      {/* Price */}
+      <p className="font-bold text-[#1B2A4A] text-base mt-auto">
+        <span className="text-xs text-gray-400 font-normal mr-1">À partir de</span>
+        {phone.price}€
+      </p>
+    </motion.div>
+  );
+}
 
 export default function FeaturedPhones() {
   const navigate = useNavigate();
+  const [allPhones, setAllPhones]       = useState([]);
+  const [loading, setLoading]           = useState(true);
   const [activeFilter, setActiveFilter] = useState(null);
-  const [selected, setSelected] = useState(null);
 
-  const featured = phones
+  useEffect(() => {
+    async function fetchPhones() {
+      setLoading(true);
+
+      if (!isSupabaseReady) {
+        setAllPhones(phonesMock.filter((p) => p.status === 'disponible').slice(0, 12));
+        setLoading(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('phones')
+        .select('*, parts:phone_parts(*)')
+        .eq('status', 'disponible')
+        .order('created_at', { ascending: false })
+        .limit(12);
+
+      setAllPhones(data || []);
+      setLoading(false);
+    }
+    fetchPhones();
+  }, []);
+
+  const featured = allPhones
     .filter((p) => {
       if (!activeFilter) return true;
-      if (['neuf', 'reconditionne', 'occasion'].includes(activeFilter)) return p.condition === activeFilter;
-      return p.brand === activeFilter;
+      return p.condition === activeFilter;
     })
     .slice(0, 6);
 
@@ -61,16 +155,23 @@ export default function FeaturedPhones() {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-5">
-          {featured.map((phone, i) => (
-            <PhoneCard
-              key={phone.id}
-              phone={phone}
-              index={i}
-              onClick={setSelected}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-64 bg-gray-100 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : featured.length === 0 ? (
+          <div className="text-center py-16 text-[#888] text-sm">
+            Aucun téléphone disponible pour cette catégorie.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
+            {featured.map((phone, i) => (
+              <PhoneCard key={phone.id} phone={phone} index={i} />
+            ))}
+          </div>
+        )}
 
         {/* CTA */}
         <motion.div
@@ -89,10 +190,6 @@ export default function FeaturedPhones() {
           </button>
         </motion.div>
       </div>
-
-      {selected && (
-        <PhoneDetail phone={selected} onClose={() => setSelected(null)} />
-      )}
     </section>
   );
 }

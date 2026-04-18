@@ -1,22 +1,89 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { phones } from '../data/phones';
 import { ArrowLeft } from 'lucide-react';
+import { supabase, isSupabaseReady } from '../lib/supabase';
+import { phonesMock } from '../data/phonesMock';
+import Spinner from '../components/ui/Spinner';
 import ReservationForm from '../components/reservation/ReservationForm';
 import Button from '../components/ui/Button';
 
 export default function Reservation() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const phone = phones.find((p) => p.id === Number(id));
 
-  if (!phone) {
+  const [phone, setPhone]     = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  console.log('ID reçu dans Reservation:', id);
+
+  useEffect(() => {
+    if (!id) {
+      console.error('Pas d\'ID dans l\'URL');
+      setError('Téléphone introuvable');
+      setLoading(false);
+      return;
+    }
+
+    async function fetchPhone() {
+      setLoading(true);
+
+      if (!isSupabaseReady) {
+        const mock = phonesMock.find((p) => String(p.id) === String(id));
+        console.log('Mode hors ligne — mock trouvé:', mock);
+        if (mock) setPhone(mock);
+        else setError('Téléphone introuvable (mode hors ligne) — ID: ' + id);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error: sbError } = await supabase
+        .from('phones')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      console.log('Résultat Supabase:', data, sbError);
+
+      if (sbError || !data) {
+        setError('Téléphone introuvable — ID: ' + id);
+        setLoading(false);
+        return;
+      }
+
+      setPhone(data);
+      setLoading(false);
+    }
+
+    fetchPhone();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <main className="max-w-xl mx-auto px-4 py-20">
+        <Spinner message="Chargement du téléphone..." />
+      </main>
+    );
+  }
+
+  if (error || !phone) {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">📱</p>
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">Téléphone introuvable</h1>
-        <Button variant="primary" size="md" onClick={() => navigate('/boutique')}>
-          Retour à la boutique
-        </Button>
+        <p className="text-red-500 text-sm mb-1">{error}</p>
+        <p className="text-gray-400 text-xs mb-6">ID recherché : {id}</p>
+        <div className="flex flex-col gap-3 items-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-[#00B4CC] text-sm cursor-pointer"
+          >
+            ← Retour
+          </button>
+          <Button variant="primary" size="md" onClick={() => navigate('/boutique')}>
+            Retour à la boutique
+          </Button>
+        </div>
       </main>
     );
   }
@@ -48,7 +115,9 @@ export default function Reservation() {
         <h1 className="font-poppins font-bold text-3xl text-[#1B2A4A] mb-2">
           Réserver ce <span className="text-[#00B4CC]">téléphone</span>
         </h1>
-        <p className="text-[#555555] text-sm">Remplissez le formulaire pour réserver — acompte de 50€ à la confirmation.</p>
+        <p className="text-[#555555] text-sm">
+          Remplissez le formulaire pour réserver — acompte de 50€ à la confirmation.
+        </p>
       </div>
 
       <ReservationForm phone={phone} />

@@ -10,6 +10,8 @@ import {
 } from '../../data/phonesApi'
 import { phonesMock } from '../../data/phonesMock'
 import { IPHONE_DATABASE, MAGASINS } from '../../data/iphoneDatabase'
+import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
+
 
 const CONDITIONS = ['neuf', 'reconditionne', 'occasion']
 const CONDITION_LABELS = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
@@ -608,8 +610,13 @@ export default function Stock() {
               <div key={phone.id} className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 bg-[#F5F5F5] rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Smartphone size={16} className="text-[#00B4CC] opacity-40" strokeWidth={1.5} />
+                    <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <img
+                        src={getPhoneImage(phone.model || phone.name, phone.color)}
+                        alt={phone.name || phone.model}
+                        className="w-full h-full object-contain p-1"
+                        onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+                      />
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-[#1B2A4A] text-sm leading-tight truncate">
@@ -682,8 +689,17 @@ export default function Stock() {
                   <tr key={phone.id} className="hover:bg-[#F8F9FA] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#F5F5F5] rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Smartphone size={18} className="text-[#00B4CC] opacity-40" strokeWidth={1.5} />
+                        <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          <img
+                            src={getPhoneImage(phone)}
+                            alt={phone.name || phone.model}
+                            className="w-full h-full object-contain p-1"
+                            onError={(e) => {
+                              e.target.onerror = null
+                              const entry = IPHONE_DATABASE.find((p) => p.model?.toLowerCase() === (phone.model || '').toLowerCase())
+                              e.target.src = entry?.imageUrl || 'https://placehold.co/200x200/f5f5f5/cccccc?text=iPhone'
+                            }}
+                          />
                         </div>
                         <div>
                           <p className="font-semibold text-[#1B2A4A] leading-tight">{phone.name || phone.model?.name}</p>

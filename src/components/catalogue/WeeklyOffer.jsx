@@ -1,32 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Truck, RotateCcw, Package } from 'lucide-react';
 import { phones } from '../../data/phones';
+import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
+import { supabase, isSupabaseReady } from '../../lib/supabase';
 
 const OFFER_PHONE_ID = 2; // iPhone 14 128Go Minuit
 const STORAGES = ['128Go', '256Go', '512Go'];
 
 const COLORS = [
-  { name: 'Minuit', hex: '#1C1C1E' },
-  { name: 'Lumière stellaire', hex: '#F5F0E8' },
-  { name: 'Bleu Alpin', hex: '#2E5CA8' },
-  { name: 'Rouge', hex: '#FF3B30' },
-];
-
-const badges = [
-  { Icon: CheckCircle, text: 'Garantie 12-24 mois' },
-  { Icon: Truck,       text: 'Livraison 24-72h' },
-  { Icon: RotateCcw,   text: 'Retour 30 jours' },
-  { Icon: Package,     text: '12 disponibles' },
+  { name: 'Minuit',             hex: '#1C1C1E' },
+  { name: 'Lumière stellaire',  hex: '#F5F0E8' },
+  { name: 'Bleu',               hex: '#2E5CA8' },
+  { name: 'Rouge',              hex: '#BF0000' },
+  { name: 'Violet',             hex: '#7B5EA7' },
 ];
 
 export default function WeeklyOffer() {
   const navigate = useNavigate();
   const [activeStorage, setActiveStorage] = useState(0);
-  const [activeColor, setActiveColor] = useState(0);
+  const [activeColor, setActiveColor]     = useState(0);
+  const [stockCount, setStockCount]       = useState(null); // null = loading
   const offerPhone = phones.find((p) => p.id === OFFER_PHONE_ID);
 
+  useEffect(() => {
+    async function fetchStock() {
+      if (!isSupabaseReady) { setStockCount(12); return; }
+      const { count } = await supabase
+        .from('phones')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'disponible')
+        .eq('condition', 'reconditionne');
+      setStockCount(count ?? 0);
+    }
+    fetchStock();
+  }, []);
+
   if (!offerPhone) return null;
+
+  const outOfStock = stockCount === 0;
+  const currentImage = getPhoneImage('iPhone 14', COLORS[activeColor].name);
+
+  const badges = [
+    { Icon: CheckCircle, text: 'Garantie 24 mois' },
+    { Icon: Truck,       text: 'Livraison 1h - 24h max' },
+    { Icon: RotateCcw,   text: 'Retour 30 jours' },
+    { Icon: Package,     text: stockCount === null ? '...' : `${stockCount} disponibles` },
+  ];
 
   return (
     <section className="px-4 md:px-6 py-6 max-w-7xl mx-auto mb-6">
@@ -65,16 +85,37 @@ export default function WeeklyOffer() {
 
           {/* Right — 40% */}
           <div className="md:col-span-2 p-5 flex items-center justify-center">
-            <div className="bg-white rounded-2xl p-5 w-full shadow-xl flex flex-col gap-4">
+            <div className={`bg-white rounded-2xl p-5 w-full shadow-xl flex flex-col gap-4 relative ${outOfStock ? 'opacity-50' : ''}`}>
+              {outOfStock && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 rounded-2xl bg-white/60 backdrop-blur-[1px]">
+                  <p className="text-center text-sm font-bold text-gray-600 px-4">
+                    Fin de stock<br />
+                    <span className="font-normal text-xs text-gray-400">Revenez la semaine prochaine</span>
+                  </p>
+                </div>
+              )}
+
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#00B4CC]">
                 Offre de la semaine
               </p>
+
+              {/* Phone image */}
+              <div className="h-32 flex items-center justify-center overflow-hidden">
+                <img
+                  key={currentImage}
+                  src={currentImage}
+                  alt={`iPhone 14 ${COLORS[activeColor].name}`}
+                  className="h-full object-contain"
+                  onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
+                />
+              </div>
+
               <p className="font-poppins font-bold text-[#1B2A4A] text-lg leading-tight">
-                {offerPhone.name.split(' ').slice(0, 2).join(' ')}
+                iPhone 14
               </p>
 
               {/* Storage pills */}
-              <div>
+              <div className={outOfStock ? 'pointer-events-none' : ''}>
                 <p className="text-xs text-[#555555] mb-2">Capacité</p>
                 <div className="flex gap-2 flex-wrap">
                   {STORAGES.map((s, i) => (
@@ -94,8 +135,10 @@ export default function WeeklyOffer() {
               </div>
 
               {/* Color dots */}
-              <div>
-                <p className="text-xs text-[#555555] mb-2">Couleur : <span className="font-medium text-[#1B2A4A]">{COLORS[activeColor].name}</span></p>
+              <div className={outOfStock ? 'pointer-events-none' : ''}>
+                <p className="text-xs text-[#555555] mb-2">
+                  Couleur : <span className="font-medium text-[#1B2A4A]">{COLORS[activeColor].name}</span>
+                </p>
                 <div className="flex gap-2">
                   {COLORS.map((c, i) => (
                     <button
@@ -120,12 +163,21 @@ export default function WeeklyOffer() {
               </div>
 
               {/* CTA */}
-              <button
-                onClick={() => navigate(`/telephone/${offerPhone.id}`)}
-                className="w-full flex items-center justify-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold py-3 rounded-full transition-colors cursor-pointer text-sm"
-              >
-                Voir l'offre →
-              </button>
+              {outOfStock ? (
+                <button
+                  disabled
+                  className="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-full text-sm cursor-not-allowed"
+                >
+                  Fin de stock — Revenez la semaine prochaine
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate(`/telephone/${offerPhone.id}`)}
+                  className="w-full flex items-center justify-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold py-3 rounded-full transition-colors cursor-pointer text-sm"
+                >
+                  Voir l'offre →
+                </button>
+              )}
             </div>
           </div>
         </div>

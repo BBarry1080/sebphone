@@ -1,7 +1,8 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getPhoneById } from '../data/phonesApi';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Smartphone, CheckCircle, Truck, RotateCcw, Store, Battery, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Smartphone, CheckCircle, Truck, RotateCcw, Store, Battery, ChevronRight, MapPin } from 'lucide-react';
+import { MAGASINS } from '../utils/magasins';
 import { useState, useEffect } from 'react';
 import StatusBadge from '../components/ui/StatusBadge';
 import StarRating from '../components/ui/StarRating';
@@ -173,18 +174,52 @@ export default function PhoneDetailPage() {
             </span>
           </div>
 
+          {/* Neuf badges */}
+          {phone.condition === 'neuf' && (
+            <div className="flex flex-wrap gap-2">
+              {['Sous scellé', 'Garantie 1 an Apple', 'Garantie 2 ans SebPhone'].map((t) => (
+                <span key={t} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-full font-medium">
+                  <CheckCircle size={11} />
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Info badges */}
           <div className="flex flex-col gap-2.5">
             {[
-              { Icon: Truck,     text: 'Livraison prévue entre le 18 et le 20 mai', color: 'text-[#00B4CC]' },
-              { Icon: RotateCcw, text: 'Retour gratuit sous 30 jours. Garantie de 6 à 24 mois.', color: 'text-[#166534]' },
-              { Icon: Store,     text: 'Achat en magasin possible : Belgique', color: 'text-[#555555]' },
+              { Icon: Truck,     text: 'Livraison 1h-24h max', color: 'text-[#00B4CC]' },
+              { Icon: RotateCcw, text: 'Retour gratuit sous 30 jours. Garantie jusqu\'à 24 mois.', color: 'text-[#166534]' },
+              { Icon: Store,     text: 'Click & Collect disponible en magasin', color: 'text-[#555555]' },
             ].map(({ Icon, text, color }) => (
               <div key={text} className="flex items-start gap-2 text-sm text-[#555555]">
                 <Icon size={16} className={`${color} flex-shrink-0 mt-0.5`} />
                 <span>{text}</span>
               </div>
             ))}
+            {phone.magasins?.length > 0 ? (
+              <div className="flex flex-col gap-1 pl-1 border-l-2 border-[#00B4CC]/30">
+                {phone.magasins.map((id) => {
+                  const mag = MAGASINS[id];
+                  if (!mag) return null;
+                  return (
+                    <div key={id} className="flex items-start gap-2 text-sm text-[#555555]">
+                      <MapPin size={14} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-[#1B2A4A]">{mag.nom}</span>
+                        <span className="text-xs text-gray-400 ml-1">— {mag.adresse}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 text-sm text-[#555555]">
+                <MapPin size={16} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                <span>Disponible dans tous nos magasins</span>
+              </div>
+            )}
           </div>
 
           {/* Color selection */}

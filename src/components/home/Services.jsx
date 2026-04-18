@@ -1,36 +1,36 @@
 import { motion } from 'framer-motion';
-import { Smartphone, Battery, Camera, Mic, TouchpadOff, Wrench } from 'lucide-react';
+import { Smartphone, Tablet, Watch, Headphones, Laptop, ShoppingBag } from 'lucide-react';
 
 const services = [
   {
     Icon: Smartphone,
-    title: 'Écran & Vitre arrière',
-    desc: 'Remplacement écran cassé, vitre arrière fissurée. Pièces de qualité OEM.',
+    title: 'Smartphones reconditionnés',
+    desc: 'iPhone et Samsung reconditionnés. Testés, certifiés et garantis 6 à 24 mois.',
   },
   {
-    Icon: Battery,
-    title: 'Batterie',
-    desc: 'Batterie neuve avec autonomie restaurée à 100%. Original ou OEM certifié.',
+    Icon: Tablet,
+    title: 'Tablettes reconditionnées',
+    desc: 'iPad et Galaxy Tab reconditionés. Écran parfait, batterie vérifiée, garantie incluse.',
   },
   {
-    Icon: Camera,
-    title: 'Appareil photo',
-    desc: 'Remplacement caméra avant/arrière. Photos nettes garanties.',
+    Icon: Watch,
+    title: 'Montres connectées',
+    desc: 'Apple Watch et Galaxy Watch. Autonomie et toutes les fonctions vérifiées.',
   },
   {
-    Icon: Mic,
-    title: 'Micro & Haut-parleur',
-    desc: 'Problème de son ? Réparation micro, haut-parleur, sonnerie.',
+    Icon: Headphones,
+    title: 'Écouteurs & casques',
+    desc: 'AirPods, Galaxy Buds et casques reconditionnés. Qualité audio testée et garantie.',
   },
   {
-    Icon: TouchpadOff,
-    title: 'Tactile',
-    desc: 'Dalle tactile non réactive ? Remplacement avec calibrage complet.',
+    Icon: Laptop,
+    title: 'Ordinateurs reconditionnés',
+    desc: 'MacBook et PC portables reconditionnés. Tests complets, garantie 12 mois incluse.',
   },
   {
-    Icon: Wrench,
-    title: 'Diagnostic offert',
-    desc: 'Diagnostic gratuit avant toute réparation. Devis immédiat et transparent.',
+    Icon: ShoppingBag,
+    title: 'Accessoires',
+    desc: 'Coques, protections, câbles, chargeurs. Compatibles iPhone et Samsung.',
   },
 ];
 
@@ -49,7 +49,7 @@ export default function Services() {
             NOS <span className="text-[#00B4CC]">SERVICES</span>
           </h2>
           <p className="text-[#555555] text-base max-w-xl mx-auto">
-            Réparation professionnelle de smartphones — rapide, certifiée, garantie.
+            Achat, vente d'appareils électroniques &amp; accessoires
           </p>
         </motion.div>
 

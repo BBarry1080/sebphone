@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Package } from 'lucide-react'
+import { X, Package, RefreshCw, Search } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 
 const STATUS_CONFIG = {
@@ -19,9 +19,112 @@ function StatusBadge({ status }) {
   )
 }
 
+/* ─── CHANGE MODEL MODAL ─── */
+function ChangeModelModal({ order, onClose, onDone }) {
+  const [query, setQuery]         = useState('')
+  const [results, setResults]     = useState([])
+  const [searching, setSearching] = useState(false)
+  const [selected, setSelected]   = useState(null)
+  const [saving, setSaving]       = useState(false)
+
+  const search = async () => {
+    if (!query.trim() || !isSupabaseReady) return
+    setSearching(true)
+    const { data } = await supabase
+      .from('phones')
+      .select('id, model, name, brand, grade, storage, color, price')
+      .eq('status', 'disponible')
+      .ilike('model', `%${query.trim()}%`)
+      .limit(10)
+    setResults(data || [])
+    setSearching(false)
+  }
+
+  const handleConfirm = async () => {
+    if (!selected || !isSupabaseReady) return
+    if (!window.confirm(`Remplacer le téléphone de cette commande par "${selected.model || selected.name}" ?`)) return
+    setSaving(true)
+    await supabase.from('orders').update({ phone_id: selected.id }).eq('id', order.id)
+    await supabase.from('phones').update({ status: 'disponible' }).eq('id', order.phone_id)
+    await supabase.from('phones').update({ status: 'reserve' }).eq('id', selected.id)
+    setSaving(false)
+    onDone()
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl z-10">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-poppins font-bold text-[#1B2A4A]">Changer le modèle</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer"><X size={18} /></button>
+        </div>
+        <p className="text-xs text-[#888] mb-4">
+          Téléphone actuel : <strong>{order.phone?.brand} {order.phone?.name || '—'}</strong>
+        </p>
+
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && search()}
+            placeholder="Rechercher un modèle disponible..."
+            className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]"
+          />
+          <button
+            onClick={search}
+            disabled={searching}
+            className="px-4 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold cursor-pointer disabled:opacity-60"
+          >
+            <Search size={16} />
+          </button>
+        </div>
+
+        {results.length > 0 && (
+          <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
+            {results.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setSelected(p)}
+                className={`w-full flex items-center justify-between text-left px-3 py-2.5 border-2 rounded-xl text-sm transition-all cursor-pointer ${
+                  selected?.id === p.id
+                    ? 'border-[#00B4CC] bg-cyan-50'
+                    : 'border-gray-200 hover:border-gray-400'
+                }`}
+              >
+                <div>
+                  <p className="font-semibold text-[#1B2A4A]">{p.model || p.name}</p>
+                  <p className="text-xs text-[#555]">
+                    {[p.grade && `Grade ${p.grade}`, p.storage, p.color].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <span className="font-bold text-[#1B2A4A]">{p.price}€</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {selected && (
+          <button
+            onClick={handleConfirm}
+            disabled={saving}
+            className="w-full flex items-center justify-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 text-sm"
+          >
+            <RefreshCw size={15} />
+            {saving ? 'Mise à jour...' : `Confirmer → ${selected.model || selected.name}`}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ─── DETAIL PANEL ─── */
 function OrderPanel({ order, onClose, onRefetch }) {
-  const [saving, setSaving] = useState(false)
+  const [saving, setSaving]         = useState(false)
+  const [changeModel, setChangeModel] = useState(false)
 
   const updateStatus = async (newStatus) => {
     if (!isSupabaseReady) return
@@ -111,6 +214,16 @@ function OrderPanel({ order, onClose, onRefetch }) {
 
           {/* Actions */}
           <div className="space-y-2 pt-2">
+            {order.status !== 'recupere' && order.status !== 'annule' && (
+              <button
+                onClick={() => setChangeModel(true)}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 border border-[#00B4CC] text-[#00B4CC] hover:bg-cyan-50 font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 text-sm"
+              >
+                <RefreshCw size={15} />
+                Changer le modèle
+              </button>
+            )}
             {order.status === 'en_attente' && (
               <button
                 onClick={() => updateStatus('confirme')}
@@ -141,6 +254,14 @@ function OrderPanel({ order, onClose, onRefetch }) {
           </div>
         </div>
       </div>
+
+      {changeModel && (
+        <ChangeModelModal
+          order={order}
+          onClose={() => setChangeModel(false)}
+          onDone={() => { onRefetch(); onClose() }}
+        />
+      )}
     </div>
   )
 }
