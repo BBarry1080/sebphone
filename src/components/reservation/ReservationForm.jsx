@@ -25,7 +25,7 @@ export default function ReservationForm({ phone }) {
     email:      '',
     phone:      '',
     delivery:   'collect',
-    magasin:    MAGASINS_LIST[0].id,
+    magasin:    phone?.magasins?.[0] || MAGASINS_LIST[0].id,
     address:    '',
     pickupDate: '',
     notes:      '',
@@ -141,6 +141,10 @@ export default function ReservationForm({ phone }) {
     }
   };
 
+  const availableMagasins = phone?.magasins?.length
+    ? MAGASINS_LIST.filter((m) => phone.magasins.includes(m.id))
+    : MAGASINS_LIST;
+
   const selectedMagasin = MAGASINS[form.magasin];
 
   return (
@@ -231,25 +235,35 @@ export default function ReservationForm({ phone }) {
 
         {form.delivery === 'collect' && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.3 }} className="flex flex-col gap-3">
-            <div>
-              <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-                <span className="flex items-center gap-1"><Store size={13} /> Choisir le magasin *</span>
-              </label>
-              <select name="magasin" value={form.magasin} onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all bg-white">
-                {MAGASINS_LIST.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nom}</option>
-                ))}
-              </select>
-            </div>
-            {selectedMagasin && (
-              <div className="flex items-start gap-2 bg-gray-50 rounded-xl p-3">
-                <MapPin size={15} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+            {availableMagasins.length === 1 ? (
+              <div className="flex items-start gap-2 bg-cyan-50 border-2 border-[#00B4CC] rounded-xl p-4">
+                <MapPin size={18} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-[#1B2A4A]">{selectedMagasin.nom}</p>
-                  <p className="text-xs text-gray-400">{selectedMagasin.adresse}</p>
-                  <p className="text-xs text-gray-400">{selectedMagasin.tel}</p>
+                  <p className="font-semibold text-[#1B2A4A] text-sm">{availableMagasins[0].nom}</p>
+                  <p className="text-xs text-gray-400">{availableMagasins[0].adresse}</p>
+                  <p className="text-xs text-[#00B4CC] mt-1">📍 Seul magasin où ce téléphone est disponible</p>
                 </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
+                  <span className="flex items-center gap-1"><Store size={13} /> Choisir le magasin de retrait *</span>
+                </label>
+                <select name="magasin" value={form.magasin} onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all bg-white">
+                  {availableMagasins.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nom}</option>
+                  ))}
+                </select>
+                {form.magasin && MAGASINS[form.magasin] && (
+                  <div className="flex items-start gap-2 bg-gray-50 rounded-xl p-3 mt-2">
+                    <MapPin size={15} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-[#1B2A4A]">{MAGASINS[form.magasin].nom}</p>
+                      <p className="text-xs text-gray-400">{MAGASINS[form.magasin].adresse}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             <div>

@@ -236,20 +236,25 @@ export default function ModelDetailPage() {
               <MapPin size={12} className="text-[#00B4CC]" /> Click &amp; Collect
             </p>
             {bestPhone?.magasins?.length > 0 ? (
-              <div className="space-y-1.5">
-                {bestPhone.magasins.map((id) => {
-                  const mag = MAGASINS[id];
-                  if (!mag) return null;
-                  return (
-                    <div key={id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
-                      <MapPin size={14} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-[#1B2A4A]">{mag.nom}</p>
-                        <p className="text-xs text-gray-400">{mag.adresse}</p>
+              <div>
+                <p className="text-xs text-[#555] mb-2">
+                  Ce téléphone est disponible en Click &amp; Collect uniquement dans ce(s) magasin(s) :
+                </p>
+                <div className="space-y-1.5">
+                  {bestPhone.magasins.map((id) => {
+                    const mag = MAGASINS[id];
+                    if (!mag) return null;
+                    return (
+                      <div key={id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
+                        <MapPin size={14} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-[#1B2A4A]">{mag.nom}</p>
+                          <p className="text-xs text-gray-400">{mag.adresse}</p>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <p className="text-xs text-gray-400">Disponible dans tous nos magasins</p>
