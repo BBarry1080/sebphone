@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Smartphone } from 'lucide-react'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
+import { getStartingPrice } from '../../data/startingPrices'
 
 export const colorToHex = (colorName) => {
   const map = {
@@ -114,7 +115,13 @@ function GroupCard({ group }) {
         {/* Prix */}
         <div className="flex items-baseline gap-1 mt-1.5">
           <span className="text-[11px] text-gray-400">À partir de</span>
-          <span className="font-bold text-[16px] text-[#1B2A4A]">{group.basePrice}€</span>
+          {group.condition === 'reconditionne' && (group.referencePrice || getStartingPrice(group.model)) ? (
+            <span className="font-bold text-[16px] text-[#1B2A4A]">
+              {group.referencePrice || getStartingPrice(group.model)}€
+            </span>
+          ) : (
+            <span className="font-bold text-[16px] text-[#1B2A4A]">{group.basePrice}€</span>
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useInventory } from './useInventory'
+import { getStartingPrice } from '../data/startingPrices'
 
 function gradeScore(grade) {
   return { 'A+': 4, 'A': 3, 'B': 2, 'C': 1 }[grade] || 0
@@ -21,6 +22,8 @@ export function useGroupedInventory(filters = {}) {
           model: key,
           brand: phone.brand,
           basePrice: phone.price,
+          condition: phone.condition,
+          referencePrice: getStartingPrice(key),
           phones: [],
           totalStock: 0,
           storages: new Set(),
