@@ -25,11 +25,11 @@ export default function Footer() {
     <footer className="bg-[#1B2A4A] text-white">
       <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
         <div className="flex flex-col gap-4">
-          <div>
+          <div className="bg-[#1B2A4A] p-3 rounded-xl inline-block">
             <img
               src="/images/logo/logo-blanc.png"
               alt="SebPhone"
-              className="h-12 w-auto object-contain"
+              className="h-16 w-auto object-contain"
               onError={(e) => {
                 console.error('Logo blanc introuvable:', e.target.src)
                 e.target.style.display = 'none'
@@ -110,10 +110,10 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Snapchat"
-              className="w-10 h-10 rounded-lg bg-white/10 hover:bg-[#00B4CC] flex items-center justify-center transition-colors duration-200"
+              className="bg-yellow-400 p-2 rounded-full flex items-center justify-center hover:bg-yellow-300 transition-colors duration-200"
             >
               <img
-                src="/images/logo/pngtree-snapchat-white-icon-png-image_3570415.png"
+                src="/images/logo/Snapchat-logo-on-transparent-background-PNG.png"
                 alt="Snapchat"
                 className="w-5 h-5 object-contain"
                 onError={(e) => {
