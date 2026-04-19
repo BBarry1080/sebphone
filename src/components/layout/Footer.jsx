@@ -30,6 +30,10 @@ export default function Footer() {
               src="/images/logo/logo-seb-phone-blanc.png"
               alt="SebPhone"
               className="h-12 w-auto object-contain"
+              onError={(e) => {
+                console.error('Logo blanc introuvable:', e.target.src)
+                e.target.style.display = 'none'
+              }}
             />
           </div>
           <p className="text-sm text-gray-400 leading-relaxed">
@@ -112,6 +116,10 @@ export default function Footer() {
                 src="/images/logo/Snapchat-logo-on-transparent-background-PNG.png"
                 alt="Snapchat"
                 className="w-5 h-5 object-contain"
+                onError={(e) => {
+                  console.error('Logo Snap introuvable:', e.target.src)
+                  e.target.style.display = 'none'
+                }}
               />
             </a>
           </div>
