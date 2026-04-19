@@ -5,17 +5,17 @@ const reasons = [
   {
     Icon: ShieldCheck,
     title: 'Stock certifié',
-    desc: 'Chaque téléphone est testé et vérifié par nos techniciens avant mise en vente. Qualité garantie.',
+    desc: 'Chaque téléphone est testé et vérifié par nos techniciens avant mise en vente. Garantie 24 mois.',
   },
   {
     Icon: Star,
     title: 'Pièces de qualité',
-    desc: 'Nous utilisons uniquement des pièces OEM ou d\'origine pour les reconditionnés. Durabilité assurée.',
+    desc: 'Nous utilisons uniquement des pièces de qualité originale certifiée pour les reconditionnés. Durabilité assurée.',
   },
   {
     Icon: Truck,
     title: 'Livraison rapide',
-    desc: 'Livraison en 24-48h partout en Belgique. Click & Collect disponible en magasin.',
+    desc: 'Livraison entre 1h et 24h partout en Belgique et 24 à 72h en Europe. Click & Collect disponible en magasin.',
   },
 ];
 
