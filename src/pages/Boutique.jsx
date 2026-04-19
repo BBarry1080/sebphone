@@ -35,6 +35,7 @@ export default function Boutique({ defaultBrand = null }) {
         sortBy={sortBy} setSortBy={setSortBy}
         total={totalPhones}
         phones={phones}
+        hideBrandFilter={!!defaultBrand}
       />
 
       <div className="flex gap-8 items-start">
@@ -46,6 +47,7 @@ export default function Boutique({ defaultBrand = null }) {
           sortBy={sortBy} setSortBy={setSortBy}
           total={totalPhones}
           phones={phones}
+          hideBrandFilter={!!defaultBrand}
         />
 
         <div className="flex-1 min-w-0 w-full">
