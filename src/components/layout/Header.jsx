@@ -5,12 +5,12 @@ import { useCart } from '../../context/CartContext';
 
 function SebLogo() {
   return (
-    <Link to="/" className="flex flex-col leading-none">
-      <span className="font-poppins font-bold text-2xl tracking-tight">
-        <span style={{ color: '#00B4CC' }}>SEB</span>
-        <span style={{ color: '#1B2A4A' }}>PHONE</span>
-      </span>
-      <span className="text-xs italic text-[#555555] -mt-0.5">Où tu veux, quand tu veux</span>
+    <Link to="/" className="flex items-center">
+      <img
+        src="/images/logo/SEBPHONEbysebtelecom.png"
+        alt="SebPhone"
+        className="h-10 w-auto object-contain"
+      />
     </Link>
   );
 }
