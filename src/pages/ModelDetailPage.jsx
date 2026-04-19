@@ -334,8 +334,9 @@ export default function ModelDetailPage() {
                             <td className="px-4 py-3">
                               <button
                                 onClick={() => {
-                                  console.log('ID téléphone:', phone.id, phone);
-                                  navigate(`/reservation/${phone.id}`);
+                                  console.log('Téléphone choisi:', phone);
+                                  console.log('Magasins:', phone.magasins);
+                                  navigate(`/reservation/${phone.id}`, { state: { phone } });
                                 }}
                                 className="px-4 py-2 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
                               >

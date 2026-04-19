@@ -43,13 +43,24 @@ export default function Reservation() {
         .eq('id', id)
         .single();
 
-      console.log('Résultat Supabase:', data, sbError);
+      console.log('Phone depuis Supabase:', data, sbError);
+      console.log('phone.magasins type:', typeof data?.magasins);
+      console.log('phone.magasins valeur:', data?.magasins);
 
       if (sbError || !data) {
         setError('Téléphone introuvable — ID: ' + id);
         setLoading(false);
         return;
       }
+
+      // Parse magasins — Supabase peut renvoyer string JSON ou null
+      if (typeof data.magasins === 'string') {
+        try { data.magasins = JSON.parse(data.magasins) } catch { data.magasins = [] }
+      }
+      if (!data.magasins || !Array.isArray(data.magasins)) {
+        data.magasins = []
+      }
+      console.log('phone.magasins FINAL:', data.magasins);
 
       setPhone(data);
       setLoading(false);
