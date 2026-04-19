@@ -1,117 +1,58 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
-import { phonesMock } from '../../data/phonesMock';
-import StarRating from '../ui/StarRating';
-import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
-
-const COLOR_HEX = {
-  'noir': '#1C1C1E', 'minuit': '#1C1C1E', 'black': '#1C1C1E', 'midnight': '#1C1C1E',
-  'blanc': '#FAFAFA', 'white': '#FAFAFA', 'lumière stellaire': '#F5F0E8', 'starlight': '#F5F0E8',
-  'bleu': '#2E5CA8', 'blue': '#2E5CA8', 'bleu alpin': '#4A7FA8',
-  'rouge': '#BF0000', 'red': '#BF0000', 'product red': '#BF0000',
-  'violet': '#7B5EA7', 'violet intense': '#7B5EA7', 'purple': '#7B5EA7',
-  'or': '#C8A96E', 'gold': '#C8A96E',
-  'rose': '#F4C2C2', 'pink': '#F4C2C2',
-  'titane': '#8E8D87', 'titan': '#8E8D87',
-  'graphite': '#4A4A4A',
-  'vert': '#4A7C59', 'green': '#4A7C59',
-  'argent': '#C0C0C0', 'silver': '#C0C0C0',
-  'phantom black': '#1C1C1E', 'cream': '#F5F0E8',
-};
-
-function getHex(colorName) {
-  if (!colorName) return '#888888';
-  return COLOR_HEX[colorName.toLowerCase().trim()] || '#888888';
-}
-
-function groupByModel(rawPhones) {
-  const groups = {};
-  rawPhones.forEach((p) => {
-    const key = p.model || p.name;
-    if (!key) return;
-    if (!groups[key]) {
-      groups[key] = {
-        id: p.id,
-        name: key,
-        brand: p.brand,
-        basePrice: p.price,
-        colors: [],
-        colorNames: new Set(),
-        rating: 4.5,
-        reviewCount: 0,
-      };
-    }
-    const g = groups[key];
-    if (p.price < g.basePrice) g.basePrice = p.price;
-    if (p.color && !g.colorNames.has(p.color)) {
-      g.colorNames.add(p.color);
-      g.colors.push({ name: p.color, hex: getHex(p.color), image: '' });
-    }
-  });
-  return Object.values(groups).map(({ colorNames, ...rest }) => rest);
-}
-
-const MAX_VISIBLE_COLORS = 4;
-
-function ColorDots({ colors, active, onSelect }) {
-  const visible = colors.slice(0, MAX_VISIBLE_COLORS);
-  const extra = colors.length - MAX_VISIBLE_COLORS;
-  return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      {visible.map((c, i) => (
-        <button
-          key={c.name}
-          onClick={(e) => { e.stopPropagation(); onSelect(i); }}
-          title={c.name}
-          style={{ backgroundColor: c.hex }}
-          className={`rounded-full transition-all duration-150 cursor-pointer flex-shrink-0 ${
-            active === i
-              ? 'w-5 h-5 border-2 border-gray-800 shadow-sm scale-110'
-              : 'w-4 h-4 border border-gray-300 hover:scale-110'
-          }`}
-        />
-      ))}
-      {extra > 0 && (
-        <span className="text-[11px] text-[#555555]">+{extra}</span>
-      )}
-    </div>
-  );
-}
+import { getPhoneImage } from '../../utils/phoneImage';
+import { getColorHex } from '../../utils/colors';
 
 function BestSellerCard({ phone }) {
-  const [activeColor, setActiveColor] = useState(0);
-  const color = phone.colors[activeColor] || { name: '', hex: '#888', image: '' };
-  const imgSrc = color.image || getPhoneImage(phone.name, color.name);
+  const navigate = useNavigate();
+  const slug = (phone.model || '').toLowerCase().replace(/\s+/g, '-');
+  const imgSrc = getPhoneImage(phone.model, phone.color);
+
+  const conditionLabel =
+    phone.condition === 'neuf' ? 'Neuf'
+    : phone.condition === 'reconditionne' ? 'Reconditionné'
+    : phone.grade || 'Occasion';
+
+  const conditionClass =
+    phone.condition === 'neuf' ? 'bg-blue-100 text-blue-700'
+    : phone.condition === 'reconditionne' ? 'bg-green-100 text-green-700'
+    : 'bg-orange-100 text-orange-700';
 
   return (
-    <div className="flex-shrink-0 w-[200px] sm:w-[240px] bg-white border border-gray-100 rounded-2xl p-4 hover:border-[#00B4CC] hover:shadow-lg transition-all duration-200 flex flex-col gap-3 cursor-pointer">
-      <div className="h-44 bg-[#F9F9F9] rounded-xl flex items-center justify-center relative overflow-hidden">
-        {imgSrc !== PLACEHOLDER ? (
-          <img
-            key={imgSrc}
-            src={imgSrc}
-            alt={`${phone.name} ${color.name}`}
-            className="object-contain w-full h-full"
-            loading="lazy"
-            onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-2 text-[#00B4CC] opacity-30">
-            <Smartphone size={56} strokeWidth={1} />
-          </div>
-        )}
+    <div
+      className="flex-shrink-0 w-48 bg-white rounded-2xl p-4 shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all duration-200"
+      onClick={() => navigate(`/modele/${slug}`)}
+    >
+      <div className="aspect-square bg-[#f8f8f8] rounded-xl mb-3 flex items-center justify-center">
+        <img
+          src={imgSrc}
+          alt={phone.model}
+          className="w-full h-full object-contain p-2"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://placehold.co/200x200/f5f5f5/999?text=iPhone';
+          }}
+        />
       </div>
-      <p className="font-poppins font-bold text-[#1B2A4A] text-sm leading-tight">{phone.name}</p>
-      <StarRating rating={phone.rating} count={phone.reviewCount} size={13} />
-      <p className="text-sm">
-        <span className="text-[#555555]">À partir de </span>
-        <span className="font-bold text-[#1B2A4A]">{phone.basePrice}€</span>
-      </p>
-      {phone.colors.length > 0 && (
-        <ColorDots colors={phone.colors} active={activeColor} onSelect={setActiveColor} />
-      )}
+
+      <p className="font-semibold text-[#1B2A4A] text-sm leading-tight mb-1">{phone.model}</p>
+      <p className="text-xs text-gray-400 mb-2">{phone.storage}</p>
+
+      <div className="flex items-center gap-1.5 mb-2">
+        <div
+          className="w-4 h-4 rounded-full flex-shrink-0"
+          style={{ backgroundColor: getColorHex(phone.color), boxShadow: '0 0 0 1px rgba(0,0,0,0.2)' }}
+        />
+        <span className="text-xs text-gray-500">{phone.color}</span>
+      </div>
+
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full mb-2 inline-block ${conditionClass}`}>
+        {conditionLabel}
+      </span>
+
+      <p className="font-bold text-[#1B2A4A] text-lg">{phone.price}€</p>
     </div>
   );
 }
@@ -124,7 +65,6 @@ export default function BestSellers() {
   useEffect(() => {
     async function fetchBestSellers() {
       if (!isSupabaseReady) {
-        setPhones(groupByModel(phonesMock));
         setLoading(false);
         return;
       }
@@ -132,9 +72,9 @@ export default function BestSellers() {
         .from('phones')
         .select('*')
         .eq('status', 'disponible')
-        .order('price', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(8);
-      setPhones(groupByModel(data || []));
+      if (data) setPhones(data);
       setLoading(false);
     }
     fetchBestSellers();
@@ -186,10 +126,17 @@ export default function BestSellers() {
         >
           {loading
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-[200px] sm:w-[240px] h-64 bg-gray-100 rounded-2xl animate-pulse" />
+                <div key={i} className="flex-shrink-0 w-48 h-64 bg-gray-100 rounded-2xl animate-pulse" />
               ))
+            : phones.length === 0
+            ? (
+                <div className="flex flex-col items-center gap-2 text-gray-300 py-10 w-full justify-center">
+                  <Smartphone size={48} strokeWidth={1} />
+                  <p className="text-sm">Aucun téléphone disponible</p>
+                </div>
+              )
             : phones.map((phone) => (
-                <BestSellerCard key={phone.name} phone={phone} />
+                <BestSellerCard key={phone.id} phone={phone} />
               ))
           }
         </div>
