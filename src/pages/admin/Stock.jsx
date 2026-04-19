@@ -677,7 +677,7 @@ export default function Stock() {
             <table className="w-full text-sm">
               <thead className="bg-[#F8F9FA] border-b border-gray-100">
                 <tr>
-                  {['Modèle', 'État', 'Grade', 'Prix', 'Statut', 'Magasins', 'Actions'].map((h) => (
+                  {['Modèle', 'État', 'Grade', 'Prix', 'Achat / Bénéf.', 'Statut', 'Magasins', 'Actions'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555555] uppercase tracking-wide">
                       {h}
                     </th>
@@ -719,6 +719,16 @@ export default function Stock() {
                     </td>
                     <td className="px-4 py-3">
                       <InlinePrice id={phone.id} value={phone.price} onSave={handlePriceChange} />
+                    </td>
+                    <td className="px-4 py-3">
+                      {phone.purchase_price != null ? (
+                        <div>
+                          <p className="text-xs text-[#888]">Achat : {phone.purchase_price}€</p>
+                          <p className={`text-xs font-bold ${(phone.price - phone.purchase_price) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {(phone.price - phone.purchase_price) >= 0 ? '+' : ''}{phone.price - phone.purchase_price}€
+                          </p>
+                        </div>
+                      ) : <span className="text-[#bbb]">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <StatusDropdown id={phone.id} value={phone.status} onChange={handleStatusChange} />

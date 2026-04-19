@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Smartphone, ClipboardList, CheckCircle, Euro } from 'lucide-react'
+import { Smartphone, ClipboardList, CheckCircle, Euro, TrendingUp } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 
 const STATUS_BADGES = {
@@ -28,7 +28,7 @@ function MetricCard({ icon: Icon, iconColor, label, value, unit = '' }) {
 }
 
 export default function Dashboard() {
-  const [metrics, setMetrics] = useState({ disponible: 0, reserve: 0, vendu: 0, ca: 0 })
+  const [metrics, setMetrics] = useState({ disponible: 0, reserve: 0, vendu: 0, ca: 0, benefice: 0 })
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -62,7 +62,16 @@ export default function Dashboard() {
 
       const ca = (caData || []).reduce((sum, o) => sum + (o.deposit_paid || 0), 0)
 
-      setMetrics({ disponible: disponible || 0, reserve: reserve || 0, vendu: vendu || 0, ca })
+      const { data: beneficeData } = await supabase
+        .from('phones')
+        .select('price, purchase_price')
+        .eq('status', 'disponible')
+
+      const benefice = (beneficeData || []).reduce(
+        (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
+      )
+
+      setMetrics({ disponible: disponible || 0, reserve: reserve || 0, vendu: vendu || 0, ca, benefice })
       setOrders(ordersData || [])
       setLoading(false)
     }
@@ -90,6 +99,7 @@ export default function Dashboard() {
         <MetricCard icon={ClipboardList}  iconColor="bg-blue-500"   label="Réservations en cours"  value={metrics.reserve} />
         <MetricCard icon={CheckCircle}    iconColor="bg-green-500"  label="Vendus ce mois"         value={metrics.vendu} />
         <MetricCard icon={Euro}           iconColor="bg-[#1B2A4A]"  label="CA du mois"             value={metrics.ca} unit="€" />
+        <MetricCard icon={TrendingUp}     iconColor="bg-green-500"  label="Bénéfice potentiel"     value={metrics.benefice} unit="€" />
       </div>
 
       {/* Recent orders */}
