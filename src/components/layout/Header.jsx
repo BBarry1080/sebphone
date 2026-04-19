@@ -10,6 +10,7 @@ function SebLogo() {
         src="/images/logo/SEBPHONEbysebtelecom.png"
         alt="SebPhone"
         className="h-10 w-auto object-contain"
+        onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
       />
     </Link>
   );
