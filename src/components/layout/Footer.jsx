@@ -113,7 +113,7 @@ export default function Footer() {
               className="w-10 h-10 rounded-lg bg-white/10 hover:bg-[#00B4CC] flex items-center justify-center transition-colors duration-200"
             >
               <img
-                src="/images/logo/Snapchat-logo-on-transparent-background-PNG.png"
+                src="/images/logo/pngtree-snapchat-white-icon-png-image_3570415.png"
                 alt="Snapchat"
                 className="w-5 h-5 object-contain"
                 onError={(e) => {
