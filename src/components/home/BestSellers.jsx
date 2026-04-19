@@ -1,17 +1,63 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
-import { bestSellers as fallbackBestSellers } from '../../data/bestSellers';
-import { usePhoneModels } from '../../hooks/usePhoneModels';
+import { supabase, isSupabaseReady } from '../../lib/supabase';
+import { phonesMock } from '../../data/phonesMock';
 import StarRating from '../ui/StarRating';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
+
+const COLOR_HEX = {
+  'noir': '#1C1C1E', 'minuit': '#1C1C1E', 'black': '#1C1C1E', 'midnight': '#1C1C1E',
+  'blanc': '#FAFAFA', 'white': '#FAFAFA', 'lumière stellaire': '#F5F0E8', 'starlight': '#F5F0E8',
+  'bleu': '#2E5CA8', 'blue': '#2E5CA8', 'bleu alpin': '#4A7FA8',
+  'rouge': '#BF0000', 'red': '#BF0000', 'product red': '#BF0000',
+  'violet': '#7B5EA7', 'violet intense': '#7B5EA7', 'purple': '#7B5EA7',
+  'or': '#C8A96E', 'gold': '#C8A96E',
+  'rose': '#F4C2C2', 'pink': '#F4C2C2',
+  'titane': '#8E8D87', 'titan': '#8E8D87',
+  'graphite': '#4A4A4A',
+  'vert': '#4A7C59', 'green': '#4A7C59',
+  'argent': '#C0C0C0', 'silver': '#C0C0C0',
+  'phantom black': '#1C1C1E', 'cream': '#F5F0E8',
+};
+
+function getHex(colorName) {
+  if (!colorName) return '#888888';
+  return COLOR_HEX[colorName.toLowerCase().trim()] || '#888888';
+}
+
+function groupByModel(rawPhones) {
+  const groups = {};
+  rawPhones.forEach((p) => {
+    const key = p.model || p.name;
+    if (!key) return;
+    if (!groups[key]) {
+      groups[key] = {
+        id: p.id,
+        name: key,
+        brand: p.brand,
+        basePrice: p.price,
+        colors: [],
+        colorNames: new Set(),
+        rating: 4.5,
+        reviewCount: 0,
+      };
+    }
+    const g = groups[key];
+    if (p.price < g.basePrice) g.basePrice = p.price;
+    if (p.color && !g.colorNames.has(p.color)) {
+      g.colorNames.add(p.color);
+      g.colors.push({ name: p.color, hex: getHex(p.color), image: '' });
+    }
+  });
+  return Object.values(groups).map(({ colorNames, ...rest }) => rest);
+}
 
 const MAX_VISIBLE_COLORS = 4;
 
 function ColorDots({ colors, active, onSelect }) {
   const visible = colors.slice(0, MAX_VISIBLE_COLORS);
   const extra = colors.length - MAX_VISIBLE_COLORS;
-
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       {visible.map((c, i) => (
@@ -36,12 +82,11 @@ function ColorDots({ colors, active, onSelect }) {
 
 function BestSellerCard({ phone }) {
   const [activeColor, setActiveColor] = useState(0);
-  const color = phone.colors[activeColor];
+  const color = phone.colors[activeColor] || { name: '', hex: '#888', image: '' };
   const imgSrc = color.image || getPhoneImage(phone.name, color.name);
 
   return (
     <div className="flex-shrink-0 w-[200px] sm:w-[240px] bg-white border border-gray-100 rounded-2xl p-4 hover:border-[#00B4CC] hover:shadow-lg transition-all duration-200 flex flex-col gap-3 cursor-pointer">
-      {/* Image */}
       <div className="h-44 bg-[#F9F9F9] rounded-xl flex items-center justify-center relative overflow-hidden">
         {imgSrc !== PLACEHOLDER ? (
           <img
@@ -50,7 +95,7 @@ function BestSellerCard({ phone }) {
             alt={`${phone.name} ${color.name}`}
             className="object-contain w-full h-full"
             loading="lazy"
-            onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+            onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
           />
         ) : (
           <div className="flex flex-col items-center gap-2 text-[#00B4CC] opacity-30">
@@ -58,44 +103,42 @@ function BestSellerCard({ phone }) {
           </div>
         )}
       </div>
-
-      {/* Name */}
       <p className="font-poppins font-bold text-[#1B2A4A] text-sm leading-tight">{phone.name}</p>
-
-      {/* Stars */}
       <StarRating rating={phone.rating} count={phone.reviewCount} size={13} />
-
-      {/* Price */}
       <p className="text-sm">
         <span className="text-[#555555]">À partir de </span>
         <span className="font-bold text-[#1B2A4A]">{phone.basePrice}€</span>
       </p>
-
-      {/* Color dots */}
-      <ColorDots colors={phone.colors} active={activeColor} onSelect={setActiveColor} />
+      {phone.colors.length > 0 && (
+        <ColorDots colors={phone.colors} active={activeColor} onSelect={setActiveColor} />
+      )}
     </div>
   );
 }
 
-function normalizeModel(m) {
-  return {
-    id: m.id,
-    name: m.name,
-    brand: m.brand,
-    rating: m.rating ?? 4.5,
-    reviewCount: m.review_count ?? 0,
-    basePrice: m.base_price ?? 0,
-    colors: Array.isArray(m.colors) ? m.colors : [{ name: 'Noir', hex: '#1C1C1E', image: '' }],
-  };
-}
-
 export default function BestSellers() {
   const scrollRef = useRef(null);
-  const { models, loading } = usePhoneModels();
+  const [phones, setPhones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const displayList = models.length > 0
-    ? models.slice(0, 6).map(normalizeModel)
-    : fallbackBestSellers;
+  useEffect(() => {
+    async function fetchBestSellers() {
+      if (!isSupabaseReady) {
+        setPhones(groupByModel(phonesMock));
+        setLoading(false);
+        return;
+      }
+      const { data } = await supabase
+        .from('phones')
+        .select('*')
+        .eq('status', 'disponible')
+        .order('price', { ascending: false })
+        .limit(8);
+      setPhones(groupByModel(data || []));
+      setLoading(false);
+    }
+    fetchBestSellers();
+  }, []);
 
   const scroll = (dir) => {
     if (scrollRef.current) {
@@ -106,7 +149,6 @@ export default function BestSellers() {
   return (
     <section className="py-14 md:py-20 bg-white">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Header */}
         <div className="flex items-end justify-between mb-8">
           <div>
             <h2 className="font-poppins font-bold text-2xl md:text-3xl text-[#1B2A4A]">
@@ -137,7 +179,6 @@ export default function BestSellers() {
           </div>
         </div>
 
-        {/* Carousel */}
         <div
           ref={scrollRef}
           className="flex gap-4 overflow-x-auto pb-3 touch-pan-x"
@@ -147,8 +188,8 @@ export default function BestSellers() {
             ? Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex-shrink-0 w-[200px] sm:w-[240px] h-64 bg-gray-100 rounded-2xl animate-pulse" />
               ))
-            : displayList.map((phone) => (
-                <BestSellerCard key={phone.id} phone={phone} />
+            : phones.map((phone) => (
+                <BestSellerCard key={phone.name} phone={phone} />
               ))
           }
         </div>
