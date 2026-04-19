@@ -27,7 +27,7 @@ export default function Footer() {
         <div className="flex flex-col gap-4">
           <div>
             <img
-              src="/images/logo/logo-seb-phone-blanc.png"
+              src="/images/logo/logo-blanc.png"
               alt="SebPhone"
               className="h-12 w-auto object-contain"
               onError={(e) => {
