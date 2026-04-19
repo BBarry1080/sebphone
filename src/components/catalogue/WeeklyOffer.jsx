@@ -1,45 +1,113 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Truck, RotateCcw, Package } from 'lucide-react';
-import { phones } from '../../data/phones';
-import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
+import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 
-const OFFER_PHONE_ID = 2; // iPhone 14 128Go Minuit
-const STORAGES = ['128Go', '256Go', '512Go'];
+const COLOR_HEX = {
+  'noir': '#1C1C1E', 'minuit': '#1C1C1E', 'black': '#1C1C1E', 'midnight': '#1C1C1E',
+  'blanc': '#FAFAFA', 'white': '#FAFAFA', 'lumière stellaire': '#F5F0E8', 'starlight': '#F5F0E8',
+  'bleu': '#2E5CA8', 'blue': '#2E5CA8', 'bleu alpin': '#4A7FA8',
+  'rouge': '#BF0000', 'red': '#BF0000', 'violet': '#7B5EA7', 'violet intense': '#7B5EA7',
+  'or': '#C8A96E', 'gold': '#C8A96E', 'rose': '#F4C2C2', 'pink': '#F4C2C2',
+  'titane': '#8E8D87', 'graphite': '#4A4A4A', 'argent': '#C0C0C0', 'silver': '#C0C0C0',
+  'vert': '#4A7C59', 'phantom black': '#1C1C1E',
+};
 
-const COLORS = [
-  { name: 'Minuit',             hex: '#1C1C1E' },
-  { name: 'Lumière stellaire',  hex: '#F5F0E8' },
-  { name: 'Bleu',               hex: '#2E5CA8' },
-  { name: 'Rouge',              hex: '#BF0000' },
-  { name: 'Violet',             hex: '#7B5EA7' },
-];
+function getHex(colorName) {
+  if (!colorName) return '#888888';
+  return COLOR_HEX[colorName.toLowerCase().trim()] || '#888888';
+}
 
 export default function WeeklyOffer() {
   const navigate = useNavigate();
+  const [offerPhone, setOfferPhone]       = useState(null);
+  const [relatedPhones, setRelatedPhones] = useState([]);
   const [activeStorage, setActiveStorage] = useState(0);
   const [activeColor, setActiveColor]     = useState(0);
-  const [stockCount, setStockCount]       = useState(null); // null = loading
-  const offerPhone = phones.find((p) => p.id === OFFER_PHONE_ID);
+  const [stockCount, setStockCount]       = useState(null);
+  const [loading, setLoading]             = useState(true);
 
   useEffect(() => {
-    async function fetchStock() {
-      if (!isSupabaseReady) { setStockCount(12); return; }
+    async function fetchOffer() {
+      if (!isSupabaseReady) {
+        setStockCount(12);
+        setLoading(false);
+        return;
+      }
+
+      // Find best-margin phone
+      const { data: phonesData } = await supabase
+        .from('phones')
+        .select('id, name, model, brand, color, storage, price, purchase_price')
+        .eq('status', 'disponible')
+        .not('purchase_price', 'is', null);
+
+      let best = null;
+      if (phonesData && phonesData.length > 0) {
+        best = phonesData.reduce((top, p) => {
+          if (!p.purchase_price || p.price <= 0) return top;
+          const score = (p.price - p.purchase_price) / p.price;
+          const topScore = top ? (top.price - top.purchase_price) / top.price : -Infinity;
+          return score > topScore ? p : top;
+        }, null);
+      }
+
+      // Fallback: first disponible phone
+      if (!best) {
+        const { data: fb } = await supabase
+          .from('phones')
+          .select('*')
+          .eq('status', 'disponible')
+          .limit(1);
+        if (fb?.[0]) best = fb[0];
+      }
+
+      if (best) {
+        const modelName = best.model || best.name;
+        const { data: sameModel } = await supabase
+          .from('phones')
+          .select('*')
+          .eq('status', 'disponible')
+          .eq('model', modelName);
+        setOfferPhone(best);
+        setRelatedPhones(sameModel?.length ? sameModel : [best]);
+      }
+
       const { count } = await supabase
         .from('phones')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'disponible')
-        .eq('condition', 'reconditionne');
+        .eq('status', 'disponible');
       setStockCount(count ?? 0);
+      setLoading(false);
     }
-    fetchStock();
+    fetchOffer();
   }, []);
+
+  if (loading) {
+    return (
+      <section className="px-4 md:px-6 py-6 max-w-7xl mx-auto mb-6">
+        <div className="rounded-2xl h-64 bg-gray-100 animate-pulse" />
+      </section>
+    );
+  }
 
   if (!offerPhone) return null;
 
-  const outOfStock = stockCount === 0;
-  const currentImage = getPhoneImage('iPhone 14', COLORS[activeColor].name);
+  const modelName    = offerPhone.model || offerPhone.name || '';
+  const storages     = [...new Set(relatedPhones.map((p) => p.storage).filter(Boolean))];
+  const colorNames   = [...new Map(relatedPhones.filter((p) => p.color).map((p) => [p.color, p.color])).keys()];
+
+  const currentStorage = storages[activeStorage] || offerPhone.storage || '';
+  const currentColor   = colorNames[activeColor] || offerPhone.color || '';
+
+  const selectedPhone = relatedPhones.find(
+    (p) => (!currentStorage || p.storage === currentStorage) && (!currentColor || p.color === currentColor)
+  ) || offerPhone;
+
+  const outOfStock   = stockCount === 0;
+  const currentImage = getPhoneImage(modelName, currentColor);
+  const displayPrice = selectedPhone.price ?? offerPhone.price;
 
   const badges = [
     { Icon: CheckCircle, text: 'Garantie 24 mois' },
@@ -62,14 +130,12 @@ export default function WeeklyOffer() {
                 Offre de la semaine
               </p>
               <h2 className="font-poppins font-bold text-white text-2xl md:text-3xl xl:text-4xl leading-tight mb-3">
-                Acheter un iPhone reconditionné
+                {modelName}
               </h2>
               <p className="text-gray-400 text-sm md:text-base leading-relaxed">
                 Testés, certifiés, garantis. Jusqu'à −60 % par rapport au neuf.
               </p>
             </div>
-
-            {/* Badges */}
             <div className="flex flex-wrap gap-2">
               {badges.map(({ Icon, text }) => (
                 <div
@@ -99,70 +165,69 @@ export default function WeeklyOffer() {
                 Offre de la semaine
               </p>
 
-              {/* Phone image */}
               <div className="h-32 flex items-center justify-center overflow-hidden">
                 <img
                   key={currentImage}
                   src={currentImage}
-                  alt={`iPhone 14 ${COLORS[activeColor].name}`}
+                  alt={`${modelName} ${currentColor}`}
                   className="h-full object-contain"
                   onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
                 />
               </div>
 
               <p className="font-poppins font-bold text-[#1B2A4A] text-lg leading-tight">
-                iPhone 14
+                {modelName}
               </p>
 
-              {/* Storage pills */}
-              <div className={outOfStock ? 'pointer-events-none' : ''}>
-                <p className="text-xs text-[#555555] mb-2">Capacité</p>
-                <div className="flex gap-2 flex-wrap">
-                  {STORAGES.map((s, i) => (
-                    <button
-                      key={s}
-                      onClick={() => setActiveStorage(i)}
-                      className={`px-3 py-1 rounded text-xs font-medium border transition-all cursor-pointer ${
-                        activeStorage === i
-                          ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                          : 'bg-gray-50 text-[#555555] border-gray-200 hover:border-[#1B2A4A]'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
+              {storages.length > 1 && (
+                <div className={outOfStock ? 'pointer-events-none' : ''}>
+                  <p className="text-xs text-[#555555] mb-2">Capacité</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {storages.map((s, i) => (
+                      <button
+                        key={s}
+                        onClick={() => setActiveStorage(i)}
+                        className={`px-3 py-1 rounded text-xs font-medium border transition-all cursor-pointer ${
+                          activeStorage === i
+                            ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                            : 'bg-gray-50 text-[#555555] border-gray-200 hover:border-[#1B2A4A]'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Color dots */}
-              <div className={outOfStock ? 'pointer-events-none' : ''}>
-                <p className="text-xs text-[#555555] mb-2">
-                  Couleur : <span className="font-medium text-[#1B2A4A]">{COLORS[activeColor].name}</span>
-                </p>
-                <div className="flex gap-2">
-                  {COLORS.map((c, i) => (
-                    <button
-                      key={c.name}
-                      onClick={() => setActiveColor(i)}
-                      title={c.name}
-                      style={{ backgroundColor: c.hex }}
-                      className={`w-5 h-5 rounded-full transition-all cursor-pointer ${
-                        activeColor === i
-                          ? 'border-2 border-gray-800 scale-110'
-                          : 'border border-gray-300 hover:scale-110'
-                      }`}
-                    />
-                  ))}
+              {colorNames.length > 1 && (
+                <div className={outOfStock ? 'pointer-events-none' : ''}>
+                  <p className="text-xs text-[#555555] mb-2">
+                    Couleur : <span className="font-medium text-[#1B2A4A]">{currentColor}</span>
+                  </p>
+                  <div className="flex gap-2">
+                    {colorNames.map((c, i) => (
+                      <button
+                        key={c}
+                        onClick={() => setActiveColor(i)}
+                        title={c}
+                        style={{ backgroundColor: getHex(c) }}
+                        className={`w-5 h-5 rounded-full transition-all cursor-pointer ${
+                          activeColor === i
+                            ? 'border-2 border-gray-800 scale-110'
+                            : 'border border-gray-300 hover:scale-110'
+                        }`}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Price */}
               <div>
                 <p className="text-xs text-[#555555]">À partir de</p>
-                <p className="font-poppins font-bold text-[#1B2A4A] text-2xl">{offerPhone.price}€</p>
+                <p className="font-poppins font-bold text-[#1B2A4A] text-2xl">{displayPrice}€</p>
               </div>
 
-              {/* CTA */}
               {outOfStock ? (
                 <button
                   disabled
@@ -172,7 +237,7 @@ export default function WeeklyOffer() {
                 </button>
               ) : (
                 <button
-                  onClick={() => navigate(`/telephone/${offerPhone.id}`)}
+                  onClick={() => navigate(`/telephone/${selectedPhone.id}`)}
                   className="w-full flex items-center justify-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold py-3 rounded-full transition-colors cursor-pointer text-sm"
                 >
                   Voir l'offre →
