@@ -6,6 +6,7 @@ export function useGroupedPhones(initialCondition = null, initialBrand = null) {
   const [filterCondition, setFilterCondition] = useState(initialCondition)
   const [filterBrand, setFilterBrand]     = useState(initialBrand)
   const [filterStatus, setFilterStatus]   = useState(null)
+  const [filterMagasin, setFilterMagasin] = useState(null)
   const [sortBy, setSortBy]               = useState('alpha_asc')
 
   const { groupedModels, phones, loading, error } = useGroupedInventory({
@@ -24,6 +25,14 @@ export function useGroupedPhones(initialCondition = null, initialBrand = null) {
       )
     }
 
+    if (filterMagasin) {
+      result = result.filter((g) =>
+        g.phones.some(
+          (p) => Array.isArray(p.magasins) && p.magasins.includes(filterMagasin)
+        )
+      )
+    }
+
     switch (sortBy) {
       case 'price_asc':  result.sort((a, b) => a.basePrice - b.basePrice); break
       case 'price_desc': result.sort((a, b) => b.basePrice - a.basePrice); break
@@ -33,7 +42,7 @@ export function useGroupedPhones(initialCondition = null, initialBrand = null) {
     }
 
     return result
-  }, [groupedModels, search, sortBy])
+  }, [groupedModels, search, sortBy, filterMagasin])
 
   const totalPhones = useMemo(
     () => groups.reduce((sum, g) => sum + g.totalStock, 0),
@@ -50,6 +59,7 @@ export function useGroupedPhones(initialCondition = null, initialBrand = null) {
     filterCondition, setFilterCondition,
     filterBrand,     setFilterBrand,
     filterStatus,    setFilterStatus,
+    filterMagasin,   setFilterMagasin,
     sortBy,          setSortBy,
   }
 }

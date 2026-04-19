@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+import { MAGASINS_LIST } from '../../utils/magasins';
 
 const SORT_OPTIONS = [
   { value: 'recent',      label: 'Plus récents' },
@@ -52,7 +53,9 @@ function SidebarContent({
   filterBrand, setFilterBrand,
   filterCondition, setFilterCondition,
   filterStatus, setFilterStatus,
+  filterMagasin, setFilterMagasin,
   priceRange, setPriceRange,
+  hideBrandFilter = false,
   onReset,
   phones = [],
 }) {
@@ -82,6 +85,14 @@ function SidebarContent({
     { value: 'C',  label: 'C — Imparfait',   count: count((p) => p.grade === 'C') },
   ].filter((g) => g.count > 0);
 
+  const magasins = MAGASINS_LIST
+    .map((m) => ({
+      value: m.id,
+      label: m.nom,
+      count: count((p) => Array.isArray(p.magasins) && p.magasins.includes(m.id)),
+    }))
+    .filter((m) => m.count > 0);
+
   return (
     <div className="flex flex-col">
       <Section title="Prix">
@@ -101,6 +112,19 @@ function SidebarContent({
         </div>
       </Section>
 
+      {magasins.length > 0 && (
+        <Section title="Disponible en">
+          <div className="flex flex-col gap-1.5">
+            {magasins.map((m) => (
+              <CheckRow key={m.value} label={m.label} count={m.count}
+                checked={filterMagasin === m.value}
+                onChange={() => setFilterMagasin?.(filterMagasin === m.value ? null : m.value)}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
+
       <Section title="Disponibilité">
         <div className="flex flex-col gap-1.5">
           {statuses.map((s) => (
@@ -112,16 +136,18 @@ function SidebarContent({
         </div>
       </Section>
 
-      <Section title="Marque">
-        <div className="flex flex-col gap-1.5">
-          {brands.map((b) => (
-            <CheckRow key={b.value} label={b.label} count={b.count}
-              checked={filterBrand === b.value}
-              onChange={() => setFilterBrand(filterBrand === b.value ? null : b.value)}
-            />
-          ))}
-        </div>
-      </Section>
+      {!hideBrandFilter && (
+        <Section title="Marque">
+          <div className="flex flex-col gap-1.5">
+            {brands.map((b) => (
+              <CheckRow key={b.value} label={b.label} count={b.count}
+                checked={filterBrand === b.value}
+                onChange={() => setFilterBrand(filterBrand === b.value ? null : b.value)}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
 
       <Section title="État">
         <div className="flex flex-col gap-1.5">
@@ -162,8 +188,10 @@ export function MobileFilterBar({
   filterBrand, setFilterBrand,
   filterCondition, setFilterCondition,
   filterStatus, setFilterStatus,
+  filterMagasin, setFilterMagasin,
   sortBy, setSortBy,
   total,
+  hideBrandFilter = false,
   phones = [],
 }) {
   const [priceRange, setPriceRange] = useState([0, 1500]);
@@ -174,15 +202,14 @@ export function MobileFilterBar({
     setFilterBrand(null);
     setFilterCondition(null);
     setFilterStatus(null);
+    setFilterMagasin?.(null);
     setPriceRange([0, 1500]);
   };
 
   const activeSortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label || 'Trier';
 
   return (
-    /* Visible uniquement < lg */
     <div className="lg:hidden mb-4 flex items-center justify-between gap-3">
-      {/* Bouton filtre */}
       <button
         onClick={() => setDrawerOpen(true)}
         className="flex items-center gap-2 border border-gray-200 rounded-full px-4 py-2 text-sm font-medium text-[#555555] hover:border-[#00B4CC] hover:text-[#00B4CC] transition-colors cursor-pointer"
@@ -191,7 +218,6 @@ export function MobileFilterBar({
         Filtrer par
       </button>
 
-      {/* Sort dropdown */}
       <div className="relative">
         <button
           onClick={() => setSortOpen(!sortOpen)}
@@ -222,15 +248,12 @@ export function MobileFilterBar({
         )}
       </div>
 
-      {/* Drawer — fixed, hors du flux */}
-      {/* Overlay */}
       <div
         className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
           drawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setDrawerOpen(false)}
       />
-      {/* Panel */}
       <div
         className={`fixed top-0 left-0 h-full w-[85vw] max-w-[320px] bg-white z-50 flex flex-col shadow-2xl
                     transform transition-transform duration-300 ${
@@ -248,7 +271,9 @@ export function MobileFilterBar({
             filterBrand={filterBrand} setFilterBrand={setFilterBrand}
             filterCondition={filterCondition} setFilterCondition={setFilterCondition}
             filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+            filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
             priceRange={priceRange} setPriceRange={setPriceRange}
+            hideBrandFilter={hideBrandFilter}
             onReset={onReset}
             phones={phones}
           />
@@ -274,7 +299,9 @@ export default function FilterSidebar({
   filterBrand, setFilterBrand,
   filterCondition, setFilterCondition,
   filterStatus, setFilterStatus,
+  filterMagasin, setFilterMagasin,
   search, setSearch,
+  hideBrandFilter = false,
   phones = [],
 }) {
   const [priceRange, setPriceRange] = useState([0, 1500]);
@@ -283,11 +310,11 @@ export default function FilterSidebar({
     setFilterBrand(null);
     setFilterCondition(null);
     setFilterStatus(null);
+    setFilterMagasin?.(null);
     setPriceRange([0, 1500]);
   };
 
   return (
-    /* hidden par défaut — flex uniquement lg+ */
     <aside className="hidden lg:flex flex-col w-[280px] flex-shrink-0">
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-poppins font-bold text-[#1B2A4A]">Filtrer</h3>
@@ -309,7 +336,9 @@ export default function FilterSidebar({
         filterBrand={filterBrand} setFilterBrand={setFilterBrand}
         filterCondition={filterCondition} setFilterCondition={setFilterCondition}
         filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+        filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
         priceRange={priceRange} setPriceRange={setPriceRange}
+        hideBrandFilter={hideBrandFilter}
         onReset={onReset}
         phones={phones}
       />
