@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, User, Phone, Mail, ShoppingCart } from 'lucide-react';
-import { useState } from 'react';
+import { Search, User, Phone, Mail, ShoppingCart, ClipboardList } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
 
 function SebLogo() {
@@ -102,9 +102,13 @@ export default function Header() {
               <Search size={20} />
             </button>
           )}
-          <button className="p-2 rounded-lg hover:bg-gray-50 text-[#555555] hover:text-[#00B4CC] transition-colors cursor-pointer">
+          <Link
+            to="/mes-reservations"
+            className="p-2 rounded-lg hover:bg-gray-50 text-[#555555] hover:text-[#00B4CC] transition-colors flex items-center gap-1.5 text-sm font-medium"
+            title="Mes réservations"
+          >
             <User size={20} />
-          </button>
+          </Link>
           <Link to="/panier" className="relative p-2 rounded-lg hover:bg-gray-50 text-[#555555] hover:text-[#00B4CC] transition-colors">
             <ShoppingCart size={20} />
             {totalItems > 0 && (

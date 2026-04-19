@@ -149,6 +149,32 @@ function OrderPanel({ order, onClose, onRefetch }) {
     onClose()
   }
 
+  const handleEncaisser = async () => {
+    if (!isSupabaseReady) return
+    const phoneName  = order.phone?.name || order.phone_name || '—'
+    const clientName = order.customer
+      ? `${order.customer.first_name} ${order.customer.last_name}`
+      : order.customer_name || '—'
+    if (!window.confirm(
+      `Confirmer l'encaissement pour ${clientName} ?\nTéléphone : ${phoneName}\nMontant total : ${order.total_amount || order.deposit_paid || '—'}€`
+    )) return
+    setSaving(true)
+    const now = new Date().toISOString()
+    await supabase.from('orders').update({
+      status:       'recupere',
+      code_used:    true,
+      code_used_at: now,
+      encaisse_at:  now,
+    }).eq('id', order.id)
+    if (order.phone_id) {
+      await supabase.from('phones').update({ status: 'vendu' }).eq('id', order.phone_id)
+    }
+    setSaving(false)
+    onRefetch()
+    onClose()
+    alert('✅ Commande encaissée avec succès !')
+  }
+
   const clientName = order.customer
     ? `${order.customer.first_name} ${order.customer.last_name}`
     : order.customer_name || '—'
@@ -233,13 +259,13 @@ function OrderPanel({ order, onClose, onRefetch }) {
                 ✓ Confirmer la commande
               </button>
             )}
-            {(order.status === 'acompte_paye' || order.status === 'confirme') && (
+            {(order.status === 'acompte_paye' || order.status === 'confirme' || order.status === 'en_attente') && (
               <button
-                onClick={() => updateStatus('recupere')}
+                onClick={handleEncaisser}
                 disabled={saving}
-                className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 text-sm"
+                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 text-sm"
               >
-                ✓ Marquer comme récupéré
+                ✅ Encaisser — Marquer comme récupéré
               </button>
             )}
             {order.status !== 'annule' && (

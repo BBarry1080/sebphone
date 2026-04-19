@@ -1,26 +1,39 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar } from 'lucide-react';
 import Button from '../ui/Button';
-import ConfirmationCard from './ConfirmationCard';
 import { ACCESSORY_PACKS } from '../../data/accessories';
 import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins';
+import { supabase, isSupabaseReady } from '../../lib/supabase';
+import { sendConfirmationEmail } from '../../utils/sendEmail';
+
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return code
+}
 
 export default function ReservationForm({ phone }) {
+  const navigate = useNavigate()
   const [form, setForm] = useState({
-    firstName: '',
-    lastName:  '',
-    email:     '',
-    phone:     '',
-    delivery:  'collect',
-    magasin:   MAGASINS_LIST[0].id,
-    address:   '',
-    notes:     '',
+    firstName:  '',
+    lastName:   '',
+    email:      '',
+    phone:      '',
+    delivery:   'collect',
+    magasin:    MAGASINS_LIST[0].id,
+    address:    '',
+    pickupDate: '',
+    notes:      '',
   });
-  const [selectedPack,  setSelectedPack]  = useState('none');
-  const [paymentMode,   setPaymentMode]   = useState('acompte');
-  const [submitted, setSubmitted] = useState(false);
-  const [loading,   setLoading]   = useState(false);
+  const [selectedPack, setSelectedPack] = useState('none');
+  const [paymentMode,  setPaymentMode]  = useState('acompte');
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -28,18 +41,105 @@ export default function ReservationForm({ phone }) {
 
   const packPrice  = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.price || 0;
   const totalPrice = (phone?.price || 0) + packPrice;
+  const depositPaid = paymentMode === 'total' ? totalPrice : 50;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('1. Début soumission');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setSubmitted(true);
-  };
+    setSubmitError(null);
 
-  if (submitted) {
-    return <ConfirmationCard phone={phone} form={form} />;
-  }
+    const reservationCode = generateCode();
+    const clientName = `${form.firstName} ${form.lastName}`.trim();
+    console.log('2. formData:', { ...form, reservationCode, clientName, totalPrice, depositPaid });
+
+    try {
+      if (isSupabaseReady && supabase) {
+        const orderData = {
+          customer_name:    clientName,
+          customer_email:   form.email,
+          customer_phone:   form.phone,
+          phone_id:         phone?.id || null,
+          phone_name:       phone?.name || phone?.model || '',
+          phone_storage:    phone?.storage || '',
+          phone_color:      phone?.color || '',
+          phone_grade:      phone?.grade || '',
+          delivery_mode:    form.delivery,
+          magasin_id:       form.delivery === 'collect' ? form.magasin : null,
+          delivery_address: form.delivery === 'delivery' ? form.address : null,
+          pickup_date:      form.delivery === 'collect' && form.pickupDate ? form.pickupDate : null,
+          payment_mode:     paymentMode,
+          total_amount:     totalPrice,
+          deposit_amount:   depositPaid,
+          notes:            form.notes || null,
+          reservation_code: reservationCode,
+          status:           'en_attente',
+          accessory_pack:   selectedPack !== 'none' ? selectedPack : null,
+        }
+
+        console.log('3. Validation OK');
+        console.log('4. Tentative insert Supabase...', orderData);
+
+        const { data, error } = await supabase.from('orders').insert([orderData]).select().maybeSingle()
+        console.log('5. Résultat insert:', data, error);
+
+        if (error) {
+          console.error('6. ERREUR INSERT:', error)
+          setSubmitError('Erreur lors de la réservation : ' + error.message)
+          setLoading(false)
+          return
+        }
+
+        console.log('7. Insert OK, mise à jour téléphone...');
+        await supabase.from('phones').update({ status: 'reserve' }).eq('id', phone.id)
+      } else {
+        console.log('3. Supabase non disponible — mode offline');
+      }
+
+      console.log('8. Envoi email...');
+      const emailResult = await sendConfirmationEmail({
+        clientEmail:     form.email,
+        clientName,
+        phoneName:       phone?.name || phone?.model || '',
+        phoneColor:      phone?.color || '',
+        phoneStorage:    phone?.storage || '',
+        grade:           phone?.grade || '',
+        price:           totalPrice,
+        depositPaid,
+        reservationCode,
+        pickupMode:      form.delivery,
+        magasinId:       form.magasin,
+        pickupDate:      form.pickupDate,
+        deliveryAddress: form.address,
+      })
+      console.log('9. Email result:', emailResult)
+
+      console.log('10. Redirection vers /confirmation...');
+      navigate('/confirmation', {
+        state: {
+          reservationCode,
+          clientName,
+          clientEmail:    form.email,
+          phoneName:      phone?.name || phone?.model || '',
+          phoneColor:     phone?.color || '',
+          phoneStorage:   phone?.storage || '',
+          grade:          phone?.grade || '',
+          totalPrice,
+          depositPaid,
+          remaining:      totalPrice - depositPaid,
+          delivery:       form.delivery,
+          magasinId:      form.magasin,
+          magasinInfo:    MAGASINS[form.magasin] || null,
+          pickupDate:     form.pickupDate,
+          deliveryAddress: form.address,
+        }
+      })
+    } catch (err) {
+      console.error('❌ CATCH handleSubmit:', err)
+      setSubmitError('Une erreur est survenue. Veuillez réessayer.')
+      setLoading(false)
+    }
+  };
 
   const selectedMagasin = MAGASINS[form.magasin];
 
@@ -130,16 +230,18 @@ export default function ReservationForm({ phone }) {
         </div>
 
         {form.delivery === 'collect' && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.3 }}>
-            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-              <span className="flex items-center gap-1"><Store size={13} /> Choisir le magasin *</span>
-            </label>
-            <select name="magasin" value={form.magasin} onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all bg-white mb-3">
-              {MAGASINS_LIST.map((m) => (
-                <option key={m.id} value={m.id}>{m.nom}</option>
-              ))}
-            </select>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.3 }} className="flex flex-col gap-3">
+            <div>
+              <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
+                <span className="flex items-center gap-1"><Store size={13} /> Choisir le magasin *</span>
+              </label>
+              <select name="magasin" value={form.magasin} onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all bg-white">
+                {MAGASINS_LIST.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nom}</option>
+                ))}
+              </select>
+            </div>
             {selectedMagasin && (
               <div className="flex items-start gap-2 bg-gray-50 rounded-xl p-3">
                 <MapPin size={15} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
@@ -150,6 +252,19 @@ export default function ReservationForm({ phone }) {
                 </div>
               </div>
             )}
+            <div>
+              <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
+                <span className="flex items-center gap-1"><Calendar size={13} /> Date de passage souhaitée</span>
+              </label>
+              <input
+                type="date"
+                name="pickupDate"
+                value={form.pickupDate}
+                onChange={handleChange}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
+              />
+            </div>
           </motion.div>
         )}
 
@@ -182,9 +297,7 @@ export default function ReservationForm({ phone }) {
                 type="button"
                 onClick={() => setSelectedPack(pack.id)}
                 className={`w-full flex flex-col items-start text-left p-4 border-2 rounded-xl transition-all cursor-pointer ${
-                  selectedPack === pack.id
-                    ? 'border-[#00B4CC] bg-cyan-50'
-                    : 'border-gray-200 hover:border-[#00B4CC]/50'
+                  selectedPack === pack.id ? 'border-[#00B4CC] bg-cyan-50' : 'border-gray-200 hover:border-[#00B4CC]/50'
                 }`}
               >
                 <div className="flex items-center justify-between w-full mb-2">
@@ -217,8 +330,6 @@ export default function ReservationForm({ phone }) {
           <CreditCard size={18} className="text-[#00B4CC]" />
           Mode de paiement
         </h3>
-
-        {/* Option 1 : Acompte */}
         <div
           onClick={() => setPaymentMode('acompte')}
           className={`border-2 rounded-xl p-4 mb-3 cursor-pointer transition-all ${
@@ -228,16 +339,12 @@ export default function ReservationForm({ phone }) {
           <div className="flex justify-between items-start gap-3">
             <div className="flex-1">
               <p className="font-semibold text-[#1B2A4A] text-sm">Réserver avec acompte</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Payez 50€ maintenant pour bloquer le téléphone. Le reste est réglé en magasin.
-              </p>
+              <p className="text-xs text-gray-500 mt-0.5">Payez 50€ maintenant pour bloquer le téléphone. Le reste est réglé en magasin.</p>
               <p className="text-xs text-orange-500 mt-1">⚠️ L'acompte n'est pas remboursable</p>
             </div>
             <span className="font-bold text-[#00B4CC] text-xl flex-shrink-0">50€</span>
           </div>
         </div>
-
-        {/* Option 2 : Paiement total */}
         <div
           onClick={() => setPaymentMode('total')}
           className={`border-2 rounded-xl p-4 cursor-pointer transition-all ${
@@ -247,9 +354,7 @@ export default function ReservationForm({ phone }) {
           <div className="flex justify-between items-start gap-3">
             <div className="flex-1">
               <p className="font-semibold text-[#1B2A4A] text-sm">Payer le montant total</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Réglez la totalité maintenant. Récupération en magasin ou livraison.
-              </p>
+              <p className="text-xs text-gray-500 mt-0.5">Réglez la totalité maintenant. Récupération en magasin ou livraison.</p>
             </div>
             <span className="font-bold text-[#1B2A4A] text-xl flex-shrink-0">{totalPrice}€</span>
           </div>
@@ -263,6 +368,12 @@ export default function ReservationForm({ phone }) {
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all resize-none"
           placeholder="Informations complémentaires, questions..." />
       </div>
+
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+          {submitError}
+        </div>
+      )}
 
       <Button type="submit" variant="primary" size="full" disabled={loading} className="text-base font-bold">
         {loading ? (

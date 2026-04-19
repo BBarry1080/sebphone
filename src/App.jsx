@@ -20,6 +20,10 @@ import Dashboard from './pages/admin/Dashboard';
 import Stock from './pages/admin/Stock';
 import Commandes from './pages/admin/Commandes'
 import PromoCodes from './pages/admin/PromoCodes';
+import Confirmation from './pages/Confirmation';
+import MesReservations from './pages/MesReservations';
+import DetailCommande from './pages/DetailCommande';
+import CodeVerification from './pages/admin/CodeVerification';
 
 function Layout({ children }) {
   return (
@@ -73,6 +77,15 @@ export default function App() {
           <Route path="/reservation/:id" element={
             <Layout><Reservation /></Layout>
           } />
+          <Route path="/confirmation" element={
+            <Layout><Confirmation /></Layout>
+          } />
+          <Route path="/mes-reservations" element={
+            <Layout><MesReservations /></Layout>
+          } />
+          <Route path="/commande/:code" element={
+            <Layout><DetailCommande /></Layout>
+          } />
           <Route path="/panier" element={
             <Layout><Cart /></Layout>
           } />
@@ -98,6 +111,7 @@ export default function App() {
             <Route path="stock" element={<Stock />} />
             <Route path="commandes" element={<Commandes />} />
             <Route path="promoCodes" element={<PromoCodes />} />
+            <Route path="verifier-code" element={<CodeVerification />} />
             <Route path="clients" element={
               <div className="text-center py-20 text-[#888]">Page Clients — à venir</div>
             } />

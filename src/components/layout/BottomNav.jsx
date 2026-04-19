@@ -5,7 +5,7 @@ const tabs = [
   { to: '/',         label: 'Accueil',       Icon: Home,          end: true },
   { to: '/boutique', label: 'Boutique',      Icon: ShoppingBag,   end: false },
   { to: '/rachat',   label: 'Rachat',        Icon: ClipboardList, end: false },
-  { to: '/compte',   label: 'Compte',        Icon: User,          end: false },
+  { to: '/mes-reservations', label: 'Compte', Icon: User, end: false },
 ];
 
 export default function BottomNav() {
