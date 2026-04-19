@@ -11,7 +11,7 @@ const STATUS_BADGES = {
   annule:        { label: 'Annulé',        cls: 'bg-red-100 text-red-700' },
 }
 
-function MetricCard({ icon: Icon, iconColor, label, value, unit = '' }) {
+function MetricCard({ icon: Icon, iconColor, label, value, unit = '', valueClass = 'text-[#1B2A4A]' }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5 flex items-start gap-4">
       <div className={`p-3 rounded-xl ${iconColor} bg-opacity-10`}>
@@ -19,7 +19,7 @@ function MetricCard({ icon: Icon, iconColor, label, value, unit = '' }) {
       </div>
       <div>
         <p className="text-[#555555] text-sm">{label}</p>
-        <p className="font-poppins font-bold text-[#1B2A4A] text-3xl mt-0.5">
+        <p className={`font-poppins font-bold text-3xl mt-0.5 ${valueClass}`}>
           {value}<span className="text-base font-medium text-[#888] ml-1">{unit}</span>
         </p>
       </div>
@@ -99,7 +99,10 @@ export default function Dashboard() {
         <MetricCard icon={ClipboardList}  iconColor="bg-blue-500"   label="Réservations en cours"  value={metrics.reserve} />
         <MetricCard icon={CheckCircle}    iconColor="bg-green-500"  label="Vendus ce mois"         value={metrics.vendu} />
         <MetricCard icon={Euro}           iconColor="bg-[#1B2A4A]"  label="CA du mois"             value={metrics.ca} unit="€" />
-        <MetricCard icon={TrendingUp}     iconColor="bg-green-500"  label="Bénéfice potentiel"     value={metrics.benefice} unit="€" />
+        <MetricCard icon={TrendingUp} iconColor="bg-green-500" label="Bénéfice potentiel"
+          value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.benefice)}
+          valueClass="text-emerald-600"
+        />
       </div>
 
       {/* Recent orders */}
