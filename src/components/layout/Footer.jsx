@@ -25,16 +25,12 @@ export default function Footer() {
     <footer className="bg-[#1B2A4A] text-white">
       <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
         <div className="flex flex-col gap-4">
-          <div className="bg-[#1B2A4A] p-3 rounded-xl inline-block">
-            <img
-              src="/images/logo/logo-blanc.png"
-              alt="SebPhone"
-              className="h-16 w-auto object-contain"
-              onError={(e) => {
-                console.error('Logo blanc introuvable:', e.target.src)
-                e.target.style.display = 'none'
-              }}
-            />
+          <div className="mb-4">
+            <span className="text-2xl font-bold">
+              <span className="text-[#00B4CC]">SEB</span>
+              <span className="text-white">PHONE</span>
+            </span>
+            <p className="text-xs text-gray-400 mt-1">Où tu veux, quand tu veux</p>
           </div>
           <p className="text-sm text-gray-400 leading-relaxed">
             Votre boutique de confiance pour téléphones neufs, reconditionnés et occasions en Belgique.
@@ -64,9 +60,9 @@ export default function Footer() {
           <h3 className="font-semibold text-sm uppercase tracking-widest text-[#00B4CC] mb-4">Contact</h3>
           <ul className="flex flex-col gap-3">
             <li>
-              <a href="tel:+3249240540057" className="flex items-center gap-2.5 text-sm text-gray-400 hover:text-[#00B4CC] transition-colors">
+              <a href="tel:0472728524" className="flex items-center gap-2.5 text-sm text-gray-400 hover:text-[#00B4CC] transition-colors">
                 <Phone size={15} className="text-[#00B4CC] flex-shrink-0" />
-                +32(0)492 / 40.54.57
+                0472 72 85 24
               </a>
             </li>
             <li>
@@ -109,18 +105,10 @@ export default function Footer() {
               href="https://snapchat.com/t/PPG5RuoF"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Snapchat"
-              className="bg-yellow-400 p-2 rounded-full flex items-center justify-center hover:bg-yellow-300 transition-colors duration-200"
+              className="text-2xl hover:opacity-70 transition-opacity"
+              title="Snapchat"
             >
-              <img
-                src="/images/logo/Snapchat-logo-on-transparent-background-PNG.png"
-                alt="Snapchat"
-                className="w-5 h-5 object-contain"
-                onError={(e) => {
-                  console.error('Logo Snap introuvable:', e.target.src)
-                  e.target.style.display = 'none'
-                }}
-              />
+              👻
             </a>
           </div>
           <p className="text-sm text-gray-400 mt-4 leading-relaxed">
