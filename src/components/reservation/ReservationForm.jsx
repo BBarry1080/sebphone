@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar } from 'lucide-react';
@@ -34,6 +34,12 @@ export default function ReservationForm({ phone }) {
   const [paymentMode,  setPaymentMode]  = useState('acompte');
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+
+  useEffect(() => {
+    if (phone?.magasins?.[0]) {
+      setForm((prev) => ({ ...prev, magasin: phone.magasins[0] }));
+    }
+  }, [phone]);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -141,7 +147,7 @@ export default function ReservationForm({ phone }) {
     }
   };
 
-  const availableMagasins = phone?.magasins?.length
+  const availableMagasins = Array.isArray(phone?.magasins) && phone.magasins.length > 0
     ? MAGASINS_LIST.filter((m) => phone.magasins.includes(m.id))
     : MAGASINS_LIST;
 

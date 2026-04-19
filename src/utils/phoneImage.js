@@ -6,14 +6,14 @@ const PLACEHOLDER = "https://placehold.co/400x400/f5f5f5/999?text=iPhone"
 // ─────────────────────────────────────────────────────────────────────────────
 const IMAGE_MAP = {
 
-  // ── iPhone 7 — CDN uniquement ──────────────────────────────────────────────
+  // ── iPhone 7 — fichiers locaux ────────────────────────────────────────────
   "iphone 7": {
-    default:      "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-silver-select-2016?wid=400&hei=400&fmt=jpeg",
-    "noir":       "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-black-select-2016?wid=400&hei=400&fmt=jpeg",
-    "argent":     "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-silver-select-2016?wid=400&hei=400&fmt=jpeg",
-    "or":         "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-gold-select-2016?wid=400&hei=400&fmt=jpeg",
-    "or rose":    "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-rosegold-select-2016?wid=400&hei=400&fmt=jpeg",
-    "rouge":      "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-red-select-2017?wid=400&hei=400&fmt=jpeg",
+    default:   "/images/iphones/iphone-7-noir.png",
+    "noir":    "/images/iphones/iphone-7-noir.png",
+    "argent":  "/images/iphones/iphone-7-argent.png",
+    "or":      "/images/iphones/iphone-7-or.png",
+    "or rose": "/images/iphones/iphone-7-rose.png",
+    "rouge":   "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-red-select-2017?wid=400&hei=400&fmt=jpeg",
   },
 
   // ── iPhone 7 Plus — fichiers locaux ───────────────────────────────────────
