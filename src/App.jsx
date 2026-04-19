@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
+import ScrollToTop from './components/utils/ScrollToTop';
 import Header from './components/layout/Header';
 import MobileHeader from './components/layout/MobileHeader';
 import BottomNav from './components/layout/BottomNav';
@@ -42,6 +43,7 @@ function Layout({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <CartProvider>
         <Routes>
           {/* ── PUBLIC SITE ── */}

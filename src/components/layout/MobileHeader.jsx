@@ -6,8 +6,8 @@ import { useCart } from '../../context/CartContext';
 
 const navLinks = [
   { to: '/',              label: 'Accueil' },
-  { to: '/boutique',      label: 'iPhone' },
-  { to: '/boutique?brand=Samsung', label: 'Samsung' },
+  { to: '/iphone',   label: 'iPhone' },
+  { to: '/samsung',  label: 'Samsung' },
   { to: '/occasions',     label: 'Occasions' },
   { to: '/reconditiones', label: 'Reconditionnés' },
   { to: '/rachat',        label: 'Rachat' },
