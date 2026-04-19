@@ -72,7 +72,8 @@ export default function BestSellers() {
         .from('phones')
         .select('*')
         .eq('status', 'disponible')
-        .order('created_at', { ascending: false })
+        .gte('price', 400)
+        .order('price', { ascending: false })
         .limit(8);
       if (data) setPhones(data);
       setLoading(false);
