@@ -9,7 +9,8 @@ import {
   addPhone, updatePhone, deletePhone, updatePhoneStatus, updatePhonePrice,
 } from '../../data/phonesApi'
 import { phonesMock } from '../../data/phonesMock'
-import { IPHONE_DATABASE, MAGASINS } from '../../data/iphoneDatabase'
+import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
+import { MAGASINS_LIST as MAGASINS } from '../../utils/magasins'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 
 
@@ -422,7 +423,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
                     onChange={() => handleMagasinToggle(magasin.id)}
                     className="w-4 h-4 accent-[#00B4CC]"
                   />
-                  <span className="text-sm text-gray-700">{magasin.label}</span>
+                  <span className="text-sm text-gray-700">{magasin.nom}</span>
                 </label>
               ))}
             </div>
