@@ -19,13 +19,32 @@ function generateCode() {
 
 export default function ReservationForm({ phone }) {
   const navigate = useNavigate()
+
+  // Parse magasins — Supabase peut renvoyer un tableau ou une string JSON
+  const phoneShops = (() => {
+    const raw = phone?.magasins
+    if (Array.isArray(raw)) return raw
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw) } catch { return [] }
+    }
+    return []
+  })()
+
+  const availableMagasins = phoneShops.length > 0
+    ? MAGASINS_LIST.filter((m) => phoneShops.includes(m.id))
+    : MAGASINS_LIST
+
+  console.log('phone.magasins reçu:', phone?.magasins)
+  console.log('phoneShops parsé:', phoneShops)
+  console.log('availableMagasins calculé:', availableMagasins)
+
   const [form, setForm] = useState({
     firstName:  '',
     lastName:   '',
     email:      '',
     phone:      '',
     delivery:   'collect',
-    magasin:    phone?.magasins?.[0] || MAGASINS_LIST[0].id,
+    magasin:    phoneShops[0] || MAGASINS_LIST[0].id,
     address:    '',
     pickupDate: '',
     notes:      '',
@@ -36,10 +55,11 @@ export default function ReservationForm({ phone }) {
   const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
-    if (phone?.magasins?.[0]) {
-      setForm((prev) => ({ ...prev, magasin: phone.magasins[0] }));
+    if (phoneShops[0]) {
+      setForm((prev) => ({ ...prev, magasin: phoneShops[0] }))
     }
-  }, [phone]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phone?.id])
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -55,9 +75,13 @@ export default function ReservationForm({ phone }) {
     setLoading(true);
     setSubmitError(null);
 
+    const magasinFinal = availableMagasins.length === 1
+      ? availableMagasins[0].id
+      : form.magasin
+
     const reservationCode = generateCode();
     const clientName = `${form.firstName} ${form.lastName}`.trim();
-    console.log('2. formData:', { ...form, reservationCode, clientName, totalPrice, depositPaid });
+    console.log('2. formData:', { ...form, magasinFinal, reservationCode, clientName, totalPrice, depositPaid });
 
     try {
       if (isSupabaseReady && supabase) {
@@ -71,7 +95,7 @@ export default function ReservationForm({ phone }) {
           phone_color:      phone?.color || '',
           phone_grade:      phone?.grade || '',
           delivery_mode:    form.delivery,
-          magasin_id:       form.delivery === 'collect' ? form.magasin : null,
+          magasin_id:       form.delivery === 'collect' ? magasinFinal : null,
           delivery_address: form.delivery === 'delivery' ? form.address : null,
           pickup_date:      form.delivery === 'collect' && form.pickupDate ? form.pickupDate : null,
           payment_mode:     paymentMode,
@@ -114,7 +138,7 @@ export default function ReservationForm({ phone }) {
         depositPaid,
         reservationCode,
         pickupMode:      form.delivery,
-        magasinId:       form.magasin,
+        magasinId:       magasinFinal,
         pickupDate:      form.pickupDate,
         deliveryAddress: form.address,
       })
@@ -134,8 +158,8 @@ export default function ReservationForm({ phone }) {
           depositPaid,
           remaining:      totalPrice - depositPaid,
           delivery:       form.delivery,
-          magasinId:      form.magasin,
-          magasinInfo:    MAGASINS[form.magasin] || null,
+          magasinId:      magasinFinal,
+          magasinInfo:    MAGASINS[magasinFinal] || null,
           pickupDate:     form.pickupDate,
           deliveryAddress: form.address,
         }
@@ -146,12 +170,6 @@ export default function ReservationForm({ phone }) {
       setLoading(false)
     }
   };
-
-  const availableMagasins = Array.isArray(phone?.magasins) && phone.magasins.length > 0
-    ? MAGASINS_LIST.filter((m) => phone.magasins.includes(m.id))
-    : MAGASINS_LIST;
-
-  const selectedMagasin = MAGASINS[form.magasin];
 
   return (
     <motion.form
@@ -240,15 +258,27 @@ export default function ReservationForm({ phone }) {
         </div>
 
         {form.delivery === 'collect' && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.3 }} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 mt-1">
             {availableMagasins.length === 1 ? (
-              <div className="flex items-start gap-2 bg-cyan-50 border-2 border-[#00B4CC] rounded-xl p-4">
-                <MapPin size={18} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-[#1B2A4A] text-sm">{availableMagasins[0].nom}</p>
-                  <p className="text-xs text-gray-400">{availableMagasins[0].adresse}</p>
-                  <p className="text-xs text-[#00B4CC] mt-1">📍 Seul magasin où ce téléphone est disponible</p>
+              <div>
+                <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
+                  Magasin de retrait
+                </label>
+                <div className="flex items-start gap-3 bg-cyan-50 border-2 border-[#00B4CC] rounded-xl p-4">
+                  <MapPin size={18} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-[#1B2A4A] text-sm">
+                      {MAGASINS[availableMagasins[0].id]?.nom}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {MAGASINS[availableMagasins[0].id]?.adresse}
+                    </p>
+                    <p className="text-xs text-[#00B4CC] mt-1 font-medium">
+                      ✓ Ce téléphone est uniquement disponible ici
+                    </p>
+                  </div>
                 </div>
+                <input type="hidden" name="magasin" value={availableMagasins[0].id} />
               </div>
             ) : (
               <div>
@@ -258,15 +288,15 @@ export default function ReservationForm({ phone }) {
                 <select name="magasin" value={form.magasin} onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all bg-white">
                   {availableMagasins.map((m) => (
-                    <option key={m.id} value={m.id}>{m.nom}</option>
+                    <option key={m.id} value={m.id}>{MAGASINS[m.id]?.nom}</option>
                   ))}
                 </select>
                 {form.magasin && MAGASINS[form.magasin] && (
                   <div className="flex items-start gap-2 bg-gray-50 rounded-xl p-3 mt-2">
                     <MapPin size={15} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-[#1B2A4A]">{MAGASINS[form.magasin].nom}</p>
-                      <p className="text-xs text-gray-400">{MAGASINS[form.magasin].adresse}</p>
+                      <p className="text-sm font-medium text-[#1B2A4A]">{MAGASINS[form.magasin]?.nom}</p>
+                      <p className="text-xs text-gray-400">{MAGASINS[form.magasin]?.adresse}</p>
                     </div>
                   </div>
                 )}
@@ -285,7 +315,7 @@ export default function ReservationForm({ phone }) {
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
               />
             </div>
-          </motion.div>
+          </div>
         )}
 
         {form.delivery === 'delivery' && (
