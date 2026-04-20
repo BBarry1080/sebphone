@@ -2,7 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
-import { getPhoneImage } from '../../utils/phoneImage';
+import { getPhoneImage } from '../../utils/phoneImage'
+import { getStartingPrice } from '../../data/startingPrices'
+
+function displayPrice(phone) {
+  if (phone.condition === 'reconditionne') {
+    const ref = getStartingPrice(phone.model)
+    if (ref) return ref
+  }
+  return phone.price
+};
 
 function toSlug(model) {
   return (model || '').toLowerCase().replace(/\s+/g, '-');
@@ -41,7 +50,7 @@ function PhoneCard({ phone }) {
       )}
       <p className="font-semibold text-[#1B2A4A] text-sm mt-2 mb-1 leading-tight">{phone.model}</p>
       <p className="text-xs text-gray-400 mb-2">{phone.storage} · {phone.color}</p>
-      <p className="font-bold text-[#1B2A4A] text-lg">{phone.price}€</p>
+      <p className="font-bold text-[#1B2A4A] text-lg">{displayPrice(phone)}€</p>
     </div>
   );
 }

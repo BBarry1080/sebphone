@@ -3,7 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { getPhoneImage } from '../../utils/phoneImage';
-import { getColorHex } from '../../utils/colors';
+import { getColorHex } from '../../utils/colors'
+import { getStartingPrice } from '../../data/startingPrices'
+
+function displayPrice(phone) {
+  if (phone.condition === 'reconditionne') {
+    const ref = getStartingPrice(phone.model)
+    if (ref) return ref
+  }
+  return phone.price
+};
 
 function BestSellerCard({ phone }) {
   const navigate = useNavigate();
@@ -52,7 +61,7 @@ function BestSellerCard({ phone }) {
         {conditionLabel}
       </span>
 
-      <p className="font-bold text-[#1B2A4A] text-lg">{phone.price}€</p>
+      <p className="font-bold text-[#1B2A4A] text-lg">{displayPrice(phone)}€</p>
     </div>
   );
 }

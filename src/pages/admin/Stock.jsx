@@ -12,6 +12,7 @@ import { phonesMock } from '../../data/phonesMock'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
 import { MAGASINS_LIST as MAGASINS } from '../../utils/magasins'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
+import { getStartingPrice } from '../../data/startingPrices'
 
 
 const CONDITIONS = ['neuf', 'reconditionne', 'occasion']
@@ -388,7 +389,11 @@ function PhoneModal({ phone, onClose, onSaved }) {
                   type="number"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="299"
+                  placeholder={
+                    condition === 'reconditionne' && modelSearch
+                      ? `Réf: ${getStartingPrice(modelSearch) || '?'}€`
+                      : 'Prix de vente'
+                  }
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
                 />
               </div>

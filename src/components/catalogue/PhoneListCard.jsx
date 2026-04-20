@@ -113,16 +113,19 @@ function GroupCard({ group }) {
         )}
 
         {/* Prix */}
-        <div className="flex items-baseline gap-1 mt-1.5">
-          <span className="text-[11px] text-gray-400">À partir de</span>
-          {group.condition === 'reconditionne' && (group.referencePrice || getStartingPrice(group.model)) ? (
-            <span className="font-bold text-[16px] text-[#1B2A4A]">
-              {group.referencePrice || getStartingPrice(group.model)}€
-            </span>
-          ) : (
-            <span className="font-bold text-[16px] text-[#1B2A4A]">{group.basePrice}€</span>
-          )}
-        </div>
+        {(() => {
+          const isReconditionne = group.condition === 'reconditionne'
+            || group.phones?.every((p) => p.condition === 'reconditionne')
+          const refPrice = isReconditionne ? (group.referencePrice || getStartingPrice(group.model)) : null
+          return (
+            <div className="flex items-baseline gap-1 mt-1.5">
+              <span className="text-[11px] text-gray-400">À partir de</span>
+              <span className="font-bold text-[16px] text-[#1B2A4A]">
+                {refPrice ?? group.basePrice}€
+              </span>
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

@@ -9,6 +9,7 @@ import { phonesMock } from '../data/phonesMock'
 import Spinner from '../components/ui/Spinner'
 import { colorToHex } from '../components/catalogue/PhoneListCard'
 import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
+import { getStartingPrice } from '../data/startingPrices'
 
 function gradeScore(grade) {
   return { 'A+': 4, 'A': 3, 'B': 2, 'C': 1 }[grade] || 0
@@ -120,6 +121,8 @@ export default function ModelDetailPage() {
     : modelSlug.replace(/-/g, ' ')
 
   const minPrice = filtered.length > 0 ? Math.min(...filtered.map((p) => p.price)) : null
+  const isAllReconditionne = filtered.length > 0 && filtered.every((p) => p.condition === 'reconditionne')
+  const refPrice = isAllReconditionne ? getStartingPrice(modelName) : null
   const imageUrl = getPhoneImage(modelName, filterColor || bestPhone?.color)
 
   return (
@@ -174,7 +177,9 @@ export default function ModelDetailPage() {
               {minPrice !== null && (
                 <p className="text-[#555] text-sm mb-4">
                   À partir de{' '}
-                  <span className="font-bold text-xl text-[#1B2A4A]">{minPrice}€</span>
+                  <span className="font-bold text-xl text-[#1B2A4A]">
+                    {refPrice ?? minPrice}€
+                  </span>
                 </p>
               )}
 
