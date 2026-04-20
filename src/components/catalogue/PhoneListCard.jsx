@@ -40,92 +40,106 @@ const conditionColor = {
   occasion:      'bg-orange-100 text-orange-700',
 }
 
-/* ── Grouped model card (catalogue) ── */
+/* ── Grouped model card — vue LISTE ── */
 function GroupCard({ group }) {
   const navigate = useNavigate()
   const [selectedColor, setSelectedColor] = useState(group.colors?.[0] || null)
-
   const imgSrc = getPhoneImage(group.model, selectedColor)
 
-  const handleColorClick = (e, color) => {
-    e.stopPropagation()
-    setSelectedColor(color)
-  }
+  const isReconditionne = group.condition === 'reconditionne'
+    || group.phones?.every((p) => p.condition === 'reconditionne')
+  const refPrice = isReconditionne ? (group.referencePrice || getStartingPrice(group.model)) : null
 
   return (
     <div
       onClick={() => navigate(`/modele/${modelToSlug(group.model)}`)}
       className="w-full bg-white border border-gray-100 rounded-2xl p-4 flex gap-4 items-center hover:border-[#00B4CC] hover:shadow-md transition-all duration-200 cursor-pointer"
     >
-      {/* Image */}
       <div className="w-[100px] h-[100px] flex-shrink-0 bg-gray-50 rounded-xl flex items-center justify-center overflow-hidden">
-        <img
-          key={imgSrc}
-          src={imgSrc}
-          alt={`${group.model} ${selectedColor || ''}`}
-          className="w-full h-full object-contain p-2"
-          loading="lazy"
-          onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
-        />
+        <img key={imgSrc} src={imgSrc} alt={`${group.model} ${selectedColor || ''}`}
+          className="w-full h-full object-contain p-2" loading="lazy"
+          onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }} />
       </div>
-
-      {/* Infos */}
       <div className="flex-1 min-w-0">
-        <h3 className="font-bold text-[#1B2A4A] text-[15px] leading-tight mb-1 truncate">
-          {group.model}
-        </h3>
-
-        <span className="text-[11px] text-green-600 font-medium">
-          ● {group.totalStock} disponible{group.totalStock > 1 ? 's' : ''}
-        </span>
-
-        {/* Pills stockage */}
+        <h3 className="font-bold text-[#1B2A4A] text-[15px] leading-tight mb-1 truncate">{group.model}</h3>
+        <span className="text-[11px] text-green-600 font-medium">● {group.totalStock} disponible{group.totalStock > 1 ? 's' : ''}</span>
         {group.storages.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
             {group.storages.map((s) => (
-              <span key={s} className="text-[11px] border border-gray-300 rounded-md px-2 py-0.5 text-gray-600 font-medium">
-                {s}
-              </span>
+              <span key={s} className="text-[11px] border border-gray-300 rounded-md px-2 py-0.5 text-gray-600 font-medium">{s}</span>
             ))}
           </div>
         )}
-
-        {/* Pastilles couleur cliquables */}
         {group.colors.length > 0 && (
           <div className="flex items-center gap-1.5 mt-1.5">
             {group.colors.slice(0, 6).map((c) => (
-              <button
-                key={c}
-                onClick={(e) => handleColorClick(e, c)}
-                className={`rounded-full border-2 flex-shrink-0 transition-transform cursor-pointer ${
-                  selectedColor === c
-                    ? 'w-5 h-5 border-[#1B2A4A] scale-110'
-                    : 'w-3.5 h-3.5 border-gray-300 hover:border-gray-500'
-                }`}
-                style={{ background: colorToHex(c) }}
-                title={c}
-              />
+              <button key={c} onClick={(e) => { e.stopPropagation(); setSelectedColor(c) }}
+                className={`rounded-full border-2 flex-shrink-0 transition-transform cursor-pointer ${selectedColor === c ? 'w-5 h-5 border-[#1B2A4A] scale-110' : 'w-3.5 h-3.5 border-gray-300 hover:border-gray-500'}`}
+                style={{ background: colorToHex(c) }} title={c} />
             ))}
-            {group.colors.length > 6 && (
-              <span className="text-[10px] text-gray-400">+{group.colors.length - 6}</span>
-            )}
+            {group.colors.length > 6 && <span className="text-[10px] text-gray-400">+{group.colors.length - 6}</span>}
+          </div>
+        )}
+        <div className="flex items-baseline gap-1 mt-1.5">
+          <span className="text-[11px] text-gray-400">À partir de</span>
+          <span className="font-bold text-[16px] text-[#1B2A4A]">{refPrice ?? group.basePrice}€</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Grouped model card — vue GRILLE ── */
+function GroupCardGrid({ group }) {
+  const navigate = useNavigate()
+  const [selectedColor, setSelectedColor] = useState(group.colors?.[0] || null)
+  const imgSrc = getPhoneImage(group.model, selectedColor)
+
+  const isReconditionne = group.condition === 'reconditionne'
+    || group.phones?.every((p) => p.condition === 'reconditionne')
+  const refPrice = isReconditionne ? (group.referencePrice || getStartingPrice(group.model)) : null
+
+  return (
+    <div
+      onClick={() => navigate(`/modele/${modelToSlug(group.model)}`)}
+      className="bg-white border border-gray-100 rounded-2xl p-3 flex flex-col hover:border-[#00B4CC] hover:shadow-md transition-all duration-200 cursor-pointer"
+    >
+      {/* Image */}
+      <div className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center overflow-hidden mb-3">
+        <img key={imgSrc} src={imgSrc} alt={`${group.model} ${selectedColor || ''}`}
+          className="w-full h-full object-contain p-3" loading="lazy"
+          onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }} />
+      </div>
+
+      {/* Infos */}
+      <div className="flex-1 flex flex-col">
+        <p className="text-[11px] text-green-600 font-medium mb-1">● {group.totalStock} disponible{group.totalStock > 1 ? 's' : ''}</p>
+        <h3 className="font-bold text-[#1B2A4A] text-[14px] leading-tight mb-2">{group.model}</h3>
+
+        {group.storages.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {group.storages.slice(0, 3).map((s) => (
+              <span key={s} className="text-[10px] border border-gray-300 rounded-md px-1.5 py-0.5 text-gray-600 font-medium">{s}</span>
+            ))}
+            {group.storages.length > 3 && <span className="text-[10px] text-gray-400">+{group.storages.length - 3}</span>}
           </div>
         )}
 
-        {/* Prix */}
-        {(() => {
-          const isReconditionne = group.condition === 'reconditionne'
-            || group.phones?.every((p) => p.condition === 'reconditionne')
-          const refPrice = isReconditionne ? (group.referencePrice || getStartingPrice(group.model)) : null
-          return (
-            <div className="flex items-baseline gap-1 mt-1.5">
-              <span className="text-[11px] text-gray-400">À partir de</span>
-              <span className="font-bold text-[16px] text-[#1B2A4A]">
-                {refPrice ?? group.basePrice}€
-              </span>
-            </div>
-          )
-        })()}
+        {group.colors.length > 0 && (
+          <div className="flex items-center gap-1 mb-3">
+            {group.colors.slice(0, 5).map((c) => (
+              <button key={c} onClick={(e) => { e.stopPropagation(); setSelectedColor(c) }}
+                className={`rounded-full border-2 flex-shrink-0 transition-transform cursor-pointer ${selectedColor === c ? 'w-4 h-4 border-[#1B2A4A] scale-110' : 'w-3 h-3 border-gray-300'}`}
+                style={{ background: colorToHex(c) }} title={c} />
+            ))}
+            {group.colors.length > 5 && <span className="text-[10px] text-gray-400">+{group.colors.length - 5}</span>}
+          </div>
+        )}
+
+        <div className="mt-auto">
+          <p className="text-[10px] text-gray-400">À partir de</p>
+          <p className="font-bold text-[18px] text-[#1B2A4A] leading-tight">{refPrice ?? group.basePrice}€</p>
+        </div>
       </div>
     </div>
   )
@@ -190,7 +204,7 @@ function PhoneCard({ phone, onClick }) {
   )
 }
 
-export default function PhoneListCard({ group, phone, onClick }) {
-  if (group) return <GroupCard group={group} />
+export default function PhoneListCard({ group, phone, onClick, viewMode = 'list' }) {
+  if (group) return viewMode === 'grid' ? <GroupCardGrid group={group} /> : <GroupCard group={group} />
   return <PhoneCard phone={phone} onClick={onClick} />
 }

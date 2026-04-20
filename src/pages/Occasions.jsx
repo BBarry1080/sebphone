@@ -1,9 +1,12 @@
+import { useState } from 'react'
+import { LayoutGrid, List } from 'lucide-react'
 import { useGroupedPhones } from '../hooks/useGroupedPhones'
 import FilterSidebar, { MobileFilterBar, SortDropdown } from '../components/catalogue/FilterSidebar'
 import PhoneListCard from '../components/catalogue/PhoneListCard'
 import Spinner from '../components/ui/Spinner'
 
 export default function Occasions() {
+  const [viewMode, setViewMode] = useState('list')
   const {
     groups, phones, totalPhones, loading, error,
     search, setSearch,
@@ -65,7 +68,13 @@ export default function Occasions() {
               {' '}·{' '}
               <span className="font-semibold text-[#1B2A4A]">{totalPhones}</span> appareil{totalPhones !== 1 ? 's' : ''}
             </p>
-            <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+            <div className="flex items-center gap-2">
+              <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+                <button onClick={() => setViewMode('list')} className={`p-2 transition-colors cursor-pointer ${viewMode === 'list' ? 'bg-[#1B2A4A] text-white' : 'text-gray-400 hover:text-[#1B2A4A]'}`}><List size={16} /></button>
+                <button onClick={() => setViewMode('grid')} className={`p-2 transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-[#1B2A4A] text-white' : 'text-gray-400 hover:text-[#1B2A4A]'}`}><LayoutGrid size={16} /></button>
+              </div>
+              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+            </div>
           </div>
 
           {loading ? (
@@ -77,9 +86,9 @@ export default function Occasions() {
               <p className="text-[#555555] text-sm mt-1">Essayez de modifier vos filtres</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
+            <div className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {groups.map((group) => (
-                <PhoneListCard key={group.model} group={group} />
+                <PhoneListCard key={group.model} group={group} viewMode={viewMode} />
               ))}
             </div>
           )}
