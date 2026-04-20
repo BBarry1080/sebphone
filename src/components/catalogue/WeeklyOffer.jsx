@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Truck, RotateCcw, Package } from 'lucide-react';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
+import { getStartingPrice } from '../../data/startingPrices';
 
 const COLOR_HEX = {
   'noir': '#1C1C1E', 'minuit': '#1C1C1E', 'black': '#1C1C1E', 'midnight': '#1C1C1E',
@@ -107,7 +108,10 @@ export default function WeeklyOffer() {
 
   const outOfStock   = stockCount === 0;
   const currentImage = getPhoneImage(modelName, currentColor);
-  const displayPrice = selectedPhone.price ?? offerPhone.price;
+  const rawPrice = selectedPhone.price ?? offerPhone.price;
+  const displayPrice = selectedPhone.condition === 'reconditionne'
+    ? (getStartingPrice(modelName) ?? rawPrice)
+    : rawPrice;
 
   const badges = [
     { Icon: CheckCircle, text: 'Garantie 24 mois' },
