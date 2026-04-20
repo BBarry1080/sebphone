@@ -8,9 +8,9 @@ import { getStartingPrice } from '../../data/startingPrices'
 function displayPrice(phone) {
   if (phone.condition === 'reconditionne') {
     const ref = getStartingPrice(phone.model)
-    if (ref) return ref
+    if (ref) return { label: 'À partir de', price: ref }
   }
-  return phone.price
+  return { label: 'À partir de', price: phone.price }
 };
 
 function toSlug(model) {
@@ -50,7 +50,12 @@ function PhoneCard({ phone }) {
       )}
       <p className="font-semibold text-[#1B2A4A] text-sm mt-2 mb-1 leading-tight">{phone.model}</p>
       <p className="text-xs text-gray-400 mb-2">{phone.storage} · {phone.color}</p>
-      <p className="font-bold text-[#1B2A4A] text-lg">{displayPrice(phone)}€</p>
+      {(() => { const { label, price } = displayPrice(phone); return (
+        <p className="text-sm mt-2">
+          <span className="text-gray-400 text-xs">{label} </span>
+          <span className="font-bold text-[#1B2A4A] text-lg">{price}€</span>
+        </p>
+      ); })()}
     </div>
   );
 }
