@@ -37,12 +37,13 @@ export default function WeeklyOffer() {
         return;
       }
 
-      // Find best-margin phone
+      // Find best-margin phone (entrée de gamme uniquement, prix <= 150€)
       const { data: phonesData } = await supabase
         .from('phones')
         .select('id, name, model, brand, color, storage, price, purchase_price')
         .eq('status', 'disponible')
-        .not('purchase_price', 'is', null);
+        .not('purchase_price', 'is', null)
+        .lte('price', 150);
 
       let best = null;
       if (phonesData && phonesData.length > 0) {
