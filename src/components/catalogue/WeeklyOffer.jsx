@@ -257,7 +257,7 @@ export default function WeeklyOffer() {
                 </button>
               ) : (
                 <button
-                  onClick={() => navigate(`/telephone/${selectedPhone.id}`)}
+                  onClick={() => navigate(`/modele/${modelName.toLowerCase().replace(/\s+/g, '-')}`)}
                   className="w-full flex items-center justify-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold py-3 rounded-full transition-colors cursor-pointer text-sm"
                 >
                   Voir l'offre →
