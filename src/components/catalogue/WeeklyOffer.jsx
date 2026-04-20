@@ -109,7 +109,10 @@ export default function WeeklyOffer() {
   const outOfStock   = stockCount === 0;
   const currentImage = getPhoneImage(modelName, currentColor);
   const rawPrice = selectedPhone.price ?? offerPhone.price;
-  const displayPrice = selectedPhone.condition === 'reconditionne'
+  const conditionNorm = (selectedPhone.condition || offerPhone.condition || '')
+    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const isReconditionne = conditionNorm.startsWith('reconditionn');
+  const displayPrice = isReconditionne
     ? (getStartingPrice(modelName) ?? rawPrice)
     : rawPrice;
 
