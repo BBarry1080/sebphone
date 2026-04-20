@@ -3,7 +3,7 @@
 // ALTER TABLE phones ADD COLUMN IF NOT EXISTS color TEXT;
 
 import { useState, useEffect, useRef } from 'react'
-import { Smartphone, Plus, Search, Pencil, Trash2, X } from 'lucide-react'
+import { Smartphone, Plus, Search, Pencil, Trash2, X, Star } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import {
   addPhone, updatePhone, deletePhone, updatePhoneStatus, updatePhonePrice,
@@ -555,6 +555,21 @@ export default function Stock() {
   const handleStatusChange = async (id, status) => { await updatePhoneStatus(id, status) }
   const handlePriceChange  = async (id, price)  => { await updatePhonePrice(id, price) }
 
+  const handleToggleOffreSemaine = async (phone) => {
+    if (!isSupabaseReady) return
+    const isAlready = phone.offre_semaine === true
+    // Retire l'étoile de tous les téléphones
+    await supabase.from('phones').update({ offre_semaine: false }).neq('id', 0)
+    // Si ce n'était pas déjà lui → l'activer
+    if (!isAlready) {
+      await supabase.from('phones').update({ offre_semaine: true }).eq('id', phone.id)
+    }
+    setPhones((prev) => prev.map((p) => ({
+      ...p,
+      offre_semaine: !isAlready && p.id === phone.id,
+    })))
+  }
+
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer ce téléphone ?')) return
     await deletePhone(id)
@@ -748,6 +763,17 @@ export default function Stock() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleToggleOffreSemaine(phone)}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                            phone.offre_semaine
+                              ? 'text-yellow-500 bg-yellow-50'
+                              : 'text-[#888] hover:text-yellow-500 hover:bg-yellow-50'
+                          }`}
+                          title="Offre de la semaine"
+                        >
+                          <Star size={14} fill={phone.offre_semaine ? 'currentColor' : 'none'} />
+                        </button>
                         <button
                           onClick={() => { setEditingPhone(phone); setModalOpen(true) }}
                           className="p-1.5 text-[#888] hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"

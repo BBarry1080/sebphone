@@ -37,22 +37,34 @@ export default function WeeklyOffer() {
         return;
       }
 
-      // Find best-margin phone (entrée de gamme uniquement, prix <= 150€)
-      const { data: phonesData } = await supabase
+      // 1. Priorité : téléphone marqué "offre de la semaine" par l'admin
+      const { data: starred } = await supabase
         .from('phones')
-        .select('id, name, model, brand, color, storage, price, purchase_price')
+        .select('*')
         .eq('status', 'disponible')
-        .not('purchase_price', 'is', null)
-        .lte('price', 150);
+        .eq('offre_semaine', true)
+        .limit(1)
+        .maybeSingle();
 
-      let best = null;
-      if (phonesData && phonesData.length > 0) {
-        best = phonesData.reduce((top, p) => {
-          if (!p.purchase_price || p.price <= 0) return top;
-          const score = (p.price - p.purchase_price) / p.price;
-          const topScore = top ? (top.price - top.purchase_price) / top.price : -Infinity;
-          return score > topScore ? p : top;
-        }, null);
+      let best = starred || null;
+
+      // 2. Fallback : meilleure marge parmi les entrées de gamme (prix <= 150€)
+      if (!best) {
+        const { data: phonesData } = await supabase
+          .from('phones')
+          .select('id, name, model, brand, color, storage, price, purchase_price, condition')
+          .eq('status', 'disponible')
+          .not('purchase_price', 'is', null)
+          .lte('price', 150);
+
+        if (phonesData?.length > 0) {
+          best = phonesData.reduce((top, p) => {
+            if (!p.purchase_price || p.price <= 0) return top;
+            const score = (p.price - p.purchase_price) / p.price;
+            const topScore = top ? (top.price - top.purchase_price) / top.price : -Infinity;
+            return score > topScore ? p : top;
+          }, null);
+        }
       }
 
       // Fallback: first disponible phone
