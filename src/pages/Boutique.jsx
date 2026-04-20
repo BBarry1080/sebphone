@@ -10,6 +10,7 @@ export default function Boutique({ defaultBrand = null }) {
     filterCondition, setFilterCondition,
     filterBrand, setFilterBrand,
     filterStatus, setFilterStatus,
+    filterGrade, setFilterGrade,
     sortBy, setSortBy,
   } = useGroupedPhones(null, defaultBrand)
 
@@ -32,6 +33,7 @@ export default function Boutique({ defaultBrand = null }) {
         filterBrand={filterBrand} setFilterBrand={setFilterBrand}
         filterCondition={filterCondition} setFilterCondition={setFilterCondition}
         filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+        filterGrade={filterGrade} setFilterGrade={setFilterGrade}
         sortBy={sortBy} setSortBy={setSortBy}
         total={totalPhones}
         phones={phones}
@@ -44,6 +46,7 @@ export default function Boutique({ defaultBrand = null }) {
           filterCondition={filterCondition} setFilterCondition={setFilterCondition}
           filterBrand={filterBrand} setFilterBrand={setFilterBrand}
           filterStatus={filterStatus} setFilterStatus={setFilterStatus}
+          filterGrade={filterGrade} setFilterGrade={setFilterGrade}
           sortBy={sortBy} setSortBy={setSortBy}
           total={totalPhones}
           phones={phones}

@@ -54,6 +54,7 @@ function SidebarContent({
   filterCondition, setFilterCondition,
   filterStatus, setFilterStatus,
   filterMagasin, setFilterMagasin,
+  filterGrade, setFilterGrade,
   priceRange, setPriceRange,
   hideBrandFilter = false,
   onReset,
@@ -79,10 +80,9 @@ function SidebarContent({
   ].filter((s) => s.count > 0);
 
   const gradesList = [
-    { value: 'A+', label: 'A+ — Parfait',    count: count((p) => p.grade === 'A+') },
-    { value: 'A',  label: 'A — Très bon',    count: count((p) => p.grade === 'A') },
-    { value: 'B',  label: 'B — Correct',     count: count((p) => p.grade === 'B') },
-    { value: 'C',  label: 'C — Imparfait',   count: count((p) => p.grade === 'C') },
+    { value: 'Comme neuf',    label: 'Comme neuf',    count: count((p) => p.grade === 'Comme neuf') },
+    { value: 'Très bon état', label: 'Très bon état', count: count((p) => p.grade === 'Très bon état') },
+    { value: 'État correct',  label: 'État correct',  count: count((p) => p.grade === 'État correct') },
   ].filter((g) => g.count > 0);
 
   const magasins = MAGASINS_LIST
@@ -164,7 +164,10 @@ function SidebarContent({
         <Section title="Grade" defaultOpen={false}>
           <div className="flex flex-col gap-1.5">
             {gradesList.map((g) => (
-              <CheckRow key={g.value} label={g.label} count={g.count} checked={false} onChange={() => {}} />
+              <CheckRow key={g.value} label={g.label} count={g.count}
+                checked={filterGrade === g.value}
+                onChange={() => setFilterGrade?.(filterGrade === g.value ? null : g.value)}
+              />
             ))}
           </div>
         </Section>
@@ -189,6 +192,7 @@ export function MobileFilterBar({
   filterCondition, setFilterCondition,
   filterStatus, setFilterStatus,
   filterMagasin, setFilterMagasin,
+  filterGrade, setFilterGrade,
   sortBy, setSortBy,
   total,
   hideBrandFilter = false,
@@ -203,6 +207,7 @@ export function MobileFilterBar({
     setFilterCondition(null);
     setFilterStatus(null);
     setFilterMagasin?.(null);
+    setFilterGrade?.(null);
     setPriceRange([0, 1500]);
   };
 
@@ -272,6 +277,7 @@ export function MobileFilterBar({
             filterCondition={filterCondition} setFilterCondition={setFilterCondition}
             filterStatus={filterStatus} setFilterStatus={setFilterStatus}
             filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
+            filterGrade={filterGrade} setFilterGrade={setFilterGrade}
             priceRange={priceRange} setPriceRange={setPriceRange}
             hideBrandFilter={hideBrandFilter}
             onReset={onReset}
@@ -300,6 +306,7 @@ export default function FilterSidebar({
   filterCondition, setFilterCondition,
   filterStatus, setFilterStatus,
   filterMagasin, setFilterMagasin,
+  filterGrade, setFilterGrade,
   search, setSearch,
   hideBrandFilter = false,
   phones = [],
@@ -311,6 +318,7 @@ export default function FilterSidebar({
     setFilterCondition(null);
     setFilterStatus(null);
     setFilterMagasin?.(null);
+    setFilterGrade?.(null);
     setPriceRange([0, 1500]);
   };
 
@@ -337,6 +345,7 @@ export default function FilterSidebar({
         filterCondition={filterCondition} setFilterCondition={setFilterCondition}
         filterStatus={filterStatus} setFilterStatus={setFilterStatus}
         filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
+        filterGrade={filterGrade} setFilterGrade={setFilterGrade}
         priceRange={priceRange} setPriceRange={setPriceRange}
         hideBrandFilter={hideBrandFilter}
         onReset={onReset}

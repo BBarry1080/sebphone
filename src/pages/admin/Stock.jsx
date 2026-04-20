@@ -17,7 +17,9 @@ import { getStartingPrice } from '../../data/startingPrices'
 
 const CONDITIONS = ['neuf', 'reconditionne', 'occasion']
 const CONDITION_LABELS = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
-const GRADES = ['A+', 'A', 'B', 'C']
+const GRADES = ['Comme neuf', 'Très bon état', 'État correct']
+const FOURNISSEURS = ['SebPhone', 'Molenbeek', 'Louise', 'Anderlecht']
+const LOCATIONS = ['Molenbeek', 'Louise', 'Anderlecht', 'SebPhone', 'Autre']
 const STATUSES = ['disponible', 'reserve', 'vendu']
 const STATUS_LABELS = { disponible: 'En stock', reserve: 'Réservé', vendu: 'Vendu' }
 const STATUS_COLORS = {
@@ -119,9 +121,13 @@ function PhoneModal({ phone, onClose, onSaved }) {
   // ── Other fields ─────────────────────────────────────────────────
   const [storage, setStorage]         = useState(phone?.storage || '')
   const [condition, setCondition]     = useState(phone?.condition || 'reconditionne')
-  const [grade, setGrade]             = useState(phone?.grade || 'A')
+  const [grade, setGrade]             = useState(phone?.grade || 'Comme neuf')
   const [batteryHealth, setBatteryHealth] = useState(phone?.battery_health ?? '')
-  const [price, setPrice]         = useState(phone?.price || '')
+  const [imei, setImei]               = useState(phone?.imei || '')
+  const [price, setPrice]             = useState(phone?.price || '')
+  const [purchasePrice, setPurchasePrice] = useState(phone?.purchase_price ?? '')
+  const [fournisseur, setFournisseur] = useState(phone?.fournisseur || '')
+  const [stockLocation, setStockLocation] = useState(phone?.stock_location || '')
   const [deposit, setDeposit]     = useState(phone?.deposit_amount || 50)
   const [magasins, setMagasins]   = useState(phone?.magasins || [])
   const [notes, setNotes]         = useState(phone?.notes || '')
@@ -175,14 +181,18 @@ function PhoneModal({ phone, onClose, onSaved }) {
         model:          modelSearch.trim(),
         brand:          modelSearch.toLowerCase().includes('samsung') ? 'Samsung' : 'Apple',
         condition:      condition || 'occasion',
-        grade:          grade || null,
+        grade:          condition !== 'neuf' ? (grade || null) : null,
         storage:        storage || null,
         color:          colorSearch.trim() || null,
         price:          parseFloat(price) || 0,
+        purchase_price: purchasePrice !== '' ? parseFloat(purchasePrice) : null,
         deposit_amount: parseFloat(deposit) || 50,
         magasins:       magasins || [],
         notes:          notes || null,
         battery_health: batteryHealth !== '' ? parseInt(batteryHealth) : null,
+        imei:           imei.trim() || null,
+        fournisseur:    fournisseur || null,
+        stock_location: stockLocation || null,
         status:         'disponible',
       }
 
@@ -398,6 +408,21 @@ function PhoneModal({ phone, onClose, onSaved }) {
                 />
               </div>
               <div>
+                <label className="text-xs text-[#555] mb-1 block">Prix d'achat (€)</label>
+                <input
+                  type="number"
+                  value={purchasePrice}
+                  onChange={(e) => setPurchasePrice(e.target.value)}
+                  placeholder="ex: 150"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                />
+                {purchasePrice !== '' && price !== '' && (
+                  <p className={`text-[11px] mt-1 font-semibold ${(parseFloat(price) - parseFloat(purchasePrice)) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    Bénéfice : {parseFloat(price) - parseFloat(purchasePrice)}€
+                  </p>
+                )}
+              </div>
+              <div>
                 <label className="text-xs text-[#555] mb-1 block">Acompte (€)</label>
                 <input
                   type="number"
@@ -405,6 +430,45 @@ function PhoneModal({ phone, onClose, onSaved }) {
                   onChange={(e) => setDeposit(e.target.value)}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Section 3b — Provenance ── */}
+          <div>
+            <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Provenance & localisation</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-[#555] mb-1 block">IMEI</label>
+                <input
+                  type="text"
+                  value={imei}
+                  onChange={(e) => setImei(e.target.value)}
+                  placeholder="ex: 356761086758197"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[#555] mb-1 block">Fournisseur</label>
+                <select
+                  value={fournisseur}
+                  onChange={(e) => setFournisseur(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                >
+                  <option value="">— Choisir —</option>
+                  {FOURNISSEURS.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-[#555] mb-1 block">Localisation</label>
+                <select
+                  value={stockLocation}
+                  onChange={(e) => setStockLocation(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                >
+                  <option value="">— Choisir —</option>
+                  {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
               </div>
             </div>
           </div>
@@ -698,7 +762,7 @@ export default function Stock() {
             <table className="w-full text-sm">
               <thead className="bg-[#F8F9FA] border-b border-gray-100">
                 <tr>
-                  {['Modèle', 'État', 'Grade', 'Prix', 'Achat / Bénéf.', 'Statut', 'Magasins', 'Actions'].map((h) => (
+                  {['Modèle', 'État', 'Grade', 'Batterie', 'Prix', 'Achat / Bénéf.', 'Localisation', 'Statut', 'Actions'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555555] uppercase tracking-wide">
                       {h}
                     </th>
@@ -738,6 +802,11 @@ export default function Stock() {
                         ? <span className="px-2 py-1 bg-[#1B2A4A]/10 text-[#1B2A4A] rounded-full text-xs font-bold">{phone.grade}</span>
                         : <span className="text-[#bbb]">—</span>}
                     </td>
+                    <td className="px-4 py-3 text-xs text-[#555]">
+                      {phone.battery_health != null
+                        ? <span className={`font-semibold ${phone.battery_health >= 85 ? 'text-green-600' : phone.battery_health >= 75 ? 'text-orange-500' : 'text-red-500'}`}>{phone.battery_health}%</span>
+                        : <span className="text-[#bbb]">—</span>}
+                    </td>
                     <td className="px-4 py-3">
                       <InlinePrice id={phone.id} value={phone.price} onSave={handlePriceChange} />
                     </td>
@@ -751,15 +820,14 @@ export default function Stock() {
                         </div>
                       ) : <span className="text-[#bbb]">—</span>}
                     </td>
+                    <td className="px-4 py-3 text-xs text-[#555]">
+                      <div>
+                        <p className="font-medium">{phone.stock_location || <span className="text-[#bbb]">—</span>}</p>
+                        {phone.fournisseur && <p className="text-[#aaa] text-[11px]">{phone.fournisseur}</p>}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <StatusDropdown id={phone.id} value={phone.status} onChange={handleStatusChange} />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[#555]">
-                      {Array.isArray(phone.magasins) && phone.magasins.length > 0
-                        ? phone.magasins.length === MAGASINS.length
-                          ? 'Tous'
-                          : `${phone.magasins.length} mag.`
-                        : <span className="text-[#bbb]">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">

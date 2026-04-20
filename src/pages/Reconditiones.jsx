@@ -13,6 +13,7 @@ export default function Reconditiones() {
     filterBrand, setFilterBrand,
     filterStatus, setFilterStatus,
     filterMagasin, setFilterMagasin,
+    filterGrade, setFilterGrade,
     sortBy, setSortBy,
   } = useGroupedPhones('reconditionne')
 
@@ -43,6 +44,7 @@ export default function Reconditiones() {
           filterCondition={filterCondition} setFilterCondition={setFilterCondition}
           filterStatus={filterStatus} setFilterStatus={setFilterStatus}
           filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
+          filterGrade={filterGrade} setFilterGrade={setFilterGrade}
           sortBy={sortBy} setSortBy={setSortBy}
           total={totalPhones}
           phones={phones}
@@ -55,6 +57,7 @@ export default function Reconditiones() {
             filterBrand={filterBrand} setFilterBrand={setFilterBrand}
             filterStatus={filterStatus} setFilterStatus={setFilterStatus}
             filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
+            filterGrade={filterGrade} setFilterGrade={setFilterGrade}
             sortBy={sortBy} setSortBy={setSortBy}
             total={totalPhones}
             phones={phones}

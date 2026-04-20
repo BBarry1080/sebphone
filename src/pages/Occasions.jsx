@@ -11,6 +11,7 @@ export default function Occasions() {
     filterBrand, setFilterBrand,
     filterStatus, setFilterStatus,
     filterMagasin, setFilterMagasin,
+    filterGrade, setFilterGrade,
     sortBy, setSortBy,
   } = useGroupedPhones('occasion')
 
@@ -38,6 +39,7 @@ export default function Occasions() {
         filterCondition={filterCondition} setFilterCondition={setFilterCondition}
         filterStatus={filterStatus} setFilterStatus={setFilterStatus}
         filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
+        filterGrade={filterGrade} setFilterGrade={setFilterGrade}
         sortBy={sortBy} setSortBy={setSortBy}
         total={totalPhones}
         phones={phones}
@@ -50,6 +52,7 @@ export default function Occasions() {
           filterBrand={filterBrand} setFilterBrand={setFilterBrand}
           filterStatus={filterStatus} setFilterStatus={setFilterStatus}
           filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
+          filterGrade={filterGrade} setFilterGrade={setFilterGrade}
           sortBy={sortBy} setSortBy={setSortBy}
           total={totalPhones}
           phones={phones}
