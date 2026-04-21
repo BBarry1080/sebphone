@@ -45,7 +45,7 @@ export default function Footer() {
               { to: '/boutique',      label: 'Boutique' },
               { to: '/occasions',     label: 'Occasions' },
               { to: '/reconditiones', label: 'Reconditionnés' },
-              { to: '/rachat',        label: 'Rachat téléphone' },
+              { to: '/rachat',        label: 'Revendre mon téléphone' },
             ].map((link) => (
               <li key={link.to}>
                 <Link to={link.to} className="text-sm text-gray-400 hover:text-[#00B4CC] transition-colors">

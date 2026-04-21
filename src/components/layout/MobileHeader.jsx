@@ -10,7 +10,7 @@ const navLinks = [
   { to: '/samsung',  label: 'Samsung' },
   { to: '/occasions',     label: 'Occasions' },
   { to: '/reconditiones', label: 'Reconditionnés' },
-  { to: '/rachat',        label: 'Rachat' },
+  { to: '/rachat',        label: 'Revendre' },
 ];
 
 function SebLogo() {

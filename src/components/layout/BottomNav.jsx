@@ -4,7 +4,7 @@ import { Home, ShoppingBag, ClipboardList, User } from 'lucide-react';
 const tabs = [
   { to: '/',         label: 'Accueil',       Icon: Home,          end: true },
   { to: '/boutique', label: 'Boutique',      Icon: ShoppingBag,   end: false },
-  { to: '/rachat',   label: 'Rachat',        Icon: ClipboardList, end: false },
+  { to: '/rachat',   label: 'Revendre',      Icon: ClipboardList, end: false },
   { to: '/mes-reservations', label: 'Compte', Icon: User, end: false },
 ];
 

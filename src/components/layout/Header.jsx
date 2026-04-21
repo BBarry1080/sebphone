@@ -22,7 +22,7 @@ const navLinks = [
   { to: '/samsung',  label: 'Samsung', end: false },
   { to: '/occasions',     label: 'Occasions',     end: false },
   { to: '/reconditiones', label: 'Reconditionnés', end: false },
-  { to: '/rachat',        label: 'Rachat',        end: false },
+  { to: '/rachat',        label: 'Revendre',      end: false },
 ];
 
 export default function Header() {
