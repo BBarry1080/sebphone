@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar, Wrench } from 'lucide-react';
 import Button from '../ui/Button';
 import { ACCESSORY_PACKS } from '../../data/accessories';
 import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { sendConfirmationEmail } from '../../utils/sendEmail';
+import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -180,19 +181,94 @@ export default function ReservationForm({ phone }) {
       className="flex flex-col gap-6"
     >
       {/* Résumé téléphone */}
-      <div className="bg-[#F5F5F5] rounded-2xl p-4 flex items-center gap-4">
-        <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center text-[#00B4CC] flex-shrink-0">
-          <CreditCard size={24} />
-        </div>
-        <div className="flex-1">
-          <p className="font-semibold text-[#1B2A4A] text-sm">{phone?.name || phone?.model}</p>
-          {packPrice > 0 && (
-            <p className="text-xs text-[#555]">{ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.label} +{packPrice}€</p>
-          )}
-          <p className="text-[#00B4CC] font-bold">{totalPrice}€</p>
-          <p className="text-xs text-[#555555]">Acompte à la réservation : <strong>50€</strong></p>
-        </div>
-      </div>
+      {(() => {
+        const imgSrc = getPhoneImage(phone?.name || phone?.model, phone?.color)
+        const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
+        const conditionStyle = {
+          neuf:          'bg-blue-50 text-blue-700 border-blue-200',
+          reconditionne: 'bg-cyan-50 text-[#00B4CC] border-cyan-200',
+          occasion:      'bg-orange-50 text-orange-600 border-orange-200',
+        }
+        const battery = phone?.battery_health
+        const batteryColor = battery >= 85 ? 'bg-green-400' : battery >= 75 ? 'bg-orange-400' : 'bg-red-400'
+        const batteryText  = battery >= 85 ? 'text-green-700' : battery >= 75 ? 'text-orange-600' : 'text-red-600'
+        const parts = phone?.parts || []
+        const partsText = parts.length > 0 ? parts.map((p) => p.part_type).join(', ') : null
+
+        return (
+          <div className="bg-[#F5F5F5] rounded-2xl p-4 flex gap-4">
+            {/* Photo */}
+            <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <img
+                src={imgSrc}
+                alt={phone?.name || phone?.model}
+                className="w-full h-full object-contain p-2"
+                onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+              />
+            </div>
+
+            {/* Infos */}
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-[#1B2A4A] text-sm leading-tight mb-1.5">{phone?.name || phone?.model}</p>
+
+              {/* Badges : condition + grade */}
+              <div className="flex flex-wrap gap-1.5 mb-1.5">
+                {phone?.condition && (
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${conditionStyle[phone.condition] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                    {conditionLabel[phone.condition] || phone.condition}
+                  </span>
+                )}
+                {phone?.grade && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-gray-100 text-gray-600 border-gray-200">
+                    {phone.grade}
+                  </span>
+                )}
+                {phone?.storage && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-gray-100 text-gray-600 border-gray-200">
+                    {phone.storage}
+                  </span>
+                )}
+                {phone?.color && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-gray-100 text-gray-600 border-gray-200">
+                    {phone.color}
+                  </span>
+                )}
+              </div>
+
+              {/* Batterie */}
+              {battery && (
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className="text-[10px] text-gray-500">Batterie</span>
+                  <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className={`h-full ${batteryColor} rounded-full`} style={{ width: `${battery}%` }} />
+                  </div>
+                  <span className={`text-[10px] font-semibold ${batteryText}`}>{battery}%</span>
+                </div>
+              )}
+
+              {/* Pièces remplacées */}
+              {partsText && (
+                <div className="flex items-start gap-1 mb-1.5">
+                  <Wrench size={10} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                  <span className="text-[10px] text-[#555]">{partsText}</span>
+                </div>
+              )}
+              {phone?.condition === 'reconditionne' && !partsText && (
+                <p className="text-[10px] text-[#555] mb-1.5">Aucune réparation — État original</p>
+              )}
+
+              {/* Prix */}
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="font-bold text-[#00B4CC] text-base">{totalPrice}€</span>
+                {packPrice > 0 && (
+                  <span className="text-[10px] text-[#555]">dont pack +{packPrice}€</span>
+                )}
+              </div>
+              <p className="text-[10px] text-[#555555]">Acompte à la réservation : <strong>50€</strong></p>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Infos personnelles */}
       <div>
