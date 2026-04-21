@@ -352,9 +352,14 @@ export default function ReservationForm({ phone }) {
               >
                 <div className="flex items-center justify-between w-full mb-2">
                   <span className="font-semibold text-sm text-[#1B2A4A]">{pack.label}</span>
-                  <span className={`text-lg font-bold ${pack.price === 0 ? 'text-gray-400' : 'text-[#1B2A4A]'}`}>
-                    {pack.price === 0 ? 'Gratuit' : `+${pack.price}€`}
-                  </span>
+                  {pack.price === 0 ? (
+                    <span className="text-lg font-bold text-gray-400">Gratuit</span>
+                  ) : (
+                    <div className="flex flex-col items-end">
+                      <span className="text-xs text-gray-400 line-through">+{pack.originalPrice}€</span>
+                      <span className="text-lg font-bold text-[#00B4CC]">+{pack.price}€</span>
+                    </div>
+                  )}
                 </div>
                 {pack.items.length > 0 ? (
                   <ul className="space-y-1">
