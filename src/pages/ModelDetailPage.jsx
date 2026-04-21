@@ -11,15 +11,34 @@ import { colorToHex } from '../components/catalogue/PhoneListCard'
 import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 import { getStartingPrice } from '../data/startingPrices'
 
-function gradeScore(grade) {
-  return { 'A+': 4, 'A': 3, 'B': 2, 'C': 1 }[grade] || 0
+function gradeScore(phone) {
+  if (!phone) return 0
+  if (phone.condition === 'reconditionne') {
+    return { 'A+': 4, 'A': 3, 'B': 2, 'C': 1 }[phone.grade] || 0
+  }
+  return { 'Neuf': 4, 'Comme neuf': 3, 'Très bon état': 2, 'État correct': 1 }[phone.grade] || 0
 }
 
 const GRADE_STYLE = {
-  'A+': 'bg-green-100 text-green-700 border-green-200',
-  'A':  'bg-blue-100 text-blue-700 border-blue-200',
-  'B':  'bg-orange-100 text-orange-700 border-orange-200',
-  'C':  'bg-red-100 text-red-600 border-red-200',
+  'A+':          'bg-green-100 text-green-700 border-green-200',
+  'A':           'bg-blue-100 text-blue-700 border-blue-200',
+  'B':           'bg-orange-100 text-orange-700 border-orange-200',
+  'C':           'bg-red-100 text-red-600 border-red-200',
+  'Neuf':        'bg-blue-100 text-blue-700 border-blue-200',
+  'Comme neuf':  'bg-green-100 text-green-700 border-green-200',
+  'Très bon état': 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  'État correct': 'bg-orange-100 text-orange-700 border-orange-200',
+}
+
+const CONDITION_STYLE = {
+  'neuf':          'bg-blue-50 text-blue-700 border-blue-200',
+  'reconditionne': 'bg-cyan-50 text-[#00B4CC] border-cyan-200',
+  'occasion':      'bg-orange-50 text-orange-600 border-orange-200',
+}
+const CONDITION_LABEL = {
+  'neuf':          'Neuf',
+  'reconditionne': 'Reconditionné',
+  'occasion':      'Occasion',
 }
 
 import { MAGASINS } from '../utils/magasins'
@@ -111,8 +130,8 @@ export default function ModelDetailPage() {
 
   const bestPhone = filtered.reduce((best, p) => {
     if (!best) return p
-    const scoreP    = gradeScore(p.grade) * 100 + (p.battery_health || 0)
-    const scoreBest = gradeScore(best.grade) * 100 + (best.battery_health || 0)
+    const scoreP    = gradeScore(p) * 100 + (p.battery_health || 0)
+    const scoreBest = gradeScore(best) * 100 + (best.battery_health || 0)
     return scoreP > scoreBest ? p : best
   }, null)
 
@@ -286,7 +305,7 @@ export default function ModelDetailPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-[#F8F9FA] border-b border-gray-100">
                       <tr>
-                        {['Grade', 'Batterie', 'Détails', 'Prix', ''].map((h) => (
+                        {['État / Grade', 'Batterie', 'Détails', 'Prix', ''].map((h) => (
                           <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555] uppercase tracking-wide">
                             {h}
                           </th>
@@ -303,16 +322,17 @@ export default function ModelDetailPage() {
                         return (
                           <tr key={phone.id} className={`hover:bg-gray-50 transition-colors ${isBest ? 'bg-cyan-50/40' : ''}`}>
                             <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                {phone.grade ? (
-                                  <span className={`px-2 py-0.5 rounded border text-xs font-bold ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                              <div className="flex flex-col gap-1.5">
+                                <span className={`px-2 py-0.5 rounded border text-xs font-semibold w-fit ${CONDITION_STYLE[phone.condition] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                  {CONDITION_LABEL[phone.condition] || phone.condition}
+                                </span>
+                                {phone.grade && (
+                                  <span className={`px-2 py-0.5 rounded border text-xs font-bold w-fit ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                     {phone.grade}
                                   </span>
-                                ) : (
-                                  <span className="text-[#bbb] text-xs">—</span>
                                 )}
                                 {isBest && (
-                                  <span className="text-[10px] font-bold text-[#00B4CC] bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-full">
+                                  <span className="text-[10px] font-bold text-[#00B4CC] bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-full w-fit">
                                     ★ Meilleur choix
                                   </span>
                                 )}
@@ -369,14 +389,17 @@ export default function ModelDetailPage() {
                         className={`bg-white rounded-2xl border p-4 ${isBest ? 'border-[#00B4CC] bg-cyan-50/30' : 'border-gray-200'}`}
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {phone.grade ? (
-                              <span className={`px-2.5 py-0.5 rounded border text-sm font-bold ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                          <div className="flex flex-col gap-1.5">
+                            <span className={`px-2.5 py-0.5 rounded border text-xs font-semibold w-fit ${CONDITION_STYLE[phone.condition] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                              {CONDITION_LABEL[phone.condition] || phone.condition}
+                            </span>
+                            {phone.grade && (
+                              <span className={`px-2.5 py-0.5 rounded border text-xs font-bold w-fit ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                 {phone.grade}
                               </span>
-                            ) : null}
+                            )}
                             {isBest && (
-                              <span className="text-[10px] font-bold text-[#00B4CC] bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-full">
+                              <span className="text-[10px] font-bold text-[#00B4CC] bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-full w-fit">
                                 ★ Meilleur choix
                               </span>
                             )}

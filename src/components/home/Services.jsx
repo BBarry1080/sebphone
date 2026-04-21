@@ -4,13 +4,15 @@ import { Smartphone, Tablet, Watch, Headphones, Laptop, ShoppingBag } from 'luci
 const services = [
   {
     Icon: Smartphone,
-    title: 'Smartphones reconditionnés',
-    desc: 'iPhone et Samsung reconditionnés. Testés, certifiés et garantis 6 à 24 mois.',
+    title: 'Vente de téléphones',
+    desc: 'iPhone et Samsung au meilleur prix. Testés, certifiés et garantis.',
+    tags: ['Neuf', 'Reconditionné', 'Occasion'],
   },
   {
     Icon: Tablet,
-    title: 'Tablettes reconditionnées',
-    desc: 'iPad et Galaxy Tab reconditionés. Écran parfait, batterie vérifiée, garantie incluse.',
+    title: 'Vente de tablettes',
+    desc: 'iPad et Galaxy Tab. Écran parfait, batterie vérifiée, garantie incluse.',
+    tags: ['Neuf', 'Reconditionné', 'Occasion'],
   },
   {
     Icon: Watch,
@@ -54,7 +56,7 @@ export default function Services() {
         </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
-          {services.map(({ Icon, title, desc }, i) => (
+          {services.map(({ Icon, title, desc, tags }, i) => (
             <motion.div
               key={title}
               initial={{ opacity: 0, y: 30 }}
@@ -67,6 +69,15 @@ export default function Services() {
                 <Icon size={26} className="text-[#00B4CC] group-hover:text-white transition-colors duration-200" />
               </div>
               <h3 className="font-poppins font-semibold text-[#1B2A4A] text-sm md:text-base mb-2">{title}</h3>
+              {tags && (
+                <div className="flex flex-wrap justify-center gap-1 mb-2">
+                  {tags.map((tag) => (
+                    <span key={tag} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-cyan-50 text-[#00B4CC] border border-cyan-100">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
               <p className="text-[#555555] text-xs md:text-sm leading-relaxed">{desc}</p>
             </motion.div>
           ))}

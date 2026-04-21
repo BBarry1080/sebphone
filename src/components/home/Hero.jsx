@@ -84,7 +84,7 @@ export default function Hero() {
               className="flex items-center gap-8 mt-10"
             >
               {[
-                { value: '2000+', label: 'Téléphones vendus' },
+                { value: '5000+', label: 'Téléphones vendus' },
                 { value: '24 mois', label: 'Garantie' },
                 { value: '1h-24h max', label: 'Livraison' },
               ].map((stat) => (
