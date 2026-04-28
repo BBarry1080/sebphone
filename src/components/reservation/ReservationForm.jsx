@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar, Wrench } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar, Wrench, Tag, X } from 'lucide-react';
 import Button from '../ui/Button';
 import { ACCESSORY_PACKS } from '../../data/accessories';
 import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins';
@@ -54,6 +54,10 @@ export default function ReservationForm({ phone }) {
   const [paymentMode,  setPaymentMode]  = useState('acompte');
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [promoInput,   setPromoInput]  = useState('');
+  const [promoCode,    setPromoCode]   = useState(null);
+  const [promoError,   setPromoError]  = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
 
   useEffect(() => {
     if (phoneShops[0]) {
@@ -67,8 +71,51 @@ export default function ReservationForm({ phone }) {
   };
 
   const packPrice  = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.price || 0;
-  const totalPrice = (phone?.price || 0) + packPrice;
+  const basePrice  = (phone?.price || 0) + packPrice;
+  const discount   = promoCode
+    ? promoCode.type === 'percent'
+      ? Math.round(basePrice * promoCode.value / 100)
+      : promoCode.value
+    : 0
+  const totalPrice  = Math.max(0, basePrice - discount);
   const depositPaid = paymentMode === 'total' ? totalPrice : 50;
+
+  const applyPromo = async () => {
+    const code = promoInput.trim().toUpperCase()
+    if (!code) return
+    setPromoError('')
+    setPromoLoading(true)
+    setPromoCode(null)
+
+    if (!isSupabaseReady) {
+      setPromoError('Service indisponible.')
+      setPromoLoading(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('promo_codes')
+      .select('*')
+      .eq('code', code)
+      .eq('active', true)
+      .maybeSingle()
+
+    setPromoLoading(false)
+
+    if (error || !data) { setPromoError('Code invalide ou expiré.'); return }
+    if (data.expires_at && new Date(data.expires_at) < new Date()) { setPromoError('Ce code a expiré.'); return }
+    if (data.max_uses && data.uses_count >= data.max_uses) { setPromoError('Ce code a atteint sa limite d\'utilisation.'); return }
+    if (data.min_order && basePrice < data.min_order) { setPromoError(`Commande minimum de ${data.min_order}€ requis.`); return }
+
+    setPromoCode(data)
+    setPromoError('')
+  }
+
+  const removePromo = () => {
+    setPromoCode(null)
+    setPromoInput('')
+    setPromoError('')
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -106,6 +153,8 @@ export default function ReservationForm({ phone }) {
           reservation_code: reservationCode,
           status:           'en_attente',
           accessory_pack:   selectedPack !== 'none' ? selectedPack : null,
+          promo_code:       promoCode?.code || null,
+          discount_amount:  discount || null,
         }
 
         console.log('3. Validation OK');
@@ -123,6 +172,9 @@ export default function ReservationForm({ phone }) {
 
         console.log('7. Insert OK, mise à jour téléphone...');
         await supabase.from('phones').update({ status: 'reserve' }).eq('id', phone.id)
+        if (promoCode?.id) {
+          await supabase.from('promo_codes').update({ uses_count: (promoCode.uses_count || 0) + 1 }).eq('id', promoCode.id)
+        }
       } else {
         console.log('3. Supabase non disponible — mode offline');
       }
@@ -258,9 +310,15 @@ export default function ReservationForm({ phone }) {
               )}
 
               {/* Prix */}
-              <div className="flex items-baseline gap-1 mt-1">
+              <div className="flex items-baseline gap-1.5 mt-1 flex-wrap">
+                {discount > 0 && (
+                  <span className="text-xs text-gray-400 line-through">{basePrice}€</span>
+                )}
                 <span className="font-bold text-[#00B4CC] text-base">{totalPrice}€</span>
-                {packPrice > 0 && (
+                {discount > 0 && (
+                  <span className="text-[10px] text-green-600 font-semibold">-{discount}€</span>
+                )}
+                {packPrice > 0 && !discount && (
                   <span className="text-[10px] text-[#555]">dont pack +{packPrice}€</span>
                 )}
               </div>
@@ -453,6 +511,49 @@ export default function ReservationForm({ phone }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Code promo */}
+      <div>
+        <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-3 flex items-center gap-2">
+          <Tag size={18} className="text-[#00B4CC]" />
+          Code promo
+        </h3>
+        {promoCode ? (
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+            <div>
+              <p className="text-sm font-bold text-green-700 font-mono">{promoCode.code}</p>
+              <p className="text-xs text-green-600">
+                {promoCode.type === 'percent'
+                  ? `-${promoCode.value}% → -${discount}€`
+                  : `-${promoCode.value}€`}
+              </p>
+            </div>
+            <button type="button" onClick={removePromo} className="p-1 text-green-600 hover:text-red-500 cursor-pointer">
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={promoInput}
+              onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyPromo())}
+              placeholder="Entrez votre code promo"
+              className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all font-mono uppercase"
+            />
+            <button
+              type="button"
+              onClick={applyPromo}
+              disabled={promoLoading || !promoInput.trim()}
+              className="px-5 py-3 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+            >
+              {promoLoading ? '…' : 'Appliquer'}
+            </button>
+          </div>
+        )}
+        {promoError && <p className="text-xs text-red-500 mt-2">{promoError}</p>}
       </div>
 
       {/* Mode de paiement */}
