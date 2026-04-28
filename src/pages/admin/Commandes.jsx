@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Package, RefreshCw, Search } from 'lucide-react'
+import { X, Package, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 
 const STATUS_CONFIG = {
@@ -302,6 +302,18 @@ export default function Commandes() {
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState(null)
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
+
+  const handleDelete = async (o, e) => {
+    e.stopPropagation()
+    if (!window.confirm(`Supprimer définitivement la commande de ${o.customer_name || 'ce client'} ?\nCette action est irréversible.`)) return
+    setDeletingId(o.id)
+    if (isSupabaseReady) {
+      await supabase.from('orders').delete().eq('id', o.id)
+    }
+    setOrders((prev) => prev.filter((x) => x.id !== o.id))
+    setDeletingId(null)
+  }
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -373,7 +385,7 @@ export default function Commandes() {
             <table className="w-full text-sm">
               <thead className="bg-[#F8F9FA] border-b border-gray-100">
                 <tr>
-                  {['#', 'Client', 'Téléphone', 'Mode', 'Acompte', 'Date', 'Statut', 'Voir'].map((h) => (
+                  {['#', 'Client', 'Téléphone', 'Mode', 'Acompte', 'Date', 'Statut', 'Voir', ''].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555555] uppercase tracking-wide">
                       {h}
                     </th>
@@ -408,6 +420,16 @@ export default function Commandes() {
                           className="text-xs font-medium text-[#00B4CC] hover:underline cursor-pointer"
                         >
                           Détails →
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={(e) => handleDelete(o, e)}
+                          disabled={deletingId === o.id}
+                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={15} />
                         </button>
                       </td>
                     </tr>
