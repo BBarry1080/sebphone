@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Smartphone, ClipboardList, Users, Settings, LogOut, Bell, Menu, X, Tag, QrCode,
+  LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut, Bell, Menu, X, Tag, QrCode,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 
 const navItems = [
-  { to: '/admin/dashboard',   label: 'Dashboard',   Icon: LayoutDashboard },
-  { to: '/admin/stock',       label: 'Stock',        Icon: Smartphone },
-  { to: '/admin/commandes',   label: 'Commandes',    Icon: ClipboardList },
-  { to: '/admin/clients',     label: 'Clients',      Icon: Users },
-  { to: '/admin/promoCodes',      label: 'Codes promo',     Icon: Tag },
-  { to: '/admin/verifier-code',  label: 'Vérifier code',   Icon: QrCode },
-  { to: '/admin/parametres',     label: 'Paramètres',      Icon: Settings },
+  { to: '/admin/dashboard',      label: 'Dashboard',     Icon: LayoutDashboard },
+  { to: '/admin/stock',          label: 'Stock',         Icon: Smartphone },
+  { to: '/admin/commandes',      label: 'Commandes',     Icon: ClipboardList },
+  { to: '/admin/promoCodes',     label: 'Codes promo',   Icon: Tag },
+  { to: '/admin/verifier-code',  label: 'Vérifier code', Icon: QrCode },
+  { to: '/admin/parametres',     label: 'Paramètres',    Icon: Settings },
 ]
 
 function SidebarContent({ onClose }) {

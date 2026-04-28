@@ -151,10 +151,8 @@ function OrderPanel({ order, onClose, onRefetch }) {
 
   const handleEncaisser = async () => {
     if (!isSupabaseReady) return
-    const phoneName  = order.phone?.name || order.phone_name || '—'
-    const clientName = order.customer
-      ? `${order.customer.first_name} ${order.customer.last_name}`
-      : order.customer_name || '—'
+    const phoneName  = order.phone_name || order.phone?.model || order.phone?.name || '—'
+    const clientName = order.customer_name || '—'
     if (!window.confirm(
       `Confirmer l'encaissement pour ${clientName} ?\nTéléphone : ${phoneName}\nMontant total : ${order.total_amount || order.deposit_paid || '—'}€`
     )) return
@@ -175,9 +173,7 @@ function OrderPanel({ order, onClose, onRefetch }) {
     alert('✅ Commande encaissée avec succès !')
   }
 
-  const clientName = order.customer
-    ? `${order.customer.first_name} ${order.customer.last_name}`
-    : order.customer_name || '—'
+  const clientName = order.customer_name || '—'
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -185,16 +181,21 @@ function OrderPanel({ order, onClose, onRefetch }) {
       <div className="relative bg-white w-full max-w-[420px] h-full overflow-y-auto shadow-2xl flex flex-col z-10">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="font-poppins font-bold text-[#1B2A4A]">Commande #{order.id}</h2>
+          <h2 className="font-poppins font-bold text-[#1B2A4A]">Commande</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer">
             <X size={18} />
           </button>
         </div>
 
         <div className="flex-1 px-6 py-5 space-y-5">
-          {/* Statut */}
-          <div className="flex items-center gap-3">
+          {/* Statut + code */}
+          <div className="flex items-center gap-3 flex-wrap">
             <StatusBadge status={order.status} />
+            {order.reservation_code && (
+              <span className="font-mono text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                {order.reservation_code}
+              </span>
+            )}
             <span className="text-xs text-[#888]">
               {order.created_at ? new Date(order.created_at).toLocaleDateString('fr-BE') : ''}
             </span>
@@ -204,21 +205,24 @@ function OrderPanel({ order, onClose, onRefetch }) {
           <div className="bg-[#F8F9FA] rounded-xl p-4 space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#888] mb-2">Client</p>
             <p className="font-semibold text-[#1B2A4A]">{clientName}</p>
-            {order.customer?.email && <p className="text-sm text-[#555]">{order.customer.email}</p>}
-            {order.customer?.phone && <p className="text-sm text-[#555]">{order.customer.phone}</p>}
+            {order.customer_email && <p className="text-sm text-[#555]">{order.customer_email}</p>}
+            {order.customer_phone && <p className="text-sm text-[#555]">{order.customer_phone}</p>}
           </div>
 
           {/* Téléphone */}
           <div className="bg-[#F8F9FA] rounded-xl p-4 space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#888] mb-2">Téléphone</p>
             <p className="font-semibold text-[#1B2A4A]">
-              {order.phone?.brand} {order.phone?.name || '—'}
+              {order.phone_name || order.phone?.model || order.phone?.name || '—'}
             </p>
-            {order.phone?.grade && (
-              <p className="text-sm text-[#555]">Grade {order.phone.grade} · {order.phone.storage}</p>
+            {(order.phone_storage || order.phone_color || order.phone_grade) && (
+              <p className="text-sm text-[#555]">
+                {[order.phone_grade, order.phone_storage, order.phone_color].filter(Boolean).join(' · ')}
+              </p>
             )}
             <p className="font-bold text-[#1B2A4A]">
-              {order.deposit_paid != null ? `Acompte : ${order.deposit_paid}€` : ''}
+              {order.total_amount != null ? `Total : ${order.total_amount}€` : ''}
+              {order.deposit_amount != null ? ` · Acompte : ${order.deposit_amount}€` : ''}
             </p>
           </div>
 
@@ -306,10 +310,11 @@ export default function Commandes() {
       setLoading(false)
       return
     }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('orders')
-      .select('*, phone:phones(name, brand, grade, storage), customer:customers(first_name, last_name, email, phone)')
+      .select('*, phone:phones(name, brand, model, grade, storage, color)')
       .order('created_at', { ascending: false })
+    if (error) console.error('fetchOrders error:', error)
     setOrders(data || [])
     setLoading(false)
   }
@@ -377,15 +382,13 @@ export default function Commandes() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((o) => {
-                  const clientName = o.customer
-                    ? `${o.customer.first_name} ${o.customer.last_name}`
-                    : o.customer_name || '—'
+                  const clientName = o.customer_name || '—'
                   return (
                     <tr key={o.id} className="hover:bg-[#F8F9FA] transition-colors">
                       <td className="px-4 py-3 text-[#888] font-mono text-xs">#{o.id}</td>
                       <td className="px-4 py-3 font-medium text-[#1B2A4A]">{clientName}</td>
                       <td className="px-4 py-3 text-[#555]">
-                        {o.phone?.brand} {o.phone?.name || '—'}
+                        {o.phone_name || o.phone?.model || o.phone?.name || '—'}
                       </td>
                       <td className="px-4 py-3 text-[#555]">
                         {o.delivery_mode === 'livraison' ? '🚚 Livraison' : '🏪 Click & Collect'}
