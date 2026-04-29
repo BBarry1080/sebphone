@@ -6,6 +6,7 @@ import { MAGASINS } from '../utils/magasins';
 import { useState, useEffect } from 'react';
 import StatusBadge from '../components/ui/StatusBadge';
 import StarRating from '../components/ui/StarRating';
+import { charmPrice } from '../utils/charmPrice';
 import { useCart } from '../context/CartContext';
 import Spinner from '../components/ui/Spinner';
 
@@ -167,8 +168,8 @@ export default function PhoneDetailPage() {
 
           {/* Price */}
           <div className="flex items-baseline gap-3 flex-wrap">
-            <span className="font-poppins font-bold text-3xl text-[#1B2A4A]">{basePrice}€</span>
-            <span className="text-gray-400 line-through text-lg">{originalPrice}€</span>
+            <span className="font-poppins font-bold text-3xl text-[#1B2A4A]">{charmPrice(basePrice)}€</span>
+            <span className="text-gray-400 line-through text-lg">{charmPrice(originalPrice)}€</span>
             <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">
               Économisez {savings}€
             </span>
@@ -333,8 +334,8 @@ export default function PhoneDetailPage() {
                 </p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="font-bold text-[#1B2A4A] text-lg">{basePrice}€</p>
-                <p className="text-xs text-gray-400 line-through">{originalPrice}€</p>
+                <p className="font-bold text-[#1B2A4A] text-lg">{charmPrice(basePrice)}€</p>
+                <p className="text-xs text-gray-400 line-through">{charmPrice(originalPrice)}€</p>
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Smartphone } from 'lucide-react'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
+import { charmPrice } from '../../utils/charmPrice'
 
 export const colorToHex = (colorName) => {
   const map = {
@@ -82,7 +83,7 @@ function GroupCard({ group }) {
         )}
         <div className="flex items-baseline gap-1 mt-1.5">
           <span className="text-[11px] text-gray-400">À partir de</span>
-          <span className="font-bold text-[16px] text-[#1B2A4A]">{refPrice ?? group.basePrice}€</span>
+          <span className="font-bold text-[16px] text-[#1B2A4A]">{charmPrice(refPrice ?? group.basePrice)}€</span>
         </div>
       </div>
     </div>
@@ -138,7 +139,7 @@ function GroupCardGrid({ group }) {
 
         <div className="mt-auto">
           <p className="text-[10px] text-gray-400">À partir de</p>
-          <p className="font-bold text-[18px] text-[#1B2A4A] leading-tight">{refPrice ?? group.basePrice}€</p>
+          <p className="font-bold text-[18px] text-[#1B2A4A] leading-tight">{charmPrice(refPrice ?? group.basePrice)}€</p>
         </div>
       </div>
     </div>
@@ -197,7 +198,7 @@ function PhoneCard({ phone, onClick }) {
         )}
         <div className="flex items-baseline gap-1">
           <span className="text-[11px] text-gray-400">À partir de</span>
-          <span className="font-bold text-[16px] text-[#1B2A4A]">{phone.price}€</span>
+          <span className="font-bold text-[16px] text-[#1B2A4A]">{charmPrice(phone.price)}€</span>
         </div>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { CheckCircle, Truck, RotateCcw, Package } from 'lucide-react';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 import { getStartingPrice } from '../../data/startingPrices';
+import { charmPrice } from '../../utils/charmPrice';
 
 const COLOR_HEX = {
   'noir': '#1C1C1E', 'minuit': '#1C1C1E', 'black': '#1C1C1E', 'midnight': '#1C1C1E',
@@ -245,7 +246,7 @@ export default function WeeklyOffer() {
 
               <div>
                 <p className="text-xs text-[#555555]">À partir de</p>
-                <p className="font-poppins font-bold text-[#1B2A4A] text-2xl">{displayPrice}€</p>
+                <p className="font-poppins font-bold text-[#1B2A4A] text-2xl">{charmPrice(displayPrice)}€</p>
               </div>
 
               {outOfStock ? (

@@ -10,6 +10,7 @@ import Spinner from '../components/ui/Spinner'
 import { colorToHex } from '../components/catalogue/PhoneListCard'
 import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 import { getStartingPrice } from '../data/startingPrices'
+import { charmPrice } from '../utils/charmPrice'
 
 function gradeScore(phone) {
   if (!phone) return 0
@@ -197,7 +198,7 @@ export default function ModelDetailPage() {
                 <p className="text-[#555] text-sm mb-4">
                   À partir de{' '}
                   <span className="font-bold text-xl text-[#1B2A4A]">
-                    {refPrice ?? minPrice}€
+                    {charmPrice(refPrice ?? minPrice)}€
                   </span>
                 </p>
               )}
@@ -354,7 +355,7 @@ export default function ModelDetailPage() {
                               )}
                             </td>
                             <td className="px-4 py-3">
-                              <span className="font-bold text-[#1B2A4A] text-base">{phone.price}€</span>
+                              <span className="font-bold text-[#1B2A4A] text-base">{charmPrice(phone.price)}€</span>
                             </td>
                             <td className="px-4 py-3">
                               <button
@@ -404,7 +405,7 @@ export default function ModelDetailPage() {
                               </span>
                             )}
                           </div>
-                          <span className="font-bold text-[#1B2A4A] text-lg">{phone.price}€</span>
+                          <span className="font-bold text-[#1B2A4A] text-lg">{charmPrice(phone.price)}€</span>
                         </div>
 
                         <div className="space-y-1.5 mb-3 text-xs text-[#555]">

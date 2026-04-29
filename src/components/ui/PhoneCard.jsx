@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { charmPrice } from '../../utils/charmPrice';
 import { Smartphone } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import GradeTag from './GradeTag';
@@ -59,7 +60,7 @@ export default function PhoneCard({ phone, onClick, index = 0 }) {
           </p>
         </div>
 
-        <p className="text-xl font-bold text-[#00B4CC]">{phone.price}€</p>
+        <p className="text-xl font-bold text-[#00B4CC]">{charmPrice(phone.price)}€</p>
 
         <StatusBadge status={phone.status} size="sm" />
 
