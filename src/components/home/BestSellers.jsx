@@ -26,9 +26,9 @@ function BestSellerCard({ phone }) {
     : phone.grade || 'Occasion';
 
   const conditionClass =
-    phone.condition === 'neuf' ? 'bg-blue-100 text-blue-700'
-    : phone.condition === 'reconditionne' ? 'bg-green-100 text-green-700'
-    : 'bg-orange-100 text-orange-700';
+    phone.condition === 'neuf' ? 'bg-green-100 text-green-700'
+    : phone.condition === 'reconditionne' ? 'bg-cyan-100 text-cyan-700'
+    : 'bg-blue-100 text-blue-700';
 
   return (
     <div

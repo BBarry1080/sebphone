@@ -36,9 +36,9 @@ function modelToSlug(name) {
 
 const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
 const conditionColor = {
-  neuf:          'bg-blue-100 text-blue-700',
+  neuf:          'bg-green-100 text-green-700',
   reconditionne: 'bg-cyan-100 text-cyan-700',
-  occasion:      'bg-orange-100 text-orange-700',
+  occasion:      'bg-blue-100 text-blue-700',
 }
 
 /* ── Grouped model card — vue LISTE ── */

@@ -28,9 +28,9 @@ const STATUS_COLORS = {
   vendu:      'bg-gray-100 text-gray-600',
 }
 const CONDITION_COLORS = {
-  neuf:          'bg-blue-100 text-blue-700',
+  neuf:          'bg-green-100 text-green-700',
   reconditionne: 'bg-cyan-100 text-cyan-700',
-  occasion:      'bg-orange-100 text-orange-700',
+  occasion:      'bg-blue-100 text-blue-700',
 }
 const PARTS_LIST = [
   { key: 'ecran',    label: 'Écran',            hasQuality: true  },

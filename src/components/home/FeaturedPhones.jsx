@@ -19,9 +19,9 @@ function toSlug(model) {
 }
 
 const conditionBadge = {
-  neuf:          { label: 'Neuf',          cls: 'bg-blue-100 text-blue-700' },
-  reconditionne: { label: 'Reconditionné', cls: 'bg-green-100 text-green-700' },
-  occasion:      { label: 'Occasion',      cls: 'bg-orange-100 text-orange-700' },
+  neuf:          { label: 'Neuf',          cls: 'bg-green-100 text-green-700' },
+  reconditionne: { label: 'Reconditionné', cls: 'bg-cyan-100 text-cyan-700' },
+  occasion:      { label: 'Occasion',      cls: 'bg-blue-100 text-blue-700' },
 };
 
 function PhoneCard({ phone }) {

@@ -21,20 +21,21 @@ function gradeScore(phone) {
 }
 
 const GRADE_STYLE = {
-  'A+':          'bg-green-100 text-green-700 border-green-200',
-  'A':           'bg-blue-100 text-blue-700 border-blue-200',
-  'B':           'bg-orange-100 text-orange-700 border-orange-200',
-  'C':           'bg-red-100 text-red-600 border-red-200',
-  'Neuf':        'bg-blue-100 text-blue-700 border-blue-200',
-  'Comme neuf':  'bg-green-100 text-green-700 border-green-200',
-  'Très bon état': 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  'État correct': 'bg-orange-100 text-orange-700 border-orange-200',
+  'A+':            'bg-green-100 text-green-700 border-green-200',
+  'A':             'bg-blue-100 text-blue-700 border-blue-200',
+  'B':             'bg-cyan-100 text-cyan-700 border-cyan-200',
+  'C':             'bg-cyan-100 text-cyan-700 border-cyan-200',
+  'Neuf':          'bg-green-100 text-green-700 border-green-200',
+  'Comme neuf':    'bg-green-100 text-green-700 border-green-200',
+  'Parfait état':  'bg-green-100 text-green-700 border-green-200',
+  'Très bon état': 'bg-blue-100 text-blue-700 border-blue-200',
+  'État correct':  'bg-cyan-100 text-cyan-700 border-cyan-200',
 }
 
 const CONDITION_STYLE = {
-  'neuf':          'bg-blue-50 text-blue-700 border-blue-200',
-  'reconditionne': 'bg-cyan-50 text-[#00B4CC] border-cyan-200',
-  'occasion':      'bg-orange-50 text-orange-600 border-orange-200',
+  'neuf':          'bg-green-50 text-green-700 border-green-200',
+  'reconditionne': 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  'occasion':      'bg-blue-50 text-blue-700 border-blue-200',
 }
 const CONDITION_LABEL = {
   'neuf':          'Neuf',
