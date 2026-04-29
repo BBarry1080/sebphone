@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Smartphone, Shield, Star, MapPin, ExternalLink, X } from 'lucide-react';
+import { ArrowRight, Shield, Star, MapPin, ExternalLink, X } from 'lucide-react';
 
 const STORES = [
   { name: "Anderlecht", address: "Chaussée de Mons 711, 1070 Anderlecht", maps: "https://maps.google.com/?q=Chaussée+de+Mons+711+Anderlecht" },
@@ -119,7 +119,7 @@ export default function Hero() {
                 onClick={() => navigate('/rachat')}
                 className="flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-medium px-8 py-4 rounded-xl text-base transition-all duration-200 border border-white/30 min-h-[56px]"
               >
-                Revendre
+                Revendre mon téléphone
               </button>
               <button
                 onClick={() => setShowStores(true)}
@@ -157,42 +157,58 @@ export default function Hero() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="hidden md:flex items-center justify-center relative h-80"
           >
-            {/* Center phone */}
+            {/* Center phone — iPhone 15 Pro */}
             <motion.div
               animate={{ y: [0, -12, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
               className="relative z-20"
             >
-              <div className="w-32 h-56 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 flex items-center justify-center shadow-2xl">
-                <Smartphone size={64} className="text-white" strokeWidth={1} />
+              <div className="w-32 h-56 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 overflow-hidden shadow-2xl">
+                <img
+                  src="/images/iphones/iphone-15-pro-titane-naturel.png"
+                  alt="iPhone 15 Pro"
+                  className="w-full h-full object-contain p-2"
+                  onError={(e) => { e.target.style.display='none' }}
+                />
               </div>
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#00B4CC] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
                 iPhone 15 Pro
               </div>
             </motion.div>
 
-            {/* Left phone */}
+            {/* Left phone — iPhone 17 Bleu */}
             <motion.div
               animate={{ y: [0, -8, 0] }}
               transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
               className="absolute left-4 top-8 z-10"
             >
-              <div className="w-24 h-44 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 flex items-center justify-center shadow-xl opacity-80">
-                <Smartphone size={48} className="text-white/80" strokeWidth={1} />
+              <div className="w-24 h-44 bg-sky-400/20 backdrop-blur-sm rounded-2xl border border-sky-300/30 overflow-hidden shadow-xl opacity-90">
+                <img
+                  src="/images/iphones/iphone-17-noir.png"
+                  alt="iPhone 17"
+                  className="w-full h-full object-contain p-2"
+                  style={{ filter: 'hue-rotate(200deg) saturate(1.4) brightness(1.1)' }}
+                  onError={(e) => { e.target.style.display='none' }}
+                />
               </div>
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#1B2A4A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-white/20">
-                Samsung S23
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-sky-300/30">
+                iPhone 17
               </div>
             </motion.div>
 
-            {/* Right phone */}
+            {/* Right phone — iPhone 14 Pro */}
             <motion.div
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
               className="absolute right-4 top-8 z-10"
             >
-              <div className="w-24 h-44 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 flex items-center justify-center shadow-xl opacity-80">
-                <Smartphone size={48} className="text-white/80" strokeWidth={1} />
+              <div className="w-24 h-44 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 overflow-hidden shadow-xl opacity-90">
+                <img
+                  src="/images/iphones/iphone-14-pro-noir-cosmos.png"
+                  alt="iPhone 14 Pro"
+                  className="w-full h-full object-contain p-2"
+                  onError={(e) => { e.target.style.display='none' }}
+                />
               </div>
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#1B2A4A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-white/20">
                 iPhone 14 Pro
