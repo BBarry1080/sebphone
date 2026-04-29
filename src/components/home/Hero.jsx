@@ -163,11 +163,12 @@ export default function Hero() {
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
               className="relative z-20"
             >
-              <div className="w-32 h-56 bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 overflow-hidden shadow-2xl">
+              <div className="w-32 h-56 rounded-3xl border border-white/20 overflow-hidden shadow-2xl">
                 <img
                   src="/images/iphones/iphone-15-pro-titane-naturel.png"
                   alt="iPhone 15 Pro"
                   className="w-full h-full object-contain p-2"
+                  style={{ mixBlendMode: 'multiply' }}
                   onError={(e) => { e.target.style.display='none' }}
                 />
               </div>
@@ -182,12 +183,12 @@ export default function Hero() {
               transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
               className="absolute left-4 top-8 z-10"
             >
-              <div className="w-24 h-44 bg-sky-400/20 backdrop-blur-sm rounded-2xl border border-sky-300/30 overflow-hidden shadow-xl opacity-90">
+              <div className="w-24 h-44 rounded-2xl border border-sky-300/30 overflow-hidden shadow-xl opacity-90">
                 <img
                   src="/images/iphones/iphone-17-noir.png"
                   alt="iPhone 17"
                   className="w-full h-full object-contain p-2"
-                  style={{ filter: 'hue-rotate(200deg) saturate(1.4) brightness(1.1)' }}
+                  style={{ mixBlendMode: 'multiply', filter: 'hue-rotate(200deg) saturate(1.4) brightness(1.1)' }}
                   onError={(e) => { e.target.style.display='none' }}
                 />
               </div>
@@ -202,11 +203,12 @@ export default function Hero() {
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
               className="absolute right-4 top-8 z-10"
             >
-              <div className="w-24 h-44 bg-white/8 backdrop-blur-sm rounded-2xl border border-white/15 overflow-hidden shadow-xl opacity-90">
+              <div className="w-24 h-44 rounded-2xl border border-white/15 overflow-hidden shadow-xl opacity-90">
                 <img
                   src="/images/iphones/iphone-14-pro-noir-cosmos.png"
                   alt="iPhone 14 Pro"
                   className="w-full h-full object-contain p-2"
+                  style={{ mixBlendMode: 'multiply' }}
                   onError={(e) => { e.target.style.display='none' }}
                 />
               </div>
