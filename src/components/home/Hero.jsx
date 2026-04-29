@@ -163,13 +163,12 @@ export default function Hero() {
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
               className="relative z-20"
             >
-              <div className="w-32 h-56 rounded-3xl border border-white/20 overflow-hidden shadow-2xl">
+              <div className="w-32 h-56 flex items-center justify-center drop-shadow-2xl">
                 <img
-                  src="/images/iphones/iphone-15-pro-titane-naturel.png"
+                  src="https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-1inch-naturaltitanium?wid=400&hei=400&fmt=png-alpha&qlt=80"
                   alt="iPhone 15 Pro"
-                  className="w-full h-full object-contain p-2"
-                  style={{ mixBlendMode: 'multiply' }}
-                  onError={(e) => { e.target.style.display='none' }}
+                  className="w-full h-full object-contain"
+                  onError={(e) => { e.target.src = '/images/iphones/iphone-15-pro-titane-naturel.png' }}
                 />
               </div>
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#00B4CC] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
@@ -183,16 +182,15 @@ export default function Hero() {
               transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
               className="absolute left-4 top-8 z-10"
             >
-              <div className="w-24 h-44 rounded-2xl border border-sky-300/30 overflow-hidden shadow-xl opacity-90">
+              <div className="w-24 h-44 flex items-center justify-center drop-shadow-xl opacity-90">
                 <img
-                  src="/images/iphones/iphone-17-noir.png"
+                  src="https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-17-finish-select-202509-6-1inch-skyblue?wid=400&hei=400&fmt=png-alpha&qlt=80"
                   alt="iPhone 17"
-                  className="w-full h-full object-contain p-2"
-                  style={{ mixBlendMode: 'multiply', filter: 'hue-rotate(200deg) saturate(1.4) brightness(1.1)' }}
-                  onError={(e) => { e.target.style.display='none' }}
+                  className="w-full h-full object-contain"
+                  onError={(e) => { e.target.src = '/images/iphones/iphone-17-noir.png'; e.target.style.filter = 'hue-rotate(200deg) saturate(1.4)' }}
                 />
               </div>
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-sky-300/30">
+              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
                 iPhone 17
               </div>
             </motion.div>
@@ -203,13 +201,12 @@ export default function Hero() {
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
               className="absolute right-4 top-8 z-10"
             >
-              <div className="w-24 h-44 rounded-2xl border border-white/15 overflow-hidden shadow-xl opacity-90">
+              <div className="w-24 h-44 flex items-center justify-center drop-shadow-xl opacity-90">
                 <img
-                  src="/images/iphones/iphone-14-pro-noir-cosmos.png"
+                  src="https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-14-pro-finish-select-202209-61inch-deeppurple?wid=400&hei=400&fmt=png-alpha&qlt=80"
                   alt="iPhone 14 Pro"
-                  className="w-full h-full object-contain p-2"
-                  style={{ mixBlendMode: 'multiply' }}
-                  onError={(e) => { e.target.style.display='none' }}
+                  className="w-full h-full object-contain"
+                  onError={(e) => { e.target.src = '/images/iphones/iphone-14-pro-noir-cosmos.png' }}
                 />
               </div>
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#1B2A4A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-white/20">
