@@ -17,7 +17,7 @@ import { getStartingPrice } from '../../data/startingPrices'
 
 const CONDITIONS = ['neuf', 'reconditionne', 'occasion']
 const CONDITION_LABELS = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
-const GRADES = ['Comme neuf', 'Très bon état', 'État correct']
+const GRADES = ['Bon état', 'Très bon état', 'Comme neuf', 'Neuf']
 const FOURNISSEURS = ['SebPhone', 'Molenbeek', 'Louise', 'Anderlecht']
 const LOCATIONS = ['Molenbeek', 'Louise', 'Anderlecht', 'SebPhone', 'Autre']
 const STATUSES = ['disponible', 'reserve', 'vendu']

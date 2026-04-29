@@ -21,15 +21,14 @@ function gradeScore(phone) {
 }
 
 const GRADE_STYLE = {
+  'Neuf':          'bg-green-100 text-green-700 border-green-200',
+  'Comme neuf':    'bg-green-100 text-green-700 border-green-200',
+  'Très bon état': 'bg-blue-100 text-blue-700 border-blue-200',
+  'Bon état':      'bg-cyan-100 text-cyan-700 border-cyan-200',
   'A+':            'bg-green-100 text-green-700 border-green-200',
   'A':             'bg-blue-100 text-blue-700 border-blue-200',
   'B':             'bg-cyan-100 text-cyan-700 border-cyan-200',
   'C':             'bg-cyan-100 text-cyan-700 border-cyan-200',
-  'Neuf':          'bg-green-100 text-green-700 border-green-200',
-  'Comme neuf':    'bg-green-100 text-green-700 border-green-200',
-  'Parfait état':  'bg-green-100 text-green-700 border-green-200',
-  'Très bon état': 'bg-blue-100 text-blue-700 border-blue-200',
-  'État correct':  'bg-cyan-100 text-cyan-700 border-cyan-200',
 }
 
 const CONDITION_STYLE = {

@@ -21,10 +21,10 @@ const COLORS_BY_PHONE = {
 };
 
 const GRADES_CONFIG = [
-  { id: 'imparfait', label: 'Imparfait', warranty: '6 mois', priceAdj: -80, desc: 'Traces prononcées, batterie compatible' },
-  { id: 'correct',   label: 'Correct',   warranty: '12 mois', priceAdj: -40, desc: 'Quelques traces, batterie origine' },
-  { id: 'tres_bon',  label: 'Très bon',  warranty: '12 mois', priceAdj: 0,   desc: 'Peu de traces, batterie origine' },
-  { id: 'parfait',   label: 'Parfait',   warranty: '24 mois', priceAdj: 50,  desc: 'Aucune trace, comme neuf' },
+  { id: 'bon_etat',      label: 'Bon état',      warranty: '24 mois', priceAdj: -80, desc: 'Traces visibles, batterie origine' },
+  { id: 'tres_bon_etat', label: 'Très bon état', warranty: '24 mois', priceAdj: -40, desc: 'Peu de traces, batterie origine' },
+  { id: 'comme_neuf',    label: 'Comme neuf',    warranty: '24 mois', priceAdj: 0,   desc: 'Aucune trace visible, batterie origine' },
+  { id: 'neuf',          label: 'Neuf',          warranty: '24 mois', priceAdj: 50,  desc: 'Aucune trace — comme sorti de boîte' },
 ];
 
 const STORAGES_CONFIG = [
