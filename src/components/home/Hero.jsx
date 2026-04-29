@@ -1,11 +1,58 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Smartphone, Shield, Star } from 'lucide-react';
+import { ArrowRight, Smartphone, Shield, Star, MapPin, ExternalLink, X } from 'lucide-react';
+
+const STORES = [
+  { name: "Anderlecht", address: "Chaussée de Mons 711, 1070 Anderlecht", maps: "https://maps.google.com/?q=Chaussée+de+Mons+711+Anderlecht" },
+  { name: "Molenbeek", address: "Rue de l'Église Sainte-Anne 93, 1081 Molenbeek", maps: "https://maps.google.com/?q=Rue+Eglise+Sainte+Anne+93+Molenbeek" },
+  { name: "Louise", address: "Rue du Bailli 22, 1000 Bruxelles", maps: "https://maps.google.com/?q=Rue+du+Bailli+22+Bruxelles" },
+  { name: "Rue Neuve", address: "Pass. du Nord 23, 1000 Bruxelles", maps: "https://maps.google.com/?q=Passage+du+Nord+23+Bruxelles" },
+  { name: "Tubize", address: "Rue de Bruxelles 18, 1400 Tubize", maps: "https://maps.google.com/?q=Rue+de+Bruxelles+18+Tubize" },
+  { name: "Saint-Gilles", address: "Chaussée de Forest 26, Saint-Gilles", maps: "https://maps.google.com/?q=Chaussée+de+Forest+26+Saint-Gilles" },
+]
+
+function StoresModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="font-poppins font-bold text-[#1B2A4A] text-lg">Nos points de vente</h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
+          {STORES.map((store) => (
+            <div key={store.name} className="flex items-start justify-between p-4">
+              <div className="flex items-start gap-3">
+                <MapPin size={18} className="text-[#00B4CC] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-[#1B2A4A]">Seb Telecom — {store.name}</p>
+                  <p className="text-sm text-gray-500">{store.address}</p>
+                </div>
+              </div>
+              <a href={store.maps} target="_blank" rel="noopener noreferrer"
+                className="text-xs text-[#00B4CC] font-medium flex items-center gap-1 flex-shrink-0 ml-4 hover:underline">
+                <ExternalLink size={12} />
+                Maps
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Hero() {
   const navigate = useNavigate();
+  const [showStores, setShowStores] = useState(false);
 
   return (
+    <>
+    {showStores && <StoresModal onClose={() => setShowStores(false)} />}
     <section
       className="relative overflow-hidden min-h-[85vh] md:min-h-[75vh] flex items-center"
       style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #00B4CC 100%)' }}
@@ -72,7 +119,14 @@ export default function Hero() {
                 onClick={() => navigate('/rachat')}
                 className="flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-medium px-8 py-4 rounded-xl text-base transition-all duration-200 border border-white/30 min-h-[56px]"
               >
-                Racheter mon téléphone
+                Revendre
+              </button>
+              <button
+                onClick={() => setShowStores(true)}
+                className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-medium px-8 py-4 rounded-xl text-base transition-all duration-200 border border-white/20 min-h-[56px]"
+              >
+                <MapPin size={18} />
+                Nos points de vente
               </button>
             </motion.div>
 
@@ -175,5 +229,6 @@ export default function Hero() {
         </svg>
       </div>
     </section>
+    </>
   );
 }
