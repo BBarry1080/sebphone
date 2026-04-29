@@ -1,7 +1,54 @@
 import { useState } from 'react'
-import { ArrowLeft, CheckCircle, Phone, TrendingDown } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Phone, TrendingDown, MapPin, ExternalLink, X } from 'lucide-react'
 import { IPHONE_DATABASE } from '../data/iphoneDatabase'
 import { STARTING_PRICES } from '../data/startingPrices'
+
+const STORES = [
+  { name: "Anderlecht", address: "Chaussée de Mons 711, 1070 Anderlecht", maps: "https://maps.google.com/?q=Chaussée+de+Mons+711+Anderlecht" },
+  { name: "Molenbeek", address: "Rue de l'Église Sainte-Anne 93, 1081 Molenbeek", maps: "https://maps.google.com/?q=Rue+Eglise+Sainte+Anne+93+Molenbeek" },
+  { name: "Louise", address: "Rue du Bailli 22, 1000 Bruxelles", maps: "https://maps.google.com/?q=Rue+du+Bailli+22+Bruxelles" },
+  { name: "Rue Neuve", address: "Pass. du Nord 23, 1000 Bruxelles", maps: "https://maps.google.com/?q=Passage+du+Nord+23+Bruxelles" },
+  { name: "Tubize", address: "Rue de Bruxelles 18, 1400 Tubize", maps: "https://maps.google.com/?q=Rue+de+Bruxelles+18+Tubize" },
+  { name: "Saint-Gilles", address: "Chaussée de Forest 26, Saint-Gilles", maps: "https://maps.google.com/?q=Chaussée+de+Forest+26+Saint-Gilles" },
+]
+
+function StoresModal({ onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10 overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="font-poppins font-bold text-[#1B2A4A] text-lg">Nos points de vente</h2>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="divide-y divide-gray-100 max-h-[70vh] overflow-y-auto">
+          {STORES.map((store) => (
+            <div key={store.name} className="flex items-start justify-between p-4 border-b border-gray-100">
+              <div className="flex items-start gap-3">
+                <MapPin size={18} className="text-[#00B4CC] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-[#1B2A4A]">Seb Telecom — {store.name}</p>
+                  <p className="text-sm text-gray-500">{store.address}</p>
+                </div>
+              </div>
+              <a
+                href={store.maps}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#00B4CC] font-medium flex items-center gap-1 flex-shrink-0 ml-4 hover:underline"
+              >
+                <ExternalLink size={12} />
+                Maps
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Prix de base rachat = ~45% du prix de référence
 function getBaseRachat(model) {
@@ -121,6 +168,7 @@ function SummaryPanel({ model, storage, answers, estimatedPrice }) {
 }
 
 export default function Rachat() {
+  const [showStores, setShowStores] = useState(false)
   const [step, setStep]       = useState(1)
   const [model, setModel]     = useState('')
   const [storage, setStorage] = useState('')
@@ -258,6 +306,23 @@ export default function Rachat() {
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-12">
+      {showStores && <StoresModal onClose={() => setShowStores(false)} />}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div>
+          <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Revendre mon iPhone</h1>
+          <p className="text-sm text-[#555555] mt-0.5">Estimation gratuite en 2 minutes</p>
+        </div>
+        <button
+          onClick={() => setShowStores(true)}
+          className="flex items-center gap-2 px-6 py-3 border-2 border-[#1B2A4A] text-[#1B2A4A] rounded-xl font-semibold hover:bg-[#1B2A4A] hover:text-white transition-all cursor-pointer"
+        >
+          <MapPin size={18} />
+          Nos points de vente
+        </button>
+      </div>
+
       <div className="grid md:grid-cols-[280px_1fr] gap-6 items-start">
 
         {/* Left panel */}
