@@ -5,13 +5,14 @@ import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { getPhoneImage } from '../../utils/phoneImage';
 import { getColorHex } from '../../utils/colors'
 import { getStartingPrice } from '../../data/startingPrices'
+import { charmPrice } from '../../utils/charmPrice'
 
 function displayPrice(phone) {
   if (phone.condition === 'reconditionne') {
     const ref = getStartingPrice(phone.model)
-    if (ref) return ref
+    if (ref) return charmPrice(ref)
   }
-  return phone.price
+  return charmPrice(phone.price)
 };
 
 function BestSellerCard({ phone }) {

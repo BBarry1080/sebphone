@@ -4,13 +4,14 @@ import { ArrowRight } from 'lucide-react';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { getPhoneImage } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
+import { charmPrice } from '../../utils/charmPrice'
 
 function displayPrice(phone) {
   if (phone.condition === 'reconditionne') {
     const ref = getStartingPrice(phone.model)
-    if (ref) return { label: 'À partir de', price: ref }
+    if (ref) return { label: 'À partir de', price: charmPrice(ref) }
   }
-  return { label: 'À partir de', price: phone.price }
+  return { label: 'À partir de', price: charmPrice(phone.price) }
 };
 
 function toSlug(model) {
