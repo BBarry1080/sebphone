@@ -1,11 +1,109 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, MapPin, Calendar, Home, Smartphone } from 'lucide-react'
+import { supabase, isSupabaseReady } from '../lib/supabase'
+import { sendConfirmationEmail } from '../utils/sendEmail'
+import { MAGASINS } from '../utils/magasins'
+import { ACCESSORY_PACKS } from '../data/accessories'
 
 export default function Confirmation() {
   const { state } = useLocation()
   const navigate  = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  if (!state?.reservationCode) {
+  // Données affichées (soit depuis state navigate, soit depuis DB après Stripe)
+  const [data, setData]       = useState(state || null)
+  const [loading, setLoading] = useState(false)
+  const [notFound, setNotFound] = useState(false)
+
+  // Si retour Stripe Checkout, ?code=XXX est dans l'URL
+  const code      = searchParams.get('code')
+  const sessionId = searchParams.get('session_id')
+
+  useEffect(() => {
+    if (state?.reservationCode) return            // déjà reçu via navigate
+    if (!code) { setNotFound(true); return }       // ni state ni code → 404
+    if (!isSupabaseReady) { setNotFound(true); return }
+
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      const { data: order, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('reservation_code', code)
+        .maybeSingle()
+
+      if (cancelled) return
+      if (error || !order) { setNotFound(true); setLoading(false); return }
+
+      // Met à jour le statut une seule fois (idempotent)
+      if (order.status === 'en_attente') {
+        await supabase.from('orders')
+          .update({ status: 'acompte_paye' })
+          .eq('reservation_code', code)
+        if (order.phone_id) {
+          await supabase.from('phones')
+            .update({ status: 'reserve' })
+            .eq('id', order.phone_id)
+        }
+
+        // Envoie l'email une seule fois
+        const packLabel = ACCESSORY_PACKS.find((p) => p.id === order.accessory_pack)?.label || 'Aucun'
+        await sendConfirmationEmail({
+          clientEmail:      order.customer_email,
+          clientName:       order.customer_name,
+          phoneName:        order.phone_name,
+          phoneColor:       order.phone_color,
+          phoneStorage:     order.phone_storage,
+          grade:            order.phone_grade,
+          price:            order.total_amount,
+          depositPaid:      order.deposit_amount,
+          reservationCode:  order.reservation_code,
+          pickupMode:       order.delivery_mode,
+          magasinId:        order.magasin_id,
+          pickupDate:       order.pickup_date,
+          deliveryAddress:  order.delivery_address,
+          accessoryPack:    order.accessory_pack ? packLabel : 'Aucun',
+          batteryReplace:   !!order.battery_replace,
+          accessoriesTotal: order.accessories_total || 0,
+        })
+      }
+
+      setData({
+        reservationCode: order.reservation_code,
+        clientName:      order.customer_name,
+        clientEmail:     order.customer_email,
+        phoneName:       order.phone_name,
+        phoneColor:      order.phone_color,
+        phoneStorage:    order.phone_storage,
+        grade:           order.phone_grade,
+        totalPrice:      order.total_amount,
+        depositPaid:     order.deposit_amount,
+        remaining:       (order.total_amount || 0) - (order.deposit_amount || 0),
+        delivery:        order.delivery_mode,
+        magasinId:       order.magasin_id,
+        magasinInfo:     MAGASINS[order.magasin_id] || null,
+        pickupDate:      order.pickup_date,
+        deliveryAddress: order.delivery_address,
+      })
+      setLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code])
+
+  if (loading) {
+    return (
+      <main className="max-w-xl mx-auto px-4 py-20 text-center">
+        <div className="inline-block w-10 h-10 border-4 border-[#00B4CC] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-[#555]">Confirmation de votre paiement...</p>
+      </main>
+    )
+  }
+
+  if (notFound || !data?.reservationCode) {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">🔍</p>
@@ -23,7 +121,7 @@ export default function Confirmation() {
     phoneName, phoneColor, phoneStorage, grade,
     totalPrice, depositPaid, remaining,
     delivery, magasinInfo, pickupDate, deliveryAddress,
-  } = state
+  } = data
 
   const pickupDateFormatted = pickupDate
     ? new Date(pickupDate).toLocaleDateString('fr-BE', {

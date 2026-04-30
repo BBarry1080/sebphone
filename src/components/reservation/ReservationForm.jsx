@@ -8,7 +8,6 @@ import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { sendConfirmationEmail } from '../../utils/sendEmail';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
-import StripePayment from './StripePayment';
 
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -60,7 +59,6 @@ export default function ReservationForm({ phone }) {
   const [promoCode,    setPromoCode]   = useState(null);
   const [promoError,   setPromoError]  = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
-  const [showStripe,   setShowStripe]  = useState(false);
 
   useEffect(() => {
     if (phoneShops[0]) {
@@ -120,6 +118,93 @@ export default function ReservationForm({ phone }) {
     setPromoCode(null)
     setPromoInput('')
     setPromoError('')
+  }
+
+  const handleStripeCheckout = async () => {
+    if (!form.firstName || !form.lastName || !form.email || !form.phone) {
+      setSubmitError('Remplissez tous les champs obligatoires')
+      return
+    }
+    if (form.delivery === 'delivery' && !form.address) {
+      setSubmitError('Renseignez votre adresse de livraison')
+      return
+    }
+
+    setLoading(true)
+    setSubmitError(null)
+
+    try {
+      const reservationCode = generateCode()
+      const clientName = `${form.firstName} ${form.lastName}`.trim()
+      const magasinFinal = availableMagasins.length === 1
+        ? availableMagasins[0].id
+        : form.magasin
+
+      // 1. Sauvegarde la réservation en DB avec status 'en_attente'
+      if (isSupabaseReady && supabase) {
+        const orderData = {
+          customer_name:    clientName,
+          customer_email:   form.email,
+          customer_phone:   form.phone,
+          phone_id:         phone?.id || null,
+          phone_name:       phone?.name || phone?.model || '',
+          phone_storage:    phone?.storage || '',
+          phone_color:      phone?.color || '',
+          phone_grade:      phone?.grade || '',
+          delivery_mode:    form.delivery,
+          magasin_id:       form.delivery === 'collect' ? magasinFinal : null,
+          delivery_address: form.delivery === 'delivery' ? form.address : null,
+          pickup_date:      form.delivery === 'collect' && form.pickupDate ? form.pickupDate : null,
+          payment_mode:     'acompte',
+          total_amount:     totalPrice,
+          deposit_amount:   50,
+          notes:            form.notes || null,
+          reservation_code: reservationCode,
+          status:           'en_attente',
+          accessory_pack:   selectedPack !== 'none' ? selectedPack : null,
+          accessories_total: packPrice + batteryPrice,
+          battery_replace:  batteryReplace && batteryEligible,
+          promo_code:       promoCode?.code || null,
+          discount_amount:  discount || 0,
+        }
+
+        const { error: insertError } = await supabase.from('orders').insert([orderData])
+        if (insertError) {
+          console.error('Erreur insert order:', insertError)
+          throw new Error('Impossible de créer la réservation : ' + insertError.message)
+        }
+      }
+
+      // 2. Crée la session Stripe Checkout
+      console.log('Création de la session Stripe Checkout...')
+      const res = await fetch('/.netlify/functions/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneId:         phone?.id,
+          phoneName:       phone?.name || phone?.model,
+          phoneColor:      phone?.color,
+          phoneStorage:    phone?.storage,
+          clientName,
+          clientEmail:     form.email,
+          amount:          50,
+          reservationCode,
+          magasinNom:      MAGASINS[magasinFinal]?.nom || magasinFinal,
+        })
+      })
+
+      const { url, error } = await res.json()
+      if (error) throw new Error(error)
+      if (!url) throw new Error('URL de paiement manquante')
+
+      // 3. Redirige vers Stripe Checkout
+      console.log('Redirection vers Stripe Checkout:', url)
+      window.location.href = url
+    } catch (err) {
+      console.error('Checkout error:', err)
+      setSubmitError('Erreur : ' + err.message)
+      setLoading(false)
+    }
   }
 
   const submitReservation = async (paymentIntent) => {
@@ -659,45 +744,21 @@ export default function ReservationForm({ phone }) {
       )}
 
       {paymentMode === 'acompte' ? (
-        showStripe ? (
-          <StripePayment
-            amount={50}
-            reservationData={{
-              phoneId: phone?.id,
-              clientName: `${form.firstName} ${form.lastName}`.trim(),
-              clientEmail: form.email,
-            }}
-            onSuccess={async (paymentIntent) => {
-              console.log('Paiement réussi:', paymentIntent)
-              console.log('Lancement submitReservation...')
-              await submitReservation(paymentIntent)
-              console.log('Navigation vers /confirmation...')
-            }}
-            onError={(err) => {
-              console.error('Stripe onError:', err)
-              setSubmitError('Erreur paiement : ' + err)
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              if (!form.firstName || !form.lastName || !form.email || !form.phone) {
-                setSubmitError('Remplissez tous les champs obligatoires')
-                return
-              }
-              if (form.delivery === 'delivery' && !form.address) {
-                setSubmitError('Renseignez votre adresse de livraison')
-                return
-              }
-              setSubmitError(null)
-              setShowStripe(true)
-            }}
-            className="w-full bg-[#1B2A4A] hover:bg-[#243660] text-white rounded-xl py-4 font-bold text-base transition-all cursor-pointer"
-          >
-            Continuer vers le paiement →
-          </button>
-        )
+        <button
+          type="button"
+          onClick={handleStripeCheckout}
+          disabled={loading}
+          className="w-full bg-[#1B2A4A] hover:bg-[#243660] text-white rounded-xl py-4 font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+              Préparation du paiement...
+            </span>
+          ) : (
+            'Réserver et payer 50€'
+          )}
+        </button>
       ) : (
         <Button type="submit" variant="primary" size="full" disabled={loading} className="text-base font-bold">
           {loading ? (
