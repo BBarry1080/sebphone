@@ -60,6 +60,7 @@ export default function Confirmation() {
           grade:            order.phone_grade,
           price:            order.total_amount,
           depositPaid:      order.deposit_amount,
+          paymentMode:      order.payment_mode,
           reservationCode:  order.reservation_code,
           pickupMode:       order.delivery_mode,
           magasinId:        order.magasin_id,

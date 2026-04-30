@@ -24,6 +24,7 @@ export async function sendConfirmationEmail(params) {
     accessoryPack,
     batteryReplace,
     accessoriesTotal,
+    paymentMode,
   } = params
 
   const magasins = {
@@ -50,6 +51,9 @@ export async function sendConfirmationEmail(params) {
     adresse: 'Bruxelles'
   }
 
+  const isAcompte = paymentMode === 'acompte'
+  const totalNum  = price || 0
+
   const templateParams = {
     to_email: clientEmail,
     to_name: clientName || 'Client',
@@ -58,9 +62,12 @@ export async function sendConfirmationEmail(params) {
     phone_storage: phoneStorage || '',
     phone_grade: grade || '',
     phone_condition: '',
-    price_total: (price || 0) + '€',
-    deposit_paid: (depositPaid || 50) + '€',
-    remaining: ((price || 0) - (depositPaid || 50)) + '€',
+    payment_mode:   paymentMode || 'acompte',
+    price_total:    totalNum + '€',
+    deposit_paid:   isAcompte ? '50€' : totalNum + '€',
+    remaining:      isAcompte ? (totalNum - 50) + '€' : '0€',
+    payment_label:  isAcompte ? 'Acompte payé ✓' : 'Montant total payé ✓',
+    warning_message: isAcompte ? "L'acompte de 50€ n'est pas remboursable." : '',
     reservation_code: reservationCode || '',
     pickup_mode: pickupMode === 'click_collect'
       ? 'Click & Collect' : 'Livraison',
