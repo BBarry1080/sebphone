@@ -128,8 +128,20 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [deposit, setDeposit]     = useState(phone?.deposit_amount || 50)
   const [magasins, setMagasins]   = useState(phone?.magasins || [])
   const [notes, setNotes]         = useState(phone?.notes || '')
-  const [partsReplaced, setPartsReplaced] = useState(phone?.parts_replaced || [])
+  const initialPartsReplaced = (() => {
+    const raw = phone?.parts_replaced
+    if (Array.isArray(raw)) return raw
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw) } catch { return [] }
+    }
+    return []
+  })()
+  const [partsReplaced, setPartsReplaced] = useState(initialPartsReplaced)
   const [saving, setSaving]       = useState(false)
+
+  console.log('PhoneModal - condition:', phone?.condition || 'reconditionne')
+  console.log('PhoneModal - parts_replaced raw:', phone?.parts_replaced)
+  console.log('PhoneModal - parts_replaced init:', initialPartsReplaced)
 
   // ── Filtered suggestions ─────────────────────────────────────────
   const modelSuggestions = IPHONE_DATABASE

@@ -25,11 +25,11 @@ export async function getPhoneById(id) {
   if (!isSupabaseReady) {
     const phone = phonesMock.find((p) => p.id === Number(id))
     if (!phone) throw new Error('Téléphone introuvable')
-    return { ...phone, parts: [] }
+    return phone
   }
   const { data, error } = await supabase
     .from('phones')
-    .select('*, model:phone_models(*), parts:phone_parts(*)')
+    .select('*')
     .eq('id', id)
     .single()
   if (error) throw error

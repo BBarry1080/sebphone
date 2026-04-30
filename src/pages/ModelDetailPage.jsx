@@ -96,23 +96,12 @@ export default function ModelDetailPage() {
         return
       }
 
-      // Try with phone_parts join first, fall back to simple select on error
-      let { data, error } = await supabase
+      const { data } = await supabase
         .from('phones')
-        .select('*, parts:phone_parts(*)')
+        .select('*')
         .ilike('model', decodedModel)
         .eq('status', 'disponible')
         .order('price', { ascending: false })
-
-      if (error) {
-        const res = await supabase
-          .from('phones')
-          .select('*')
-          .ilike('model', decodedModel)
-          .eq('status', 'disponible')
-          .order('price', { ascending: false })
-        data = res.data
-      }
 
       setPhones(data || [])
       setLoading(false)
