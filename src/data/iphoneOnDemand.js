@@ -28,8 +28,9 @@ export const IPHONE_ON_DEMAND = [
   { model: 'iPhone 16 Plus',     storages: ['128Go', '256Go', '512Go'],          colors: ['Noir', 'Blanc', 'Rose', 'Bleu outremer', 'Vert jade'] },
   { model: 'iPhone 16 Pro',      storages: ['128Go', '256Go', '512Go', '1To'],   colors: ['Titane naturel', 'Titane blanc', 'Titane noir', 'Titane désert'] },
   { model: 'iPhone 16 Pro Max',  storages: ['256Go', '512Go', '1To'],            colors: ['Titane naturel', 'Titane blanc', 'Titane noir', 'Titane désert'] },
+  { model: 'iPhone 17e',         storages: ['128Go', '256Go'],                   colors: ['Noir', 'Blanc', 'Rose'] },
   { model: 'iPhone 17',          storages: ['128Go', '256Go', '512Go'],          colors: ['Noir', 'Blanc', 'Rose', 'Bleu', 'Vert'] },
-  { model: 'iPhone 17 Plus',     storages: ['128Go', '256Go', '512Go'],          colors: ['Noir', 'Blanc', 'Rose', 'Bleu', 'Vert'] },
+  { model: 'iPhone 17 Air',      storages: ['128Go', '256Go'],                   colors: ['Noir', 'Blanc', 'Bleu', 'Rose'] },
   { model: 'iPhone 17 Pro',      storages: ['128Go', '256Go', '512Go', '1To'],   colors: ['Argent', 'Orange cosmique', 'Bleu intense', 'Titane noir'] },
   { model: 'iPhone 17 Pro Max',  storages: ['256Go', '512Go', '1To'],            colors: ['Argent', 'Orange cosmique', 'Bleu intense', 'Titane noir'] },
 ]
