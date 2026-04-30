@@ -69,6 +69,7 @@ export async function sendConfirmationEmail(params) {
     payment_label:  isAcompte ? 'Acompte payé ✓' : 'Montant total payé ✓',
     warning_message: isAcompte ? "L'acompte de 50€ n'est pas remboursable." : '',
     reservation_code: reservationCode || '',
+    reservation_url: `https://sebphone.be/commande/${reservationCode || ''}`,
     pickup_mode: pickupMode === 'click_collect'
       ? 'Click & Collect' : 'Livraison',
     magasin_nom: magasin.nom,
@@ -92,6 +93,10 @@ export async function sendConfirmationEmail(params) {
   console.log('TEMPLATE_ID:', TEMPLATE_ID)
   console.log('PUBLIC_KEY:', PUBLIC_KEY)
   console.log('clientEmail reçu:', clientEmail)
+  console.log('to_email envoyé:', templateParams.to_email)
+  console.log('to_name envoyé:', templateParams.to_name)
+  console.log('reservation_code:', reservationCode)
+  console.log('reservation_url:', templateParams.reservation_url)
 
   if (!clientEmail) {
     console.error('❌ Pas d\'email client !')
