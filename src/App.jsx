@@ -53,13 +53,13 @@ export default function App() {
             </Layout>
           } />
           <Route path="/boutique" element={
-            <Layout><Boutique /></Layout>
+            <Layout><Boutique key="boutique" /></Layout>
           } />
           <Route path="/iphone" element={
-            <Layout><Boutique defaultBrand="Apple" /></Layout>
+            <Layout><Boutique key="iphone" defaultBrand="Apple" /></Layout>
           } />
           <Route path="/samsung" element={
-            <Layout><Boutique defaultBrand="Samsung" /></Layout>
+            <Layout><Boutique key="samsung" defaultBrand="Samsung" /></Layout>
           } />
           <Route path="/occasions" element={
             <Layout><Occasions /></Layout>
