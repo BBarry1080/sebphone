@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { LayoutGrid, List } from 'lucide-react'
 import { useGroupedPhones } from '../hooks/useGroupedPhones'
 import FilterSidebar, { MobileFilterBar, SortDropdown } from '../components/catalogue/FilterSidebar'
@@ -7,6 +8,7 @@ import Spinner from '../components/ui/Spinner'
 
 export default function Boutique({ defaultBrand = null }) {
   const [viewMode, setViewMode] = useState('list')
+  const [searchParams] = useSearchParams()
   const {
     groups, phones, totalPhones, loading, error,
     search, setSearch,
@@ -16,6 +18,11 @@ export default function Boutique({ defaultBrand = null }) {
     filterGrade, setFilterGrade,
     sortBy, setSortBy,
   } = useGroupedPhones(null, defaultBrand)
+
+  useEffect(() => {
+    const q = searchParams.get('q')
+    if (q) setSearch(q)
+  }, [searchParams, setSearch])
 
   return (
     <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 pb-24 md:pb-12">
