@@ -187,8 +187,10 @@ function PhoneModal({ phone, onClose, onSaved }) {
     if (!isEdit && !selectedModel && !modelSearch.trim()) return
     setSaving(true)
     try {
-      console.log('parts_replaced à sauvegarder:', partsReplaced)
-      console.log('condition:', condition, '→ inclus si reconditionne ?', condition === 'reconditionne')
+      console.log('=== SAVE DEBUG ===')
+      console.log('condition:', condition)
+      console.log('parts_replaced AVANT save:', partsReplaced)
+      console.log('type:', typeof partsReplaced, '→ Array?', Array.isArray(partsReplaced))
 
       const phoneData = {
         name:           modelSearch.trim(),
@@ -211,8 +213,9 @@ function PhoneModal({ phone, onClose, onSaved }) {
         status:         'disponible',
       }
 
-      console.log('updateData complet:', phoneData)
       console.log('phoneData.parts_replaced:', phoneData.parts_replaced)
+      console.log('phoneData complet:', phoneData)
+      console.log('=== END SAVE DEBUG ===')
 
       if (isEdit) {
         await updatePhone(phone.id, phoneData)
