@@ -362,22 +362,33 @@ export default function PhoneDetailPage() {
           </div>
 
           {/* Replaced parts for reconditioned */}
-          {phone.condition === 'reconditionne' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mt-4">
-              <h4 className="font-semibold text-orange-800 mb-2">🔧 Pièces remplacées</h4>
-              {phone.parts_replaced?.length > 0 ? (
-                <ul className="space-y-1">
-                  {phone.parts_replaced.map((part) => (
-                    <li key={part} className="flex items-center gap-2 text-sm text-orange-700">
-                      <span>✓</span> {part}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-green-700 font-medium">✓ Aucune réparation — État original</p>
-              )}
-            </div>
-          )}
+          {phone?.condition === 'reconditionne' && (() => {
+            const partsReplaced = Array.isArray(phone.parts_replaced)
+              ? phone.parts_replaced
+              : (typeof phone.parts_replaced === 'string'
+                  ? (() => { try { return JSON.parse(phone.parts_replaced) } catch { return [] } })()
+                  : [])
+            console.log('phone.parts_replaced:', phone.parts_replaced, '→ parsé:', partsReplaced)
+            return (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mt-4">
+                <h4 className="font-semibold text-orange-800 mb-2 text-sm">🔧 Pièces remplacées</h4>
+                {partsReplaced.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {partsReplaced.map((part) => (
+                      <span key={part}
+                            className="text-xs bg-white text-orange-700 px-3 py-1 rounded-full border border-orange-300 font-medium">
+                        ✓ {part}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-green-700 font-medium">
+                    ✓ Aucune réparation — État original
+                  </p>
+                )}
+              </div>
+            )
+          })()}
         </motion.div>
       </div>
     </main>

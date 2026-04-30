@@ -348,8 +348,12 @@ export default function ReservationForm({ phone }) {
         const battery = phone?.battery_health
         const batteryColor = battery >= 85 ? 'bg-green-400' : battery >= 75 ? 'bg-orange-400' : 'bg-red-400'
         const batteryText  = battery >= 85 ? 'text-green-700' : battery >= 75 ? 'text-orange-600' : 'text-red-600'
-        const parts = phone?.parts || []
-        const partsText = parts.length > 0 ? parts.map((p) => p.part_type).join(', ') : null
+        const partsReplaced = Array.isArray(phone?.parts_replaced)
+          ? phone.parts_replaced
+          : (typeof phone?.parts_replaced === 'string'
+              ? (() => { try { return JSON.parse(phone.parts_replaced) } catch { return [] } })()
+              : [])
+        console.log('ReservationForm phone.parts_replaced:', phone?.parts_replaced, '→ parsé:', partsReplaced)
 
         return (
           <div className="bg-[#F5F5F5] rounded-2xl p-4 flex gap-4">
@@ -403,14 +407,24 @@ export default function ReservationForm({ phone }) {
               )}
 
               {/* Pièces remplacées */}
-              {partsText && (
-                <div className="flex items-start gap-1 mb-1.5">
-                  <Wrench size={10} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
-                  <span className="text-[10px] text-[#555]">{partsText}</span>
-                </div>
-              )}
-              {phone?.condition === 'reconditionne' && !partsText && (
-                <p className="text-[10px] text-[#555] mb-1.5">Aucune réparation — État original</p>
+              {phone?.condition === 'reconditionne' && (
+                partsReplaced.length > 0 ? (
+                  <div className="mt-2 mb-1.5">
+                    <p className="text-[10px] font-medium text-orange-600 mb-1 flex items-center gap-1">
+                      <Wrench size={10} /> Pièces remplacées :
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {partsReplaced.map((part) => (
+                        <span key={part}
+                              className="text-[10px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full border border-orange-200">
+                          {part}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-green-700 font-medium mb-1.5">✓ Aucune réparation — État original</p>
+                )
               )}
 
               {/* Prix */}

@@ -316,7 +316,12 @@ export default function ModelDetailPage() {
                     <tbody className="divide-y divide-gray-100">
                       {filtered.map((phone) => {
                         const isBest = phone.id === bestPhone?.id
-                        const partsReplaced = Array.isArray(phone.parts_replaced) ? phone.parts_replaced : []
+                        const partsReplaced = Array.isArray(phone.parts_replaced)
+                          ? phone.parts_replaced
+                          : (typeof phone.parts_replaced === 'string'
+                              ? (() => { try { return JSON.parse(phone.parts_replaced) } catch { return [] } })()
+                              : [])
+                        console.log('phone.parts_replaced:', phone.parts_replaced, '→ parsé:', partsReplaced)
                         return (
                           <tr key={phone.id} className={`hover:bg-gray-50 transition-colors ${isBest ? 'bg-cyan-50/40' : ''}`}>
                             <td className="px-4 py-3">
@@ -390,7 +395,11 @@ export default function ModelDetailPage() {
                 <div className="md:hidden space-y-3">
                   {filtered.map((phone) => {
                     const isBest = phone.id === bestPhone?.id
-                    const partsReplaced = Array.isArray(phone.parts_replaced) ? phone.parts_replaced : []
+                    const partsReplaced = Array.isArray(phone.parts_replaced)
+                      ? phone.parts_replaced
+                      : (typeof phone.parts_replaced === 'string'
+                          ? (() => { try { return JSON.parse(phone.parts_replaced) } catch { return [] } })()
+                          : [])
                     return (
                       <div
                         key={phone.id}
