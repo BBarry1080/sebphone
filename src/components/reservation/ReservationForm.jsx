@@ -8,6 +8,7 @@ import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { sendConfirmationEmail } from '../../utils/sendEmail';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
+import StripePayment from './StripePayment';
 
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -59,6 +60,7 @@ export default function ReservationForm({ phone }) {
   const [promoCode,    setPromoCode]   = useState(null);
   const [promoError,   setPromoError]  = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
+  const [showStripe,   setShowStripe]  = useState(false);
 
   useEffect(() => {
     if (phoneShops[0]) {
@@ -120,9 +122,8 @@ export default function ReservationForm({ phone }) {
     setPromoError('')
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log('1. Début soumission');
+  const submitReservation = async (paymentIntent) => {
+    console.log('1. Début soumission', paymentIntent ? '(après paiement Stripe)' : '');
     setLoading(true);
     setSubmitError(null);
 
@@ -154,11 +155,12 @@ export default function ReservationForm({ phone }) {
           deposit_amount:   depositPaid,
           notes:            form.notes || null,
           reservation_code: reservationCode,
-          status:           'en_attente',
+          status:           paymentIntent ? 'acompte_paye' : 'en_attente',
           accessory_pack:   selectedPack !== 'none' ? selectedPack : null,
           battery_replace:  batteryReplace && batteryEligible,
           promo_code:       promoCode?.code || null,
           discount_amount:  discount || null,
+          payment_intent_id: paymentIntent?.id || null,
         }
 
         console.log('3. Validation OK');
@@ -184,20 +186,24 @@ export default function ReservationForm({ phone }) {
       }
 
       console.log('8. Envoi email...');
+      const packLabel = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.label || 'Aucun'
       const emailResult = await sendConfirmationEmail({
-        clientEmail:     form.email,
+        clientEmail:      form.email,
         clientName,
-        phoneName:       phone?.name || phone?.model || '',
-        phoneColor:      phone?.color || '',
-        phoneStorage:    phone?.storage || '',
-        grade:           phone?.grade || '',
-        price:           totalPrice,
+        phoneName:        phone?.name || phone?.model || '',
+        phoneColor:       phone?.color || '',
+        phoneStorage:     phone?.storage || '',
+        grade:            phone?.grade || '',
+        price:            totalPrice,
         depositPaid,
         reservationCode,
-        pickupMode:      form.delivery,
-        magasinId:       magasinFinal,
-        pickupDate:      form.pickupDate,
-        deliveryAddress: form.address,
+        pickupMode:       form.delivery,
+        magasinId:        magasinFinal,
+        pickupDate:       form.pickupDate,
+        deliveryAddress:  form.address,
+        accessoryPack:    selectedPack !== 'none' ? packLabel : 'Aucun',
+        batteryReplace:   batteryReplace && batteryEligible,
+        accessoriesTotal: packPrice + batteryPrice,
       })
       console.log('9. Email result:', emailResult)
 
@@ -222,10 +228,15 @@ export default function ReservationForm({ phone }) {
         }
       })
     } catch (err) {
-      console.error('❌ CATCH handleSubmit:', err)
+      console.error('❌ CATCH submitReservation:', err)
       setSubmitError('Une erreur est survenue. Veuillez réessayer.')
       setLoading(false)
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await submitReservation(null);
   };
 
   return (
@@ -647,17 +658,54 @@ export default function ReservationForm({ phone }) {
         </div>
       )}
 
-      <Button type="submit" variant="primary" size="full" disabled={loading} className="text-base font-bold">
-        {loading ? (
-          <span className="flex items-center gap-2">
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Envoi en cours...
-          </span>
-        ) : paymentMode === 'acompte'
-          ? 'Réserver et payer 50€'
-          : `Payer ${totalPrice}€ maintenant`
-        }
-      </Button>
+      {paymentMode === 'acompte' ? (
+        showStripe ? (
+          <StripePayment
+            amount={50}
+            reservationData={{
+              phoneId: phone?.id,
+              clientName: `${form.firstName} ${form.lastName}`.trim(),
+              clientEmail: form.email,
+            }}
+            onSuccess={async (paymentIntent) => {
+              await submitReservation(paymentIntent)
+            }}
+            onError={(err) => {
+              setSubmitError('Erreur paiement : ' + err)
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (!form.firstName || !form.lastName || !form.email || !form.phone) {
+                setSubmitError('Remplissez tous les champs obligatoires')
+                return
+              }
+              if (form.delivery === 'delivery' && !form.address) {
+                setSubmitError('Renseignez votre adresse de livraison')
+                return
+              }
+              setSubmitError(null)
+              setShowStripe(true)
+            }}
+            className="w-full bg-[#1B2A4A] hover:bg-[#243660] text-white rounded-xl py-4 font-bold text-base transition-all cursor-pointer"
+          >
+            Continuer vers le paiement →
+          </button>
+        )
+      ) : (
+        <Button type="submit" variant="primary" size="full" disabled={loading} className="text-base font-bold">
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Envoi en cours...
+            </span>
+          ) : (
+            `Payer ${totalPrice}€ maintenant`
+          )}
+        </Button>
+      )}
     </motion.form>
   );
 }

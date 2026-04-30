@@ -21,6 +21,9 @@ export async function sendConfirmationEmail(params) {
     magasinId,
     magasinGmaps,
     pickupDate,
+    accessoryPack,
+    batteryReplace,
+    accessoriesTotal,
   } = params
 
   const magasins = {
@@ -72,6 +75,9 @@ export async function sendConfirmationEmail(params) {
           day: 'numeric'
         })
       : 'À définir avec le magasin',
+    accessory_pack:    accessoryPack || 'Aucun',
+    battery_replace:   batteryReplace ? 'Oui' : 'Non',
+    accessories_total: (accessoriesTotal || 0) + '€',
     reply_to: 'contact@sebphone.be',
   }
 
