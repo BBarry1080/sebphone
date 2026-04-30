@@ -362,17 +362,20 @@ export default function PhoneDetailPage() {
           </div>
 
           {/* Replaced parts for reconditioned */}
-          {phone.condition === 'reconditionne' && phone.parts?.length > 0 && (
-            <div className="border border-gray-200 rounded-xl p-4">
-              <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">Pièces remplacées</h3>
-              <ul className="flex flex-col gap-2">
-                {phone.parts.map((part, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-[#333]">
-                    <CheckCircle size={14} className="text-[#22C55E] flex-shrink-0" />
-                    <span><strong>{part.name}</strong>{part.type ? ` — ${part.type}` : ''}{part.detail ? ` (${part.detail})` : ''}</span>
-                  </li>
-                ))}
-              </ul>
+          {phone.condition === 'reconditionne' && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mt-4">
+              <h4 className="font-semibold text-orange-800 mb-2">🔧 Pièces remplacées</h4>
+              {phone.parts_replaced?.length > 0 ? (
+                <ul className="space-y-1">
+                  {phone.parts_replaced.map((part) => (
+                    <li key={part} className="flex items-center gap-2 text-sm text-orange-700">
+                      <span>✓</span> {part}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-green-700 font-medium">✓ Aucune réparation — État original</p>
+              )}
             </div>
           )}
         </motion.div>

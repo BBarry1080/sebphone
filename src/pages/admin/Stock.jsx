@@ -1,6 +1,7 @@
 // SQL à exécuter dans Supabase si ces colonnes manquent :
 // ALTER TABLE phones ADD COLUMN IF NOT EXISTS magasins JSONB DEFAULT '[]'::jsonb;
 // ALTER TABLE phones ADD COLUMN IF NOT EXISTS color TEXT;
+// ALTER TABLE phones ADD COLUMN IF NOT EXISTS parts_replaced JSONB DEFAULT '[]'::jsonb;
 
 import { useState, useEffect, useRef } from 'react'
 import { Smartphone, Plus, Search, Pencil, Trash2, X, Star } from 'lucide-react'
@@ -32,15 +33,17 @@ const CONDITION_COLORS = {
   reconditionne: 'bg-cyan-100 text-cyan-700',
   occasion:      'bg-blue-100 text-blue-700',
 }
-const PARTS_LIST = [
-  { key: 'ecran',    label: 'Écran',            hasQuality: true  },
-  { key: 'batterie', label: 'Batterie',          hasQuality: true  },
-  { key: 'facade',   label: 'Façade arrière',    hasQuality: false },
-  { key: 'boutons',  label: 'Boutons latéraux',  hasQuality: false },
-  { key: 'hp',       label: 'Haut-parleur',      hasQuality: false },
-  { key: 'micro',    label: 'Micro',             hasQuality: false },
-  { key: 'camera',   label: 'Caméra',            hasQuality: false },
-  { key: 'autre',    label: 'Autre',             hasQuality: false, isText: true },
+const PARTS = [
+  'Écran',
+  'Batterie',
+  'Vitre arrière',
+  'Caméra avant',
+  'Caméra arrière',
+  'Haut-parleur',
+  'Micro',
+  'Connecteur de charge',
+  'Bouton home',
+  'Face ID / Touch ID',
 ]
 
 /* ─── Sous-composants utilitaires ─── */
@@ -103,12 +106,6 @@ function InlinePrice({ id, value, onSave }) {
 function PhoneModal({ phone, onClose, onSaved }) {
   const isEdit = !!phone
 
-  const getInitialParts = () => {
-    const parts = {}
-    PARTS_LIST.forEach((p) => { parts[p.key] = { checked: false, quality: 'Original', text: '' } })
-    return parts
-  }
-
   // ── Model autocomplete ───────────────────────────────────────────
   const [modelSearch, setModelSearch]             = useState(phone?.name?.split(' ').slice(0, 3).join(' ') || '')
   const [selectedModel, setSelectedModel]         = useState(null)
@@ -131,7 +128,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [deposit, setDeposit]     = useState(phone?.deposit_amount || 50)
   const [magasins, setMagasins]   = useState(phone?.magasins || [])
   const [notes, setNotes]         = useState(phone?.notes || '')
-  const [parts, setParts]         = useState(getInitialParts())
+  const [partsReplaced, setPartsReplaced] = useState(phone?.parts_replaced || [])
   const [saving, setSaving]       = useState(false)
 
   // ── Filtered suggestions ─────────────────────────────────────────
@@ -168,9 +165,11 @@ function PhoneModal({ phone, onClose, onSaved }) {
     )
   }
 
-  const handlePartCheck   = (key, v) => setParts((p) => ({ ...p, [key]: { ...p[key], checked: v } }))
-  const handlePartQuality = (key, v) => setParts((p) => ({ ...p, [key]: { ...p[key], quality: v } }))
-  const handlePartText    = (key, v) => setParts((p) => ({ ...p, [key]: { ...p[key], text: v } }))
+  const togglePart = (part) => {
+    setPartsReplaced((prev) =>
+      prev.includes(part) ? prev.filter((p) => p !== part) : [...prev, part]
+    )
+  }
 
   const handleSave = async () => {
     if (!isEdit && !selectedModel && !modelSearch.trim()) return
@@ -193,6 +192,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
         imei:           imei.trim() || null,
         fournisseur:    fournisseur || null,
         stock_location: stockLocation || null,
+        parts_replaced: condition === 'reconditionne' ? partsReplaced : [],
         status:         'disponible',
       }
 
@@ -217,21 +217,6 @@ function PhoneModal({ phone, onClose, onSaved }) {
       }
 
       console.log('Succès:', data)
-
-      const savedPhone = data?.[0]
-      if (condition === 'reconditionne' && savedPhone && isSupabaseReady) {
-        const partsToInsert = PARTS_LIST
-          .filter((p) => parts[p.key]?.checked)
-          .map((p) => ({
-            phone_id:  savedPhone.id,
-            part_type: p.key,
-            quality:   p.hasQuality ? parts[p.key].quality : null,
-            note:      p.isText ? parts[p.key].text : null,
-          }))
-        if (partsToInsert.length > 0) {
-          await supabase.from('phone_parts').insert(partsToInsert)
-        }
-      }
 
       onSaved()
       onClose()
@@ -501,51 +486,26 @@ function PhoneModal({ phone, onClose, onSaved }) {
             )}
           </div>
 
-          {/* ── Section 5 — Pièces (reconditionné seulement, ajout uniquement) ── */}
-          {condition === 'reconditionne' && !isEdit && (
+          {/* ── Section 5 — Pièces remplacées (reconditionné) ── */}
+          {condition === 'reconditionne' && (
             <div>
               <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Pièces remplacées</h3>
-              <div className="space-y-2">
-                {PARTS_LIST.map((p) => (
-                  <div key={p.key}>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={parts[p.key].checked}
-                        onChange={(e) => handlePartCheck(p.key, e.target.checked)}
-                        className="w-4 h-4 accent-[#00B4CC]"
-                      />
-                      <span className="text-sm text-[#333]">{p.label}</span>
-                    </label>
-                    {parts[p.key].checked && p.hasQuality && (
-                      <div className="ml-6 mt-1 flex gap-3">
-                        {['Original', 'Compatible'].map((q) => (
-                          <label key={q} className="flex items-center gap-1.5 cursor-pointer text-sm text-[#555]">
-                            <input
-                              type="radio"
-                              name={`quality_${p.key}`}
-                              value={q}
-                              checked={parts[p.key].quality === q}
-                              onChange={() => handlePartQuality(p.key, q)}
-                              className="accent-[#00B4CC]"
-                            />
-                            {q}
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    {parts[p.key].checked && p.isText && (
-                      <input
-                        type="text"
-                        value={parts[p.key].text}
-                        onChange={(e) => handlePartText(p.key, e.target.value)}
-                        placeholder="Préciser..."
-                        className="ml-6 mt-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:border-[#00B4CC] outline-none"
-                      />
-                    )}
-                  </div>
+              <div className="grid grid-cols-2 gap-2">
+                {PARTS.map((part) => (
+                  <label key={part} className="flex items-center gap-2 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={partsReplaced.includes(part)}
+                      onChange={() => togglePart(part)}
+                      className="w-4 h-4 accent-[#00B4CC]"
+                    />
+                    <span className="text-[#333]">{part}</span>
+                  </label>
                 ))}
               </div>
+              {partsReplaced.length === 0 && (
+                <p className="text-xs text-gray-400 mt-2">Aucune pièce remplacée = État original</p>
+              )}
             </div>
           )}
 

@@ -316,10 +316,7 @@ export default function ModelDetailPage() {
                     <tbody className="divide-y divide-gray-100">
                       {filtered.map((phone) => {
                         const isBest = phone.id === bestPhone?.id
-                        const parts  = phone.parts || []
-                        const partsText = parts.length > 0
-                          ? parts.map((p) => p.part_type).join(', ')
-                          : 'Aucune réparation — État original'
+                        const partsReplaced = Array.isArray(phone.parts_replaced) ? phone.parts_replaced : []
                         return (
                           <tr key={phone.id} className={`hover:bg-gray-50 transition-colors ${isBest ? 'bg-cyan-50/40' : ''}`}>
                             <td className="px-4 py-3">
@@ -342,14 +339,27 @@ export default function ModelDetailPage() {
                             <td className="px-4 py-3">
                               <BatteryBar value={phone.battery_health} />
                             </td>
-                            <td className="px-4 py-3 max-w-[200px]">
+                            <td className="px-4 py-3 max-w-[220px]">
                               {phone.condition === 'neuf' ? (
                                 <p className="text-xs text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple</p>
-                              ) : (
-                                <p className="text-xs text-[#555] line-clamp-2">{partsText}</p>
-                              )}
+                              ) : phone.condition === 'reconditionne' ? (
+                                partsReplaced.length > 0 ? (
+                                  <div className="text-xs text-gray-500">
+                                    <span className="font-medium text-orange-600">Pièces remplacées :</span>
+                                    <ul className="mt-1 space-y-0.5">
+                                      {partsReplaced.map((p) => (
+                                        <li key={p} className="flex items-center gap-1">
+                                          <span className="text-orange-400">🔧</span>{p}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-green-600 font-medium">✓ Aucune réparation — État original</span>
+                                )
+                              ) : null}
                               {(phone.storage || phone.color) && (
-                                <p className="text-[11px] text-[#888] mt-0.5">
+                                <p className="text-[11px] text-[#888] mt-1">
                                   {[phone.storage, phone.color].filter(Boolean).join(' · ')}
                                 </p>
                               )}
@@ -380,10 +390,7 @@ export default function ModelDetailPage() {
                 <div className="md:hidden space-y-3">
                   {filtered.map((phone) => {
                     const isBest = phone.id === bestPhone?.id
-                    const parts  = phone.parts || []
-                    const partsText = parts.length > 0
-                      ? parts.map((p) => p.part_type).join(', ')
-                      : 'État original'
+                    const partsReplaced = Array.isArray(phone.parts_replaced) ? phone.parts_replaced : []
                     return (
                       <div
                         key={phone.id}
@@ -414,9 +421,22 @@ export default function ModelDetailPage() {
                           )}
                           {phone.condition === 'neuf' ? (
                             <p className="text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>
-                          ) : (
-                            <p>{partsText}</p>
-                          )}
+                          ) : phone.condition === 'reconditionne' ? (
+                            partsReplaced.length > 0 ? (
+                              <div>
+                                <span className="font-medium text-orange-600">Pièces remplacées :</span>
+                                <ul className="mt-1 space-y-0.5">
+                                  {partsReplaced.map((p) => (
+                                    <li key={p} className="flex items-center gap-1">
+                                      <span className="text-orange-400">🔧</span>{p}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : (
+                              <p className="text-green-600 font-medium">✓ Aucune réparation — État original</p>
+                            )
+                          ) : null}
                           <BatteryBar value={phone.battery_health} />
                         </div>
 
