@@ -140,6 +140,8 @@ export default function ReservationForm({ phone }) {
         ? availableMagasins[0].id
         : form.magasin
 
+      const amountToPay = paymentMode === 'acompte' ? 50 : totalPrice
+
       // 1. Sauvegarde la réservation en DB avec status 'en_attente'
       if (isSupabaseReady && supabase) {
         const orderData = {
@@ -155,9 +157,9 @@ export default function ReservationForm({ phone }) {
           magasin_id:       form.delivery === 'collect' ? magasinFinal : null,
           delivery_address: form.delivery === 'delivery' ? form.address : null,
           pickup_date:      form.delivery === 'collect' && form.pickupDate ? form.pickupDate : null,
-          payment_mode:     'acompte',
+          payment_mode:     paymentMode,
           total_amount:     totalPrice,
-          deposit_amount:   50,
+          deposit_amount:   amountToPay,
           notes:            form.notes || null,
           reservation_code: reservationCode,
           status:           'en_attente',
@@ -176,7 +178,7 @@ export default function ReservationForm({ phone }) {
       }
 
       // 2. Crée la session Stripe Checkout
-      console.log('Création de la session Stripe Checkout...')
+      console.log('Création de la session Stripe Checkout...', { paymentMode, amountToPay })
       const res = await fetch('/.netlify/functions/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -187,7 +189,9 @@ export default function ReservationForm({ phone }) {
           phoneStorage:    phone?.storage,
           clientName,
           clientEmail:     form.email,
-          amount:          50,
+          amount:          amountToPay,
+          totalPrice,
+          paymentMode,
           reservationCode,
           magasinNom:      MAGASINS[magasinFinal]?.nom || magasinFinal,
         })
@@ -321,7 +325,7 @@ export default function ReservationForm({ phone }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await submitReservation(null);
+    await handleStripeCheckout();
   };
 
   return (
@@ -743,34 +747,23 @@ export default function ReservationForm({ phone }) {
         </div>
       )}
 
-      {paymentMode === 'acompte' ? (
-        <button
-          type="button"
-          onClick={handleStripeCheckout}
-          disabled={loading}
-          className="w-full bg-[#1B2A4A] hover:bg-[#243660] text-white rounded-xl py-4 font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-              Préparation du paiement...
-            </span>
-          ) : (
-            'Réserver et payer 50€'
-          )}
-        </button>
-      ) : (
-        <Button type="submit" variant="primary" size="full" disabled={loading} className="text-base font-bold">
-          {loading ? (
-            <span className="flex items-center gap-2">
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Envoi en cours...
-            </span>
-          ) : (
-            `Payer ${totalPrice}€ maintenant`
-          )}
-        </Button>
-      )}
+      <button
+        type="button"
+        onClick={handleStripeCheckout}
+        disabled={loading}
+        className="w-full bg-[#1B2A4A] hover:bg-[#243660] text-white rounded-xl py-4 font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+      >
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+            Préparation du paiement...
+          </span>
+        ) : paymentMode === 'acompte' ? (
+          '🔒 Réserver et payer 50€'
+        ) : (
+          `🔒 Payer ${totalPrice}€ maintenant`
+        )}
+      </button>
     </motion.form>
   );
 }

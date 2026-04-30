@@ -39,8 +39,9 @@ export default function Confirmation() {
 
       // Met à jour le statut une seule fois (idempotent)
       if (order.status === 'en_attente') {
+        const newStatus = order.payment_mode === 'total' ? 'confirme' : 'acompte_paye'
         await supabase.from('orders')
-          .update({ status: 'acompte_paye' })
+          .update({ status: newStatus })
           .eq('reservation_code', code)
         if (order.phone_id) {
           await supabase.from('phones')

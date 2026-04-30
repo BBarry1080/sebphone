@@ -23,8 +23,18 @@ exports.handler = async (event) => {
     const {
       phoneId, phoneName, phoneColor, phoneStorage,
       clientName, clientEmail, amount,
-      reservationCode, magasinNom
+      reservationCode, magasinNom,
+      paymentMode, totalPrice
     } = JSON.parse(event.body)
+
+    const isAcompte = paymentMode === 'acompte'
+    const remaining = (totalPrice || amount) - amount
+    const productName = isAcompte
+      ? `Acompte réservation — ${phoneName}`
+      : `${phoneName}`
+    const productDescription = isAcompte
+      ? `Acompte réservation — Reste ${remaining}€ en magasin · Code: ${reservationCode}`
+      : `Paiement total — ${[phoneName, phoneColor, phoneStorage].filter(Boolean).join(' ')} · Code: ${reservationCode}`
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -32,8 +42,8 @@ exports.handler = async (event) => {
         price_data: {
           currency: 'eur',
           product_data: {
-            name: `Acompte réservation — ${phoneName}`,
-            description: `${phoneColor || ''} · ${phoneStorage || ''} · Code: ${reservationCode}`,
+            name: productName,
+            description: productDescription,
             images: ['https://sebphone.be/images/logo/SEBPHONEbysebtelecom.png'],
           },
           unit_amount: amount * 100,
@@ -47,6 +57,7 @@ exports.handler = async (event) => {
         client_name: clientName || '',
         reservation_code: reservationCode || '',
         magasin: magasinNom || '',
+        payment_mode: paymentMode || 'acompte',
       },
       success_url: `https://sebphone.be/confirmation?code=${reservationCode}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://sebphone.be/reservation/${phoneId}`,
