@@ -163,12 +163,11 @@ export default function Hero() {
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
               className="relative z-20"
             >
-              <div className="w-32 h-56 flex items-center justify-center drop-shadow-2xl">
+              <div className="w-40 h-72 flex items-center justify-center drop-shadow-2xl">
                 <img
-                  src="https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-15-pro-finish-select-202309-6-1inch-naturaltitanium?wid=400&hei=400&fmt=png-alpha&qlt=80"
+                  src="/images/iphones/iphone15proTitane-erased.png"
                   alt="iPhone 15 Pro"
                   className="w-full h-full object-contain"
-                  onError={(e) => { e.target.src = '/images/iphones/iphone-15-pro-titane-naturel.png' }}
                 />
               </div>
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#00B4CC] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
@@ -182,12 +181,11 @@ export default function Hero() {
               transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
               className="absolute left-4 top-8 z-10"
             >
-              <div className="w-24 h-44 flex items-center justify-center drop-shadow-xl opacity-90">
+              <div className="w-32 h-60 flex items-center justify-center drop-shadow-xl">
                 <img
-                  src="https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-17-finish-select-202509-6-1inch-skyblue?wid=400&hei=400&fmt=png-alpha&qlt=80"
+                  src="/images/iphones/iphone17-erased.png"
                   alt="iPhone 17"
                   className="w-full h-full object-contain"
-                  onError={(e) => { e.target.src = '/images/iphones/iphone-17-noir.png'; e.target.style.filter = 'hue-rotate(200deg) saturate(1.4)' }}
                 />
               </div>
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-sky-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
@@ -201,16 +199,15 @@ export default function Hero() {
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
               className="absolute right-4 top-8 z-10"
             >
-              <div className="w-24 h-44 flex items-center justify-center drop-shadow-xl opacity-90">
+              <div className="w-32 h-60 flex items-center justify-center drop-shadow-xl">
                 <img
-                  src="https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/iphone-14-pro-finish-select-202209-61inch-deeppurple?wid=400&hei=400&fmt=png-alpha&qlt=80"
-                  alt="iPhone 14 Pro"
+                  src="/images/iphones/iphone14promax-erased.png"
+                  alt="iPhone 14 Pro Max"
                   className="w-full h-full object-contain"
-                  onError={(e) => { e.target.src = '/images/iphones/iphone-14-pro-noir-cosmos.png' }}
                 />
               </div>
               <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#1B2A4A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-white/20">
-                iPhone 14 Pro
+                iPhone 14 Pro Max
               </div>
             </motion.div>
 
