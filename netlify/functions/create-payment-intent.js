@@ -20,6 +20,8 @@ exports.handler = async (event) => {
       }
     })
 
+    console.log('PaymentIntent créé:', paymentIntent.id)
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },

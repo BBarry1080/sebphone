@@ -668,9 +668,13 @@ export default function ReservationForm({ phone }) {
               clientEmail: form.email,
             }}
             onSuccess={async (paymentIntent) => {
+              console.log('Paiement réussi:', paymentIntent)
+              console.log('Lancement submitReservation...')
               await submitReservation(paymentIntent)
+              console.log('Navigation vers /confirmation...')
             }}
             onError={(err) => {
+              console.error('Stripe onError:', err)
               setSubmitError('Erreur paiement : ' + err)
             }}
           />

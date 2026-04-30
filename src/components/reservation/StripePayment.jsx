@@ -17,13 +17,17 @@ function CheckoutForm({ amount, onSuccess, onError, reservationData }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handlePay = async (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     if (!stripe || !elements) return
     setLoading(true)
     setError(null)
 
     try {
+      console.log('Stripe: création du PaymentIntent...')
       const res = await fetch('/.netlify/functions/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,6 +41,7 @@ function CheckoutForm({ amount, onSuccess, onError, reservationData }) {
 
       const { clientSecret, error: serverError } = await res.json()
       if (serverError) throw new Error(serverError)
+      console.log('Stripe: clientSecret reçu, confirmation du paiement...')
 
       const { error: stripeError, paymentIntent } =
         await stripe.confirmCardPayment(clientSecret, {
@@ -50,12 +55,15 @@ function CheckoutForm({ amount, onSuccess, onError, reservationData }) {
         })
 
       if (stripeError) {
+        console.error('Stripe: erreur paiement', stripeError)
         setError(stripeError.message)
         onError(stripeError.message)
       } else if (paymentIntent.status === 'succeeded') {
+        console.log('Stripe: paiement réussi', paymentIntent.id)
         onSuccess(paymentIntent)
       }
     } catch (err) {
+      console.error('Stripe: catch', err)
       setError(err.message)
       onError(err.message)
     } finally {
@@ -64,7 +72,7 @@ function CheckoutForm({ amount, onSuccess, onError, reservationData }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
       <div className="border-2 border-gray-200 rounded-xl p-4 focus-within:border-[#00B4CC] transition-all">
         <CardElement
           options={{
@@ -88,7 +96,8 @@ function CheckoutForm({ amount, onSuccess, onError, reservationData }) {
       )}
 
       <button
-        type="submit"
+        type="button"
+        onClick={handlePay}
         disabled={!stripe || loading}
         className="w-full bg-[#1B2A4A] text-white rounded-xl py-4 font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#243660] transition-all cursor-pointer">
         {loading ? (
@@ -104,7 +113,7 @@ function CheckoutForm({ amount, onSuccess, onError, reservationData }) {
       <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-1">
         Paiement sécurisé par Stripe
       </p>
-    </form>
+    </div>
   )
 }
 
