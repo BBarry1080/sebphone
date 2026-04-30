@@ -44,6 +44,23 @@ export default function Confirmation() {
           Un email de confirmation a été envoyé à{' '}
           <span className="font-semibold text-[#1B2A4A]">{clientEmail}</span>
         </p>
+
+        <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-left">
+          <p className="font-semibold text-yellow-800 mb-2">
+            📧 Vous n'avez pas reçu l'email ?
+          </p>
+          <ol className="text-yellow-700 space-y-1 list-decimal list-inside">
+            <li>Vérifiez votre boite de réception</li>
+            <li>
+              <span className="text-red-600 font-bold">
+                Vérifiez vos SPAMS / Indésirables
+              </span>
+            </li>
+            <li className="text-green-700 font-medium">
+              Si l'email est dans les spams → cliquez sur "Pas du spam" ou "Ce n'est pas un indésirable" pour nous ajouter à vos contacts de confiance ✅
+            </li>
+          </ol>
+        </div>
       </div>
 
       {/* Code de réservation */}
