@@ -175,6 +175,9 @@ function PhoneModal({ phone, onClose, onSaved }) {
     if (!isEdit && !selectedModel && !modelSearch.trim()) return
     setSaving(true)
     try {
+      console.log('parts_replaced à sauvegarder:', partsReplaced)
+      console.log('condition:', condition, '→ inclus si reconditionne ?', condition === 'reconditionne')
+
       const phoneData = {
         name:           modelSearch.trim(),
         model:          modelSearch.trim(),
@@ -192,11 +195,12 @@ function PhoneModal({ phone, onClose, onSaved }) {
         imei:           imei.trim() || null,
         fournisseur:    fournisseur || null,
         stock_location: stockLocation || null,
-        parts_replaced: condition === 'reconditionne' ? partsReplaced : [],
+        parts_replaced: condition === 'reconditionne' ? (partsReplaced || []) : [],
         status:         'disponible',
       }
 
-      console.log('Données envoyées:', phoneData)
+      console.log('updateData complet:', phoneData)
+      console.log('phoneData.parts_replaced:', phoneData.parts_replaced)
 
       if (isEdit) {
         await updatePhone(phone.id, phoneData)
