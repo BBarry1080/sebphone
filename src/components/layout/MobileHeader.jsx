@@ -6,10 +6,11 @@ import { useCart } from '../../context/CartContext';
 
 const navLinks = [
   { to: '/',              label: 'Accueil' },
-  { to: '/iphone',   label: 'iPhone' },
-  { to: '/samsung',  label: 'Samsung' },
+  { to: '/iphone',        label: 'iPhone' },
+  { to: '/samsung',       label: 'Samsung' },
   { to: '/occasions',     label: 'Occasions' },
   { to: '/reconditiones', label: 'Reconditionnés' },
+  { to: '/sur-commande',  label: '📦 Sur commande', highlight: true },
   { to: '/rachat',        label: 'Revendre' },
 ];
 
@@ -123,7 +124,11 @@ export default function MobileHeader() {
                     key={link.to + link.label}
                     to={link.to}
                     onClick={() => setOpen(false)}
-                    className="px-6 py-4 text-[#1B2A4A] font-medium text-base border-b border-gray-50 hover:bg-[#F5F5F5] hover:text-[#00B4CC] transition-colors"
+                    className={`px-6 py-4 font-medium text-base border-b border-gray-50 transition-colors ${
+                      link.highlight
+                        ? 'text-orange-500 hover:bg-orange-50'
+                        : 'text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC]'
+                    }`}
                   >
                     {link.label}
                   </Link>

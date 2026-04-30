@@ -18,10 +18,11 @@ function SebLogo() {
 
 const navLinks = [
   { to: '/',              label: 'Accueil',       end: true },
-  { to: '/iphone',   label: 'iPhone',  end: false },
-  { to: '/samsung',  label: 'Samsung', end: false },
+  { to: '/iphone',        label: 'iPhone',        end: false },
+  { to: '/samsung',       label: 'Samsung',       end: false },
   { to: '/occasions',     label: 'Occasions',     end: false },
   { to: '/reconditiones', label: 'Reconditionnés', end: false },
+  { to: '/sur-commande',  label: '📦 Sur commande', end: false, highlight: true },
   { to: '/rachat',        label: 'Revendre',      end: false },
 ];
 
@@ -71,9 +72,9 @@ export default function Header() {
               end={link.end}
               className={({ isActive }) =>
                 `px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                  isActive
-                    ? 'text-[#00B4CC] bg-cyan-50'
-                    : 'text-[#1B2A4A] hover:text-[#00B4CC] hover:bg-gray-50'
+                  link.highlight
+                    ? (isActive ? 'text-orange-700 bg-orange-50' : 'text-orange-500 hover:text-orange-700 hover:bg-orange-50')
+                    : (isActive ? 'text-[#00B4CC] bg-cyan-50' : 'text-[#1B2A4A] hover:text-[#00B4CC] hover:bg-gray-50')
                 }`
               }
             >

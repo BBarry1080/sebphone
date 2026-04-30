@@ -10,6 +10,8 @@ import Boutique from './pages/Boutique';
 import Occasions from './pages/Occasions';
 import Reconditiones from './pages/Reconditiones';
 import Rachat from './pages/Rachat';
+import SurCommande from './pages/SurCommande';
+import ReservationCommande from './pages/ReservationCommande';
 import PhoneDetailPage from './pages/PhoneDetailPage'
 import ModelDetailPage from './pages/ModelDetailPage';
 import Reservation from './pages/Reservation';
@@ -69,6 +71,12 @@ export default function App() {
           } />
           <Route path="/rachat" element={
             <Layout><Rachat /></Layout>
+          } />
+          <Route path="/sur-commande" element={
+            <Layout><SurCommande /></Layout>
+          } />
+          <Route path="/reservation-commande" element={
+            <Layout><ReservationCommande /></Layout>
           } />
           <Route path="/telephone/:id" element={
             <Layout><PhoneDetailPage /></Layout>
