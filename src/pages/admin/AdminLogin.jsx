@@ -39,15 +39,23 @@ export default function AdminLogin() {
 
     // 2. Tentative connexion employé (table staff)
     const hashedPassword = sha256(password + SALT)
-    console.log('Hash généré au login:', hashedPassword)
+    console.log('=== LOGIN DEBUG ===')
+    console.log('email saisi:', email)
+    console.log('password saisi:', password)
+    console.log('hash généré:', hashedPassword)
+
     const { data: staffData, error: staffError } = await supabase
       .from('staff')
       .select('*')
       .eq('email', email)
-      .eq('active', true)
-      .maybeSingle()
+      .single()
 
-    if (!staffError && staffData && staffData.password_hash === hashedPassword) {
+    console.log('staffData trouvé:', staffData)
+    console.log('staffError:', staffError)
+    console.log('hash en DB:', staffData?.password_hash)
+    console.log('hash match:', staffData?.password_hash === hashedPassword)
+
+    if (!staffError && staffData && staffData.password_hash === hashedPassword && staffData.active) {
       localStorage.setItem('sebphone_user', JSON.stringify({
         id:          staffData.id,
         name:        staffData.name,
