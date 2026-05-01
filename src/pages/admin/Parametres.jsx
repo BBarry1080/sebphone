@@ -136,6 +136,7 @@ function EmployeeModal({ employee, onClose, onSaved }) {
     }
     if (!isEdit || password) {
       data.password_hash = sha256(password + SALT)
+      console.log('Hash sauvegardé à la création:', data.password_hash)
     }
 
     let err

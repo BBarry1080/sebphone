@@ -39,6 +39,7 @@ export default function AdminLogin() {
 
     // 2. Tentative connexion employé (table staff)
     const hashedPassword = sha256(password + SALT)
+    console.log('Hash généré au login:', hashedPassword)
     const { data: staffData, error: staffError } = await supabase
       .from('staff')
       .select('*')
