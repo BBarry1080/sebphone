@@ -5,6 +5,7 @@ import {
   Bell, Menu, X, Tag, QrCode, Calculator,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
+import { useStaffCheck } from '../../hooks/useStaffCheck'
 
 function SidebarContent({ onClose }) {
   const navigate = useNavigate()
@@ -109,6 +110,7 @@ function SidebarContent({ onClose }) {
 }
 
 export default function AdminLayout() {
+  useStaffCheck()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (

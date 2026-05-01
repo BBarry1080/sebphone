@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Package, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
+import { useRequirePermission, usePermission } from '../../hooks/usePermissions'
 
 const STATUS_CONFIG = {
   en_attente:   { label: 'En attente',   cls: 'bg-yellow-100 text-yellow-800' },
@@ -122,7 +123,7 @@ function ChangeModelModal({ order, onClose, onDone }) {
 }
 
 /* ─── DETAIL PANEL ─── */
-function OrderPanel({ order, onClose, onRefetch }) {
+function OrderPanel({ order, onClose, onRefetch, canEncaisser, canChangeModel, canModify }) {
   const [saving, setSaving]         = useState(false)
   const [changeModel, setChangeModel] = useState(false)
 
@@ -244,7 +245,7 @@ function OrderPanel({ order, onClose, onRefetch }) {
 
           {/* Actions */}
           <div className="space-y-2 pt-2">
-            {order.status !== 'recupere' && order.status !== 'annule' && (
+            {canChangeModel && order.status !== 'recupere' && order.status !== 'annule' && (
               <button
                 onClick={() => setChangeModel(true)}
                 disabled={saving}
@@ -254,7 +255,7 @@ function OrderPanel({ order, onClose, onRefetch }) {
                 Changer le modèle
               </button>
             )}
-            {order.status === 'en_attente' && (
+            {canModify && order.status === 'en_attente' && (
               <button
                 onClick={() => updateStatus('confirme')}
                 disabled={saving}
@@ -263,7 +264,7 @@ function OrderPanel({ order, onClose, onRefetch }) {
                 ✓ Confirmer la commande
               </button>
             )}
-            {(order.status === 'acompte_paye' || order.status === 'confirme' || order.status === 'en_attente') && (
+            {canEncaisser && (order.status === 'acompte_paye' || order.status === 'confirme' || order.status === 'en_attente') && (
               <button
                 onClick={handleEncaisser}
                 disabled={saving}
@@ -272,7 +273,7 @@ function OrderPanel({ order, onClose, onRefetch }) {
                 ✅ Encaisser — Marquer comme récupéré
               </button>
             )}
-            {order.status !== 'annule' && (
+            {canModify && order.status !== 'annule' && (
               <button
                 onClick={handleCancel}
                 disabled={saving}
@@ -298,6 +299,12 @@ function OrderPanel({ order, onClose, onRefetch }) {
 
 /* ─── PAGE PRINCIPALE ─── */
 export default function Commandes() {
+  useRequirePermission('voir_commandes')
+  const canDelete = usePermission('supprimer_commande')
+  const canEncaisser = usePermission('encaisser')
+  const canChangeModel = usePermission('changer_modele')
+  const canModify = usePermission('modifier_commandes')
+
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState(null)
@@ -423,14 +430,16 @@ export default function Commandes() {
                         </button>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={(e) => handleDelete(o, e)}
-                          disabled={deletingId === o.id}
-                          className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
-                          title="Supprimer"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {canDelete && (
+                          <button
+                            onClick={(e) => handleDelete(o, e)}
+                            disabled={deletingId === o.id}
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+                            title="Supprimer"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )
@@ -450,6 +459,9 @@ export default function Commandes() {
             fetchOrders()
             setSelectedOrder(null)
           }}
+          canEncaisser={canEncaisser}
+          canChangeModel={canChangeModel}
+          canModify={canModify}
         />
       )}
     </div>

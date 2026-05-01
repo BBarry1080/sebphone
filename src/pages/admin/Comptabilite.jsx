@@ -5,8 +5,21 @@ import {
   TrendingUp, ShoppingBag, CreditCard,
   Banknote, Store, Plus, X, Eye
 } from 'lucide-react'
+import { useRequirePermission, useCurrentUser, usePermission } from '../../hooks/usePermissions'
 
 export default function Comptabilite() {
+  useRequirePermission('voir_comptabilite')
+  const currentUser = useCurrentUser()
+  const isAdmin = currentUser.role === 'admin' || !currentUser.role
+  const canAddPayments = usePermission('ajouter_paiements')
+
+  const allowedMagasins = isAdmin
+    ? MAGASINS_LIST
+    : MAGASINS_LIST.filter((m) => {
+        const key = 'compta_' + m.id.replace(/-/g, '_')
+        return currentUser.permissions?.[key] === true
+      })
+
   const [phones, setPhones] = useState([])
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -78,7 +91,7 @@ export default function Comptabilite() {
     }
   }
 
-  const statsByMagasin = MAGASINS_LIST.map((mag) => {
+  const statsByMagasin = allowedMagasins.map((mag) => {
     const magPhones   = phones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(mag.id))
     const dispo       = magPhones.filter((p) => p.status === 'disponible')
     const vendu       = magPhones.filter((p) => p.status === 'vendu')
@@ -113,13 +126,15 @@ export default function Comptabilite() {
           <h1 className="text-2xl font-bold text-[#1B2A4A]">Comptabilité</h1>
           <p className="text-sm text-gray-500 mt-1">Vue globale de tous les magasins</p>
         </div>
-        <button
-          onClick={() => setShowAddPayment(true)}
-          className="flex items-center gap-2 bg-[#00B4CC] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cyan-600 transition-all"
-        >
-          <Plus size={16} />
-          Ajouter un paiement
-        </button>
+        {canAddPayments && (
+          <button
+            onClick={() => setShowAddPayment(true)}
+            className="flex items-center gap-2 bg-[#00B4CC] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cyan-600 transition-all"
+          >
+            <Plus size={16} />
+            Ajouter un paiement
+          </button>
+        )}
       </div>
 
       {/* FILTRE MAGASIN */}

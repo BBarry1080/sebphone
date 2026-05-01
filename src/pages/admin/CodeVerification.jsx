@@ -7,8 +7,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, CheckCircle, XCircle, AlertTriangle, MapPin, Calendar } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
+import { useRequirePermission } from '../../hooks/usePermissions'
 
 export default function CodeVerification() {
+  useRequirePermission('verifier_code')
   const [code,    setCode]    = useState('')
   const [loading, setLoading] = useState(false)
   const [result,  setResult]  = useState(null)

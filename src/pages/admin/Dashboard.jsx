@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Smartphone, ClipboardList, CheckCircle, Euro, TrendingUp } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
-import { MAGASINS } from '../../utils/magasins'
+import { useCurrentUser, usePermission } from '../../hooks/usePermissions'
 
 const STATUS_BADGES = {
   en_attente:    { label: 'En attente',    cls: 'bg-yellow-100 text-yellow-800' },
@@ -29,9 +29,20 @@ function MetricCard({ icon: Icon, iconColor, label, value, unit = '', valueClass
 }
 
 export default function Dashboard() {
-  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}') } catch { return {} } })()
+  const navigate = useNavigate()
+  const currentUser = useCurrentUser()
   const isAdmin = currentUser.role === 'admin' || !currentUser.role
   const magasinFilter = !isAdmin && currentUser.magasin_id ? currentUser.magasin_id : null
+  const canSeeDashboard = usePermission('voir_dashboard')
+  const canSeeFinance = usePermission('voir_comptabilite')
+  const canSeeCommandes = usePermission('voir_commandes')
+  const canSeeStock = usePermission('voir_stock')
+
+  useEffect(() => {
+    if (!isAdmin && !canSeeDashboard) {
+      navigate('/admin/stock', { replace: true })
+    }
+  }, [canSeeDashboard])
 
   const [metrics, setMetrics] = useState({ disponible: 0, reserve: 0, vendu: 0, ca: 0, benefice: 0, beneficeReel: 0 })
   const [orders, setOrders] = useState([])
@@ -104,11 +115,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {magasinFilter && (
-        <div className="bg-cyan-50 border border-cyan-200 rounded-xl px-4 py-2.5 text-sm text-cyan-700 font-medium flex items-center gap-2">
-          📍 Vue filtrée — {MAGASINS[magasinFilter]?.nom || magasinFilter}
-        </div>
-      )}
       <div>
         <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Dashboard</h1>
         <p className="text-sm text-[#555555] mt-0.5">Vue d'ensemble du stock et des commandes</p>
@@ -116,18 +122,22 @@ export default function Dashboard() {
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <MetricCard icon={Smartphone}     iconColor="bg-[#00B4CC]"  label="Stock disponible"       value={metrics.disponible} unit="appareils" />
-        <MetricCard icon={ClipboardList}  iconColor="bg-blue-500"   label="Réservations en cours"  value={metrics.reserve} />
-        <MetricCard icon={CheckCircle}    iconColor="bg-green-500"  label="Vendus ce mois"         value={metrics.vendu} />
-        <MetricCard icon={Euro}           iconColor="bg-[#1B2A4A]"  label="CA du mois"             value={metrics.ca} unit="€" />
-        <MetricCard icon={TrendingUp} iconColor="bg-green-500" label="Bénéfice potentiel"
-          value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.benefice)}
-          valueClass="text-emerald-600"
-        />
-        <MetricCard icon={TrendingUp} iconColor="bg-emerald-500" label="Bénéfice réel"
-          value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.beneficeReel)}
-          valueClass="text-emerald-600"
-        />
+        {canSeeStock && <MetricCard icon={Smartphone}    iconColor="bg-[#00B4CC]" label="Stock disponible"      value={metrics.disponible} unit="appareils" />}
+        {canSeeCommandes && <MetricCard icon={ClipboardList} iconColor="bg-blue-500"  label="Réservations en cours" value={metrics.reserve} />}
+        {canSeeCommandes && <MetricCard icon={CheckCircle}   iconColor="bg-green-500" label="Vendus ce mois"        value={metrics.vendu} />}
+        {canSeeFinance && <MetricCard icon={Euro}          iconColor="bg-[#1B2A4A]" label="CA du mois"             value={metrics.ca} unit="€" />}
+        {canSeeFinance && (
+          <MetricCard icon={TrendingUp} iconColor="bg-green-500" label="Bénéfice potentiel"
+            value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.benefice)}
+            valueClass="text-emerald-600"
+          />
+        )}
+        {canSeeFinance && (
+          <MetricCard icon={TrendingUp} iconColor="bg-emerald-500" label="Bénéfice réel"
+            value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.beneficeReel)}
+            valueClass="text-emerald-600"
+          />
+        )}
       </div>
 
       {/* Recent orders */}

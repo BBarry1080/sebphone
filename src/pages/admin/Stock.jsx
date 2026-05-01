@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Smartphone, Plus, Search, Pencil, Trash2, X, Star } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
+import { useRequirePermission, usePermission, useCurrentUser } from '../../hooks/usePermissions'
 import {
   addPhone, updatePhone, deletePhone, updatePhoneStatus, updatePhonePrice,
 } from '../../data/phonesApi'
@@ -104,6 +105,7 @@ function InlinePrice({ id, value, onSave }) {
 /* ─── MODAL AJOUT / MODIFICATION ─── */
 
 function PhoneModal({ phone, onClose, onSaved }) {
+  const currentUser = useCurrentUser()
   const isEdit = !!phone
 
   // ── Model autocomplete ───────────────────────────────────────────
@@ -138,10 +140,6 @@ function PhoneModal({ phone, onClose, onSaved }) {
   })()
   const [partsReplaced, setPartsReplaced] = useState(initialPartsReplaced)
   const [saving, setSaving]       = useState(false)
-
-  console.log('PhoneModal - condition:', phone?.condition || 'reconditionne')
-  console.log('PhoneModal - parts_replaced raw:', phone?.parts_replaced)
-  console.log('PhoneModal - parts_replaced init:', initialPartsReplaced)
 
   // ── Suggestions modèles — ordre générationnel strict ────────────
   const IPHONE_ORDER = [
@@ -204,11 +202,6 @@ function PhoneModal({ phone, onClose, onSaved }) {
     if (!isEdit && !selectedModel && !modelSearch.trim()) return
     setSaving(true)
     try {
-      console.log('=== SAVE DEBUG ===')
-      console.log('condition:', condition)
-      console.log('parts_replaced AVANT save:', partsReplaced)
-      console.log('type:', typeof partsReplaced, '→ Array?', Array.isArray(partsReplaced))
-
       const phoneData = {
         name:           modelSearch.trim(),
         model:          modelSearch.trim(),
@@ -231,10 +224,6 @@ function PhoneModal({ phone, onClose, onSaved }) {
         added_by:         currentUser.name || 'Admin',
         added_by_magasin: currentUser.magasin_id || magasins?.[0] || null,
       }
-
-      console.log('phoneData.parts_replaced:', phoneData.parts_replaced)
-      console.log('phoneData complet:', phoneData)
-      console.log('=== END SAVE DEBUG ===')
 
       if (isEdit) {
         await updatePhone(phone.id, phoneData)
@@ -580,6 +569,12 @@ function PhoneModal({ phone, onClose, onSaved }) {
 
 /* ─── PAGE PRINCIPALE ─── */
 export default function Stock() {
+  useRequirePermission('voir_stock')
+  const canAdd    = usePermission('ajouter_stock')
+  const canEdit   = usePermission('modifier_stock')
+  const canDelete = usePermission('supprimer_stock')
+  const canStar   = usePermission('offre_semaine')
+
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}') } catch { return {} } })()
   const isAdmin = currentUser.role === 'admin' || !currentUser.role
 
@@ -597,11 +592,7 @@ export default function Stock() {
       setLoading(false)
       return
     }
-    let query = supabase.from('phones').select('*')
-    if (!isAdmin && currentUser.magasin_id) {
-      query = query.contains('magasins', [currentUser.magasin_id])
-    }
-    const { data } = await query.order('created_at', { ascending: false })
+    const { data } = await supabase.from('phones').select('*').order('created_at', { ascending: false })
     setPhones(data || [])
     setLoading(false)
   }
@@ -694,13 +685,15 @@ export default function Stock() {
           <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Gestion du stock</h1>
           <p className="text-sm text-[#555555] mt-0.5">{phones.length} appareils</p>
         </div>
-        <button
-          onClick={() => { setEditingPhone(null); setModalOpen(true) }}
-          className="flex items-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer text-sm"
-        >
-          <Plus size={16} />
-          Ajouter un téléphone
-        </button>
+        {canAdd && (
+          <button
+            onClick={() => { setEditingPhone(null); setModalOpen(true) }}
+            className="flex items-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer text-sm"
+          >
+            <Plus size={16} />
+            Ajouter un téléphone
+          </button>
+        )}
       </div>
 
       {/* Search + Filtres magasins */}
@@ -801,18 +794,22 @@ export default function Stock() {
                     <StatusDropdown id={phone.id} value={phone.status} onChange={handleStatusChange} />
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => { setEditingPhone(phone); setModalOpen(true) }}
-                      className="p-2 text-[#888] hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(phone.id)}
-                      className="p-2 text-[#888] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => { setEditingPhone(phone); setModalOpen(true) }}
+                        className="p-2 text-[#888] hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(phone.id)}
+                        className="p-2 text-[#888] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -910,31 +907,37 @@ export default function Stock() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleToggleOffreSemaine(phone)}
-                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                            phone.offre_semaine
-                              ? 'text-yellow-500 bg-yellow-50'
-                              : 'text-[#888] hover:text-yellow-500 hover:bg-yellow-50'
-                          }`}
-                          title="Offre de la semaine"
-                        >
-                          <Star size={14} fill={phone.offre_semaine ? 'currentColor' : 'none'} />
-                        </button>
-                        <button
-                          onClick={() => { setEditingPhone(phone); setModalOpen(true) }}
-                          className="p-1.5 text-[#888] hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                          title="Modifier"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(phone.id)}
-                          className="p-1.5 text-[#888] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          title="Supprimer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {canStar && (
+                          <button
+                            onClick={() => handleToggleOffreSemaine(phone)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                              phone.offre_semaine
+                                ? 'text-yellow-500 bg-yellow-50'
+                                : 'text-[#888] hover:text-yellow-500 hover:bg-yellow-50'
+                            }`}
+                            title="Offre de la semaine"
+                          >
+                            <Star size={14} fill={phone.offre_semaine ? 'currentColor' : 'none'} />
+                          </button>
+                        )}
+                        {canEdit && (
+                          <button
+                            onClick={() => { setEditingPhone(phone); setModalOpen(true) }}
+                            className="p-1.5 text-[#888] hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                            title="Modifier"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(phone.id)}
+                            className="p-1.5 text-[#888] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="Supprimer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

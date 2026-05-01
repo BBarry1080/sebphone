@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
+import { useRequirePermission } from '../../hooks/usePermissions'
 
 const FALLBACK = [
   { id: '1', code: 'SEBPHONE10', type: 'percent', value: 10, min_order: 0, max_uses: null, uses_count: 0, active: true, expires_at: null },
@@ -144,6 +145,7 @@ function AddModal({ onClose, onSaved }) {
 }
 
 export default function PromoCodes() {
+  useRequirePermission('codes_promo')
   const [codes, setCodes]     = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)

@@ -20,35 +20,50 @@ const generateEmail = (firstName, lastName) => {
 
 const PERMISSION_GROUPS = [
   {
+    label: 'Dashboard',
+    perms: [
+      { key: 'voir_dashboard', label: 'Voir le dashboard' },
+    ],
+  },
+  {
     label: 'Stock',
     perms: [
-      { key: 'voir_stock',        label: 'Voir le stock' },
-      { key: 'ajouter_stock',     label: 'Ajouter des téléphones' },
-      { key: 'modifier_stock',    label: 'Modifier les téléphones' },
-      { key: 'supprimer_stock',   label: 'Supprimer des téléphones' },
-      { key: 'offre_semaine',     label: "Définir l'offre de la semaine" },
+      { key: 'voir_stock',      label: 'Voir le stock' },
+      { key: 'ajouter_stock',   label: 'Ajouter des téléphones' },
+      { key: 'modifier_stock',  label: 'Modifier les téléphones' },
+      { key: 'supprimer_stock', label: 'Supprimer des téléphones' },
+      { key: 'offre_semaine',   label: "Définir l'offre de la semaine" },
     ],
   },
   {
     label: 'Commandes',
     perms: [
       { key: 'voir_commandes',     label: 'Voir les commandes' },
-      { key: 'modifier_commandes', label: 'Modifier les commandes' },
+      { key: 'modifier_commandes', label: 'Modifier / Annuler les commandes' },
       { key: 'encaisser',          label: 'Encaisser une commande' },
+      { key: 'changer_modele',     label: 'Changer le modèle d\'une commande' },
+      { key: 'supprimer_commande', label: 'Supprimer une commande' },
       { key: 'verifier_code',      label: 'Vérifier un code client' },
     ],
   },
   {
     label: 'Clients & Marketing',
     perms: [
-      { key: 'voir_clients',  label: 'Voir les clients' },
-      { key: 'codes_promo',   label: 'Gérer les codes promo' },
+      { key: 'voir_clients', label: 'Voir les clients' },
+      { key: 'codes_promo',  label: 'Gérer les codes promo' },
     ],
   },
   {
     label: 'Finance',
     perms: [
       { key: 'voir_comptabilite', label: 'Voir la comptabilité' },
+      { key: 'ajouter_paiements', label: 'Ajouter des paiements' },
+      { key: 'compta_anderlecht',  label: 'Comptabilité — Anderlecht' },
+      { key: 'compta_molenbeek',   label: 'Comptabilité — Molenbeek' },
+      { key: 'compta_rue_neuve',   label: 'Comptabilité — Rue Neuve' },
+      { key: 'compta_louise',      label: 'Comptabilité — Louise' },
+      { key: 'compta_tubize',      label: 'Comptabilité — Tubize' },
+      { key: 'compta_saint_gilles', label: 'Comptabilité — Saint-Gilles' },
     ],
   },
   {
@@ -60,11 +75,17 @@ const PERMISSION_GROUPS = [
 ]
 
 const DEFAULT_PERMS = {
+  voir_dashboard: true,
   voir_stock: true, ajouter_stock: false, modifier_stock: false,
   supprimer_stock: false, offre_semaine: false,
   voir_commandes: false, modifier_commandes: false, encaisser: false,
-  verifier_code: false, voir_clients: false, codes_promo: false,
-  voir_comptabilite: false, gerer_utilisateurs: false,
+  changer_modele: false, supprimer_commande: false, verifier_code: false,
+  voir_clients: false, codes_promo: false,
+  voir_comptabilite: false, ajouter_paiements: false,
+  compta_anderlecht: false, compta_molenbeek: false,
+  compta_rue_neuve: false, compta_louise: false,
+  compta_tubize: false, compta_saint_gilles: false,
+  gerer_utilisateurs: false,
 }
 
 const AVATAR_COLORS = [
