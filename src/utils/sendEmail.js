@@ -21,6 +21,10 @@ export async function sendConfirmationEmail(params) {
     magasinId,
     magasinGmaps,
     pickupDate,
+    accessoryPack,
+    batteryReplace,
+    accessoriesTotal,
+    paymentMode,
   } = params
 
   const magasins = {
@@ -47,6 +51,9 @@ export async function sendConfirmationEmail(params) {
     adresse: 'Bruxelles'
   }
 
+  const isAcompte = paymentMode === 'acompte'
+  const totalNum  = price || 0
+
   const templateParams = {
     to_email: clientEmail,
     to_name: clientName || 'Client',
@@ -55,10 +62,14 @@ export async function sendConfirmationEmail(params) {
     phone_storage: phoneStorage || '',
     phone_grade: grade || '',
     phone_condition: '',
-    price_total: (price || 0) + '€',
-    deposit_paid: (depositPaid || 50) + '€',
-    remaining: ((price || 0) - (depositPaid || 50)) + '€',
+    payment_mode:   paymentMode || 'acompte',
+    price_total:    totalNum + '€',
+    deposit_paid:   isAcompte ? '50€' : totalNum + '€',
+    remaining:      isAcompte ? (totalNum - 50) + '€' : '0€',
+    payment_label:  isAcompte ? 'Acompte payé ✓' : 'Montant total payé ✓',
+    warning_message: isAcompte ? "L'acompte de 50€ n'est pas remboursable." : '',
     reservation_code: reservationCode || '',
+    reservation_url: `https://sebphone.be/commande/${reservationCode || ''}`,
     pickup_mode: pickupMode === 'click_collect'
       ? 'Click & Collect' : 'Livraison',
     magasin_nom: magasin.nom,
@@ -72,6 +83,9 @@ export async function sendConfirmationEmail(params) {
           day: 'numeric'
         })
       : 'À définir avec le magasin',
+    accessory_pack:    accessoryPack || 'Aucun',
+    battery_replace:   batteryReplace ? 'Oui' : 'Non',
+    accessories_total: (accessoriesTotal || 0) + '€',
     reply_to: 'contact@sebphone.be',
   }
 
@@ -79,6 +93,10 @@ export async function sendConfirmationEmail(params) {
   console.log('TEMPLATE_ID:', TEMPLATE_ID)
   console.log('PUBLIC_KEY:', PUBLIC_KEY)
   console.log('clientEmail reçu:', clientEmail)
+  console.log('to_email envoyé:', templateParams.to_email)
+  console.log('to_name envoyé:', templateParams.to_name)
+  console.log('reservation_code:', reservationCode)
+  console.log('reservation_url:', templateParams.reservation_url)
 
   if (!clientEmail) {
     console.error('❌ Pas d\'email client !')

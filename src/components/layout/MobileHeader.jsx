@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, Search, Phone, Mail, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,10 +6,11 @@ import { useCart } from '../../context/CartContext';
 
 const navLinks = [
   { to: '/',              label: 'Accueil' },
-  { to: '/iphone',   label: 'iPhone' },
-  { to: '/samsung',  label: 'Samsung' },
+  { to: '/iphone',        label: 'iPhone' },
+  { to: '/samsung',       label: 'Samsung' },
   { to: '/occasions',     label: 'Occasions' },
   { to: '/reconditiones', label: 'Reconditionnés' },
+  { to: '/sur-commande',  label: '📦 Sur commande', highlight: true },
   { to: '/rachat',        label: 'Revendre' },
 ];
 
@@ -28,16 +29,31 @@ function SebLogo() {
 
 export default function MobileHeader() {
   const [open, setOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const { totalItems } = useCart();
+  const navigate = useNavigate();
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (query.trim()) {
+      navigate(`/boutique?q=${encodeURIComponent(query.trim())}`);
+      setSearchOpen(false);
+      setQuery('');
+    }
+  };
 
   return (
     <header className="md:hidden sticky top-0 z-40 bg-white shadow-sm">
       <div className="px-4 h-14 flex items-center justify-between">
         <SebLogo />
         <div className="flex items-center gap-1">
-          <Link to="/boutique" className="p-2 text-[#555555]">
+          <button
+            onClick={() => setSearchOpen(!searchOpen)}
+            className="p-2 text-[#555555] cursor-pointer"
+          >
             <Search size={20} />
-          </Link>
+          </button>
           <Link to="/panier" className="relative p-2 text-[#555555]">
             <ShoppingCart size={20} />
             {totalItems > 0 && (
@@ -51,6 +67,39 @@ export default function MobileHeader() {
           </button>
         </div>
       </div>
+
+      {/* Search bar dropdown */}
+      <AnimatePresence>
+        {searchOpen && (
+          <motion.form
+            onSubmit={handleSearch}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="border-t border-gray-100 bg-white overflow-hidden"
+          >
+            <div className="px-4 py-3 flex items-center gap-2">
+              <Search size={18} className="text-gray-400 flex-shrink-0" />
+              <input
+                autoFocus
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher un téléphone..."
+                className="flex-1 outline-none text-sm bg-transparent"
+              />
+              <button
+                type="button"
+                onClick={() => { setSearchOpen(false); setQuery(''); }}
+                className="p-1 text-gray-400 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {open && (
@@ -75,7 +124,11 @@ export default function MobileHeader() {
                     key={link.to + link.label}
                     to={link.to}
                     onClick={() => setOpen(false)}
-                    className="px-6 py-4 text-[#1B2A4A] font-medium text-base border-b border-gray-50 hover:bg-[#F5F5F5] hover:text-[#00B4CC] transition-colors"
+                    className={`px-6 py-4 font-medium text-base border-b border-gray-50 transition-colors ${
+                      link.highlight
+                        ? 'text-orange-500 hover:bg-orange-50'
+                        : 'text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC]'
+                    }`}
                   >
                     {link.label}
                   </Link>

@@ -366,7 +366,9 @@ export default function PhoneDetailPage() {
             const parts = phone.parts || []
             const partsReplaced = Array.isArray(phone.parts_replaced)
               ? phone.parts_replaced
-              : (() => { try { return JSON.parse(phone.parts_replaced || '[]') } catch { return [] } })()
+              : (typeof phone.parts_replaced === 'string'
+                  ? (() => { try { return JSON.parse(phone.parts_replaced) } catch { return [] } })()
+                  : [])
             const allParts = parts.length > 0 ? parts.map((p) => p.part_type) : partsReplaced
             if (phone.condition === 'neuf') return (
               <div className="border border-blue-200 bg-blue-50 rounded-xl p-4">

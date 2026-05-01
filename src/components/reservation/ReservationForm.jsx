@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar, Wrench, Tag, X } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar, Wrench, Tag, X, BatteryCharging } from 'lucide-react';
 import Button from '../ui/Button';
 import { ACCESSORY_PACKS } from '../../data/accessories';
 import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins';
@@ -52,6 +52,7 @@ export default function ReservationForm({ phone }) {
   });
   const [selectedPack, setSelectedPack] = useState('none');
   const [paymentMode,  setPaymentMode]  = useState('acompte');
+  const [batteryReplace, setBatteryReplace] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [promoInput,   setPromoInput]  = useState('');
@@ -70,8 +71,10 @@ export default function ReservationForm({ phone }) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const packPrice  = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.price || 0;
-  const basePrice  = (phone?.price || 0) + packPrice;
+  const packPrice    = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.price || 0;
+  const batteryEligible = phone?.battery_health != null && phone.battery_health <= 80;
+  const batteryPrice = batteryReplace && batteryEligible ? 20 : 0;
+  const basePrice    = (phone?.price || 0) + packPrice + batteryPrice;
   const discount   = promoCode
     ? promoCode.type === 'percent'
       ? Math.round(basePrice * promoCode.value / 100)
@@ -117,9 +120,99 @@ export default function ReservationForm({ phone }) {
     setPromoError('')
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log('1. Début soumission');
+  const handleStripeCheckout = async () => {
+    if (!form.firstName || !form.lastName || !form.email || !form.phone) {
+      setSubmitError('Remplissez tous les champs obligatoires')
+      return
+    }
+    if (form.delivery === 'delivery' && !form.address) {
+      setSubmitError('Renseignez votre adresse de livraison')
+      return
+    }
+
+    setLoading(true)
+    setSubmitError(null)
+
+    try {
+      const reservationCode = generateCode()
+      const clientName = `${form.firstName} ${form.lastName}`.trim()
+      const magasinFinal = availableMagasins.length === 1
+        ? availableMagasins[0].id
+        : form.magasin
+
+      const amountToPay = paymentMode === 'acompte' ? 50 : totalPrice
+
+      // 1. Sauvegarde la réservation en DB avec status 'en_attente'
+      if (isSupabaseReady && supabase) {
+        const orderData = {
+          customer_name:    clientName,
+          customer_email:   form.email,
+          customer_phone:   form.phone,
+          phone_id:         phone?.id || null,
+          phone_name:       phone?.name || phone?.model || '',
+          phone_storage:    phone?.storage || '',
+          phone_color:      phone?.color || '',
+          phone_grade:      phone?.grade || '',
+          delivery_mode:    form.delivery,
+          magasin_id:       form.delivery === 'collect' ? magasinFinal : null,
+          delivery_address: form.delivery === 'delivery' ? form.address : null,
+          pickup_date:      form.delivery === 'collect' && form.pickupDate ? form.pickupDate : null,
+          payment_mode:     paymentMode,
+          total_amount:     totalPrice,
+          deposit_amount:   amountToPay,
+          notes:            form.notes || null,
+          reservation_code: reservationCode,
+          status:           'en_attente',
+          accessory_pack:   selectedPack !== 'none' ? selectedPack : null,
+          accessories_total: packPrice + batteryPrice,
+          battery_replace:  batteryReplace && batteryEligible,
+          promo_code:       promoCode?.code || null,
+          discount_amount:  discount || 0,
+        }
+
+        const { error: insertError } = await supabase.from('orders').insert([orderData])
+        if (insertError) {
+          console.error('Erreur insert order:', insertError)
+          throw new Error('Impossible de créer la réservation : ' + insertError.message)
+        }
+      }
+
+      // 2. Crée la session Stripe Checkout
+      console.log('Création de la session Stripe Checkout...', { paymentMode, amountToPay })
+      const res = await fetch('/.netlify/functions/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneId:         phone?.id,
+          phoneName:       phone?.name || phone?.model,
+          phoneColor:      phone?.color,
+          phoneStorage:    phone?.storage,
+          clientName,
+          clientEmail:     form.email,
+          amount:          amountToPay,
+          totalPrice,
+          paymentMode,
+          reservationCode,
+          magasinNom:      MAGASINS[magasinFinal]?.nom || magasinFinal,
+        })
+      })
+
+      const { url, error } = await res.json()
+      if (error) throw new Error(error)
+      if (!url) throw new Error('URL de paiement manquante')
+
+      // 3. Redirige vers Stripe Checkout
+      console.log('Redirection vers Stripe Checkout:', url)
+      window.location.href = url
+    } catch (err) {
+      console.error('Checkout error:', err)
+      setSubmitError('Erreur : ' + err.message)
+      setLoading(false)
+    }
+  }
+
+  const submitReservation = async (paymentIntent) => {
+    console.log('1. Début soumission', paymentIntent ? '(après paiement Stripe)' : '');
     setLoading(true);
     setSubmitError(null);
 
@@ -151,10 +244,12 @@ export default function ReservationForm({ phone }) {
           deposit_amount:   depositPaid,
           notes:            form.notes || null,
           reservation_code: reservationCode,
-          status:           'en_attente',
+          status:           paymentIntent ? 'acompte_paye' : 'en_attente',
           accessory_pack:   selectedPack !== 'none' ? selectedPack : null,
+          battery_replace:  batteryReplace && batteryEligible,
           promo_code:       promoCode?.code || null,
           discount_amount:  discount || null,
+          payment_intent_id: paymentIntent?.id || null,
         }
 
         console.log('3. Validation OK');
@@ -180,20 +275,24 @@ export default function ReservationForm({ phone }) {
       }
 
       console.log('8. Envoi email...');
+      const packLabel = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.label || 'Aucun'
       const emailResult = await sendConfirmationEmail({
-        clientEmail:     form.email,
+        clientEmail:      form.email,
         clientName,
-        phoneName:       phone?.name || phone?.model || '',
-        phoneColor:      phone?.color || '',
-        phoneStorage:    phone?.storage || '',
-        grade:           phone?.grade || '',
-        price:           totalPrice,
+        phoneName:        phone?.name || phone?.model || '',
+        phoneColor:       phone?.color || '',
+        phoneStorage:     phone?.storage || '',
+        grade:            phone?.grade || '',
+        price:            totalPrice,
         depositPaid,
         reservationCode,
-        pickupMode:      form.delivery,
-        magasinId:       magasinFinal,
-        pickupDate:      form.pickupDate,
-        deliveryAddress: form.address,
+        pickupMode:       form.delivery,
+        magasinId:        magasinFinal,
+        pickupDate:       form.pickupDate,
+        deliveryAddress:  form.address,
+        accessoryPack:    selectedPack !== 'none' ? packLabel : 'Aucun',
+        batteryReplace:   batteryReplace && batteryEligible,
+        accessoriesTotal: packPrice + batteryPrice,
       })
       console.log('9. Email result:', emailResult)
 
@@ -218,10 +317,15 @@ export default function ReservationForm({ phone }) {
         }
       })
     } catch (err) {
-      console.error('❌ CATCH handleSubmit:', err)
+      console.error('❌ CATCH submitReservation:', err)
       setSubmitError('Une erreur est survenue. Veuillez réessayer.')
       setLoading(false)
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await handleStripeCheckout();
   };
 
   return (
@@ -247,7 +351,9 @@ export default function ReservationForm({ phone }) {
         const parts = phone?.parts || []
         const partsReplaced = Array.isArray(phone?.parts_replaced)
           ? phone.parts_replaced
-          : (() => { try { return JSON.parse(phone?.parts_replaced || '[]') } catch { return [] } })()
+          : (typeof phone?.parts_replaced === 'string'
+              ? (() => { try { return JSON.parse(phone.parts_replaced) } catch { return [] } })()
+              : [])
         const allParts = parts.length > 0 ? parts.map((p) => p.part_type) : partsReplaced
 
         return (
@@ -337,8 +443,12 @@ export default function ReservationForm({ phone }) {
                 {discount > 0 && (
                   <span className="text-[10px] text-green-600 font-semibold">-{discount}€</span>
                 )}
-                {packPrice > 0 && !discount && (
-                  <span className="text-[10px] text-[#555]">dont pack +{packPrice}€</span>
+                {(packPrice > 0 || batteryPrice > 0) && !discount && (
+                  <span className="text-[10px] text-[#555]">
+                    {packPrice > 0 && `pack +${packPrice}€`}
+                    {packPrice > 0 && batteryPrice > 0 && ' · '}
+                    {batteryPrice > 0 && `batterie +${batteryPrice}€`}
+                  </span>
                 )}
               </div>
               <p className="text-[10px] text-[#555555]">Acompte à la réservation : <strong>50€</strong></p>
@@ -532,6 +642,38 @@ export default function ReservationForm({ phone }) {
         </div>
       </div>
 
+      {/* Option batterie neuve */}
+      {batteryEligible && (
+        <div>
+          <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-3 flex items-center gap-2">
+            <BatteryCharging size={18} className="text-[#00B4CC]" />
+            Option batterie neuve
+          </h3>
+          <button
+            type="button"
+            onClick={() => setBatteryReplace(!batteryReplace)}
+            className={`w-full flex items-start gap-3 p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
+              batteryReplace ? 'border-[#00B4CC] bg-cyan-50' : 'border-gray-200 hover:border-[#00B4CC]/50'
+            }`}
+          >
+            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+              batteryReplace ? 'bg-[#00B4CC] border-[#00B4CC]' : 'border-gray-300'
+            }`}>
+              {batteryReplace && <CheckCircle size={14} className="text-white" />}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="font-semibold text-sm text-[#1B2A4A]">Remplacer par une batterie neuve à 100%</p>
+                <span className="text-lg font-bold text-[#00B4CC]">+20€</span>
+              </div>
+              <p className="text-xs text-[#555]">
+                La batterie actuelle est à <strong>{phone.battery_health}%</strong>. Pour 20€, on la remplace par une batterie neuve à 100% avant la remise du téléphone.
+              </p>
+            </div>
+          </button>
+        </div>
+      )}
+
       {/* Code promo */}
       <div>
         <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-3 flex items-center gap-2">
@@ -626,17 +768,23 @@ export default function ReservationForm({ phone }) {
         </div>
       )}
 
-      <Button type="submit" variant="primary" size="full" disabled={loading} className="text-base font-bold">
+      <button
+        type="button"
+        onClick={handleStripeCheckout}
+        disabled={loading}
+        className="w-full bg-[#1B2A4A] hover:bg-[#243660] text-white rounded-xl py-4 font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+      >
         {loading ? (
-          <span className="flex items-center gap-2">
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            Envoi en cours...
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+            Préparation du paiement...
           </span>
-        ) : paymentMode === 'acompte'
-          ? 'Réserver et payer 50€'
-          : `Payer ${totalPrice}€ maintenant`
-        }
-      </Button>
+        ) : paymentMode === 'acompte' ? (
+          '🔒 Réserver et payer 50€'
+        ) : (
+          `🔒 Payer ${totalPrice}€ maintenant`
+        )}
+      </button>
     </motion.form>
   );
 }

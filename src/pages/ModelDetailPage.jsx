@@ -96,23 +96,12 @@ export default function ModelDetailPage() {
         return
       }
 
-      // Try with phone_parts join first, fall back to simple select on error
-      let { data, error } = await supabase
+      const { data } = await supabase
         .from('phones')
-        .select('*, parts:phone_parts(*)')
+        .select('*')
         .ilike('model', decodedModel)
         .eq('status', 'disponible')
         .order('price', { ascending: false })
-
-      if (error) {
-        const res = await supabase
-          .from('phones')
-          .select('*')
-          .ilike('model', decodedModel)
-          .eq('status', 'disponible')
-          .order('price', { ascending: false })
-        data = res.data
-      }
 
       setPhones(data || [])
       setLoading(false)
@@ -319,10 +308,10 @@ export default function ModelDetailPage() {
                         const parts  = phone.parts || []
                         const partsReplaced = Array.isArray(phone.parts_replaced)
                           ? phone.parts_replaced
-                          : (() => { try { return JSON.parse(phone.parts_replaced || '[]') } catch { return [] } })()
-                        const allParts = parts.length > 0
-                          ? parts.map((p) => p.part_type)
-                          : partsReplaced
+                          : (typeof phone.parts_replaced === 'string'
+                              ? (() => { try { return JSON.parse(phone.parts_replaced) } catch { return [] } })()
+                              : [])
+                        const allParts = parts.length > 0 ? parts.map((p) => p.part_type) : partsReplaced
                         return (
                           <tr key={phone.id} className={`hover:bg-gray-50 transition-colors ${isBest ? 'bg-cyan-50/40' : ''}`}>
                             <td className="px-4 py-3">
@@ -345,7 +334,7 @@ export default function ModelDetailPage() {
                             <td className="px-4 py-3">
                               <BatteryBar value={phone.battery_health} />
                             </td>
-                            <td className="px-4 py-3 max-w-[200px]">
+                            <td className="px-4 py-3 max-w-[220px]">
                               {phone.condition === 'neuf' ? (
                                 <span className="text-xs text-blue-600 font-medium">Neuf sous scellé</span>
                               ) : phone.condition === 'occasion' ? (
@@ -372,7 +361,7 @@ export default function ModelDetailPage() {
                                 ) : null
                               ) : null}
                               {(phone.storage || phone.color) && (
-                                <p className="text-[11px] text-[#888] mt-0.5">
+                                <p className="text-[11px] text-[#888] mt-1">
                                   {[phone.storage, phone.color].filter(Boolean).join(' · ')}
                                 </p>
                               )}
@@ -406,7 +395,9 @@ export default function ModelDetailPage() {
                     const parts  = phone.parts || []
                     const partsReplaced = Array.isArray(phone.parts_replaced)
                       ? phone.parts_replaced
-                      : (() => { try { return JSON.parse(phone.parts_replaced || '[]') } catch { return [] } })()
+                      : (typeof phone.parts_replaced === 'string'
+                          ? (() => { try { return JSON.parse(phone.parts_replaced) } catch { return [] } })()
+                          : [])
                     const allParts = parts.length > 0 ? parts.map((p) => p.part_type) : partsReplaced
                     return (
                       <div

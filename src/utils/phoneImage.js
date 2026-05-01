@@ -322,36 +322,56 @@ const IMAGE_MAP = {
     "titane desert":"/images/iphones/iphone-16-pro-max-titane-desert.png",
   },
 
-  // ── iPhone 17 — fichiers locaux partiels ─────────────────────────────────
+  // ── iPhone 16e — fichiers locaux ─────────────────────────────────────────
+  "iphone 16e": {
+    default: "/images/iphones/iphone-16e-noir.png",
+    "noir":  "/images/iphones/iphone-16e-noir.png",
+    "blanc": "/images/iphones/iphone-16e-blanc.png",
+  },
+
+  // ── iPhone 17 — fichiers locaux ──────────────────────────────────────────
   "iphone 17": {
-    default:   "/images/iphones/iphone-17-noir.png",
-    "noir":    "/images/iphones/iphone-17-noir.png",
+    default:    "/images/iphones/iphone-17-noir.png",
+    "noir":     "/images/iphones/iphone-17-noir.png",
     "bleu ciel":"/images/iphones/iphone-17-bleu-brume.png",
-    "rose":    "/images/iphones/iphone-17-lavande.png",
-    "argent":  "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-16-finish-select-202409-6-1inch-white?wid=400&hei=400&fmt=jpeg",
+    "bleu":     "/images/iphones/iphone-17-bleu-brume.png",
+    "rose":     "/images/iphones/iphone-17-lavande.png",
   },
 
-  // ── iPhone 17 Plus — CDN (pas de fichiers locaux) ────────────────────────
-  "iphone 17 plus": {
-    default: "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-16-finish-select-202409-6-7inch-black?wid=400&hei=400&fmt=jpeg",
-    "noir":  "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-16-finish-select-202409-6-7inch-black?wid=400&hei=400&fmt=jpeg",
-    "argent":"https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-16-finish-select-202409-6-7inch-white?wid=400&hei=400&fmt=jpeg",
+  // ── iPhone 17e — fallback temporaire 16e en attendant les vrais visuels ──
+  "iphone 17e": {
+    default: "/images/iphones/iphone-16e-noir.png",
+    "noir":  "/images/iphones/iphone-16e-noir.png",
+    "blanc": "/images/iphones/iphone-16e-blanc.png",
+    "rose":  "/images/iphones/iphone-16e-blanc.png",
   },
 
-  // ── iPhone 17 Pro — fichiers locaux partiels ─────────────────────────────
+  // ── iPhone 17 Air — fichiers locaux iphone-air-*.png ─────────────────────
+  "iphone 17 air": {
+    default:   "/images/iphones/iphone-air-noir-cosmos.png",
+    "noir":    "/images/iphones/iphone-air-noir-cosmos.png",
+    "blanc":   "/images/iphones/iphone-air-blanc-nuage.png",
+    "bleu":    "/images/iphones/iphone-air-bleu-ciel.png",
+    "or":      "/images/iphones/iphone-air-or-clair.png",
+    "rose":    "/images/iphones/iphone-air-blanc-nuage.png",
+  },
+
+  // ── iPhone 17 Pro — fichiers locaux ──────────────────────────────────────
   "iphone 17 pro": {
-    default:         "/images/iphones/iphone-17-pro-orange-cosmique.png",
+    default:          "/images/iphones/iphone-17-pro-orange-cosmique.png",
     "orange cosmique":"/images/iphones/iphone-17-pro-orange-cosmique.png",
-    "bleu intense":  "/images/iphones/iphone-17-pro-bleu-profond.png",
-    "argent": "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-16-pro-finish-select-202409-6-3inch-whitetitanium?wid=400&hei=400&fmt=jpeg",
+    "bleu intense":   "/images/iphones/iphone-17-pro-bleu-profond.png",
+    "argent":         "/images/iphones/iphone-17-pro-argent.png",
+    "titane noir":    "/images/iphones/iphone-17-pro-orange-cosmique.png",
   },
 
-  // ── iPhone 17 Pro Max — fichiers locaux partiels ─────────────────────────
+  // ── iPhone 17 Pro Max — fichiers locaux ──────────────────────────────────
   "iphone 17 pro max": {
-    default:         "/images/iphones/iphone-17-pro-max-orange-cosmique.png",
+    default:          "/images/iphones/iphone-17-pro-max-orange-cosmique.png",
     "orange cosmique":"/images/iphones/iphone-17-pro-max-orange-cosmique.png",
-    "argent": "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-16-pro-finish-select-202409-6-9inch-whitetitanium?wid=400&hei=400&fmt=jpeg",
-    "bleu intense": "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone-16-pro-finish-select-202409-6-9inch-blacktitanium?wid=400&hei=400&fmt=jpeg",
+    "argent":         "/images/iphones/iphone-17-pro-max-argent.png",
+    "bleu intense":   "/images/iphones/iphone-17-pro-max-bleu-profond.png",
+    "titane noir":    "/images/iphones/iphone-17-pro-max-orange-cosmique.png",
   },
 }
 
