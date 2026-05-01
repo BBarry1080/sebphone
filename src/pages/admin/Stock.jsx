@@ -228,6 +228,8 @@ function PhoneModal({ phone, onClose, onSaved }) {
         stock_location: stockLocation || null,
         parts_replaced: condition === 'reconditionne' ? (partsReplaced || []) : [],
         status:         'disponible',
+        added_by:       (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}').name || 'Admin' } catch { return 'Admin' } })(),
+        added_by_magasin: (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}').magasin_id || null } catch { return null } })(),
       }
 
       console.log('phoneData.parts_replaced:', phoneData.parts_replaced)
@@ -857,6 +859,11 @@ export default function Stock() {
                         <div>
                           <p className="font-semibold text-[#1B2A4A] leading-tight">{phone.name || phone.model?.name}</p>
                           <p className="text-[#888] text-xs">{phone.storage}{phone.color ? ` · ${phone.color}` : ''}</p>
+                          {phone.added_by && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              👤 {phone.added_by}{phone.added_by_magasin ? ` · 📍 ${(MAGASINS.find(m => m.id === phone.added_by_magasin)?.nom || phone.added_by_magasin).replace('Seb Telecom — ', '')}` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
