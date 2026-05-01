@@ -143,7 +143,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
   console.log('PhoneModal - parts_replaced raw:', phone?.parts_replaced)
   console.log('PhoneModal - parts_replaced init:', initialPartsReplaced)
 
-  // ── Filtered suggestions (triées selon l'ordre générationnel) ────
+  // ── Suggestions modèles — ordre générationnel strict ────────────
   const IPHONE_ORDER = [
     'iPhone 6', 'iPhone 6 Plus', 'iPhone 6s', 'iPhone 6s Plus',
     'iPhone 7', 'iPhone 7 Plus',
@@ -159,12 +159,9 @@ function PhoneModal({ phone, onClose, onSaved }) {
     'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
   ]
 
-  const query = modelSearch.toLowerCase()
-  const modelSuggestions = IPHONE_ORDER
-    .filter((name) => name.toLowerCase().includes(query))
-    .map((name) => IPHONE_DATABASE.find((m) => m.model === name) || { model: name, storages: [], colors: [] })
-    .filter((m) => m && query)
-    .slice(0, 10)
+  const modelSuggestions = modelSearch.length > 0
+    ? IPHONE_ORDER.filter((name) => name.toLowerCase().includes(modelSearch.toLowerCase()))
+    : []
 
   const colorSuggestions = selectedModel
     ? selectedModel.colors.filter((c) => c.toLowerCase().includes(colorSearch.toLowerCase()))
@@ -181,9 +178,11 @@ function PhoneModal({ phone, onClose, onSaved }) {
   }, [])
 
   // ── Handlers ─────────────────────────────────────────────────────
-  const handleSelectModel = (m) => {
+  const handleSelectModel = (modelName) => {
+    const dbEntry = IPHONE_DATABASE.find((m) => m.model === modelName)
+    const m = dbEntry || { model: modelName, storages: [], colors: [] }
     setSelectedModel(m)
-    setModelSearch(m.model)
+    setModelSearch(modelName)
     setShowModelSugg(false)
     setStorage('')
     setColorSearch('')
@@ -297,16 +296,13 @@ function PhoneModal({ phone, onClose, onSaved }) {
               />
               {showModelSuggestions && modelSearch && modelSuggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-30 max-h-48 overflow-y-auto">
-                  {modelSuggestions.map((m) => (
+                  {modelSuggestions.map((name) => (
                     <div
-                      key={m.model}
-                      onMouseDown={() => handleSelectModel(m)}
+                      key={name}
+                      onMouseDown={() => handleSelectModel(name)}
                       className="px-4 py-2.5 text-sm hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
                     >
-                      {m.model}
-                      <span className="text-xs text-gray-400 ml-2">
-                        jusqu'à {m.storages[m.storages.length - 1]}
-                      </span>
+                      {name}
                     </div>
                   ))}
                 </div>
