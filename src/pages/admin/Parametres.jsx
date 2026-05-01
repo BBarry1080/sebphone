@@ -136,7 +136,6 @@ function EmployeeModal({ employee, onClose, onSaved }) {
     }
     if (!isEdit || password) {
       data.password_hash = sha256(password + SALT)
-      console.log('Hash sauvegardé à la création:', data.password_hash)
     }
 
     let err
@@ -144,7 +143,18 @@ function EmployeeModal({ employee, onClose, onSaved }) {
       const { error: e } = await supabase.from('staff').update(data).eq('id', employee.id)
       err = e
     } else {
-      const { error: e } = await supabase.from('staff').insert([data])
+      console.log('=== CREATE STAFF ===')
+      console.log('email généré:', email)
+      console.log('hash:', data.password_hash)
+      console.log('données à insérer:', data)
+
+      const { data: insertData, error: e } = await supabase
+        .from('staff')
+        .insert([data])
+        .select()
+
+      console.log('résultat insert:', insertData)
+      console.log('erreur insert:', e)
       err = e
     }
 
