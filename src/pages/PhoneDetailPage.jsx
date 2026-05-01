@@ -361,20 +361,49 @@ export default function PhoneDetailPage() {
             </div>
           </div>
 
-          {/* Replaced parts for reconditioned */}
-          {phone.condition === 'reconditionne' && phone.parts?.length > 0 && (
-            <div className="border border-gray-200 rounded-xl p-4">
-              <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">Pièces remplacées</h3>
-              <ul className="flex flex-col gap-2">
-                {phone.parts.map((part, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-[#333]">
-                    <CheckCircle size={14} className="text-[#22C55E] flex-shrink-0" />
-                    <span><strong>{part.name}</strong>{part.type ? ` — ${part.type}` : ''}{part.detail ? ` (${part.detail})` : ''}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Replaced parts */}
+          {(() => {
+            const parts = phone.parts || []
+            const partsReplaced = Array.isArray(phone.parts_replaced)
+              ? phone.parts_replaced
+              : (() => { try { return JSON.parse(phone.parts_replaced || '[]') } catch { return [] } })()
+            const allParts = parts.length > 0 ? parts.map((p) => p.part_type) : partsReplaced
+            if (phone.condition === 'neuf') return (
+              <div className="border border-blue-200 bg-blue-50 rounded-xl p-4">
+                <p className="text-sm text-blue-700 font-medium">Neuf sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>
+              </div>
+            )
+            if (phone.condition === 'occasion') return allParts.length > 0 ? (
+              <div className="border border-gray-200 rounded-xl p-4">
+                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">Réparations effectuées</h3>
+                <ul className="flex flex-col gap-2">
+                  {allParts.map((p, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-[#333]">
+                      <span className="text-orange-500">🔧</span><span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="border border-green-200 bg-green-50 rounded-xl p-4">
+                <p className="text-sm text-green-700 font-medium">✓ Aucune réparation — État original</p>
+              </div>
+            )
+            if (phone.condition === 'reconditionne' && allParts.length > 0) return (
+              <div className="border border-gray-200 rounded-xl p-4">
+                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">Pièces remplacées</h3>
+                <ul className="flex flex-col gap-2">
+                  {allParts.map((p, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-[#333]">
+                      <CheckCircle size={14} className="text-[#22C55E] flex-shrink-0" />
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
+            return null
+          })()}
         </motion.div>
       </div>
     </main>

@@ -82,7 +82,8 @@ function SidebarContent({
   const gradesList = [
     { value: 'Comme neuf',    label: 'Comme neuf',    count: count((p) => p.grade === 'Comme neuf') },
     { value: 'Très bon état', label: 'Très bon état', count: count((p) => p.grade === 'Très bon état') },
-    { value: 'État correct',  label: 'État correct',  count: count((p) => p.grade === 'État correct') },
+    { value: 'Bon état',      label: 'Bon état',      count: count((p) => p.grade === 'Bon état') },
+    { value: 'Neuf',          label: 'Neuf',          count: count((p) => p.grade === 'Neuf') },
   ].filter((g) => g.count > 0);
 
   const magasins = MAGASINS_LIST

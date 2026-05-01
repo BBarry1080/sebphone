@@ -245,7 +245,10 @@ export default function ReservationForm({ phone }) {
         const batteryColor = battery >= 85 ? 'bg-green-400' : battery >= 75 ? 'bg-orange-400' : 'bg-red-400'
         const batteryText  = battery >= 85 ? 'text-green-700' : battery >= 75 ? 'text-orange-600' : 'text-red-600'
         const parts = phone?.parts || []
-        const partsText = parts.length > 0 ? parts.map((p) => p.part_type).join(', ') : null
+        const partsReplaced = Array.isArray(phone?.parts_replaced)
+          ? phone.parts_replaced
+          : (() => { try { return JSON.parse(phone?.parts_replaced || '[]') } catch { return [] } })()
+        const allParts = parts.length > 0 ? parts.map((p) => p.part_type) : partsReplaced
 
         return (
           <div className="bg-[#F5F5F5] rounded-2xl p-4 flex gap-4">
@@ -299,15 +302,31 @@ export default function ReservationForm({ phone }) {
               )}
 
               {/* Pièces remplacées */}
-              {partsText && (
-                <div className="flex items-start gap-1 mb-1.5">
-                  <Wrench size={10} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
-                  <span className="text-[10px] text-[#555]">{partsText}</span>
+              {phone?.condition === 'neuf' ? (
+                <p className="text-[10px] text-blue-700 font-medium mb-1.5">Neuf sous scellé</p>
+              ) : phone?.condition === 'occasion' ? (
+                allParts.length > 0 ? (
+                  <div className="flex flex-col gap-0.5 mb-1.5">
+                    {allParts.map((p, i) => (
+                      <div key={i} className="flex items-center gap-1">
+                        <span className="text-[10px] text-orange-500">🔧</span>
+                        <span className="text-[10px] text-[#555]">{p}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-green-600 font-medium mb-1.5">✓ Aucune réparation — État original</p>
+                )
+              ) : phone?.condition === 'reconditionne' && allParts.length > 0 ? (
+                <div className="flex flex-col gap-0.5 mb-1.5">
+                  {allParts.map((p, i) => (
+                    <div key={i} className="flex items-center gap-1">
+                      <Wrench size={10} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                      <span className="text-[10px] text-[#555]">{p}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-              {phone?.condition === 'reconditionne' && !partsText && (
-                <p className="text-[10px] text-[#555] mb-1.5">Aucune réparation — État original</p>
-              )}
+              ) : null}
 
               {/* Prix */}
               <div className="flex items-baseline gap-1.5 mt-1 flex-wrap">
