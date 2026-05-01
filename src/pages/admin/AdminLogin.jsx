@@ -23,54 +23,59 @@ export default function AdminLogin() {
     }
     setLoading(true)
 
-    // 1. Tentative de connexion admin Supabase Auth (admin principal)
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
-    if (!authError) {
-      localStorage.setItem('sebphone_user', JSON.stringify({
-        name: 'Admin',
-        email,
-        role: 'admin',
-        magasin_id: null,
-        permissions: null,
-      }))
-      navigate('/admin/dashboard')
-      return
+    try {
+      // 1. Vérifie d'abord si c'est l'admin principal (table admins)
+      const { data: adminData } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('email', email.trim())
+        .single()
+
+      if (adminData && adminData.password === password) {
+        localStorage.setItem('sebphone_user', JSON.stringify({
+          name:        'Admin',
+          email:       email.trim(),
+          role:        'admin',
+          magasin_id:  null,
+          permissions: null,
+        }))
+        localStorage.setItem('sebphone_admin', 'true')
+        navigate('/admin')
+        return
+      }
+
+      // 2. Vérifie si c'est un employé (table staff)
+      const hashedPassword = sha256(password + SALT)
+
+      const { data: staffData } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('email', email.trim())
+        .single()
+
+      if (staffData && staffData.password_hash === hashedPassword && staffData.active) {
+        localStorage.setItem('sebphone_user', JSON.stringify({
+          id:          staffData.id,
+          name:        staffData.name,
+          email:       email.trim(),
+          role:        'employe',
+          magasin_id:  staffData.magasin_id,
+          permissions: staffData.permissions,
+        }))
+        localStorage.setItem('sebphone_admin', 'true')
+        await supabase.from('staff').update({ last_login: new Date().toISOString() }).eq('id', staffData.id)
+        navigate('/admin')
+        return
+      }
+
+      // 3. Rien ne correspond
+      setError('Email ou mot de passe incorrect')
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('Email ou mot de passe incorrect')
+    } finally {
+      setLoading(false)
     }
-
-    // 2. Tentative connexion employé (table staff)
-    const hashedPassword = sha256(password + SALT)
-    console.log('=== LOGIN DEBUG ===')
-    console.log('email saisi:', email)
-    console.log('password saisi:', password)
-    console.log('hash généré:', hashedPassword)
-
-    const { data: staffData, error: staffError } = await supabase
-      .from('staff')
-      .select('*')
-      .eq('email', email)
-      .single()
-
-    console.log('staffData trouvé:', staffData)
-    console.log('staffError:', staffError)
-    console.log('hash en DB:', staffData?.password_hash)
-    console.log('hash match:', staffData?.password_hash === hashedPassword)
-
-    if (!staffError && staffData && staffData.password_hash === hashedPassword && staffData.active) {
-      localStorage.setItem('sebphone_user', JSON.stringify({
-        id:          staffData.id,
-        name:        staffData.name,
-        email:       staffData.email,
-        role:        'employe',
-        magasin_id:  staffData.magasin_id,
-        permissions: staffData.permissions,
-      }))
-      await supabase.from('staff').update({ last_login: new Date().toISOString() }).eq('id', staffData.id)
-      navigate('/admin/dashboard')
-      return
-    }
-
-    setError('Email ou mot de passe incorrect')
-    setLoading(false)
   }
 
   return (
