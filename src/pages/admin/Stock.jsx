@@ -578,10 +578,11 @@ function PhoneModal({ phone, onClose, onSaved }) {
 
 /* ─── PAGE PRINCIPALE ─── */
 export default function Stock() {
-  const [phones, setPhones]       = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
+  const [phones, setPhones]           = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [search, setSearch]           = useState('')
+  const [filterMagasin, setFilterMagasin] = useState(null)
+  const [modalOpen, setModalOpen]     = useState(false)
   const [editingPhone, setEditingPhone] = useState(null)
 
   const fetchPhones = async () => {
@@ -667,10 +668,15 @@ export default function Stock() {
   const filtered = phones
     .filter((p) => {
       const q = search.toLowerCase().trim()
-      if (!q) return true
-      const name = (p.name || '').toLowerCase()
-      // Cherche après un espace pour éviter "x" qui match "Pro Max"
-      return name.startsWith(q) || name.includes(' ' + q)
+      if (q) {
+        const name = (p.name || '').toLowerCase()
+        if (!name.startsWith(q) && !name.includes(' ' + q)) return false
+      }
+      if (filterMagasin) {
+        const mags = Array.isArray(p.magasins) ? p.magasins : []
+        if (!mags.includes(filterMagasin)) return false
+      }
+      return true
     })
     .sort((a, b) => getModelIndex(a.name) - getModelIndex(b.name))
 
@@ -691,16 +697,54 @@ export default function Stock() {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="relative w-full sm:w-64">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher..."
-          className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-        />
+      {/* Search + Filtres magasins */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-64">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#888]" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher..."
+            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+          />
+        </div>
+
+        <button
+          onClick={() => setFilterMagasin(null)}
+          className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+            filterMagasin === null
+              ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+              : 'bg-white text-[#555] border-gray-200 hover:border-[#1B2A4A]'
+          }`}
+        >
+          Tous
+        </button>
+
+        {MAGASINS.map((mag) => {
+          const shortName = mag.nom.replace('Seb Telecom — ', '').replace('Seb Telecom ', '')
+          const count = phones.filter((p) =>
+            Array.isArray(p.magasins) && p.magasins.includes(mag.id) && p.status === 'disponible'
+          ).length
+          return (
+            <button
+              key={mag.id}
+              onClick={() => setFilterMagasin(filterMagasin === mag.id ? null : mag.id)}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                filterMagasin === mag.id
+                  ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                  : 'bg-white text-[#555] border-gray-200 hover:border-[#00B4CC] hover:text-[#00B4CC]'
+              }`}
+            >
+              {shortName}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                filterMagasin === mag.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+              }`}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       {/* ── MOBILE CARDS ── */}
