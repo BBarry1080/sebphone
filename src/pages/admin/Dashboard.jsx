@@ -28,7 +28,7 @@ function MetricCard({ icon: Icon, iconColor, label, value, unit = '', valueClass
 }
 
 export default function Dashboard() {
-  const [metrics, setMetrics] = useState({ disponible: 0, reserve: 0, vendu: 0, ca: 0, benefice: 0 })
+  const [metrics, setMetrics] = useState({ disponible: 0, reserve: 0, vendu: 0, ca: 0, benefice: 0, beneficeReel: 0 })
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -71,7 +71,16 @@ export default function Dashboard() {
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
       )
 
-      setMetrics({ disponible: disponible || 0, reserve: reserve || 0, vendu: vendu || 0, ca, benefice })
+      const { data: beneficeReelData } = await supabase
+        .from('phones')
+        .select('price, purchase_price')
+        .eq('status', 'vendu')
+
+      const beneficeReel = (beneficeReelData || []).reduce(
+        (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
+      )
+
+      setMetrics({ disponible: disponible || 0, reserve: reserve || 0, vendu: vendu || 0, ca, benefice, beneficeReel })
       setOrders(ordersData || [])
       setLoading(false)
     }
@@ -101,6 +110,10 @@ export default function Dashboard() {
         <MetricCard icon={Euro}           iconColor="bg-[#1B2A4A]"  label="CA du mois"             value={metrics.ca} unit="€" />
         <MetricCard icon={TrendingUp} iconColor="bg-green-500" label="Bénéfice potentiel"
           value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.benefice)}
+          valueClass="text-emerald-600"
+        />
+        <MetricCard icon={TrendingUp} iconColor="bg-emerald-500" label="Bénéfice réel"
+          value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.beneficeReel)}
           valueClass="text-emerald-600"
         />
       </div>

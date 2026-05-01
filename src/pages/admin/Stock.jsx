@@ -143,10 +143,28 @@ function PhoneModal({ phone, onClose, onSaved }) {
   console.log('PhoneModal - parts_replaced raw:', phone?.parts_replaced)
   console.log('PhoneModal - parts_replaced init:', initialPartsReplaced)
 
-  // ── Filtered suggestions ─────────────────────────────────────────
-  const modelSuggestions = IPHONE_DATABASE
-    .filter((m) => m.model.toLowerCase().includes(modelSearch.toLowerCase()))
-    .slice(0, 8)
+  // ── Filtered suggestions (triées selon l'ordre générationnel) ────
+  const IPHONE_ORDER = [
+    'iPhone 6', 'iPhone 6 Plus', 'iPhone 6s', 'iPhone 6s Plus',
+    'iPhone 7', 'iPhone 7 Plus',
+    'iPhone 8', 'iPhone 8 Plus',
+    'iPhone SE (2020)', 'iPhone SE (2022)',
+    'iPhone X', 'iPhone XR', 'iPhone XS', 'iPhone XS Max',
+    'iPhone 11', 'iPhone 11 Pro', 'iPhone 11 Pro Max',
+    'iPhone 12', 'iPhone 12 mini', 'iPhone 12 Pro', 'iPhone 12 Pro Max',
+    'iPhone 13', 'iPhone 13 mini', 'iPhone 13 Pro', 'iPhone 13 Pro Max',
+    'iPhone 14', 'iPhone 14 Plus', 'iPhone 14 Pro', 'iPhone 14 Pro Max',
+    'iPhone 15', 'iPhone 15 Plus', 'iPhone 15 Pro', 'iPhone 15 Pro Max',
+    'iPhone 16e', 'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max',
+    'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
+  ]
+
+  const query = modelSearch.toLowerCase()
+  const modelSuggestions = IPHONE_ORDER
+    .filter((name) => name.toLowerCase().includes(query))
+    .map((name) => IPHONE_DATABASE.find((m) => m.model === name) || { model: name, storages: [], colors: [] })
+    .filter((m) => m && query)
+    .slice(0, 10)
 
   const colorSuggestions = selectedModel
     ? selectedModel.colors.filter((c) => c.toLowerCase().includes(colorSearch.toLowerCase()))
