@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut, Bell, Menu, X, Tag, QrCode,
+  LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut, Bell, Menu, X, Tag, QrCode, Calculator,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/admin/commandes',      label: 'Commandes',     Icon: ClipboardList },
   { to: '/admin/promoCodes',     label: 'Codes promo',   Icon: Tag },
   { to: '/admin/verifier-code',  label: 'Vérifier code', Icon: QrCode },
+  { to: '/admin/comptabilite',   label: 'Comptabilité',  Icon: Calculator },
   { to: '/admin/parametres',     label: 'Paramètres',    Icon: Settings },
 ]
 

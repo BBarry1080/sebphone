@@ -23,6 +23,7 @@ import Dashboard from './pages/admin/Dashboard';
 import Stock from './pages/admin/Stock';
 import Commandes from './pages/admin/Commandes'
 import PromoCodes from './pages/admin/PromoCodes';
+import Comptabilite from './pages/admin/Comptabilite';
 import Confirmation from './pages/Confirmation';
 import MesReservations from './pages/MesReservations';
 import DetailCommande from './pages/DetailCommande';
@@ -122,6 +123,7 @@ export default function App() {
             <Route path="commandes" element={<Commandes />} />
             <Route path="promoCodes" element={<PromoCodes />} />
             <Route path="verifier-code" element={<CodeVerification />} />
+            <Route path="comptabilite" element={<Comptabilite />} />
             <Route path="clients" element={
               <div className="text-center py-20 text-[#888]">Page Clients — à venir</div>
             } />
