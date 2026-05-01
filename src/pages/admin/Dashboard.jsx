@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Smartphone, ClipboardList, CheckCircle, Euro, TrendingUp } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
+import { MAGASINS } from '../../utils/magasins'
 
 const STATUS_BADGES = {
   en_attente:    { label: 'En attente',    cls: 'bg-yellow-100 text-yellow-800' },
@@ -28,6 +29,10 @@ function MetricCard({ icon: Icon, iconColor, label, value, unit = '', valueClass
 }
 
 export default function Dashboard() {
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}') } catch { return {} } })()
+  const isAdmin = currentUser.role === 'admin' || !currentUser.role
+  const magasinFilter = !isAdmin && currentUser.magasin_id ? currentUser.magasin_id : null
+
   const [metrics, setMetrics] = useState({ disponible: 0, reserve: 0, vendu: 0, ca: 0, benefice: 0, beneficeReel: 0 })
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -42,12 +47,14 @@ export default function Dashboard() {
       startOfMonth.setDate(1)
       startOfMonth.setHours(0, 0, 0, 0)
 
+      const addFilter = (q) => magasinFilter ? q.contains('magasins', [magasinFilter]) : q
+
       const [{ count: disponible }, { count: reserve }, { count: vendu }, { data: ordersData }] = await Promise.all([
-        supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'disponible'),
-        supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'reserve'),
-        supabase.from('phones').select('id', { count: 'exact', head: true })
+        addFilter(supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'disponible')),
+        addFilter(supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'reserve')),
+        addFilter(supabase.from('phones').select('id', { count: 'exact', head: true })
           .eq('status', 'vendu')
-          .gte('updated_at', startOfMonth.toISOString()),
+          .gte('updated_at', startOfMonth.toISOString())),
         supabase.from('orders')
           .select('*, phone:phones(name, brand), customer:customers(first_name, last_name)')
           .order('created_at', { ascending: false })
@@ -62,19 +69,19 @@ export default function Dashboard() {
 
       const ca = (caData || []).reduce((sum, o) => sum + (o.deposit_paid || 0), 0)
 
-      const { data: beneficeData } = await supabase
+      const { data: beneficeData } = await addFilter(supabase
         .from('phones')
         .select('price, purchase_price')
-        .eq('status', 'disponible')
+        .eq('status', 'disponible'))
 
       const benefice = (beneficeData || []).reduce(
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
       )
 
-      const { data: beneficeReelData } = await supabase
+      const { data: beneficeReelData } = await addFilter(supabase
         .from('phones')
         .select('price, purchase_price')
-        .eq('status', 'vendu')
+        .eq('status', 'vendu'))
 
       const beneficeReel = (beneficeReelData || []).reduce(
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
@@ -97,6 +104,11 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {magasinFilter && (
+        <div className="bg-cyan-50 border border-cyan-200 rounded-xl px-4 py-2.5 text-sm text-cyan-700 font-medium flex items-center gap-2">
+          📍 Vue filtrée — {MAGASINS[magasinFilter]?.nom || magasinFilter}
+        </div>
+      )}
       <div>
         <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Dashboard</h1>
         <p className="text-sm text-[#555555] mt-0.5">Vue d'ensemble du stock et des commandes</p>

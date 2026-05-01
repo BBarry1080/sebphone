@@ -1,4 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+
+function AdminOnlyRoute({ children }) {
+  const user = (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}') } catch { return {} } })()
+  const isAdmin = user.role === 'admin' || !user.role
+  if (!isAdmin) return <Navigate to="/admin/dashboard" replace />
+  return children
+}
 import { CartProvider } from './context/CartContext';
 import ScrollToTop from './components/utils/ScrollToTop';
 import Header from './components/layout/Header';
@@ -128,7 +135,7 @@ export default function App() {
             <Route path="clients" element={
               <div className="text-center py-20 text-[#888]">Page Clients — à venir</div>
             } />
-            <Route path="parametres" element={<Parametres />} />
+            <Route path="parametres" element={<AdminOnlyRoute><Parametres /></AdminOnlyRoute>} />
           </Route>
         </Routes>
       </CartProvider>

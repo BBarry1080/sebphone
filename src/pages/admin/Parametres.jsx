@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
@@ -238,6 +239,14 @@ function EmployeeModal({ employee, onClose, onSaved }) {
 }
 
 export default function Parametres() {
+  const navigate = useNavigate()
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}') } catch { return {} } })()
+  const isAdmin = currentUser.role === 'admin' || !currentUser.role
+
+  useEffect(() => {
+    if (!isAdmin) navigate('/admin/dashboard', { replace: true })
+  }, [])
+
   const [tab, setTab]             = useState('utilisateurs')
   const [staff, setStaff]         = useState([])
   const [loading, setLoading]     = useState(true)

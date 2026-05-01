@@ -228,8 +228,8 @@ function PhoneModal({ phone, onClose, onSaved }) {
         stock_location: stockLocation || null,
         parts_replaced: condition === 'reconditionne' ? (partsReplaced || []) : [],
         status:         'disponible',
-        added_by:       (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}').name || 'Admin' } catch { return 'Admin' } })(),
-        added_by_magasin: (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}').magasin_id || null } catch { return null } })(),
+        added_by:         currentUser.name || 'Admin',
+        added_by_magasin: currentUser.magasin_id || magasins?.[0] || null,
       }
 
       console.log('phoneData.parts_replaced:', phoneData.parts_replaced)
@@ -580,12 +580,15 @@ function PhoneModal({ phone, onClose, onSaved }) {
 
 /* ─── PAGE PRINCIPALE ─── */
 export default function Stock() {
-  const [phones, setPhones]           = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}') } catch { return {} } })()
+  const isAdmin = currentUser.role === 'admin' || !currentUser.role
+
+  const [phones, setPhones]               = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [search, setSearch]               = useState('')
   const [filterMagasin, setFilterMagasin] = useState(null)
-  const [modalOpen, setModalOpen]     = useState(false)
-  const [editingPhone, setEditingPhone] = useState(null)
+  const [modalOpen, setModalOpen]         = useState(false)
+  const [editingPhone, setEditingPhone]   = useState(null)
 
   const fetchPhones = async () => {
     setLoading(true)
@@ -594,10 +597,11 @@ export default function Stock() {
       setLoading(false)
       return
     }
-    const { data } = await supabase
-      .from('phones')
-      .select('*')
-      .order('created_at', { ascending: false })
+    let query = supabase.from('phones').select('*')
+    if (!isAdmin && currentUser.magasin_id) {
+      query = query.contains('magasins', [currentUser.magasin_id])
+    }
+    const { data } = await query.order('created_at', { ascending: false })
     setPhones(data || [])
     setLoading(false)
   }
