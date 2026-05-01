@@ -648,25 +648,31 @@ export default function Stock() {
     'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
   ]
 
+  // Trouve l'index du modèle correspondant (match le plus long pour éviter
+  // qu'iPhone 11 Pro Max soit classé comme iPhone 11)
+  const getModelIndex = (name) => {
+    const n = (name || '').toLowerCase()
+    let bestIdx = 999
+    let bestLen = 0
+    STOCK_ORDER.forEach((m, i) => {
+      const ml = m.toLowerCase()
+      if (n.startsWith(ml) && ml.length > bestLen) {
+        bestIdx = i
+        bestLen = ml.length
+      }
+    })
+    return bestIdx
+  }
+
   const filtered = phones
     .filter((p) => {
-      if (!search.trim()) return true
-      const q = search.toLowerCase()
-      return (
-        p.name?.toLowerCase().includes(q) ||
-        p.brand?.toLowerCase().includes(q) ||
-        p.model?.name?.toLowerCase().includes(q)
-      )
+      const q = search.toLowerCase().trim()
+      if (!q) return true
+      const name = (p.name || '').toLowerCase()
+      // Cherche après un espace pour éviter "x" qui match "Pro Max"
+      return name.startsWith(q) || name.includes(' ' + q)
     })
-    .sort((a, b) => {
-      const nameA = a.name || ''
-      const nameB = b.name || ''
-      const modelA = STOCK_ORDER.findIndex((m) => nameA.startsWith(m))
-      const modelB = STOCK_ORDER.findIndex((m) => nameB.startsWith(m))
-      const iA = modelA === -1 ? 999 : modelA
-      const iB = modelB === -1 ? 999 : modelB
-      return iA - iB
-    })
+    .sort((a, b) => getModelIndex(a.name) - getModelIndex(b.name))
 
   return (
     <div className="space-y-5">
