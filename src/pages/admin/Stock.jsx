@@ -633,15 +633,40 @@ export default function Stock() {
     fetchPhones()
   }
 
-  const filtered = phones.filter((p) => {
-    if (!search.trim()) return true
-    const q = search.toLowerCase()
-    return (
-      p.name?.toLowerCase().includes(q) ||
-      p.brand?.toLowerCase().includes(q) ||
-      p.model?.name?.toLowerCase().includes(q)
-    )
-  })
+  const STOCK_ORDER = [
+    'iPhone 6', 'iPhone 6 Plus', 'iPhone 6s', 'iPhone 6s Plus',
+    'iPhone 7', 'iPhone 7 Plus',
+    'iPhone 8', 'iPhone 8 Plus',
+    'iPhone SE (2020)', 'iPhone SE (2022)',
+    'iPhone X', 'iPhone XR', 'iPhone XS', 'iPhone XS Max',
+    'iPhone 11', 'iPhone 11 Pro', 'iPhone 11 Pro Max',
+    'iPhone 12', 'iPhone 12 mini', 'iPhone 12 Pro', 'iPhone 12 Pro Max',
+    'iPhone 13', 'iPhone 13 mini', 'iPhone 13 Pro', 'iPhone 13 Pro Max',
+    'iPhone 14', 'iPhone 14 Plus', 'iPhone 14 Pro', 'iPhone 14 Pro Max',
+    'iPhone 15', 'iPhone 15 Plus', 'iPhone 15 Pro', 'iPhone 15 Pro Max',
+    'iPhone 16e', 'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max',
+    'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
+  ]
+
+  const filtered = phones
+    .filter((p) => {
+      if (!search.trim()) return true
+      const q = search.toLowerCase()
+      return (
+        p.name?.toLowerCase().includes(q) ||
+        p.brand?.toLowerCase().includes(q) ||
+        p.model?.name?.toLowerCase().includes(q)
+      )
+    })
+    .sort((a, b) => {
+      const nameA = a.name || ''
+      const nameB = b.name || ''
+      const modelA = STOCK_ORDER.findIndex((m) => nameA.startsWith(m))
+      const modelB = STOCK_ORDER.findIndex((m) => nameB.startsWith(m))
+      const iA = modelA === -1 ? 999 : modelA
+      const iB = modelB === -1 ? 999 : modelB
+      return iA - iB
+    })
 
   return (
     <div className="space-y-5">
