@@ -7,7 +7,8 @@ import * as XLSX from 'xlsx'
 import {
   Plus, X, Printer, Download,
   Search, Eye, Trash2, Upload,
-  FileText, AlertCircle
+  FileText, AlertCircle, MoreVertical,
+  Pencil
 } from 'lucide-react'
 import { useCurrentUser, useIsAdmin } from '../../hooks/usePermissions'
 
@@ -31,11 +32,23 @@ export default function Registre() {
   const [idError, setIdError] = useState(null)
   const [imeiError, setImeiError] = useState(null)
   const [imeiDuplicate, setImeiDuplicate] = useState(false)
+  const [idType, setIdType] = useState("Carte d'identité")
+  const [editingEntry, setEditingEntry] = useState(null)
+  const [openMenu, setOpenMenu] = useState(null)
 
-  const validateBelgianId = (value) => {
-    const docRegex = /^\d{3}-\d{7}-\d{2}$/
-    const nissRegex = /^\d{2}\.\d{2}\.\d{2}-\d{3}\.\d{2}$/
-    return docRegex.test(value) || nissRegex.test(value)
+  const validateIdNumber = (value, type) => {
+    if (type === "Carte d'identité") {
+      const docRegex = /^\d{3}-\d{7}-\d{2}$/
+      const nissRegex = /^\d{2}\.\d{2}\.\d{2}-\d{3}\.\d{2}$/
+      return docRegex.test(value) || nissRegex.test(value)
+    }
+    if (type === 'Passeport') {
+      return /^[A-Z]{2}\d{6}$/.test(value.toUpperCase())
+    }
+    if (type === 'Permis de conduire') {
+      return /^\d{10}$/.test(value)
+    }
+    return value.length >= 5
   }
 
   const validateIMEI = (imei) => {
@@ -58,12 +71,15 @@ export default function Registre() {
     seller_address: '',
     seller_phone: '',
     seller_id_number: '',
+    seller_id_type: "Carte d'identité",
     seller_birth_date: '',
     seller_id_front_url: '',
     seller_id_back_url: '',
     imei: '',
     brand: 'Apple',
     model: '',
+    color: '',
+    storage: '',
     purchase_price: '',
     payment_method: 'Cash',
     transaction_date: new Date().toISOString().split('T')[0],
@@ -74,6 +90,48 @@ export default function Registre() {
   const [form, setForm] = useState(initialForm())
 
   useEffect(() => { fetchEntries() }, [])
+
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenu(null)
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
+
+  const handleAddToStock = async (entry) => {
+    const confirmed = window.confirm(
+      `Ajouter ${entry.brand} ${entry.model} au stock ?\n` +
+      `IMEI: ${entry.imei}\n` +
+      `Prix d'achat: ${entry.purchase_price}€`
+    )
+    if (!confirmed) return
+
+    try {
+      const { error } = await supabase
+        .from('phones')
+        .insert([{
+          name: `${entry.brand} ${entry.model}`,
+          model: entry.model,
+          brand: entry.brand,
+          color: entry.color || '',
+          storage: entry.storage || '',
+          condition: 'occasion',
+          grade: 'Bon état',
+          price: Math.round((entry.purchase_price || 0) * 1.3),
+          purchase_price: entry.purchase_price,
+          imei: entry.imei,
+          status: 'disponible',
+          magasins: [entry.magasin_id],
+          fournisseur: `${entry.seller_first_name} ${entry.seller_last_name}`,
+          notes: `Racheté le ${new Date(entry.transaction_date).toLocaleDateString('fr-BE')} — ${entry.payment_method || 'Cash'}`,
+          parts_replaced: [],
+        }])
+
+      if (error) throw error
+      alert(`✅ ${entry.brand} ${entry.model} ajouté au stock !`)
+    } catch (err) {
+      alert('Erreur : ' + err.message)
+    }
+  }
 
   const fetchEntries = async () => {
     setLoading(true)
@@ -144,18 +202,32 @@ export default function Registre() {
     }
     setSubmitting(true)
     try {
-      const { error: insertError } = await supabase
-        .from('purchase_registry')
-        .insert([{
-          ...form,
-          purchase_price: parseFloat(form.purchase_price),
-          transaction_date: new Date(form.transaction_date).toISOString(),
-          added_by: currentUser?.name || 'Admin',
-        }])
-      if (insertError) throw insertError
-      setSuccess('Entrée enregistrée avec succès !')
+      const payload = {
+        ...form,
+        seller_id_type: form.seller_id_type || idType,
+        purchase_price: parseFloat(form.purchase_price),
+        transaction_date: new Date(form.transaction_date).toISOString(),
+      }
+
+      if (editingEntry) {
+        const { error: updateError } = await supabase
+          .from('purchase_registry')
+          .update(payload)
+          .eq('id', editingEntry.id)
+        if (updateError) throw updateError
+        setSuccess('Entrée modifiée avec succès !')
+      } else {
+        const { error: insertError } = await supabase
+          .from('purchase_registry')
+          .insert([{ ...payload, added_by: currentUser?.name || 'Admin' }])
+        if (insertError) throw insertError
+        setSuccess('Entrée enregistrée avec succès !')
+      }
+
       setShowForm(false)
+      setEditingEntry(null)
       setForm(initialForm())
+      setIdType("Carte d'identité")
       setIdError(null)
       setImeiError(null)
       setImeiDuplicate(false)
@@ -437,20 +509,72 @@ export default function Registre() {
                     {MAGASINS[entry.magasin_id]?.nom?.replace('Seb Telecom — ', '') || entry.magasin_id}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setSelectedEntry(entry)}
-                        className="p-1.5 text-gray-400 hover:text-[#00B4CC] transition-colors cursor-pointer" title="Voir détails">
-                        <Eye size={16}/>
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setOpenMenu(openMenu === entry.id ? null : entry.id)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all cursor-pointer">
+                        <MoreVertical size={16}/>
                       </button>
-                      <button onClick={() => printEntry(entry)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" title="Imprimer fiche">
-                        <Printer size={16}/>
-                      </button>
-                      {isAdmin && (
-                        <button onClick={() => handleDelete(entry.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer" title="Supprimer">
-                          <Trash2 size={16}/>
-                        </button>
+
+                      {openMenu === entry.id && (
+                        <div className="absolute right-0 top-8 bg-white rounded-xl shadow-lg border border-gray-100 z-10 min-w-44 py-1">
+                          <button
+                            onClick={() => { setSelectedEntry(entry); setOpenMenu(null) }}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                            <Eye size={14}/> Voir le détail
+                          </button>
+                          <button
+                            onClick={() => { printEntry(entry); setOpenMenu(null) }}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                            <Printer size={14}/> Imprimer la fiche
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingEntry(entry)
+                              setIdType(entry.seller_id_type || "Carte d'identité")
+                              setForm({
+                                seller_first_name: entry.seller_first_name || '',
+                                seller_last_name:  entry.seller_last_name || '',
+                                seller_address:    entry.seller_address || '',
+                                seller_phone:      entry.seller_phone || '',
+                                seller_id_number:  entry.seller_id_number || '',
+                                seller_id_type:    entry.seller_id_type || "Carte d'identité",
+                                seller_birth_date: entry.seller_birth_date || '',
+                                seller_id_front_url: entry.seller_id_front_url || '',
+                                seller_id_back_url:  entry.seller_id_back_url || '',
+                                imei:              entry.imei || '',
+                                brand:             entry.brand || 'Apple',
+                                model:             entry.model || '',
+                                color:             entry.color || '',
+                                storage:           entry.storage || '',
+                                purchase_price:    entry.purchase_price || '',
+                                payment_method:    entry.payment_method || 'Cash',
+                                transaction_date:  entry.transaction_date?.split('T')[0] || new Date().toISOString().split('T')[0],
+                                magasin_id:        entry.magasin_id || 'anderlecht',
+                                notes:             entry.notes || '',
+                              })
+                              setShowForm(true)
+                              setOpenMenu(null)
+                            }}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                            <Pencil size={14}/> Modifier
+                          </button>
+                          <button
+                            onClick={() => { handleAddToStock(entry); setOpenMenu(null) }}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#00B4CC] hover:bg-cyan-50 font-medium cursor-pointer">
+                            <Plus size={14}/> Ajouter au stock
+                          </button>
+                          {isAdmin && (
+                            <>
+                              <div className="border-t border-gray-100 my-1"/>
+                              <button
+                                onClick={() => { handleDelete(entry.id); setOpenMenu(null) }}
+                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-50 cursor-pointer">
+                                <Trash2 size={14}/> Supprimer
+                              </button>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
                   </td>
@@ -466,8 +590,20 @@ export default function Registre() {
         <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl w-full max-w-2xl my-4 shadow-xl">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h3 className="font-bold text-[#1B2A4A] text-lg">Nouvel achat — Registre légal</h3>
-              <button onClick={() => setShowForm(false)} className="cursor-pointer">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">
+                {editingEntry ? "Modifier l'entrée" : 'Nouvel achat — Registre légal'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowForm(false)
+                  setEditingEntry(null)
+                  setForm(initialForm())
+                  setIdType("Carte d'identité")
+                  setIdError(null)
+                  setImeiError(null)
+                  setImeiDuplicate(false)
+                }}
+                className="cursor-pointer">
                 <X size={20} className="text-gray-400"/>
               </button>
             </div>
@@ -507,26 +643,56 @@ export default function Registre() {
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                       placeholder="+32 472 12 34 56"/>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">N° Carte d'identité *</label>
+                  <div className="col-span-2">
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Type de document *</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {["Carte d'identité", 'Passeport', 'Permis de conduire'].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            setIdType(type)
+                            setForm((f) => ({ ...f, seller_id_type: type }))
+                            setIdError(null)
+                          }}
+                          className={`py-2 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer
+                            ${idType === type
+                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'}`}>
+                          {type === "Carte d'identité" ? '🪪' : type === 'Passeport' ? '📕' : '🚗'} {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">N° {idType} *</label>
                     <input type="text" value={form.seller_id_number}
                       onChange={(e) => {
                         const val = e.target.value
                         setForm((f) => ({ ...f, seller_id_number: val }))
-                        if (val.length > 5) {
-                          setIdError(validateBelgianId(val) ? null : 'Format invalide. Attendu: 000-0000000-00 ou 00.00.00-000.00')
+                        if (val.length > 4) {
+                          const placeholderHint = idType === "Carte d'identité"
+                            ? '000-0000000-00 ou 00.00.00-000.00'
+                            : idType === 'Passeport'
+                              ? 'AB123456 (2 lettres + 6 chiffres)'
+                              : '10 chiffres'
+                          setIdError(validateIdNumber(val, idType) ? null : `Format invalide. Attendu : ${placeholderHint}`)
                         } else {
                           setIdError(null)
                         }
                       }}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
-                      placeholder="000-0000000-00 ou 00.00.00-000.00"/>
+                      placeholder={idType === "Carte d'identité"
+                        ? '000-0000000-00 ou 00.00.00-000.00'
+                        : idType === 'Passeport'
+                          ? 'AB123456'
+                          : '0000000000'}/>
                     {idError && (
                       <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                         <AlertCircle size={12}/> {idError}
                       </p>
                     )}
-                    {!idError && form.seller_id_number.length > 5 && validateBelgianId(form.seller_id_number) && (
+                    {!idError && form.seller_id_number.length > 4 && validateIdNumber(form.seller_id_number, idType) && (
                       <p className="text-xs text-green-600 mt-1">✅ Format valide</p>
                     )}
                   </div>
@@ -659,6 +825,24 @@ export default function Registre() {
                       placeholder="iPhone 14 Pro"/>
                   </div>
                   <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Couleur</label>
+                    <input type="text" value={form.color}
+                      onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                      placeholder="Ex: Noir, Blanc, Or..."/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Stockage</label>
+                    <select value={form.storage}
+                      onChange={(e) => setForm((f) => ({ ...f, storage: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none">
+                      <option value="">Sélectionner...</option>
+                      {['16Go','32Go','64Go','128Go','256Go','512Go','1To'].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Prix d'achat (€) *</label>
                     <input type="number" value={form.purchase_price}
                       onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))}
@@ -719,9 +903,9 @@ export default function Registre() {
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                    Enregistrement...
+                    {editingEntry ? 'Modification...' : 'Enregistrement...'}
                   </span>
-                ) : '📋 Enregistrer dans le registre'}
+                ) : editingEntry ? "✏️ Modifier l'entrée" : '📋 Enregistrer dans le registre'}
               </button>
             </div>
           </div>
