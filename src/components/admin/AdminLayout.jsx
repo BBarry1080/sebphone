@@ -18,6 +18,7 @@ function SidebarContent({ onClose }) {
 
   const handleSignOut = async () => {
     if (isSupabaseReady) await supabase.auth.signOut()
+    localStorage.removeItem('sebphone_admin')
     localStorage.removeItem('sebphone_user')
     navigate('/admin/login')
   }

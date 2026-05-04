@@ -6,6 +6,11 @@ import { sha256 } from 'js-sha256'
 
 const SALT = 'sebphone_salt_2026'
 
+const ADMIN_CREDENTIALS = [
+  { email: 'admin@sebphone.be', password: 'SEB1080' },
+  { email: 'aliouking.14@gmail.com', password: 'SEB1080' },
+]
+
 export default function AdminLogin() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -17,26 +22,22 @@ export default function AdminLogin() {
   const handleLogin = async (e) => {
     e.preventDefault()
     setError(null)
-    if (!isSupabaseReady) {
-      setError('Supabase non configuré — créez .env.local avec vos clés.')
-      return
-    }
     setLoading(true)
 
-    try {
-      // 1. Vérifie d'abord si c'est l'admin principal (table admins)
-      const { data: adminData } = await supabase
-        .from('admins')
-        .select('*')
-        .eq('email', email.trim())
-        .single()
+    const cleanEmail = email.trim().toLowerCase()
 
-      if (adminData && adminData.password === password) {
+    try {
+      // 1. Vérifie admin hardcodé
+      const isAdmin = ADMIN_CREDENTIALS.some(
+        (cred) => cred.email.toLowerCase() === cleanEmail && cred.password === password
+      )
+
+      if (isAdmin) {
         localStorage.setItem('sebphone_user', JSON.stringify({
-          name:        'Admin',
-          email:       email.trim(),
-          role:        'admin',
-          magasin_id:  null,
+          name: 'Admin',
+          email: cleanEmail,
+          role: 'admin',
+          magasin_id: null,
           permissions: null,
         }))
         localStorage.setItem('sebphone_admin', 'true')
@@ -44,31 +45,39 @@ export default function AdminLogin() {
         return
       }
 
-      // 2. Vérifie si c'est un employé (table staff)
-      const hashedPassword = sha256(password + SALT)
+      // 2. Vérifie employé dans table staff
+      if (isSupabaseReady) {
+        const hashedPassword = sha256(password + SALT)
 
-      const { data: staffData } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('email', email.trim())
-        .single()
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('*')
+          .eq('email', cleanEmail)
+          .maybeSingle()
 
-      if (staffData && staffData.password_hash === hashedPassword && staffData.active) {
-        localStorage.setItem('sebphone_user', JSON.stringify({
-          id:          staffData.id,
-          name:        staffData.name,
-          email:       email.trim(),
-          role:        'employe',
-          magasin_id:  staffData.magasin_id,
-          permissions: staffData.permissions,
-        }))
-        localStorage.setItem('sebphone_admin', 'true')
-        await supabase.from('staff').update({ last_login: new Date().toISOString() }).eq('id', staffData.id)
-        navigate('/admin')
-        return
+        if (staffData &&
+            staffData.password_hash === hashedPassword &&
+            staffData.active) {
+
+          localStorage.setItem('sebphone_user', JSON.stringify({
+            id: staffData.id,
+            name: staffData.name,
+            email: cleanEmail,
+            role: 'employe',
+            magasin_id: staffData.magasin_id,
+            permissions: staffData.permissions,
+          }))
+          localStorage.setItem('sebphone_admin', 'true')
+
+          await supabase.from('staff')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', staffData.id)
+
+          navigate('/admin')
+          return
+        }
       }
 
-      // 3. Rien ne correspond
       setError('Email ou mot de passe incorrect')
     } catch (err) {
       console.error('Login error:', err)
@@ -150,7 +159,10 @@ export default function AdminLogin() {
         </form>
 
         <div className="mt-6 text-center">
-          <Link to="/" className="text-sm text-[#888888] hover:text-[#1B2A4A] transition-colors">
+          <Link
+            to="/"
+            className="text-sm text-[#888888] hover:text-[#1B2A4A] transition-colors"
+          >
             ← Retour au site
           </Link>
         </div>
