@@ -28,6 +28,29 @@ export default function Registre() {
   const [uploadingBack, setUploadingBack] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [idError, setIdError] = useState(null)
+  const [imeiError, setImeiError] = useState(null)
+  const [imeiDuplicate, setImeiDuplicate] = useState(false)
+
+  const validateBelgianId = (value) => {
+    const docRegex = /^\d{3}-\d{7}-\d{2}$/
+    const nissRegex = /^\d{2}\.\d{2}\.\d{2}-\d{3}\.\d{2}$/
+    return docRegex.test(value) || nissRegex.test(value)
+  }
+
+  const validateIMEI = (imei) => {
+    if (!/^\d{15}$/.test(imei)) return false
+    let sum = 0
+    for (let i = 0; i < 15; i++) {
+      let digit = parseInt(imei[i])
+      if (i % 2 === 1) {
+        digit *= 2
+        if (digit > 9) digit -= 9
+      }
+      sum += digit
+    }
+    return sum % 10 === 0
+  }
 
   const initialForm = () => ({
     seller_first_name: '',
@@ -41,6 +64,7 @@ export default function Registre() {
     brand: 'Apple',
     model: '',
     purchase_price: '',
+    payment_method: 'Cash',
     transaction_date: new Date().toISOString().split('T')[0],
     magasin_id: currentUser?.magasin_id || 'anderlecht',
     notes: '',
@@ -97,13 +121,25 @@ export default function Registre() {
       'seller_first_name', 'seller_last_name',
       'seller_address', 'seller_id_number',
       'seller_birth_date', 'imei', 'brand',
-      'model', 'purchase_price'
+      'model', 'purchase_price', 'payment_method'
     ]
     for (const field of required) {
       if (!form[field]) {
         setError(`Champ obligatoire manquant : ${field}`)
         return
       }
+    }
+    if (idError) {
+      setError("Corrigez le numéro de carte d'identité")
+      return
+    }
+    if (imeiError && !imeiDuplicate) {
+      setError("Corrigez l'IMEI avant de soumettre")
+      return
+    }
+    if (imeiDuplicate) {
+      const confirmed = window.confirm('Cet IMEI est déjà dans le registre. Continuer quand même ?')
+      if (!confirmed) return
     }
     setSubmitting(true)
     try {
@@ -119,6 +155,9 @@ export default function Registre() {
       setSuccess('Entrée enregistrée avec succès !')
       setShowForm(false)
       setForm(initialForm())
+      setIdError(null)
+      setImeiError(null)
+      setImeiDuplicate(false)
       fetchEntries()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
@@ -196,6 +235,7 @@ export default function Registre() {
         ['Marque', entry.brand],
         ['Modèle', entry.model],
         ["Prix d'achat", `${entry.purchase_price}€`],
+        ['Mode de paiement', entry.payment_method || 'Cash'],
       ],
       theme: 'grid',
       styles: { fontSize: 10 },
@@ -234,6 +274,7 @@ export default function Registre() {
       'Marque': e.brand,
       'Modèle': e.model,
       'Prix achat': e.purchase_price,
+      'Mode de paiement': e.payment_method || 'Cash',
       'Ajouté par': e.added_by,
       'Notes': e.notes || '',
     }))
@@ -348,7 +389,7 @@ export default function Registre() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                {['Date', 'Vendeur', 'N° CI', 'IMEI', 'Appareil', 'Prix', 'Magasin', 'Actions'].map((h) => (
+                {['Date', 'Vendeur', 'N° CI', 'IMEI', 'Appareil', 'Prix', 'Paiement', 'Magasin', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -356,7 +397,7 @@ export default function Registre() {
             <tbody>
               {filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400 text-sm">
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400 text-sm">
                     Aucune entrée dans le registre
                   </td>
                 </tr>
@@ -377,6 +418,18 @@ export default function Registre() {
                     <p className="font-medium text-[#1B2A4A] text-sm">{entry.brand} {entry.model}</p>
                   </td>
                   <td className="px-4 py-3 text-sm font-bold text-green-600">{entry.purchase_price}€</td>
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium
+                      ${entry.payment_method === 'Cash'
+                        ? 'bg-green-100 text-green-700'
+                        : entry.payment_method === 'Bancontact'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-purple-100 text-purple-700'}`}>
+                      {entry.payment_method === 'Cash' ? '💵' :
+                        entry.payment_method === 'Bancontact' ? '💳' : '🏦'}{' '}
+                      {entry.payment_method || 'Cash'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {MAGASINS[entry.magasin_id]?.nom?.replace('Seb Telecom — ', '') || entry.magasin_id}
                   </td>
@@ -447,9 +500,25 @@ export default function Registre() {
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">N° Carte d'identité *</label>
                     <input type="text" value={form.seller_id_number}
-                      onChange={(e) => setForm((f) => ({ ...f, seller_id_number: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setForm((f) => ({ ...f, seller_id_number: val }))
+                        if (val.length > 5) {
+                          setIdError(validateBelgianId(val) ? null : 'Format invalide. Attendu: 000-0000000-00 ou 00.00.00-000.00')
+                        } else {
+                          setIdError(null)
+                        }
+                      }}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
-                      placeholder="590-1234567-12"/>
+                      placeholder="000-0000000-00 ou 00.00.00-000.00"/>
+                    {idError && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                        <AlertCircle size={12}/> {idError}
+                      </p>
+                    )}
+                    {!idError && form.seller_id_number.length > 5 && validateBelgianId(form.seller_id_number) && (
+                      <p className="text-xs text-green-600 mt-1">✅ Format valide</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Date de naissance *</label>
@@ -520,9 +589,47 @@ export default function Registre() {
                   <div className="col-span-2">
                     <label className="text-xs font-medium text-gray-600 mb-1 block">IMEI *</label>
                     <input type="text" value={form.imei}
-                      onChange={(e) => setForm((f) => ({ ...f, imei: e.target.value }))}
+                      onChange={async (e) => {
+                        const val = e.target.value.replace(/\s/g, '')
+                        setForm((f) => ({ ...f, imei: val }))
+                        setImeiDuplicate(false)
+                        if (val.length === 15) {
+                          if (!validateIMEI(val)) {
+                            setImeiError('IMEI invalide (échec vérification Luhn)')
+                            return
+                          }
+                          setImeiError(null)
+                          const { data } = await supabase
+                            .from('purchase_registry')
+                            .select('id, seller_first_name, seller_last_name, transaction_date')
+                            .eq('imei', val)
+                            .maybeSingle()
+                          if (data) {
+                            setImeiDuplicate(true)
+                            setImeiError(`⚠️ IMEI déjà enregistré le ${new Date(data.transaction_date).toLocaleDateString('fr-BE')} — ${data.seller_first_name} ${data.seller_last_name}`)
+                          }
+                        } else {
+                          setImeiError(null)
+                        }
+                      }}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
                       placeholder="352999XXXXXXXXX" maxLength={20}/>
+                    {imeiError && (
+                      <p className={`text-xs mt-1 flex items-start gap-1 ${imeiDuplicate ? 'text-orange-600' : 'text-red-500'}`}>
+                        <AlertCircle size={12} className="mt-0.5 flex-shrink-0"/>
+                        {imeiError}
+                      </p>
+                    )}
+                    {!imeiError && form.imei.length === 15 && (
+                      <p className="text-xs text-green-600 mt-1">✅ IMEI valide</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => window.open(`https://www.imei.info/?imei=${form.imei}`, '_blank')}
+                      disabled={form.imei.length < 15}
+                      className="mt-2 text-xs text-[#00B4CC] underline disabled:opacity-40 disabled:cursor-not-allowed hover:text-cyan-700 transition-colors cursor-pointer">
+                      🔍 Vérifier sur imei.info →
+                    </button>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Marque *</label>
@@ -547,6 +654,23 @@ export default function Registre() {
                       onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                       placeholder="150"/>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Mode de paiement *</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Cash', 'Bancontact', 'Virement bancaire'].map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, payment_method: method }))}
+                          className={`py-2.5 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer
+                            ${form.payment_method === method
+                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'}`}>
+                          {method === 'Cash' ? '💵' : method === 'Bancontact' ? '💳' : '🏦'} {method}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Date de transaction *</label>
@@ -614,6 +738,7 @@ export default function Registre() {
                 ['IMEI', selectedEntry.imei],
                 ['Appareil', `${selectedEntry.brand} ${selectedEntry.model}`],
                 ['Prix achat', `${selectedEntry.purchase_price}€`],
+                ['Mode de paiement', selectedEntry.payment_method || 'Cash'],
                 ['Date transaction', new Date(selectedEntry.transaction_date).toLocaleDateString('fr-BE')],
                 ['Magasin', MAGASINS[selectedEntry.magasin_id]?.nom || '—'],
                 ['Ajouté par', selectedEntry.added_by || 'Admin'],
