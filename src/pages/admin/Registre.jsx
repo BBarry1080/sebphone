@@ -56,6 +56,7 @@ export default function Registre() {
     seller_first_name: '',
     seller_last_name: '',
     seller_address: '',
+    seller_phone: '',
     seller_id_number: '',
     seller_birth_date: '',
     seller_id_front_url: '',
@@ -119,7 +120,7 @@ export default function Registre() {
     setError(null)
     const required = [
       'seller_first_name', 'seller_last_name',
-      'seller_address', 'seller_id_number',
+      'seller_address', 'seller_phone', 'seller_id_number',
       'seller_birth_date', 'imei', 'brand',
       'model', 'purchase_price', 'payment_method'
     ]
@@ -210,6 +211,7 @@ export default function Registre() {
       body: [
         ['Nom complet', `${entry.seller_first_name} ${entry.seller_last_name}`],
         ['Adresse', entry.seller_address],
+        ['Téléphone', entry.seller_phone || '—'],
         ["N° Carte d'identité", entry.seller_id_number],
         ['Date de naissance', entry.seller_birth_date
           ? new Date(entry.seller_birth_date).toLocaleDateString('fr-BE')
@@ -268,6 +270,7 @@ export default function Registre() {
       'Prénom': e.seller_first_name,
       'Nom': e.seller_last_name,
       'Adresse': e.seller_address,
+      'Téléphone': e.seller_phone || '',
       'N° CI': e.seller_id_number,
       'Date naissance': e.seller_birth_date,
       'IMEI': e.imei,
@@ -496,6 +499,13 @@ export default function Registre() {
                       onChange={(e) => setForm((f) => ({ ...f, seller_address: e.target.value }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                       placeholder="Rue de la Loi 1, 1000 Bruxelles"/>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Numéro de téléphone *</label>
+                    <input type="tel" value={form.seller_phone}
+                      onChange={(e) => setForm((f) => ({ ...f, seller_phone: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                      placeholder="+32 472 12 34 56"/>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">N° Carte d'identité *</label>
@@ -732,6 +742,7 @@ export default function Registre() {
               {[
                 ['Vendeur', `${selectedEntry.seller_first_name} ${selectedEntry.seller_last_name}`],
                 ['Adresse', selectedEntry.seller_address],
+                ['Téléphone', selectedEntry.seller_phone || '—'],
                 ['N° CI', selectedEntry.seller_id_number],
                 ['Date naissance', selectedEntry.seller_birth_date
                   ? new Date(selectedEntry.seller_birth_date).toLocaleDateString('fr-BE') : '—'],
