@@ -70,6 +70,7 @@ const PERMISSION_GROUPS = [
     label: 'Administration',
     perms: [
       { key: 'gerer_utilisateurs', label: 'Gérer les utilisateurs' },
+      { key: 'registre_achats',    label: "Accès registre d'achats" },
     ],
   },
 ]
@@ -86,6 +87,7 @@ const DEFAULT_PERMS = {
   compta_rue_neuve: false, compta_louise: false,
   compta_tubize: false, compta_saint_gilles: false,
   gerer_utilisateurs: false,
+  registre_achats: false,
 }
 
 const AVATAR_COLORS = [

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator,
+  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -43,6 +43,7 @@ function SidebarContent({ onClose }) {
     { to: '/admin/promoCodes',    label: 'Codes promo',   Icon: Tag,             show: has('codes_promo') },
     { to: '/admin/verifier-code', label: 'Vérifier code', Icon: QrCode,          show: has('verifier_code') },
     { to: '/admin/comptabilite',  label: 'Comptabilité',  Icon: Calculator,      show: has('voir_comptabilite') },
+    { to: '/admin/registre',      label: 'Registre',      Icon: BookOpen,        show: has('registre_achats') },
     { to: '/admin/parametres',    label: 'Paramètres',    Icon: Settings,        show: isAdmin },
   ]
 
