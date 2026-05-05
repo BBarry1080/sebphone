@@ -13,7 +13,12 @@ import {
 import { phonesMock } from '../../data/phonesMock'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
 import { MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS as MAGASINS_MAP } from '../../utils/magasins'
+import emailjs from '@emailjs/browser'
 const MAGASINS = MAGASINS_PHYSIQUES
+
+const EMAILJS_SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || 'service_nn74puq'
+const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'rqbaYNMIGNP6IQB9O'
+const EMAILJS_TEMPLATE_ID = 'template_hfoq4dg'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 
@@ -693,6 +698,50 @@ export default function Stock() {
         payment_date:   saleDate,
       }])
 
+      if (saleForm.customer_email) {
+        try {
+          const now      = new Date()
+          const expiry   = new Date(now)
+          expiry.setMonth(expiry.getMonth() + 24)
+          const magasin  = MAGASINS_MAP[salePhone.magasins?.[0]]
+
+          await emailjs.send(
+            EMAILJS_SERVICE_ID,
+            EMAILJS_TEMPLATE_ID,
+            {
+              to_email:         saleForm.customer_email,
+              to_name:          `${saleForm.customer_firstname} ${saleForm.customer_name}`,
+              email_type:       'facture',
+              phone_name:       salePhone.name || salePhone.model,
+              phone_color:      salePhone.color || '—',
+              phone_storage:    salePhone.storage || '—',
+              phone_condition:  salePhone.condition || '—',
+              phone_grade:      salePhone.grade || '—',
+              phone_imei:       salePhone.imei || '—',
+              price_total:      `${saleForm.sale_price}€`,
+              deposit_paid:     `${saleForm.sale_price}€`,
+              remaining:        '0€',
+              payment_label:    'Montant total payé ✓',
+              accessories_total: '0€',
+              accessory_pack:   'Aucun',
+              battery_replace:  'Non',
+              warning_message:  '',
+              payment_method:   saleForm.payment_method,
+              magasin_nom:      magasin?.nom || 'SebPhone',
+              magasin_adresse:  magasin?.adresse || 'sebphone.be',
+              reservation_code: reservationCode,
+              reservation_url:  `https://sebphone.be/commande/${reservationCode}`,
+              pickup_date:      now.toLocaleDateString('fr-BE'),
+              warranty_expiry:  expiry.toLocaleDateString('fr-BE'),
+            },
+            EMAILJS_PUBLIC_KEY
+          )
+          console.log('✅ Email facture envoyé à:', saleForm.customer_email)
+        } catch (emailErr) {
+          console.warn('Email facture non envoyé:', emailErr)
+        }
+      }
+
       setShowSaleModal(false)
       setSalePhone(null)
       fetchPhones()
@@ -1232,6 +1281,15 @@ export default function Stock() {
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                       placeholder="client@email.com"
                     />
+                    {saleForm.customer_email ? (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                        📧 La facture sera envoyée automatiquement à cette adresse
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-1">
+                        💡 Ajoutez un email pour envoyer la facture automatiquement
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
