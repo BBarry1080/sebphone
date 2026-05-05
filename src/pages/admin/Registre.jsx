@@ -11,6 +11,7 @@ import {
   Pencil
 } from 'lucide-react'
 import { useCurrentUser, useIsAdmin } from '../../hooks/usePermissions'
+import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
 
 export default function Registre() {
   const currentUser = useCurrentUser()
@@ -36,20 +37,12 @@ export default function Registre() {
   const [editingEntry, setEditingEntry] = useState(null)
   const [openMenu, setOpenMenu] = useState(null)
 
-  const validateIdNumber = (value, type) => {
-    if (type === "Carte d'identité") {
-      const docRegex = /^\d{3}-\d{7}-\d{2}$/
-      const nissRegex = /^\d{2}\.\d{2}\.\d{2}-\d{3}\.\d{2}$/
-      return docRegex.test(value) || nissRegex.test(value)
-    }
-    if (type === 'Passeport') {
-      return /^[A-Z]{2}\d{6}$/.test(value.toUpperCase())
-    }
-    if (type === 'Permis de conduire') {
-      return /^\d{10}$/.test(value)
-    }
-    return value.length >= 5
-  }
+  const [modelSearch, setModelSearch]                   = useState('')
+  const [showModelSuggestions, setShowModelSuggestions] = useState(false)
+  const [availableColors, setAvailableColors]           = useState([])
+  const [paymentModes, setPaymentModes]                 = useState([])
+
+  const validateIdNumber = (value) => value && value.length >= 3
 
   const validateIMEI = (imei) => {
     if (!/^\d{15}$/.test(imei)) return false
@@ -82,6 +75,8 @@ export default function Registre() {
     storage: '',
     purchase_price: '',
     payment_method: 'Cash',
+    cash_amount: '',
+    virement_amount: '',
     transaction_date: new Date().toISOString().split('T')[0],
     magasin_id: currentUser?.magasin_id || 'anderlecht',
     notes: '',
@@ -92,10 +87,32 @@ export default function Registre() {
   useEffect(() => { fetchEntries() }, [])
 
   useEffect(() => {
-    const handleClickOutside = () => setOpenMenu(null)
+    const handleClickOutside = () => {
+      setOpenMenu(null)
+      setShowModelSuggestions(false)
+    }
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
+
+  const modelSuggestions = form.brand === 'Apple' && modelSearch.length > 0
+    ? IPHONE_ON_DEMAND.filter((iphone) =>
+        iphone.model.toLowerCase().includes(modelSearch.toLowerCase())
+      )
+    : []
+
+  const handleSelectModel = (iphone) => {
+    setForm((f) => ({ ...f, model: iphone.model, color: '' }))
+    setModelSearch(iphone.model)
+    setAvailableColors(iphone.colors || [])
+    setShowModelSuggestions(false)
+  }
+
+  const togglePaymentMode = (mode) => {
+    setPaymentModes((prev) =>
+      prev.includes(mode) ? prev.filter((m) => m !== mode) : [...prev, mode]
+    )
+  }
 
   const handleAddToStock = async (entry) => {
     const confirmed = window.confirm(
@@ -179,8 +196,7 @@ export default function Registre() {
     const required = [
       'seller_first_name', 'seller_last_name',
       'seller_address', 'seller_phone', 'seller_id_number',
-      'seller_birth_date', 'imei', 'brand',
-      'model', 'purchase_price', 'payment_method'
+      'seller_birth_date', 'imei', 'brand', 'model',
     ]
     for (const field of required) {
       if (!form[field]) {
@@ -188,8 +204,12 @@ export default function Registre() {
         return
       }
     }
-    if (idError) {
-      setError("Corrigez le numéro de carte d'identité")
+    if (paymentModes.length === 0) {
+      setError('Sélectionnez un mode de paiement')
+      return
+    }
+    if (!form.purchase_price || parseFloat(form.purchase_price) <= 0) {
+      setError("Prix d'achat obligatoire")
       return
     }
     if (imeiError && !imeiDuplicate) {
@@ -202,8 +222,16 @@ export default function Registre() {
     }
     setSubmitting(true)
     try {
+      const paymentMethodStr = paymentModes.join(' + ') || 'Cash'
+      const mixedNotes = paymentModes.length === 2
+        ? `${form.notes || ''} | Cash: ${form.cash_amount || 0}€ / Virement: ${form.virement_amount || 0}€`.trim()
+        : form.notes || null
+
+      const { cash_amount, virement_amount, ...formClean } = form
       const payload = {
-        ...form,
+        ...formClean,
+        payment_method: paymentMethodStr,
+        notes: mixedNotes,
         seller_id_type: form.seller_id_type || idType,
         purchase_price: parseFloat(form.purchase_price),
         transaction_date: new Date(form.transaction_date).toISOString(),
@@ -231,6 +259,9 @@ export default function Registre() {
       setIdError(null)
       setImeiError(null)
       setImeiDuplicate(false)
+      setPaymentModes([])
+      setModelSearch('')
+      setAvailableColors([])
       fetchEntries()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
@@ -494,14 +525,14 @@ export default function Registre() {
                   </td>
                   <td className="px-4 py-3 text-sm font-bold text-green-600">{entry.purchase_price}€</td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium
-                      ${entry.payment_method === 'Cash'
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      entry.payment_method === 'Cash'
                         ? 'bg-green-100 text-green-700'
-                        : entry.payment_method === 'Bancontact'
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-purple-100 text-purple-700'}`}>
-                      {entry.payment_method === 'Cash' ? '💵' :
-                        entry.payment_method === 'Bancontact' ? '💳' : '🏦'}{' '}
+                        : entry.payment_method?.includes('+')
+                        ? 'bg-cyan-100 text-cyan-700'
+                        : 'bg-purple-100 text-purple-700'
+                    }`}>
+                      {entry.payment_method === 'Cash' ? '💵 ' : entry.payment_method?.includes('+') ? '💵🏦 ' : '🏦 '}
                       {entry.payment_method || 'Cash'}
                     </span>
                   </td>
@@ -532,6 +563,18 @@ export default function Registre() {
                             onClick={() => {
                               setEditingEntry(entry)
                               setIdType(entry.seller_id_type || "Carte d'identité")
+                              const modes = []
+                              const pm = entry.payment_method || 'Cash'
+                              if (pm.includes('Cash'))     modes.push('Cash')
+                              if (pm.includes('Virement')) modes.push('Virement bancaire')
+                              setPaymentModes(modes.length ? modes : ['Cash'])
+                              setModelSearch(entry.model || '')
+                              if (entry.brand === 'Apple') {
+                                const found = IPHONE_ON_DEMAND.find((i) => i.model === entry.model)
+                                setAvailableColors(found?.colors || [])
+                              } else {
+                                setAvailableColors([])
+                              }
                               setForm({
                                 seller_first_name: entry.seller_first_name || '',
                                 seller_last_name:  entry.seller_last_name || '',
@@ -549,6 +592,8 @@ export default function Registre() {
                                 storage:           entry.storage || '',
                                 purchase_price:    entry.purchase_price || '',
                                 payment_method:    entry.payment_method || 'Cash',
+                                cash_amount:       '',
+                                virement_amount:   '',
                                 transaction_date:  entry.transaction_date?.split('T')[0] || new Date().toISOString().split('T')[0],
                                 magasin_id:        entry.magasin_id || 'anderlecht',
                                 notes:             entry.notes || '',
@@ -602,6 +647,9 @@ export default function Registre() {
                   setIdError(null)
                   setImeiError(null)
                   setImeiDuplicate(false)
+                  setPaymentModes([])
+                  setModelSearch('')
+                  setAvailableColors([])
                 }}
                 className="cursor-pointer">
                 <X size={20} className="text-gray-400"/>
@@ -667,34 +715,9 @@ export default function Registre() {
                   <div className="col-span-2">
                     <label className="text-xs font-medium text-gray-600 mb-1 block">N° {idType} *</label>
                     <input type="text" value={form.seller_id_number}
-                      onChange={(e) => {
-                        const val = e.target.value
-                        setForm((f) => ({ ...f, seller_id_number: val }))
-                        if (val.length > 4) {
-                          const placeholderHint = idType === "Carte d'identité"
-                            ? '000-0000000-00 ou 00.00.00-000.00'
-                            : idType === 'Passeport'
-                              ? 'AB123456 (2 lettres + 6 chiffres)'
-                              : '10 chiffres'
-                          setIdError(validateIdNumber(val, idType) ? null : `Format invalide. Attendu : ${placeholderHint}`)
-                        } else {
-                          setIdError(null)
-                        }
-                      }}
+                      onChange={(e) => setForm((f) => ({ ...f, seller_id_number: e.target.value }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
-                      placeholder={idType === "Carte d'identité"
-                        ? '000-0000000-00 ou 00.00.00-000.00'
-                        : idType === 'Passeport'
-                          ? 'AB123456'
-                          : '0000000000'}/>
-                    {idError && (
-                      <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
-                        <AlertCircle size={12}/> {idError}
-                      </p>
-                    )}
-                    {!idError && form.seller_id_number.length > 4 && validateIdNumber(form.seller_id_number, idType) && (
-                      <p className="text-xs text-green-600 mt-1">✅ Format valide</p>
-                    )}
+                      placeholder="Numéro de document"/>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Date de naissance *</label>
@@ -810,26 +833,79 @@ export default function Registre() {
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Marque *</label>
                     <select value={form.brand}
-                      onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                      onChange={(e) => {
+                        const newBrand = e.target.value
+                        setForm((f) => ({ ...f, brand: newBrand, model: '', color: '' }))
+                        setModelSearch('')
+                        setAvailableColors([])
+                      }}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none">
                       {['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'Autre'].map((b) => (
                         <option key={b} value={b}>{b}</option>
                       ))}
                     </select>
                   </div>
-                  <div>
+                  <div className="col-span-2" onClick={(e) => e.stopPropagation()}>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Modèle *</label>
-                    <input type="text" value={form.model}
-                      onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                      placeholder="iPhone 14 Pro"/>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={modelSearch}
+                        onChange={(e) => {
+                          setModelSearch(e.target.value)
+                          setForm((f) => ({ ...f, model: e.target.value }))
+                          setShowModelSuggestions(true)
+                          if (form.brand !== 'Apple') setAvailableColors([])
+                        }}
+                        onFocus={() => setShowModelSuggestions(true)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                        placeholder={form.brand === 'Apple' ? 'Ex: 12, 14 Pro, 15...' : 'Modèle du téléphone'}
+                      />
+                      {showModelSuggestions && modelSuggestions.length > 0 && form.brand === 'Apple' && (
+                        <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto mt-1">
+                          {modelSuggestions.map((iphone) => (
+                            <button
+                              key={iphone.model}
+                              type="button"
+                              onClick={() => handleSelectModel(iphone)}
+                              className="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-50 hover:text-[#00B4CC] transition-colors border-b border-gray-50 last:border-0 cursor-pointer"
+                            >
+                              <span className="font-medium">{iphone.model}</span>
+                              <span className="text-xs text-gray-400 ml-2">{iphone.colors.length} couleurs</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Couleur</label>
-                    <input type="text" value={form.color}
-                      onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                      placeholder="Ex: Noir, Blanc, Or..."/>
+                    {availableColors.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {availableColors.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setForm((f) => ({ ...f, color }))}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all cursor-pointer ${
+                              form.color === color
+                                ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                                : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                            }`}
+                          >
+                            {color}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={form.color}
+                        onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                        placeholder="Ex: Noir, Blanc, Or..."
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Stockage</label>
@@ -842,29 +918,90 @@ export default function Registre() {
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Prix d'achat (€) *</label>
-                    <input type="number" value={form.purchase_price}
-                      onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                      placeholder="150"/>
-                  </div>
                   <div className="col-span-2">
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Mode de paiement *</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['Cash', 'Bancontact', 'Virement bancaire'].map((method) => (
+                    <label className="text-xs font-medium text-gray-600 mb-3 block">Mode de paiement *</label>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      {['Cash', 'Virement bancaire'].map((method) => (
                         <button
                           key={method}
                           type="button"
-                          onClick={() => setForm((f) => ({ ...f, payment_method: method }))}
-                          className={`py-2.5 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer
-                            ${form.payment_method === method
+                          onClick={() => togglePaymentMode(method)}
+                          className={`py-3 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
+                            paymentModes.includes(method)
                               ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
-                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'}`}>
-                          {method === 'Cash' ? '💵' : method === 'Bancontact' ? '💳' : '🏦'} {method}
+                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                          }`}
+                        >
+                          {method === 'Cash' ? '💵 Cash' : '🏦 Virement bancaire'}
                         </button>
                       ))}
                     </div>
+
+                    {paymentModes.length === 1 && (
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Prix d'achat (€) *</label>
+                        <input
+                          type="number"
+                          value={form.purchase_price}
+                          onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))}
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                          placeholder="Ex: 200"
+                        />
+                      </div>
+                    )}
+
+                    {paymentModes.length === 2 && (
+                      <div className="space-y-3">
+                        <p className="text-xs text-gray-500">Indiquez le montant pour chaque mode :</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">💵 Montant Cash (€)</label>
+                            <input
+                              type="number"
+                              value={form.cash_amount || ''}
+                              onChange={(e) => {
+                                const cash = parseFloat(e.target.value) || 0
+                                const virement = parseFloat(form.virement_amount) || 0
+                                setForm((f) => ({
+                                  ...f,
+                                  cash_amount: e.target.value,
+                                  purchase_price: (cash + virement).toString(),
+                                }))
+                              }}
+                              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                              placeholder="Ex: 100"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">🏦 Montant Virement (€)</label>
+                            <input
+                              type="number"
+                              value={form.virement_amount || ''}
+                              onChange={(e) => {
+                                const virement = parseFloat(e.target.value) || 0
+                                const cash = parseFloat(form.cash_amount) || 0
+                                setForm((f) => ({
+                                  ...f,
+                                  virement_amount: e.target.value,
+                                  purchase_price: (cash + virement).toString(),
+                                }))
+                              }}
+                              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                              placeholder="Ex: 100"
+                            />
+                          </div>
+                        </div>
+                        {form.purchase_price && (
+                          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2 text-sm font-bold text-green-700">
+                            Total : {form.purchase_price}€
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {paymentModes.length === 0 && (
+                      <p className="text-xs text-orange-500">⚠️ Sélectionnez au moins un mode de paiement</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Date de transaction *</label>
