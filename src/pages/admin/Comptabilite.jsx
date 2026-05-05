@@ -67,19 +67,21 @@ export default function Comptabilite() {
   const totalBeneficePotentiel  = stockDisponible.reduce((acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0)
   const totalBeneficeRealise    = stockVendu.reduce((acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0)
 
+  const isCash       = (method) => method?.toLowerCase().includes('cash')
+  const isVirement   = (method) => method?.toLowerCase().includes('virement')
+  const isBancontact = (method) => method?.toLowerCase().includes('bancontact')
+  const isStripe     = (method) => method?.toLowerCase().includes('stripe')
+  const isMixte      = (method) => isCash(method) && isVirement(method)
+
   const filteredPayments = selectedMagasin === 'tous'
     ? payments
     : payments.filter((p) => p.magasin_id === selectedMagasin)
 
-  const isCash      = (m) => m === 'cash'
-  const isVirement  = (m) => m === 'virement bancaire' || m === 'virement'
-  const isMixte     = (m) => typeof m === 'string' && m.includes('+')
-
   const totalCash       = filteredPayments.filter((p) => isCash(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalVirement   = filteredPayments.filter((p) => isVirement(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalMixte      = filteredPayments.filter((p) => isMixte(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
-  const totalBancontact = filteredPayments.filter((p) => p.payment_method === 'bancontact').reduce((acc, p) => acc + (p.amount || 0), 0)
-  const totalStripe     = filteredPayments.filter((p) => p.payment_method === 'stripe').reduce((acc, p) => acc + (p.amount || 0), 0)
+  const totalBancontact = filteredPayments.filter((p) => isBancontact(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
+  const totalStripe     = filteredPayments.filter((p) => isStripe(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalRevenu     = filteredPayments.reduce((acc, p) => acc + (p.amount || 0), 0)
 
   const handleAddPayment = async () => {
@@ -121,8 +123,8 @@ export default function Comptabilite() {
       cash:        magPayments.filter((p) => isCash(p.payment_method)).reduce((a, p) => a + p.amount, 0),
       virement:    magPayments.filter((p) => isVirement(p.payment_method)).reduce((a, p) => a + p.amount, 0),
       mixte:       magPayments.filter((p) => isMixte(p.payment_method)).reduce((a, p) => a + p.amount, 0),
-      bancontact:  magPayments.filter((p) => p.payment_method === 'bancontact').reduce((a, p) => a + p.amount, 0),
-      stripe:      magPayments.filter((p) => p.payment_method === 'stripe').reduce((a, p) => a + p.amount, 0),
+      bancontact:  magPayments.filter((p) => isBancontact(p.payment_method)).reduce((a, p) => a + p.amount, 0),
+      stripe:      magPayments.filter((p) => isStripe(p.payment_method)).reduce((a, p) => a + p.amount, 0),
       ca:          magPayments.reduce((a, p) => a + (p.amount || 0), 0),
     }
   })
