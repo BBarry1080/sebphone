@@ -713,7 +713,7 @@ export default function Registre() {
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">N° {idType} *</label>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">N° {idType} / Registre National *</label>
                     <input type="text" value={form.seller_id_number}
                       onChange={(e) => setForm((f) => ({ ...f, seller_id_number: e.target.value }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
