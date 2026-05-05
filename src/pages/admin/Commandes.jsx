@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { X, Package, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { X, Package, RefreshCw, Search, Trash2, MapPin } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useRequirePermission, usePermission } from '../../hooks/usePermissions'
+import { MAGASINS } from '../../utils/magasins'
 
 const STATUS_CONFIG = {
   en_attente:   { label: 'En attente',   cls: 'bg-yellow-100 text-yellow-800' },
@@ -230,14 +231,37 @@ function OrderPanel({ order, onClose, onRefetch, canEncaisser, canChangeModel, c
           {/* Livraison */}
           <div className="bg-[#F8F9FA] rounded-xl p-4 space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#888] mb-2">Livraison</p>
-            <p className="text-sm font-medium text-[#1B2A4A]">
-              {order.delivery_mode === 'livraison' ? '🚚 Livraison' : '🏪 Click & Collect'}
-            </p>
-            {order.delivery_address && (
-              <p className="text-sm text-[#555]">{order.delivery_address}</p>
+            {order.delivery_mode === 'livraison' ? (
+              <>
+                <p className="text-sm font-medium text-[#1B2A4A]">🚚 Livraison</p>
+                {order.delivery_address && (
+                  <p className="text-sm text-[#555]">{order.delivery_address}</p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-[#1B2A4A] flex items-center gap-1">
+                  <MapPin size={14} className="text-[#00B4CC]"/> Click &amp; Collect
+                </p>
+                {MAGASINS[order.magasin_id] && (
+                  <>
+                    <p className="text-sm font-semibold text-[#1B2A4A]">
+                      {MAGASINS[order.magasin_id].nom}
+                    </p>
+                    {MAGASINS[order.magasin_id].adresse && (
+                      <p className="text-xs text-gray-400">
+                        {MAGASINS[order.magasin_id].adresse}
+                      </p>
+                    )}
+                  </>
+                )}
+                {!MAGASINS[order.magasin_id] && order.magasin_id && (
+                  <p className="text-sm text-[#555]">{order.magasin_id}</p>
+                )}
+              </>
             )}
             {order.pickup_date && (
-              <p className="text-sm text-[#555]">
+              <p className="text-sm text-[#555] mt-1">
                 Date prévue : {new Date(order.pickup_date).toLocaleDateString('fr-BE')}
               </p>
             )}
@@ -428,7 +452,7 @@ export default function Commandes() {
             <table className="w-full text-sm">
               <thead className="bg-[#F8F9FA] border-b border-gray-100">
                 <tr>
-                  {['#', 'Client', 'Téléphone', 'Mode', 'Acompte', 'Date', 'Statut', 'Voir', ''].map((h) => (
+                  {['#', 'Client', 'Téléphone', 'Magasin', 'Acompte', 'Date', 'Statut', 'Voir', ''].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555555] uppercase tracking-wide">
                       {h}
                     </th>
@@ -445,8 +469,8 @@ export default function Commandes() {
                       <td className="px-4 py-3 text-[#555]">
                         {o.phone_name || o.phone?.model || o.phone?.name || '—'}
                       </td>
-                      <td className="px-4 py-3 text-[#555]">
-                        {o.delivery_mode === 'livraison' ? '🚚 Livraison' : '🏪 Click & Collect'}
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {MAGASINS[o.magasin_id]?.nom?.replace('Seb Telecom — ', '') || o.magasin_id || '—'}
                       </td>
                       <td className="px-4 py-3 font-semibold text-[#1B2A4A]">
                         {o.deposit_paid != null ? `${o.deposit_paid}€` : '—'}

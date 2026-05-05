@@ -16,14 +16,40 @@ export default function VentesHistory() {
 
   const fetchSales = async () => {
     setLoading(true)
-    const { data: orders } = await supabase
+    let { data: orders } = await supabase
       .from('orders')
-      .select('*, phone:phones(*)')
+      .select('*, phone:phones(*), payment:payments(payment_method, amount)')
       .eq('status', 'recupere')
       .not('phone_id', 'is', null)
       .order('encaisse_at', { ascending: false })
+
+    // Fallback si le join payments échoue (pas de FK déclarée)
+    if (!orders) {
+      const res = await supabase
+        .from('orders')
+        .select('*, phone:phones(*)')
+        .eq('status', 'recupere')
+        .not('phone_id', 'is', null)
+        .order('encaisse_at', { ascending: false })
+      orders = res.data
+    }
     setSales(orders || [])
     setLoading(false)
+  }
+
+  const getPaymentMethod = (sale) => {
+    if (sale?.payment?.length > 0) {
+      const method = sale.payment[0].payment_method
+      if (!method) return '—'
+      const m = method.toLowerCase()
+      if (m.includes('+')) return '💵🏦 Cash + Virement'
+      if (m.includes('cash')) return '💵 Cash'
+      if (m.includes('virement')) return '🏦 Virement bancaire'
+      if (m.includes('bancontact')) return '💳 Bancontact'
+      if (m.includes('stripe')) return '💳 Stripe'
+      return method
+    }
+    return sale?.payment_mode === 'total' ? '💵 Cash' : (sale?.payment_mode || '—')
   }
 
   const getWarranty = (saleDate) => {
@@ -107,7 +133,7 @@ export default function VentesHistory() {
       startY: doc.lastAutoTable.finalY + 10,
       head: [],
       body: [
-        ['Mode de paiement', sale.payment_mode || 'Cash'],
+        ['Mode de paiement', getPaymentMethod(sale)],
         ['PRIX DE VENTE',    `${sale.total_amount}€`],
       ],
       theme: 'grid',
@@ -294,7 +320,7 @@ export default function VentesHistory() {
                 ['IMEI',             selectedSale.phone?.imei || '—'],
                 ['Grade',            selectedSale.phone_grade || '—'],
                 ['Prix de vente',    `${selectedSale.total_amount}€`],
-                ['Mode paiement',    selectedSale.payment_mode || '—'],
+                ['Mode paiement',    getPaymentMethod(selectedSale)],
                 ['Date de vente',    new Date(selectedSale.encaisse_at || selectedSale.created_at).toLocaleDateString('fr-BE')],
                 ['Magasin',          MAGASINS[selectedSale.magasin_id]?.nom || '—'],
                 ['Code réservation', selectedSale.reservation_code || '—'],
