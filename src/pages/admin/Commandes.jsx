@@ -308,6 +308,7 @@ export default function Commandes() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
@@ -351,9 +352,20 @@ export default function Commandes() {
     return () => supabase.removeChannel(channel)
   }, [])
 
-  const filtered = activeFilter
-    ? orders.filter((o) => o.status === activeFilter)
-    : orders
+  const filtered = orders.filter((o) => {
+    if (activeFilter && o.status !== activeFilter) return false
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      o.customer_name?.toLowerCase().includes(q) ||
+      o.customer_email?.toLowerCase().includes(q) ||
+      o.customer_phone?.includes(q) ||
+      o.phone_name?.toLowerCase().includes(q) ||
+      o.reservation_code?.toLowerCase().includes(q) ||
+      o.magasin_id?.toLowerCase().includes(q) ||
+      String(o.id).includes(q)
+    )
+  })
 
   return (
     <div className="space-y-5">
@@ -377,6 +389,30 @@ export default function Commandes() {
             {FILTER_LABELS[String(f)]}
           </button>
         ))}
+      </div>
+
+      {/* Barre de recherche */}
+      <div>
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-3 text-gray-400"/>
+          <input
+            type="text"
+            placeholder="Rechercher par nom, email, téléphone, code..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none bg-white"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer">
+              <X size={16}/>
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          {filtered.length} commande(s) trouvée(s)
+        </p>
       </div>
 
       {/* Table */}
