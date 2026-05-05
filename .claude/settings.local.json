@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit -m ' *)",
+      "Bash(npx tsc *)",
+      "Bash(node_modules/.bin/vite build *)",
+      "Bash(git commit *)",
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git checkout *)",
+      "Bash(GIT_EDITOR=true git rebase --continue)"
+    ]
+  }
+}
