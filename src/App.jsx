@@ -37,6 +37,7 @@ import Confirmation from './pages/Confirmation';
 import MesReservations from './pages/MesReservations';
 import DetailCommande from './pages/DetailCommande';
 import CodeVerification from './pages/admin/CodeVerification';
+import VentesHistory from './pages/admin/VentesHistory';
 
 function Layout({ children }) {
   return (
@@ -129,6 +130,7 @@ export default function App() {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="stock" element={<Stock />} />
+            <Route path="vendus" element={<VentesHistory />} />
             <Route path="commandes" element={<Commandes />} />
             <Route path="promoCodes" element={<PromoCodes />} />
             <Route path="verifier-code" element={<CodeVerification />} />

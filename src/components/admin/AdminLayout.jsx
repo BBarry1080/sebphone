@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen,
+  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -38,7 +38,8 @@ function SidebarContent({ onClose }) {
 
   const navItems = [
     { to: '/admin/dashboard',     label: 'Dashboard',     Icon: LayoutDashboard, show: true },
-    { to: '/admin/stock',         label: 'Stock',         Icon: Smartphone,      show: has('voir_stock') },
+    { to: '/admin/stock',         label: 'Stock',             Icon: Smartphone,    show: has('voir_stock') },
+    { to: '/admin/vendus',        label: 'Historique ventes', Icon: ShoppingBag,   show: has('voir_stock') },
     { to: '/admin/commandes',     label: 'Commandes',     Icon: ClipboardList,   show: has('voir_commandes') },
     { to: '/admin/promoCodes',    label: 'Codes promo',   Icon: Tag,             show: has('codes_promo') },
     { to: '/admin/verifier-code', label: 'Vérifier code', Icon: QrCode,          show: has('verifier_code') },
