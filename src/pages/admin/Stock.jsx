@@ -12,7 +12,8 @@ import {
 } from '../../data/phonesApi'
 import { phonesMock } from '../../data/phonesMock'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
-import { MAGASINS_LIST as MAGASINS } from '../../utils/magasins'
+import { MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS as MAGASINS_MAP } from '../../utils/magasins'
+const MAGASINS = MAGASINS_PHYSIQUES
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 
@@ -129,6 +130,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [stockLocation, setStockLocation] = useState(phone?.stock_location || '')
   const [deposit, setDeposit]     = useState(phone?.deposit_amount || 50)
   const [magasins, setMagasins]   = useState(phone?.magasins || [])
+  const [paidBy, setPaidBy]       = useState(phone?.paid_by || '')
   const [notes, setNotes]         = useState(phone?.notes || '')
   const initialPartsReplaced = (() => {
     const raw = phone?.parts_replaced
@@ -214,6 +216,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
         purchase_price: purchasePrice !== '' ? parseFloat(purchasePrice) : null,
         deposit_amount: parseFloat(deposit) || 50,
         magasins:       magasins || [],
+        paid_by:        paidBy || null,
         notes:          notes || null,
         battery_health: batteryHealth !== '' ? parseInt(batteryHealth) : null,
         imei:           imei.trim() || null,
@@ -482,6 +485,25 @@ function PhoneModal({ phone, onClose, onSaved }) {
             </div>
           </div>
 
+          {/* ── Section 3.5 — Payeur (entité financière) ── */}
+          <div>
+            <label className="text-xs font-medium text-gray-600 mb-1 block">
+              Acheté par (entité payeur)
+            </label>
+            <select
+              value={paidBy}
+              onChange={(e) => setPaidBy(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+            >
+              <option value="">— Sélectionner —</option>
+              <option value="sebphone">💻 SebPhone</option>
+              {MAGASINS_PHYSIQUES.map((m) => (
+                <option key={m.id} value={m.id}>{m.nom}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Qui a financé l'achat de ce téléphone ?</p>
+          </div>
+
           {/* ── Section 4 — Magasins ── */}
           <div>
             <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Disponible en magasin</h3>
@@ -582,6 +604,7 @@ export default function Stock() {
   const [loading, setLoading]             = useState(true)
   const [search, setSearch]               = useState('')
   const [filterMagasin, setFilterMagasin] = useState(null)
+  const [selectedPayer, setSelectedPayer] = useState('tous')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingPhone, setEditingPhone]   = useState(null)
 
@@ -757,6 +780,7 @@ export default function Stock() {
         const mags = Array.isArray(p.magasins) ? p.magasins : []
         if (!mags.includes(filterMagasin)) return false
       }
+      if (selectedPayer !== 'tous' && p.paid_by !== selectedPayer) return false
       return true
     })
     .sort((a, b) => getModelIndex(a.name) - getModelIndex(b.name))
@@ -830,6 +854,38 @@ export default function Stock() {
         })}
       </div>
 
+      {/* Filtres payeur */}
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold text-gray-500 mr-1">Filtrer par payeur :</p>
+        <button
+          onClick={() => setSelectedPayer('tous')}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+            selectedPayer === 'tous' ? 'bg-[#1B2A4A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Tous
+        </button>
+        <button
+          onClick={() => setSelectedPayer('sebphone')}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+            selectedPayer === 'sebphone' ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          💻 SebPhone
+        </button>
+        {MAGASINS_PHYSIQUES.map((mag) => (
+          <button
+            key={mag.id}
+            onClick={() => setSelectedPayer(mag.id)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              selectedPayer === mag.id ? 'bg-[#1B2A4A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {mag.nom.replace('Seb Telecom — ', '')}
+          </button>
+        ))}
+      </div>
+
       {/* ── MOBILE CARDS ── */}
       <div className="block lg:hidden">
         {loading ? (
@@ -874,6 +930,9 @@ export default function Stock() {
                       <span className="px-2 py-0.5 bg-[#1B2A4A]/10 text-[#1B2A4A] rounded-full text-xs font-bold">
                         {phone.grade}
                       </span>
+                    )}
+                    {phone.paid_by === 'sebphone' && (
+                      <span className="px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded-full text-xs font-bold">💻 SebPhone</span>
                     )}
                     <StatusDropdown id={phone.id} value={phone.status} onChange={handleStatusChange} />
                   </div>
@@ -937,7 +996,7 @@ export default function Stock() {
             <table className="w-full text-sm">
               <thead className="bg-[#F8F9FA] border-b border-gray-100">
                 <tr>
-                  {['Modèle', 'État', 'Grade', 'Batterie', 'Prix', 'Achat / Bénéf.', 'Localisation', 'Statut', 'Actions'].map((h) => (
+                  {['Modèle', 'État', 'Grade', 'Batterie', 'Prix', 'Achat / Bénéf.', 'Localisation', 'Payeur', 'Statut', 'Actions'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555555] uppercase tracking-wide">
                       {h}
                     </th>
@@ -1005,6 +1064,17 @@ export default function Stock() {
                         <p className="font-medium">{phone.stock_location || <span className="text-[#bbb]">—</span>}</p>
                         {phone.fournisseur && <p className="text-[#aaa] text-[11px]">{phone.fournisseur}</p>}
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {phone.paid_by === 'sebphone' ? (
+                        <span className="bg-cyan-100 text-cyan-700 text-xs font-bold px-2 py-1 rounded-full">💻 SebPhone</span>
+                      ) : phone.paid_by ? (
+                        <span className="bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">
+                          📍 {MAGASINS_MAP[phone.paid_by]?.nom?.replace('Seb Telecom — ', '') || phone.paid_by}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <StatusDropdown id={phone.id} value={phone.status} onChange={handleStatusChange} />

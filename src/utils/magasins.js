@@ -36,3 +36,4 @@ export const MAGASINS = {
 }
 
 export const MAGASINS_LIST = Object.values(MAGASINS)
+export const MAGASINS_PHYSIQUES = MAGASINS_LIST.filter((m) => m.id !== 'sebphone')

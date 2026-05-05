@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins'
+import { MAGASINS, MAGASINS_PHYSIQUES as MAGASINS_LIST } from '../../utils/magasins'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'

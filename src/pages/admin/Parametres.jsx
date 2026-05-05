@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
-import { MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
+import { MAGASINS_PHYSIQUES as MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
 import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle } from 'lucide-react'
 

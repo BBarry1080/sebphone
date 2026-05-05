@@ -5,7 +5,7 @@ import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 import { getColorHex } from '../utils/colors'
 import { STARTING_PRICES } from '../data/startingPrices'
 import { IPHONE_ON_DEMAND } from '../data/iphoneOnDemand'
-import { MAGASINS_LIST } from '../utils/magasins'
+import { MAGASINS_PHYSIQUES as MAGASINS_LIST } from '../utils/magasins'
 
 export default function SurCommande() {
   const navigate = useNavigate()

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins'
+import { MAGASINS, MAGASINS_LIST, MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import {
   TrendingUp, ShoppingBag, CreditCard,
   Banknote, Store, Plus, X, Eye
@@ -14,8 +14,8 @@ export default function Comptabilite() {
   const canAddPayments = usePermission('ajouter_paiements')
 
   const allowedMagasins = isAdmin
-    ? MAGASINS_LIST
-    : MAGASINS_LIST.filter((m) => {
+    ? MAGASINS_PHYSIQUES
+    : MAGASINS_PHYSIQUES.filter((m) => {
         const key = 'compta_' + m.id.replace(/-/g, '_')
         return currentUser.permissions?.[key] === true
       })
@@ -111,6 +111,26 @@ export default function Comptabilite() {
     }
   })
 
+  const sebphonePhones = phones.filter((p) => p.paid_by === 'sebphone')
+  const sebphoneDispo  = sebphonePhones.filter((p) => p.status === 'disponible')
+  const sebphoneVendu  = sebphonePhones.filter((p) => p.status === 'vendu')
+  const sebphonePayments = payments.filter((p) => p.magasin_id === 'sebphone')
+  const sebphoneStats = isAdmin ? {
+    id: 'sebphone',
+    nom: 'SebPhone',
+    nbDispo:           sebphoneDispo.length,
+    nbVendu:           sebphoneVendu.length,
+    prixAchat:         sebphoneDispo.reduce((a, p) => a + (p.purchase_price || 0), 0),
+    beneficePotentiel: sebphoneDispo.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
+    beneficeRealise:   sebphoneVendu.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
+    cash:        sebphonePayments.filter((p) => p.payment_method === 'cash').reduce((a, p) => a + p.amount, 0),
+    bancontact:  sebphonePayments.filter((p) => p.payment_method === 'bancontact').reduce((a, p) => a + p.amount, 0),
+    stripe:      sebphonePayments.filter((p) => p.payment_method === 'stripe').reduce((a, p) => a + p.amount, 0),
+    ca:          sebphonePayments.reduce((a, p) => a + (p.amount || 0), 0),
+  } : null
+
+  const allStats = sebphoneStats ? [sebphoneStats, ...statsByMagasin] : statsByMagasin
+
   const fmt = (n) => n.toLocaleString('fr-BE')
 
   if (loading) return (
@@ -149,7 +169,7 @@ export default function Comptabilite() {
         >
           Tous les magasins
         </button>
-        {MAGASINS_LIST.map((mag) => (
+        {MAGASINS_PHYSIQUES.map((mag) => (
           <button
             key={mag.id}
             onClick={() => setSelectedMagasin(mag.id)}
@@ -346,10 +366,19 @@ export default function Comptabilite() {
               </tr>
             </thead>
             <tbody>
-              {statsByMagasin.map((mag) => (
-                <tr key={mag.id} className="border-t border-gray-100 hover:bg-gray-50">
+              {allStats.map((mag) => (
+                <tr key={mag.id} className={`border-t border-gray-100 hover:bg-gray-50 ${
+                  mag.id === 'sebphone' ? 'bg-cyan-50/50 font-medium' : ''
+                }`}>
                   <td className="px-4 py-3 font-medium text-[#1B2A4A] text-sm">
-                    {mag.nom.replace('Seb Telecom — ', '')}
+                    {mag.id === 'sebphone' ? (
+                      <span className="flex items-center gap-2">
+                        <span className="bg-cyan-100 text-cyan-700 text-xs font-bold px-2 py-0.5 rounded-full">💻 SebPhone</span>
+                        <span className="text-xs text-gray-400">(entité financière)</span>
+                      </span>
+                    ) : (
+                      mag.nom.replace('Seb Telecom — ', '')
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full">

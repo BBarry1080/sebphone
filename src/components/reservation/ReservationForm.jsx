@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar, Wrench, Tag, X, BatteryCharging } from 'lucide-react';
 import Button from '../ui/Button';
 import { ACCESSORY_PACKS } from '../../data/accessories';
-import { MAGASINS, MAGASINS_LIST } from '../../utils/magasins';
+import { MAGASINS, MAGASINS_PHYSIQUES as MAGASINS_LIST } from '../../utils/magasins';
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { sendConfirmationEmail } from '../../utils/sendEmail';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';

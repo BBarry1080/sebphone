@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import ReservationForm from '../components/reservation/ReservationForm'
-import { MAGASINS_LIST } from '../utils/magasins'
+import { MAGASINS_PHYSIQUES as MAGASINS_LIST } from '../utils/magasins'
 
 export default function ReservationCommande() {
   const { state } = useLocation()
