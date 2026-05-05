@@ -27,6 +27,12 @@ export const MAGASINS = {
     tel:     '+32(0)492 40.54.57',
     gmaps:   'https://maps.google.com/?q=Rue+du+Bailli+22+Bruxelles',
   },
+  sebphone: {
+    id:      'sebphone',
+    nom:     'SebPhone',
+    adresse: 'sebphone.be',
+    tel:     '+32(0)492 40.54.57',
+  },
 }
 
 export const MAGASINS_LIST = Object.values(MAGASINS)

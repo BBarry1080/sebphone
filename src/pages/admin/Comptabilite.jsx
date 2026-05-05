@@ -66,6 +66,7 @@ export default function Comptabilite() {
   const totalCash       = filteredPayments.filter((p) => p.payment_method === 'cash').reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalBancontact = filteredPayments.filter((p) => p.payment_method === 'bancontact').reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalStripe     = filteredPayments.filter((p) => p.payment_method === 'stripe').reduce((acc, p) => acc + (p.amount || 0), 0)
+  const totalRevenu     = filteredPayments.reduce((acc, p) => acc + (p.amount || 0), 0)
 
   const handleAddPayment = async () => {
     if (!newPayment.amount) return
@@ -106,6 +107,7 @@ export default function Comptabilite() {
       cash:        magPayments.filter((p) => p.payment_method === 'cash').reduce((a, p) => a + p.amount, 0),
       bancontact:  magPayments.filter((p) => p.payment_method === 'bancontact').reduce((a, p) => a + p.amount, 0),
       stripe:      magPayments.filter((p) => p.payment_method === 'stripe').reduce((a, p) => a + p.amount, 0),
+      ca:          magPayments.reduce((a, p) => a + (p.amount || 0), 0),
     }
   })
 
@@ -161,7 +163,7 @@ export default function Comptabilite() {
       </div>
 
       {/* CARDS GLOBALES */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-8">
 
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
@@ -172,6 +174,17 @@ export default function Comptabilite() {
           </div>
           <p className="text-2xl font-black text-[#1B2A4A]">{fmt(totalPrixAchat)}€</p>
           <p className="text-xs text-gray-400 mt-1">{stockDisponible.length} appareils disponibles</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-9 h-9 bg-cyan-100 rounded-xl flex items-center justify-center">
+              <TrendingUp size={18} className="text-cyan-600" />
+            </div>
+            <span className="text-xs text-gray-500 font-medium">Chiffre d'affaires</span>
+          </div>
+          <p className="text-2xl font-black text-cyan-600">{fmt(totalRevenu)}€</p>
+          <p className="text-xs text-gray-400 mt-1">Total encaissé ({filteredPayments.length} paiements)</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
@@ -320,7 +333,7 @@ export default function Comptabilite() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                {['Magasin', 'Stock dispo', 'Vendus', 'Prix achat', 'Bénéf. potentiel', 'Cash', 'Bancontact'].map((h, i) => (
+                {['Magasin', 'Stock dispo', 'Vendus', 'Prix achat', 'Bénéf. potentiel', 'CA', 'Cash', 'Bancontact'].map((h, i) => (
                   <th
                     key={h}
                     className={`px-4 py-3 text-xs font-semibold text-gray-500 ${
@@ -354,6 +367,9 @@ export default function Comptabilite() {
                   <td className="px-4 py-3 text-right text-sm font-semibold text-green-600">
                     {fmt(mag.beneficePotentiel)}€
                   </td>
+                  <td className="px-4 py-3 text-right text-sm font-semibold text-cyan-600">
+                    {fmt(mag.ca)}€
+                  </td>
                   <td className="px-4 py-3 text-right text-sm font-semibold text-gray-700">
                     {fmt(mag.cash)}€
                   </td>
@@ -370,6 +386,7 @@ export default function Comptabilite() {
                 <td className="px-4 py-3 text-center text-sm">{stockVendu.length}</td>
                 <td className="px-4 py-3 text-right text-sm text-orange-600">{fmt(totalPrixAchat)}€</td>
                 <td className="px-4 py-3 text-right text-sm text-green-600">{fmt(totalBeneficePotentiel)}€</td>
+                <td className="px-4 py-3 text-right text-sm text-cyan-600">{fmt(totalRevenu)}€</td>
                 <td className="px-4 py-3 text-right text-sm">{fmt(totalCash)}€</td>
                 <td className="px-4 py-3 text-right text-sm text-blue-600">{fmt(totalBancontact)}€</td>
               </tr>
