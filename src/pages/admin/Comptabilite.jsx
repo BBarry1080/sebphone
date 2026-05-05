@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { MAGASINS, MAGASINS_LIST, MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import {
   TrendingUp, ShoppingBag, CreditCard,
-  Banknote, Store, Plus, X, Eye
+  Banknote, Store, Plus, X, Eye, Wrench
 } from 'lucide-react'
 import { useRequirePermission, useCurrentUser, usePermission } from '../../hooks/usePermissions'
 
@@ -22,6 +22,7 @@ export default function Comptabilite() {
 
   const [phones, setPhones] = useState([])
   const [payments, setPayments] = useState([])
+  const [reconStock, setReconStock] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedMagasin, setSelectedMagasin] = useState('tous')
   const [selectedMethod, setSelectedMethod] = useState(null)
@@ -39,14 +40,21 @@ export default function Comptabilite() {
 
   const fetchData = async () => {
     setLoading(true)
-    const [phonesRes, paymentsRes] = await Promise.all([
+    const [phonesRes, paymentsRes, reconRes] = await Promise.all([
       supabase.from('phones').select('*'),
       supabase.from('payments').select('*').order('payment_date', { ascending: false }),
+      supabase.from('purchase_registry')
+        .select('purchase_price')
+        .eq('phone_condition', 'reconditionne')
+        .eq('reconditioning_status', 'en_attente'),
     ])
     setPhones(phonesRes.data || [])
     setPayments(paymentsRes.data || [])
+    setReconStock(reconRes.data || [])
     setLoading(false)
   }
+
+  const totalReconStock = reconStock.reduce((a, e) => a + (e.purchase_price || 0), 0)
 
   const filteredPhones = selectedMagasin === 'tous'
     ? phones
@@ -205,6 +213,17 @@ export default function Comptabilite() {
           </div>
           <p className="text-2xl font-black text-cyan-600">{fmt(totalRevenu)}€</p>
           <p className="text-xs text-gray-400 mt-1">Total encaissé ({filteredPayments.length} paiements)</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+              <Wrench size={18} className="text-orange-600" />
+            </div>
+            <span className="text-xs text-gray-500 font-medium">Stock en reconditionnement</span>
+          </div>
+          <p className="text-2xl font-black text-orange-600">{fmt(totalReconStock)}€</p>
+          <p className="text-xs text-gray-400 mt-1">Prix d'achat — en attente ({reconStock.length})</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">

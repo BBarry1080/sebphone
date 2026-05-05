@@ -69,8 +69,9 @@ const PERMISSION_GROUPS = [
   {
     label: 'Administration',
     perms: [
-      { key: 'gerer_utilisateurs', label: 'Gérer les utilisateurs' },
-      { key: 'registre_achats',    label: "Accès registre d'achats" },
+      { key: 'gerer_utilisateurs',       label: 'Gérer les utilisateurs' },
+      { key: 'registre_achats',          label: "Accès registre d'achats" },
+      { key: 'stock_reconditionnement',  label: 'Stock Reconditionnement' },
     ],
   },
 ]
@@ -88,6 +89,7 @@ const DEFAULT_PERMS = {
   compta_tubize: false, compta_saint_gilles: false,
   gerer_utilisateurs: false,
   registre_achats: false,
+  stock_reconditionnement: false,
 }
 
 const AVATAR_COLORS = [

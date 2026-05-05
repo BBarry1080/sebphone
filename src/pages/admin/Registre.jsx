@@ -73,6 +73,8 @@ export default function Registre() {
     model: '',
     color: '',
     storage: '',
+    phone_condition: 'occasion',
+    phone_grade: 'Bon état',
     purchase_price: '',
     payment_method: 'Cash',
     cash_amount: '',
@@ -235,6 +237,9 @@ export default function Registre() {
         seller_id_type: form.seller_id_type || idType,
         purchase_price: parseFloat(form.purchase_price),
         transaction_date: new Date(form.transaction_date).toISOString(),
+        phone_grade: form.phone_condition !== 'neuf' ? form.phone_grade : null,
+        reconditioning_status: form.phone_condition === 'reconditionne' ? 'en_attente' : null,
+        added_to_stock: false,
       }
 
       if (editingEntry) {
@@ -522,6 +527,17 @@ export default function Registre() {
                   <td className="px-4 py-3 text-sm text-gray-600 font-mono">{entry.imei}</td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-[#1B2A4A] text-sm">{entry.brand} {entry.model}</p>
+                    {entry.phone_condition && (
+                      <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        entry.phone_condition === 'neuf'
+                          ? 'bg-blue-100 text-blue-700'
+                          : entry.phone_condition === 'reconditionne'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {entry.phone_condition === 'neuf' ? '🆕 Neuf' : entry.phone_condition === 'reconditionne' ? '🔧 Reconditionné' : '📱 Occasion'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm font-bold text-green-600">{entry.purchase_price}€</td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
@@ -590,6 +606,8 @@ export default function Registre() {
                                 model:             entry.model || '',
                                 color:             entry.color || '',
                                 storage:           entry.storage || '',
+                                phone_condition:   entry.phone_condition || 'occasion',
+                                phone_grade:       entry.phone_grade || 'Bon état',
                                 purchase_price:    entry.purchase_price || '',
                                 payment_method:    entry.payment_method || 'Cash',
                                 cash_amount:       '',
@@ -785,6 +803,52 @@ export default function Registre() {
                   📱 Informations appareil
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">État du téléphone *</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['neuf', 'occasion', 'reconditionne'].map((cond) => (
+                        <button
+                          key={cond}
+                          type="button"
+                          onClick={() => setForm((f) => ({
+                            ...f,
+                            phone_condition: cond,
+                            phone_grade: cond === 'neuf' ? null : (f.phone_grade || 'Bon état'),
+                          }))}
+                          className={`py-2.5 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
+                            form.phone_condition === cond
+                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                          }`}
+                        >
+                          {cond === 'neuf' ? '🆕 Neuf' : cond === 'occasion' ? '📱 Occasion' : '🔧 Reconditionné'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {form.phone_condition !== 'neuf' && (
+                    <div className="col-span-2">
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">Grade *</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {['Comme neuf', 'Très bon état', 'Bon état'].map((grade) => (
+                          <button
+                            key={grade}
+                            type="button"
+                            onClick={() => setForm((f) => ({ ...f, phone_grade: grade }))}
+                            className={`py-2 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer ${
+                              form.phone_grade === grade
+                                ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                                : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                            }`}
+                          >
+                            {grade}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="col-span-2">
                     <label className="text-xs font-medium text-gray-600 mb-1 block">IMEI *</label>
                     <input type="text" value={form.imei}

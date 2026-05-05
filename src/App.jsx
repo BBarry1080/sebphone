@@ -38,6 +38,7 @@ import MesReservations from './pages/MesReservations';
 import DetailCommande from './pages/DetailCommande';
 import CodeVerification from './pages/admin/CodeVerification';
 import VentesHistory from './pages/admin/VentesHistory';
+import StockReconditionnement from './pages/admin/StockReconditionnement';
 import Facture from './pages/Facture';
 
 function Layout({ children }) {
@@ -133,6 +134,7 @@ export default function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="stock" element={<Stock />} />
             <Route path="vendus" element={<VentesHistory />} />
+            <Route path="reconditionnement" element={<StockReconditionnement />} />
             <Route path="commandes" element={<Commandes />} />
             <Route path="promoCodes" element={<PromoCodes />} />
             <Route path="verifier-code" element={<CodeVerification />} />
