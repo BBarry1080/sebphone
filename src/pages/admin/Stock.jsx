@@ -927,7 +927,7 @@ export default function Stock() {
                       {CONDITION_LABELS[phone.condition] || phone.condition}
                     </span>
                     {phone.grade && (
-                      <span className="px-2 py-0.5 bg-[#1B2A4A]/10 text-[#1B2A4A] rounded-full text-xs font-bold">
+                      <span className="px-2 py-0.5 bg-[#1B2A4A]/10 text-[#1B2A4A] rounded-full text-xs font-bold whitespace-nowrap">
                         {phone.grade}
                       </span>
                     )}
@@ -1038,7 +1038,7 @@ export default function Stock() {
                     </td>
                     <td className="px-4 py-3">
                       {phone.grade
-                        ? <span className="px-2 py-1 bg-[#1B2A4A]/10 text-[#1B2A4A] rounded-full text-xs font-bold">{phone.grade}</span>
+                        ? <span className="inline-block px-2 py-0.5 bg-[#1B2A4A]/10 text-[#1B2A4A] rounded-full text-[11px] font-bold whitespace-nowrap">{phone.grade}</span>
                         : <span className="text-[#bbb]">—</span>}
                     </td>
                     <td className="px-4 py-3 text-xs text-[#555]">
