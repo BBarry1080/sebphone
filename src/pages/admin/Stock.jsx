@@ -16,9 +16,9 @@ import { MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS as MAGASINS_MAP } from '../
 import emailjs from '@emailjs/browser'
 const MAGASINS = MAGASINS_PHYSIQUES
 
-const EMAILJS_SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID  || 'service_nn74puq'
-const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'rqbaYNMIGNP6IQB9O'
-const EMAILJS_TEMPLATE_ID = 'template_hfoq4dg'
+const EMAILJS_SERVICE_ID   = import.meta.env.VITE_EMAILJS_SERVICE_ID         || 'service_nn74puq'
+const EMAILJS_PUBLIC_KEY   = import.meta.env.VITE_EMAILJS_PUBLIC_KEY         || 'rqbaYNMIGNP6IQB9O'
+const INVOICE_TEMPLATE_ID  = import.meta.env.VITE_EMAILJS_INVOICE_TEMPLATE_ID || 'template_facture'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 
@@ -707,7 +707,7 @@ export default function Stock() {
 
           await emailjs.send(
             EMAILJS_SERVICE_ID,
-            EMAILJS_TEMPLATE_ID,
+            INVOICE_TEMPLATE_ID,
             {
               to_email:         saleForm.customer_email,
               to_name:          `${saleForm.customer_firstname} ${saleForm.customer_name}`,
