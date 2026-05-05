@@ -38,6 +38,7 @@ import MesReservations from './pages/MesReservations';
 import DetailCommande from './pages/DetailCommande';
 import CodeVerification from './pages/admin/CodeVerification';
 import VentesHistory from './pages/admin/VentesHistory';
+import Facture from './pages/Facture';
 
 function Layout({ children }) {
   return (
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="/commande/:code" element={
             <Layout><DetailCommande /></Layout>
           } />
+          <Route path="/facture/:code" element={<Facture />} />
           <Route path="/panier" element={
             <Layout><Cart /></Layout>
           } />

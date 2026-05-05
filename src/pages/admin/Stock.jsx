@@ -731,6 +731,7 @@ export default function Stock() {
               magasin_adresse:  magasin?.adresse || 'sebphone.be',
               reservation_code: reservationCode,
               reservation_url:  `https://sebphone.be/commande/${reservationCode}`,
+              invoice_url:      `https://sebphone.be/facture/${reservationCode}`,
               pickup_date:      now.toLocaleDateString('fr-BE'),
               warranty_expiry:  expiry.toLocaleDateString('fr-BE'),
             },
