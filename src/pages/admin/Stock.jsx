@@ -705,6 +705,13 @@ export default function Stock() {
           expiry.setMonth(expiry.getMonth() + 24)
           const magasin  = MAGASINS_MAP[salePhone.magasins?.[0]]
 
+          console.log('=== EMAIL FACTURE ===')
+          console.log('customer_email:', saleForm.customer_email)
+          console.log('SERVICE_ID:', EMAILJS_SERVICE_ID)
+          console.log('INVOICE_TEMPLATE_ID:', INVOICE_TEMPLATE_ID)
+          console.log('PUBLIC_KEY:', EMAILJS_PUBLIC_KEY)
+          console.log('invoice_url:', `https://sebphone.be/facture/${reservationCode}`)
+
           await emailjs.send(
             EMAILJS_SERVICE_ID,
             INVOICE_TEMPLATE_ID,
