@@ -75,6 +75,7 @@ export default function Registre() {
     storage: '',
     phone_condition: 'occasion',
     phone_grade: 'Bon état',
+    fournisseur: 'SebPhone',
     purchase_price: '',
     payment_method: 'Cash',
     cash_amount: '',
@@ -500,7 +501,7 @@ export default function Registre() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                {['Date', 'Vendeur', 'N° CI', 'IMEI', 'Appareil', 'Prix', 'Paiement', 'Magasin', 'Actions'].map((h) => (
+                {['Date', 'Vendeur', 'N° CI', 'IMEI', 'Appareil', 'Fournisseur', 'Prix', 'Paiement', 'Magasin', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -539,6 +540,7 @@ export default function Registre() {
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">{entry.fournisseur || '—'}</td>
                   <td className="px-4 py-3 text-sm font-bold text-green-600">{entry.purchase_price}€</td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -608,6 +610,7 @@ export default function Registre() {
                                 storage:           entry.storage || '',
                                 phone_condition:   entry.phone_condition || 'occasion',
                                 phone_grade:       entry.phone_grade || 'Bon état',
+                                fournisseur:       entry.fournisseur || 'SebPhone',
                                 purchase_price:    entry.purchase_price || '',
                                 payment_method:    entry.payment_method || 'Cash',
                                 cash_amount:       '',
@@ -907,6 +910,20 @@ export default function Registre() {
                       {['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'Autre'].map((b) => (
                         <option key={b} value={b}>{b}</option>
                       ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Fournisseur *</label>
+                    <select
+                      value={form.fournisseur}
+                      onChange={(e) => setForm((f) => ({ ...f, fournisseur: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                    >
+                      <option value="SebPhone">💻 SebPhone</option>
+                      {MAGASINS_LIST.map((m) => {
+                        const short = m.nom.replace('Seb Telecom — ', '')
+                        return <option key={m.id} value={short}>📍 {short}</option>
+                      })}
                     </select>
                   </div>
                   <div className="col-span-2" onClick={(e) => e.stopPropagation()}>

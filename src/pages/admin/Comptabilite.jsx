@@ -71,7 +71,13 @@ export default function Comptabilite() {
     ? payments
     : payments.filter((p) => p.magasin_id === selectedMagasin)
 
-  const totalCash       = filteredPayments.filter((p) => p.payment_method === 'cash').reduce((acc, p) => acc + (p.amount || 0), 0)
+  const isCash      = (m) => m === 'cash'
+  const isVirement  = (m) => m === 'virement bancaire' || m === 'virement'
+  const isMixte     = (m) => typeof m === 'string' && m.includes('+')
+
+  const totalCash       = filteredPayments.filter((p) => isCash(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
+  const totalVirement   = filteredPayments.filter((p) => isVirement(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
+  const totalMixte      = filteredPayments.filter((p) => isMixte(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalBancontact = filteredPayments.filter((p) => p.payment_method === 'bancontact').reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalStripe     = filteredPayments.filter((p) => p.payment_method === 'stripe').reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalRevenu     = filteredPayments.reduce((acc, p) => acc + (p.amount || 0), 0)
@@ -112,7 +118,9 @@ export default function Comptabilite() {
       prixAchat:           dispo.reduce((a, p) => a + (p.purchase_price || 0), 0),
       beneficePotentiel:   dispo.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
       beneficeRealise:     vendu.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
-      cash:        magPayments.filter((p) => p.payment_method === 'cash').reduce((a, p) => a + p.amount, 0),
+      cash:        magPayments.filter((p) => isCash(p.payment_method)).reduce((a, p) => a + p.amount, 0),
+      virement:    magPayments.filter((p) => isVirement(p.payment_method)).reduce((a, p) => a + p.amount, 0),
+      mixte:       magPayments.filter((p) => isMixte(p.payment_method)).reduce((a, p) => a + p.amount, 0),
       bancontact:  magPayments.filter((p) => p.payment_method === 'bancontact').reduce((a, p) => a + p.amount, 0),
       stripe:      magPayments.filter((p) => p.payment_method === 'stripe').reduce((a, p) => a + p.amount, 0),
       ca:          magPayments.reduce((a, p) => a + (p.amount || 0), 0),
@@ -131,7 +139,9 @@ export default function Comptabilite() {
     prixAchat:         sebphoneDispo.reduce((a, p) => a + (p.purchase_price || 0), 0),
     beneficePotentiel: sebphoneDispo.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
     beneficeRealise:   sebphoneVendu.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
-    cash:        sebphonePayments.filter((p) => p.payment_method === 'cash').reduce((a, p) => a + p.amount, 0),
+    cash:        sebphonePayments.filter((p) => isCash(p.payment_method)).reduce((a, p) => a + p.amount, 0),
+    virement:    sebphonePayments.filter((p) => isVirement(p.payment_method)).reduce((a, p) => a + p.amount, 0),
+    mixte:       sebphonePayments.filter((p) => isMixte(p.payment_method)).reduce((a, p) => a + p.amount, 0),
     bancontact:  sebphonePayments.filter((p) => p.payment_method === 'bancontact').reduce((a, p) => a + p.amount, 0),
     stripe:      sebphonePayments.filter((p) => p.payment_method === 'stripe').reduce((a, p) => a + p.amount, 0),
     ca:          sebphonePayments.reduce((a, p) => a + (p.amount || 0), 0),
@@ -238,19 +248,19 @@ export default function Comptabilite() {
         </div>
 
         <div
-          onClick={() => setSelectedMethod(selectedMethod === 'bancontact' ? null : 'bancontact')}
+          onClick={() => setSelectedMethod(selectedMethod === 'virement' ? null : 'virement')}
           className={`bg-white rounded-2xl p-5 border shadow-sm cursor-pointer transition-all ${
-            selectedMethod === 'bancontact' ? 'border-[#00B4CC] bg-cyan-50' : 'border-gray-100 hover:border-[#00B4CC]'
+            selectedMethod === 'virement' ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-blue-500'
           }`}
         >
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center">
               <CreditCard size={18} className="text-blue-600" />
             </div>
-            <span className="text-xs text-gray-500 font-medium">Bancontact</span>
+            <span className="text-xs text-gray-500 font-medium">Virement bancaire</span>
             <Eye size={14} className="text-gray-400 ml-auto" />
           </div>
-          <p className="text-2xl font-black text-blue-600">{fmt(totalBancontact)}€</p>
+          <p className="text-2xl font-black text-blue-600">{fmt(totalVirement)}€</p>
           <p className="text-xs text-gray-400 mt-1">Cliquez pour le détail</p>
         </div>
 
@@ -292,7 +302,7 @@ export default function Comptabilite() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
             <h3 className="font-bold text-[#1B2A4A]">
-              Détail — {selectedMethod === 'bancontact' ? 'Bancontact' : 'Cash'}
+              Détail — {selectedMethod === 'virement' ? 'Virement bancaire' : 'Cash'}
             </h3>
             <button onClick={() => setSelectedMethod(null)} className="text-gray-400 hover:text-gray-600">
               <X size={18} />
@@ -302,16 +312,15 @@ export default function Comptabilite() {
           <div className="p-4 border-b border-gray-100">
             <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Par magasin</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {statsByMagasin.map((mag) => {
-                const amount = selectedMethod === 'bancontact' ? mag.bancontact : mag.cash
-                return (
-                  <div key={mag.id} className="bg-gray-50 rounded-xl p-3">
-                    <p className="text-xs text-gray-500 mb-1">{mag.nom.replace('Seb Telecom — ', '')}</p>
-                    <p className="font-bold text-[#1B2A4A]">{fmt(amount)}€</p>
-                    <p className="text-xs text-gray-400">Achat stock : {fmt(mag.prixAchat)}€</p>
+              {statsByMagasin.map((mag) => (
+                <div key={mag.id} className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500 mb-1">{mag.nom.replace('Seb Telecom — ', '')}</p>
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className="text-green-600">💵 Cash : {fmt(mag.cash)}€</span>
+                    <span className="text-blue-600">🏦 Virement : {fmt(mag.virement)}€</span>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -331,7 +340,7 @@ export default function Comptabilite() {
               </thead>
               <tbody>
                 {filteredPayments
-                  .filter((p) => p.payment_method === selectedMethod)
+                  .filter((p) => selectedMethod === 'virement' ? isVirement(p.payment_method) : isCash(p.payment_method))
                   .map((payment) => (
                     <tr key={payment.id} className="border-t border-gray-100">
                       <td className="px-4 py-3 text-sm text-gray-600">
@@ -351,9 +360,9 @@ export default function Comptabilite() {
                   ))}
               </tbody>
             </table>
-            {filteredPayments.filter((p) => p.payment_method === selectedMethod).length === 0 && (
+            {filteredPayments.filter((p) => selectedMethod === 'virement' ? isVirement(p.payment_method) : isCash(p.payment_method)).length === 0 && (
               <div className="text-center py-8 text-gray-400 text-sm">
-                Aucun paiement {selectedMethod} enregistré
+                Aucun paiement {selectedMethod === 'virement' ? 'virement' : 'cash'} enregistré
               </div>
             )}
           </div>
@@ -372,7 +381,7 @@ export default function Comptabilite() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                {['Magasin', 'Stock dispo', 'Vendus', 'Prix achat', 'Bénéf. potentiel', 'CA', 'Cash', 'Bancontact'].map((h, i) => (
+                {['Magasin', 'Stock dispo', 'Vendus', 'Prix achat', 'Bénéf. potentiel', 'CA', 'Cash', 'Virement'].map((h, i) => (
                   <th
                     key={h}
                     className={`px-4 py-3 text-xs font-semibold text-gray-500 ${
@@ -422,7 +431,7 @@ export default function Comptabilite() {
                     {fmt(mag.cash)}€
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-semibold text-blue-600">
-                    {fmt(mag.bancontact)}€
+                    {fmt(mag.virement)}€
                   </td>
                 </tr>
               ))}
@@ -436,7 +445,7 @@ export default function Comptabilite() {
                 <td className="px-4 py-3 text-right text-sm text-green-600">{fmt(totalBeneficePotentiel)}€</td>
                 <td className="px-4 py-3 text-right text-sm text-cyan-600">{fmt(totalRevenu)}€</td>
                 <td className="px-4 py-3 text-right text-sm">{fmt(totalCash)}€</td>
-                <td className="px-4 py-3 text-right text-sm text-blue-600">{fmt(totalBancontact)}€</td>
+                <td className="px-4 py-3 text-right text-sm text-blue-600">{fmt(totalVirement)}€</td>
               </tr>
             </tfoot>
           </table>
@@ -471,7 +480,7 @@ export default function Comptabilite() {
               <div>
                 <label className="text-sm font-medium text-[#1B2A4A] mb-1 block">Mode de paiement</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {['cash', 'bancontact', 'stripe'].map((method) => (
+                  {['cash', 'virement bancaire', 'stripe'].map((method) => (
                     <button
                       key={method}
                       type="button"

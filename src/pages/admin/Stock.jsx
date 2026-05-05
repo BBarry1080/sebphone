@@ -602,6 +602,7 @@ export default function Stock() {
     customer_email: '',
     payment_method: 'Cash',
     sale_price: '',
+    sale_magasin: '',
     notes: '',
   })
 
@@ -630,6 +631,10 @@ export default function Stock() {
       alert('Prix de vente obligatoire')
       return
     }
+    if (!saleForm.sale_magasin) {
+      alert('Sélectionnez le magasin de vente')
+      return
+    }
     setSaleLoading(true)
     try {
       const saleDate = new Date().toISOString()
@@ -656,7 +661,7 @@ export default function Stock() {
           phone_color:      salePhone.color,
           phone_grade:      salePhone.grade,
           delivery_mode:    'collect',
-          magasin_id:       salePhone.magasins?.[0] || 'anderlecht',
+          magasin_id:       saleForm.sale_magasin,
           payment_mode:     'total',
           total_amount:     parseFloat(saleForm.sale_price),
           deposit_amount:   0,
@@ -669,7 +674,7 @@ export default function Stock() {
 
       await supabase.from('payments').insert([{
         phone_id:       salePhone.id,
-        magasin_id:     salePhone.magasins?.[0] || 'anderlecht',
+        magasin_id:     saleForm.sale_magasin,
         payment_method: saleForm.payment_method.toLowerCase(),
         amount:         parseFloat(saleForm.sale_price),
         purchase_price: salePhone.purchase_price || 0,
@@ -682,7 +687,7 @@ export default function Stock() {
           const now      = new Date()
           const expiry   = new Date(now)
           expiry.setMonth(expiry.getMonth() + 24)
-          const magasin  = MAGASINS_MAP[salePhone.magasins?.[0]]
+          const magasin  = MAGASINS_MAP[saleForm.sale_magasin]
 
           console.log('=== EMAIL FACTURE ===')
           console.log('customer_email:', saleForm.customer_email)
@@ -987,6 +992,7 @@ export default function Stock() {
                             customer_email: '',
                             payment_method: 'Cash',
                             sale_price: phone.price?.toString() || '',
+                            sale_magasin: phone.magasins?.[0] || '',
                             notes: '',
                           })
                           setShowSaleModal(true)
@@ -1123,6 +1129,7 @@ export default function Stock() {
                                 customer_email: '',
                                 payment_method: 'Cash',
                                 sale_price: phone.price?.toString() || '',
+                                sale_magasin: phone.magasins?.[0] || '',
                                 notes: '',
                               })
                               setShowSaleModal(true)
@@ -1277,6 +1284,21 @@ export default function Stock() {
               </div>
 
               <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Magasin de vente *</label>
+                <select
+                  value={saleForm.sale_magasin}
+                  onChange={(e) => setSaleForm((f) => ({ ...f, sale_magasin: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                >
+                  <option value="">— Sélectionner le magasin —</option>
+                  <option value="sebphone">💻 SebPhone (en ligne)</option>
+                  {MAGASINS_PHYSIQUES.map((m) => (
+                    <option key={m.id} value={m.id}>📍 {m.nom.replace('Seb Telecom — ', '')}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <p className="text-xs font-semibold text-[#1B2A4A] uppercase mb-3">💳 Paiement</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1332,7 +1354,8 @@ export default function Stock() {
                   saleLoading ||
                   !saleForm.customer_firstname ||
                   !saleForm.customer_name ||
-                  !saleForm.sale_price
+                  !saleForm.sale_price ||
+                  !saleForm.sale_magasin
                 }
                 className="w-full bg-green-600 text-white rounded-xl py-3 font-bold text-sm hover:bg-green-700 transition-all disabled:opacity-50 cursor-pointer"
               >
