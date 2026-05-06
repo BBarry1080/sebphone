@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MAGASINS, MAGASINS_PHYSIQUES } from '../../utils/magasins'
+import { MAGASINS, MAGASINS_PHYSIQUES, MAGASINS_ADMIN } from '../../utils/magasins'
+import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
 import { CheckCircle, Clock, X, Wrench, Plus } from 'lucide-react'
 import { useCurrentUser, useRequirePermission } from '../../hooks/usePermissions'
 
@@ -43,6 +44,28 @@ export default function StockReconditionnement() {
     phone_grade: 'Bon état',
   }
   const [addForm, setAddForm] = useState(initialAddForm)
+  const [modelSearch, setModelSearch]                   = useState('')
+  const [showModelSuggestions, setShowModelSuggestions] = useState(false)
+  const [availableColors, setAvailableColors]           = useState([])
+
+  useEffect(() => {
+    const close = () => setShowModelSuggestions(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [])
+
+  const modelSuggestions = addForm.brand === 'Apple' && modelSearch.length > 0
+    ? IPHONE_ON_DEMAND.filter((iphone) =>
+        iphone.model.toLowerCase().includes(modelSearch.toLowerCase())
+      )
+    : []
+
+  const handleSelectModel = (iphone) => {
+    setAddForm((f) => ({ ...f, model: iphone.model, color: '' }))
+    setModelSearch(iphone.model)
+    setAvailableColors(iphone.colors || [])
+    setShowModelSuggestions(false)
+  }
 
   useEffect(() => { fetchEntries() }, [])
 
@@ -158,6 +181,8 @@ export default function StockReconditionnement() {
     }
     setShowAddModal(false)
     setAddForm(initialAddForm)
+    setModelSearch('')
+    setAvailableColors([])
     fetchEntries()
     alert('✅ Téléphone ajouté au stock reconditionnement !')
   }
@@ -383,7 +408,7 @@ export default function StockReconditionnement() {
                   onChange={(e) => setRepairForm((f) => ({ ...f, magasin_id: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                 >
-                  {MAGASINS_PHYSIQUES.map((m) => (
+                  {MAGASINS_ADMIN.map((m) => (
                     <option key={m.id} value={m.id}>{m.nom}</option>
                   ))}
                 </select>
@@ -422,7 +447,14 @@ export default function StockReconditionnement() {
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl my-4">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <h3 className="font-bold text-[#1B2A4A] text-lg">📦 Ajouter un téléphone à reconditionner</h3>
-              <button onClick={() => setShowAddModal(false)} className="cursor-pointer">
+              <button
+                onClick={() => {
+                  setShowAddModal(false)
+                  setModelSearch('')
+                  setAvailableColors([])
+                }}
+                className="cursor-pointer"
+              >
                 <X size={20} className="text-gray-400" />
               </button>
             </div>
@@ -448,33 +480,17 @@ export default function StockReconditionnement() {
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Marque *</label>
                   <select
                     value={addForm.brand}
-                    onChange={(e) => setAddForm((f) => ({ ...f, brand: e.target.value }))}
+                    onChange={(e) => {
+                      setAddForm((f) => ({ ...f, brand: e.target.value, model: '', color: '' }))
+                      setModelSearch('')
+                      setAvailableColors([])
+                    }}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                   >
                     {['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'Autre'].map((b) => (
                       <option key={b} value={b}>{b}</option>
                     ))}
                   </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Modèle *</label>
-                  <input
-                    type="text"
-                    value={addForm.model}
-                    onChange={(e) => setAddForm((f) => ({ ...f, model: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                    placeholder="iPhone 14 Pro"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Couleur</label>
-                  <input
-                    type="text"
-                    value={addForm.color}
-                    onChange={(e) => setAddForm((f) => ({ ...f, color: e.target.value }))}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                    placeholder="Noir"
-                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Stockage</label>
@@ -488,6 +504,70 @@ export default function StockReconditionnement() {
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="col-span-2" onClick={(e) => e.stopPropagation()}>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Modèle *</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={modelSearch}
+                      onChange={(e) => {
+                        setModelSearch(e.target.value)
+                        setAddForm((f) => ({ ...f, model: e.target.value }))
+                        setShowModelSuggestions(true)
+                        if (addForm.brand !== 'Apple') setAvailableColors([])
+                      }}
+                      onFocus={() => setShowModelSuggestions(true)}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                      placeholder={addForm.brand === 'Apple' ? 'Tape 12, 14 Pro, 15...' : 'Modèle du téléphone'}
+                    />
+                    {showModelSuggestions && modelSuggestions.length > 0 && addForm.brand === 'Apple' && (
+                      <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto mt-1">
+                        {modelSuggestions.map((iphone) => (
+                          <button
+                            key={iphone.model}
+                            type="button"
+                            onClick={() => handleSelectModel(iphone)}
+                            className="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-50 hover:text-[#00B4CC] transition-colors border-b border-gray-50 last:border-0 cursor-pointer"
+                          >
+                            <span className="font-medium">{iphone.model}</span>
+                            <span className="text-xs text-gray-400 ml-2">{iphone.colors.length} couleurs</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Couleur</label>
+                  {availableColors.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableColors.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => setAddForm((f) => ({ ...f, color }))}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all cursor-pointer ${
+                            addForm.color === color
+                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                          }`}
+                        >
+                          {color}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={addForm.color}
+                      onChange={(e) => setAddForm((f) => ({ ...f, color: e.target.value }))}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                      placeholder="Ex: Noir, Blanc, Or..."
+                    />
+                  )}
                 </div>
               </div>
 
@@ -540,7 +620,7 @@ export default function StockReconditionnement() {
                   onChange={(e) => setAddForm((f) => ({ ...f, magasin_id: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                 >
-                  {MAGASINS_PHYSIQUES.map((m) => (
+                  {MAGASINS_ADMIN.map((m) => (
                     <option key={m.id} value={m.id}>{m.nom}</option>
                   ))}
                 </select>
