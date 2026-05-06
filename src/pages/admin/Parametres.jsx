@@ -28,11 +28,12 @@ const PERMISSION_GROUPS = [
   {
     label: 'Stock',
     perms: [
-      { key: 'voir_stock',      label: 'Voir le stock' },
-      { key: 'ajouter_stock',   label: 'Ajouter des téléphones' },
-      { key: 'modifier_stock',  label: 'Modifier les téléphones' },
-      { key: 'supprimer_stock', label: 'Supprimer des téléphones' },
-      { key: 'offre_semaine',   label: "Définir l'offre de la semaine" },
+      { key: 'voir_stock',              label: 'Voir le stock' },
+      { key: 'ajouter_stock',           label: 'Ajouter des téléphones' },
+      { key: 'modifier_stock',          label: 'Modifier les téléphones' },
+      { key: 'supprimer_stock',         label: 'Supprimer des téléphones' },
+      { key: 'offre_semaine',           label: "Définir l'offre de la semaine" },
+      { key: 'stock_reconditionnement', label: 'Accès Stock Reconditionnement' },
     ],
   },
   {
@@ -69,9 +70,8 @@ const PERMISSION_GROUPS = [
   {
     label: 'Administration',
     perms: [
-      { key: 'gerer_utilisateurs',       label: 'Gérer les utilisateurs' },
-      { key: 'registre_achats',          label: "Accès registre d'achats" },
-      { key: 'stock_reconditionnement',  label: 'Stock Reconditionnement' },
+      { key: 'gerer_utilisateurs', label: 'Gérer les utilisateurs' },
+      { key: 'registre_achats',    label: "Accès Registre d'achats" },
     ],
   },
 ]
