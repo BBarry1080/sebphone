@@ -24,11 +24,23 @@ export default function StockReconditionnement() {
   const [submitting, setSubmitting]         = useState(false)
   const [repairForm, setRepairForm]         = useState({
     parts_replaced: [],
+    parts_prices: {},
     final_grade: 'Très bon état',
     sale_price_estimated: '',
     magasin_id: 'anderlecht',
     reconditioning_notes: '',
   })
+
+  const totalPartsCost = Object.values(repairForm.parts_prices)
+    .reduce((acc, price) => acc + (parseFloat(price) || 0), 0)
+  const totalCost = (selectedEntry?.purchase_price || 0) + totalPartsCost
+
+  useEffect(() => {
+    if (totalCost > 0) {
+      const suggested = Math.round(totalCost * 1.3)
+      setRepairForm((f) => ({ ...f, sale_price_estimated: suggested.toString() }))
+    }
+  }, [totalCost])
 
   const [showAddModal, setShowAddModal] = useState(false)
   const initialAddForm = {
@@ -84,6 +96,7 @@ export default function StockReconditionnement() {
     setSelectedEntry(entry)
     setRepairForm({
       parts_replaced: entry.parts_replaced || [],
+      parts_prices: entry.parts_prices || {},
       final_grade: entry.final_grade || 'Très bon état',
       sale_price_estimated: entry.sale_price_estimated || '',
       magasin_id: entry.magasin_id || 'anderlecht',
@@ -104,6 +117,8 @@ export default function StockReconditionnement() {
         .update({
           reconditioning_status: 'termine',
           parts_replaced: repairForm.parts_replaced,
+          parts_prices: repairForm.parts_prices,
+          total_parts_cost: totalPartsCost,
           final_grade: repairForm.final_grade,
           sale_price_estimated: parseFloat(repairForm.sale_price_estimated),
           reconditioning_notes: repairForm.reconditioning_notes,
@@ -124,7 +139,7 @@ export default function StockReconditionnement() {
           condition:        'reconditionne',
           grade:            repairForm.final_grade,
           price:            parseFloat(repairForm.sale_price_estimated),
-          purchase_price:   selectedEntry.purchase_price,
+          purchase_price:   totalCost,
           imei:             selectedEntry.imei,
           status:           'disponible',
           magasins:         [repairForm.magasin_id],
@@ -345,24 +360,69 @@ export default function StockReconditionnement() {
 
             <div className="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
               <div>
-                <label className="text-xs font-semibold text-[#1B2A4A] uppercase mb-2 block">Pièces remplacées</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {PARTS_LIST.map((part) => (
-                    <label key={part} className="flex items-center gap-2 cursor-pointer text-sm">
-                      <input
-                        type="checkbox"
-                        checked={repairForm.parts_replaced.includes(part)}
-                        onChange={() => {
-                          const current = repairForm.parts_replaced
-                          const updated = current.includes(part) ? current.filter((p) => p !== part) : [...current, part]
-                          setRepairForm((f) => ({ ...f, parts_replaced: updated }))
-                        }}
-                        className="w-4 h-4 accent-[#00B4CC]"
-                      />
-                      {part}
-                    </label>
-                  ))}
+                <label className="text-xs font-semibold text-[#1B2A4A] uppercase mb-2 block">Pièces remplacées + Prix</label>
+                <div className="space-y-2">
+                  {PARTS_LIST.map((part) => {
+                    const isChecked = repairForm.parts_replaced.includes(part)
+                    return (
+                      <div
+                        key={part}
+                        className={`flex items-center gap-3 p-2 rounded-xl transition-all ${
+                          isChecked ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            const current = repairForm.parts_replaced
+                            const updated = current.includes(part) ? current.filter((p) => p !== part) : [...current, part]
+                            const newPrices = { ...repairForm.parts_prices }
+                            if (!updated.includes(part)) delete newPrices[part]
+                            setRepairForm((f) => ({ ...f, parts_replaced: updated, parts_prices: newPrices }))
+                          }}
+                          className="w-4 h-4 accent-[#00B4CC] flex-shrink-0"
+                        />
+                        <span className={`text-sm flex-1 ${isChecked ? 'font-medium text-orange-700' : 'text-gray-600'}`}>
+                          {part}
+                        </span>
+                        {isChecked && (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={repairForm.parts_prices[part] || ''}
+                              onChange={(e) => setRepairForm((f) => ({
+                                ...f,
+                                parts_prices: { ...f.parts_prices, [part]: e.target.value },
+                              }))}
+                              className="w-20 px-2 py-1 border border-orange-300 rounded-lg text-sm text-right focus:border-[#00B4CC] outline-none"
+                              placeholder="0"
+                              min="0"
+                            />
+                            <span className="text-xs text-gray-500">€</span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
+
+                {repairForm.parts_replaced.length > 0 && (
+                  <div className="mt-3 bg-gray-50 rounded-xl p-3 space-y-1.5">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Prix d'achat téléphone</span>
+                      <span>{selectedEntry?.purchase_price || 0}€</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-orange-600">
+                      <span>Coût des pièces ({repairForm.parts_replaced.length})</span>
+                      <span>+{totalPartsCost}€</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold text-[#1B2A4A] border-t border-gray-200 pt-1.5">
+                      <span>Prix de revient total</span>
+                      <span>{totalCost}€</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -394,9 +454,14 @@ export default function StockReconditionnement() {
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                   placeholder="Ex: 299"
                 />
-                {repairForm.sale_price_estimated && selectedEntry.purchase_price && (
-                  <p className="text-xs text-green-600 mt-1">
-                    Bénéfice estimé : +{(parseFloat(repairForm.sale_price_estimated) - selectedEntry.purchase_price).toFixed(0)}€
+                {totalCost > 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Prix de revient : {totalCost}€ — Marge suggérée 30 % : {Math.round(totalCost * 1.3)}€
+                  </p>
+                )}
+                {repairForm.sale_price_estimated && totalCost > 0 && (
+                  <p className="text-xs text-green-600 mt-1 font-medium">
+                    Bénéfice estimé : +{(parseFloat(repairForm.sale_price_estimated) - totalCost).toFixed(0)}€
                   </p>
                 )}
               </div>
