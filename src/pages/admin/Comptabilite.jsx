@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MAGASINS, MAGASINS_LIST, MAGASINS_PHYSIQUES } from '../../utils/magasins'
+import { MAGASINS, MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS_ADMIN } from '../../utils/magasins'
 import {
   TrendingUp, ShoppingBag, CreditCard,
   Banknote, Store, Plus, X, Eye, Wrench
@@ -13,9 +13,10 @@ export default function Comptabilite() {
   const isAdmin = currentUser.role === 'admin' || !currentUser.role
   const canAddPayments = usePermission('ajouter_paiements')
 
+  const adminMagasinsForStats = MAGASINS_ADMIN.filter((m) => m.id !== 'sebphone')
   const allowedMagasins = isAdmin
-    ? MAGASINS_PHYSIQUES
-    : MAGASINS_PHYSIQUES.filter((m) => {
+    ? adminMagasinsForStats
+    : adminMagasinsForStats.filter((m) => {
         const key = 'compta_' + m.id.replace(/-/g, '_')
         return currentUser.permissions?.[key] === true
       })
@@ -189,7 +190,7 @@ export default function Comptabilite() {
         >
           Tous les magasins
         </button>
-        {MAGASINS_PHYSIQUES.map((mag) => (
+        {MAGASINS_ADMIN.map((mag) => (
           <button
             key={mag.id}
             onClick={() => setSelectedMagasin(mag.id)}

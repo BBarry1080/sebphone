@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS, MAGASINS_PHYSIQUES } from '../../utils/magasins'
-import { CheckCircle, Clock, X, Wrench } from 'lucide-react'
+import { CheckCircle, Clock, X, Wrench, Plus } from 'lucide-react'
 import { useCurrentUser, useRequirePermission } from '../../hooks/usePermissions'
 
 const PARTS_LIST = [
@@ -28,6 +28,21 @@ export default function StockReconditionnement() {
     magasin_id: 'anderlecht',
     reconditioning_notes: '',
   })
+
+  const [showAddModal, setShowAddModal] = useState(false)
+  const initialAddForm = {
+    brand: 'Apple',
+    model: '',
+    color: '',
+    storage: '',
+    imei: '',
+    purchase_price: '',
+    fournisseur: 'SebPhone',
+    magasin_id: 'anderlecht',
+    notes: '',
+    phone_grade: 'Bon état',
+  }
+  const [addForm, setAddForm] = useState(initialAddForm)
 
   useEffect(() => { fetchEntries() }, [])
 
@@ -108,6 +123,45 @@ export default function StockReconditionnement() {
     }
   }
 
+  const handleAdd = async () => {
+    if (!addForm.model || !addForm.purchase_price) {
+      alert('Modèle et prix obligatoires')
+      return
+    }
+    const { error } = await supabase
+      .from('purchase_registry')
+      .insert([{
+        seller_first_name:     addForm.fournisseur,
+        seller_last_name:      '',
+        seller_address:        'Fournisseur professionnel',
+        seller_id_number:      'PRO',
+        seller_birth_date:     '2000-01-01',
+        brand:                 addForm.brand,
+        model:                 addForm.model,
+        color:                 addForm.color || '',
+        storage:               addForm.storage || '',
+        imei:                  addForm.imei || `PRO-${Date.now()}`,
+        purchase_price:        parseFloat(addForm.purchase_price),
+        payment_method:        'Cash',
+        magasin_id:            addForm.magasin_id,
+        fournisseur:           addForm.fournisseur,
+        phone_condition:       'reconditionne',
+        phone_grade:           addForm.phone_grade,
+        reconditioning_status: 'en_attente',
+        added_to_stock:        false,
+        notes:                 addForm.notes || null,
+        transaction_date:      new Date().toISOString(),
+      }])
+    if (error) {
+      alert('Erreur : ' + error.message)
+      return
+    }
+    setShowAddModal(false)
+    setAddForm(initialAddForm)
+    fetchEntries()
+    alert('✅ Téléphone ajouté au stock reconditionnement !')
+  }
+
   const enAttente = entries.filter((e) => e.reconditioning_status === 'en_attente' || !e.reconditioning_status)
   const termines  = entries.filter((e) => e.reconditioning_status === 'termine')
 
@@ -124,6 +178,13 @@ export default function StockReconditionnement() {
           <h1 className="text-2xl font-bold text-[#1B2A4A]">Stock Reconditionnement</h1>
           <p className="text-sm text-gray-500 mt-1">{enAttente.length} en attente · {termines.length} terminés</p>
         </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center gap-2 bg-[#00B4CC] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cyan-600 transition-all cursor-pointer"
+        >
+          <Plus size={16} />
+          Ajouter un téléphone
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -350,6 +411,157 @@ export default function StockReconditionnement() {
                     Ajout au stock...
                   </span>
                 ) : '✅ Confirmer — Ajouter au stock'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl my-4">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">📦 Ajouter un téléphone à reconditionner</h3>
+              <button onClick={() => setShowAddModal(false)} className="cursor-pointer">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Fournisseur *</label>
+                <select
+                  value={addForm.fournisseur}
+                  onChange={(e) => setAddForm((f) => ({ ...f, fournisseur: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                >
+                  <option value="SebPhone">💻 SebPhone</option>
+                  <option value="SebPhone Marrakech">🌍 SebPhone Marrakech</option>
+                  {MAGASINS_PHYSIQUES.map((m) => {
+                    const short = m.nom.replace('Seb Telecom — ', '')
+                    return <option key={m.id} value={short}>📍 {short}</option>
+                  })}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Marque *</label>
+                  <select
+                    value={addForm.brand}
+                    onChange={(e) => setAddForm((f) => ({ ...f, brand: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                  >
+                    {['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'Autre'].map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Modèle *</label>
+                  <input
+                    type="text"
+                    value={addForm.model}
+                    onChange={(e) => setAddForm((f) => ({ ...f, model: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                    placeholder="iPhone 14 Pro"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Couleur</label>
+                  <input
+                    type="text"
+                    value={addForm.color}
+                    onChange={(e) => setAddForm((f) => ({ ...f, color: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                    placeholder="Noir"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Stockage</label>
+                  <select
+                    value={addForm.storage}
+                    onChange={(e) => setAddForm((f) => ({ ...f, storage: e.target.value }))}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                  >
+                    <option value="">—</option>
+                    {['16Go', '32Go', '64Go', '128Go', '256Go', '512Go', '1To'].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">IMEI</label>
+                <input
+                  type="text"
+                  value={addForm.imei}
+                  onChange={(e) => setAddForm((f) => ({ ...f, imei: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
+                  placeholder="352999XXXXXXXXX"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Prix d'achat (€) *</label>
+                <input
+                  type="number"
+                  value={addForm.purchase_price}
+                  onChange={(e) => setAddForm((f) => ({ ...f, purchase_price: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  placeholder="150"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-2 block">Grade initial</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['Comme neuf', 'Très bon état', 'Bon état'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setAddForm((f) => ({ ...f, phone_grade: g }))}
+                      className={`py-2 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer ${
+                        addForm.phone_grade === g
+                          ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                          : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Magasin de réception</label>
+                <select
+                  value={addForm.magasin_id}
+                  onChange={(e) => setAddForm((f) => ({ ...f, magasin_id: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                >
+                  {MAGASINS_PHYSIQUES.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nom}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Notes</label>
+                <textarea
+                  value={addForm.notes}
+                  onChange={(e) => setAddForm((f) => ({ ...f, notes: e.target.value }))}
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none resize-none"
+                  placeholder="Remarques..."
+                />
+              </div>
+
+              <button
+                onClick={handleAdd}
+                className="w-full bg-[#00B4CC] text-white rounded-xl py-3 font-bold text-sm hover:bg-cyan-600 transition-all cursor-pointer"
+              >
+                ✅ Ajouter au stock reconditionnement
               </button>
             </div>
           </div>

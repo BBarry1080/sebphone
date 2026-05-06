@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MAGASINS, MAGASINS_PHYSIQUES as MAGASINS_LIST } from '../../utils/magasins'
+import { MAGASINS, MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
@@ -920,7 +920,8 @@ export default function Registre() {
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                     >
                       <option value="SebPhone">💻 SebPhone</option>
-                      {MAGASINS_LIST.map((m) => {
+                      <option value="SebPhone Marrakech">🌍 SebPhone Marrakech</option>
+                      {MAGASINS_PHYSIQUES.map((m) => {
                         const short = m.nom.replace('Seb Telecom — ', '')
                         return <option key={m.id} value={short}>📍 {short}</option>
                       })}

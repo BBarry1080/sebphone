@@ -94,6 +94,8 @@ export default function Dashboard() {
         .select('price, purchase_price')
         .eq('status', 'vendu'))
 
+      console.log('soldPhones:', beneficeReelData?.length, 'vendus')
+
       const beneficeReel = (beneficeReelData || []).reduce(
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
       )

@@ -672,15 +672,34 @@ export default function Stock() {
         }])
       if (orderError) throw orderError
 
-      await supabase.from('payments').insert([{
+      console.log('=== VENTE DEBUG ===')
+      console.log('sale_magasin:', saleForm.sale_magasin)
+      console.log('payment_method:', saleForm.payment_method)
+      console.log('sale_price:', saleForm.sale_price)
+
+      const normalizedMethod =
+        saleForm.payment_method === 'Cash'     ? 'cash' :
+        saleForm.payment_method === 'Virement' ? 'virement bancaire' :
+        saleForm.payment_method.toLowerCase()
+
+      const paymentData = {
         phone_id:       salePhone.id,
         magasin_id:     saleForm.sale_magasin,
-        payment_method: saleForm.payment_method.toLowerCase(),
+        payment_method: normalizedMethod,
         amount:         parseFloat(saleForm.sale_price),
         purchase_price: salePhone.purchase_price || 0,
         description:    `Vente ${salePhone.name || salePhone.model} — ${saleForm.customer_firstname} ${saleForm.customer_name}`,
         payment_date:   saleDate,
-      }])
+      }
+      console.log('paymentData:', paymentData)
+
+      const { data: paymentResult, error: paymentError } = await supabase
+        .from('payments')
+        .insert([paymentData])
+        .select()
+
+      console.log('paymentResult:', paymentResult)
+      console.log('paymentError:', paymentError)
 
       if (saleForm.customer_email) {
         try {

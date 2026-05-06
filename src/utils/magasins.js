@@ -33,7 +33,14 @@ export const MAGASINS = {
     adresse: 'sebphone.be',
     tel:     '+32(0)492 40.54.57',
   },
+  marrakech: {
+    id:      'marrakech',
+    nom:     'SebPhone Marrakech',
+    adresse: 'Marrakech, Maroc',
+    tel:     '+32(0)492 40.54.57',
+  },
 }
 
-export const MAGASINS_LIST = Object.values(MAGASINS)
-export const MAGASINS_PHYSIQUES = MAGASINS_LIST.filter((m) => m.id !== 'sebphone')
+export const MAGASINS_LIST       = Object.values(MAGASINS)
+export const MAGASINS_PHYSIQUES  = MAGASINS_LIST.filter((m) => m.id !== 'sebphone' && m.id !== 'marrakech')
+export const MAGASINS_ADMIN      = MAGASINS_LIST

@@ -215,7 +215,7 @@ export default function VentesHistory() {
             className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
           >
             <option value="tous">Tous les magasins</option>
-            {Object.entries(MAGASINS).filter(([id]) => id !== 'sebphone').map(([id, mag]) => (
+            {Object.entries(MAGASINS).map(([id, mag]) => (
               <option key={id} value={id}>{mag.nom.replace('Seb Telecom — ', '')}</option>
             ))}
           </select>
