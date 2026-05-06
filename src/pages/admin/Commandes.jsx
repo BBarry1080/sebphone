@@ -356,7 +356,7 @@ export default function Commandes() {
     }
     const { data, error } = await supabase
       .from('orders')
-      .select('*, phone:phones(name, brand, model, grade, storage, color)')
+      .select('*, phone:phones(name, brand, model, grade, storage, color, imei)')
       .order('created_at', { ascending: false })
     if (error) console.error('fetchOrders error:', error)
     setOrders(data || [])
@@ -452,7 +452,7 @@ export default function Commandes() {
             <table className="w-full text-sm">
               <thead className="bg-[#F8F9FA] border-b border-gray-100">
                 <tr>
-                  {['#', 'Client', 'Téléphone', 'Magasin', 'Acompte', 'Date', 'Statut', 'Voir', ''].map((h) => (
+                  {['IMEI', 'Client', 'Téléphone', 'Magasin', 'Acompte', 'Date', 'Statut', 'Voir', ''].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555555] uppercase tracking-wide">
                       {h}
                     </th>
@@ -464,7 +464,7 @@ export default function Commandes() {
                   const clientName = o.customer_name || '—'
                   return (
                     <tr key={o.id} className="hover:bg-[#F8F9FA] transition-colors">
-                      <td className="px-4 py-3 text-[#888] font-mono text-xs">#{o.id}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600 font-mono">{o.phone?.imei || '—'}</td>
                       <td className="px-4 py-3 font-medium text-[#1B2A4A]">{clientName}</td>
                       <td className="px-4 py-3 text-[#555]">
                         {o.phone_name || o.phone?.model || o.phone?.name || '—'}
