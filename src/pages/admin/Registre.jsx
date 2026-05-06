@@ -87,6 +87,41 @@ export default function Registre() {
 
   const [form, setForm] = useState(initialForm())
 
+  const emptyPhone = () => ({
+    brand: 'Apple',
+    model: '',
+    color: '',
+    storage: '',
+    imei: '',
+    purchase_price: '',
+    payment_method: '',
+    cash_amount: '',
+    virement_amount: '',
+    phone_condition: 'occasion',
+    phone_grade: 'Bon état',
+  })
+  const [phones, setPhones] = useState([emptyPhone()])
+
+  const addPhone = () => setPhones((prev) => [...prev, emptyPhone()])
+  const removePhone = (index) => {
+    if (phones.length === 1) return
+    setPhones((prev) => prev.filter((_, i) => i !== index))
+  }
+  const updatePhone = (index, field, value) => {
+    setPhones((prev) => prev.map((p, i) => i === index ? { ...p, [field]: value } : p))
+  }
+  const togglePhonePaymentMethod = (index, method) => {
+    const current = phones[index].payment_method || ''
+    const has = current.split(' + ').includes(method)
+    let updated
+    if (has) {
+      updated = current.split(' + ').filter((m) => m !== method).join(' + ')
+    } else {
+      updated = current ? `${current} + ${method}` : method
+    }
+    updatePhone(index, 'payment_method', updated)
+  }
+
   useEffect(() => { fetchEntries() }, [])
 
   useEffect(() => {
@@ -196,54 +231,65 @@ export default function Registre() {
 
   const handleSubmit = async () => {
     setError(null)
-    const required = [
+    const requiredSeller = [
       'seller_first_name', 'seller_last_name',
       'seller_address', 'seller_phone', 'seller_id_number',
-      'seller_birth_date', 'imei', 'brand', 'model',
+      'seller_birth_date',
     ]
-    for (const field of required) {
+    for (const field of requiredSeller) {
       if (!form[field]) {
-        setError(`Champ obligatoire manquant : ${field}`)
+        setError(`Champ vendeur manquant : ${field}`)
         return
       }
     }
-    if (paymentModes.length === 0) {
-      setError('Sélectionnez un mode de paiement')
-      return
+
+    for (let i = 0; i < phones.length; i++) {
+      const p = phones[i]
+      if (!p.imei) { setError(`Téléphone ${i + 1} : IMEI obligatoire`); return }
+      if (!p.model) { setError(`Téléphone ${i + 1} : modèle obligatoire`); return }
+      if (!p.purchase_price || parseFloat(p.purchase_price) <= 0) {
+        setError(`Téléphone ${i + 1} : prix d'achat obligatoire`); return
+      }
+      if (!p.payment_method) { setError(`Téléphone ${i + 1} : mode de paiement obligatoire`); return }
     }
-    if (!form.purchase_price || parseFloat(form.purchase_price) <= 0) {
-      setError("Prix d'achat obligatoire")
-      return
-    }
-    if (imeiError && !imeiDuplicate) {
-      setError("Corrigez l'IMEI avant de soumettre")
-      return
-    }
-    if (imeiDuplicate) {
-      const confirmed = window.confirm('Cet IMEI est déjà dans le registre. Continuer quand même ?')
-      if (!confirmed) return
-    }
+
     setSubmitting(true)
     try {
-      const paymentMethodStr = paymentModes.join(' + ') || 'Cash'
-      const mixedNotes = paymentModes.length === 2
-        ? `${form.notes || ''} | Cash: ${form.cash_amount || 0}€ / Virement: ${form.virement_amount || 0}€`.trim()
-        : form.notes || null
-
-      const { cash_amount, virement_amount, ...formClean } = form
-      const payload = {
-        ...formClean,
-        payment_method: paymentMethodStr,
-        notes: mixedNotes,
-        seller_id_type: form.seller_id_type || idType,
-        purchase_price: parseFloat(form.purchase_price),
-        transaction_date: new Date(form.transaction_date).toISOString(),
-        phone_grade: form.phone_condition !== 'neuf' ? form.phone_grade : null,
-        reconditioning_status: form.phone_condition === 'reconditionne' ? 'en_attente' : null,
-        added_to_stock: false,
+      const sharedSeller = {
+        seller_first_name:   form.seller_first_name,
+        seller_last_name:    form.seller_last_name,
+        seller_address:      form.seller_address,
+        seller_phone:        form.seller_phone,
+        seller_id_number:    form.seller_id_number,
+        seller_id_type:      form.seller_id_type || idType,
+        seller_birth_date:   form.seller_birth_date,
+        seller_id_front_url: form.seller_id_front_url,
+        seller_id_back_url:  form.seller_id_back_url,
+        magasin_id:          form.magasin_id,
+        fournisseur:         form.fournisseur,
+        transaction_date:    new Date(form.transaction_date).toISOString(),
       }
 
       if (editingEntry) {
+        const p = phones[0]
+        const isMixte = p.payment_method?.includes('+')
+        const mixedNotes = isMixte
+          ? `${form.notes || ''} | Cash: ${p.cash_amount || 0}€ / Virement: ${p.virement_amount || 0}€`.trim()
+          : (form.notes || null)
+        const payload = {
+          ...sharedSeller,
+          brand:            p.brand,
+          model:            p.model,
+          color:            p.color || '',
+          storage:          p.storage || '',
+          imei:             p.imei,
+          purchase_price:   parseFloat(p.purchase_price),
+          payment_method:   p.payment_method,
+          phone_condition:  p.phone_condition,
+          phone_grade:      p.phone_condition !== 'neuf' ? p.phone_grade : null,
+          reconditioning_status: p.phone_condition === 'reconditionne' ? (editingEntry.reconditioning_status || 'en_attente') : null,
+          notes:            mixedNotes,
+        }
         const { error: updateError } = await supabase
           .from('purchase_registry')
           .update(payload)
@@ -251,16 +297,39 @@ export default function Registre() {
         if (updateError) throw updateError
         setSuccess('Entrée modifiée avec succès !')
       } else {
+        const inserts = phones.map((p) => {
+          const isMixte = p.payment_method?.includes('+')
+          const mixedNotes = isMixte
+            ? `${form.notes || ''} | Cash: ${p.cash_amount || 0}€ / Virement: ${p.virement_amount || 0}€`.trim()
+            : (form.notes || null)
+          return {
+            ...sharedSeller,
+            added_by:         currentUser?.name || 'Admin',
+            brand:            p.brand,
+            model:            p.model,
+            color:            p.color || '',
+            storage:          p.storage || '',
+            imei:             p.imei,
+            purchase_price:   parseFloat(p.purchase_price),
+            payment_method:   p.payment_method,
+            phone_condition:  p.phone_condition,
+            phone_grade:      p.phone_condition !== 'neuf' ? p.phone_grade : null,
+            reconditioning_status: p.phone_condition === 'reconditionne' ? 'en_attente' : null,
+            added_to_stock:   false,
+            notes:            mixedNotes,
+          }
+        })
         const { error: insertError } = await supabase
           .from('purchase_registry')
-          .insert([{ ...payload, added_by: currentUser?.name || 'Admin' }])
+          .insert(inserts)
         if (insertError) throw insertError
-        setSuccess('Entrée enregistrée avec succès !')
+        setSuccess(`${phones.length} téléphone(s) enregistré(s) !`)
       }
 
       setShowForm(false)
       setEditingEntry(null)
       setForm(initialForm())
+      setPhones([emptyPhone()])
       setIdType("Carte d'identité")
       setIdError(null)
       setImeiError(null)
@@ -452,7 +521,7 @@ export default function Registre() {
             className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition-all cursor-pointer">
             <FileText size={16}/> PDF complet
           </button>
-          <button onClick={() => setShowForm(true)}
+          <button onClick={() => { setPhones([emptyPhone()]); setForm(initialForm()); setShowForm(true) }}
             className="flex items-center gap-2 bg-[#00B4CC] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cyan-600 transition-all cursor-pointer">
             <Plus size={16}/> Nouvel achat
           </button>
@@ -581,18 +650,19 @@ export default function Registre() {
                             onClick={() => {
                               setEditingEntry(entry)
                               setIdType(entry.seller_id_type || "Carte d'identité")
-                              const modes = []
-                              const pm = entry.payment_method || 'Cash'
-                              if (pm.includes('Cash'))     modes.push('Cash')
-                              if (pm.includes('Virement')) modes.push('Virement bancaire')
-                              setPaymentModes(modes.length ? modes : ['Cash'])
-                              setModelSearch(entry.model || '')
-                              if (entry.brand === 'Apple') {
-                                const found = IPHONE_ON_DEMAND.find((i) => i.model === entry.model)
-                                setAvailableColors(found?.colors || [])
-                              } else {
-                                setAvailableColors([])
-                              }
+                              setPhones([{
+                                brand:            entry.brand || 'Apple',
+                                model:            entry.model || '',
+                                color:            entry.color || '',
+                                storage:          entry.storage || '',
+                                imei:             entry.imei || '',
+                                purchase_price:   entry.purchase_price?.toString() || '',
+                                payment_method:   entry.payment_method || 'Cash',
+                                cash_amount:      '',
+                                virement_amount:  '',
+                                phone_condition:  entry.phone_condition || 'occasion',
+                                phone_grade:      entry.phone_grade || 'Bon état',
+                              }])
                               setForm({
                                 seller_first_name: entry.seller_first_name || '',
                                 seller_last_name:  entry.seller_last_name || '',
@@ -664,6 +734,7 @@ export default function Registre() {
                   setShowForm(false)
                   setEditingEntry(null)
                   setForm(initialForm())
+                  setPhones([emptyPhone()])
                   setIdType("Carte d'identité")
                   setIdError(null)
                   setImeiError(null)
@@ -800,118 +871,289 @@ export default function Registre() {
                 </div>
               </div>
 
-              {/* SECTION APPAREIL */}
+              {/* SECTION APPAREILS — multi-téléphones */}
               <div>
-                <h4 className="font-semibold text-[#1B2A4A] mb-3 text-sm uppercase tracking-wide">
-                  📱 Informations appareil
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">État du téléphone *</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['neuf', 'occasion', 'reconditionne'].map((cond) => (
-                        <button
-                          key={cond}
-                          type="button"
-                          onClick={() => setForm((f) => ({
-                            ...f,
-                            phone_condition: cond,
-                            phone_grade: cond === 'neuf' ? null : (f.phone_grade || 'Bon état'),
-                          }))}
-                          className={`py-2.5 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
-                            form.phone_condition === cond
-                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
-                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
-                          }`}
-                        >
-                          {cond === 'neuf' ? '🆕 Neuf' : cond === 'occasion' ? '📱 Occasion' : '🔧 Reconditionné'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-[#1B2A4A] text-sm uppercase tracking-wide">
+                    📱 Téléphones rachetés
+                  </h4>
+                  {!editingEntry && (
+                    <button
+                      type="button"
+                      onClick={addPhone}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-[#00B4CC] hover:text-cyan-700 transition-colors cursor-pointer"
+                    >
+                      <Plus size={14} />
+                      Ajouter un téléphone
+                    </button>
+                  )}
+                </div>
 
-                  {form.phone_condition !== 'neuf' && (
-                    <div className="col-span-2">
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Grade *</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {['Comme neuf', 'Très bon état', 'Bon état'].map((grade) => (
+                {phones.map((phone, index) => {
+                  const phoneSuggestions = phone.brand === 'Apple' && phone.model.length > 0
+                    ? IPHONE_ON_DEMAND.filter((i) => i.model.toLowerCase().includes(phone.model.toLowerCase()))
+                    : []
+                  const phoneColors = phone.brand === 'Apple'
+                    ? (IPHONE_ON_DEMAND.find((i) => i.model === phone.model)?.colors || [])
+                    : []
+                  const isMixte = phone.payment_method?.includes('+')
+
+                  return (
+                    <div key={index} className="border-2 border-gray-100 rounded-xl p-4 mb-3 relative">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-gray-500 uppercase">Téléphone {index + 1}</span>
+                        {phones.length > 1 && (
                           <button
-                            key={grade}
                             type="button"
-                            onClick={() => setForm((f) => ({ ...f, phone_grade: grade }))}
+                            onClick={() => removePhone(index)}
+                            className="text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* État */}
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        {['neuf', 'occasion', 'reconditionne'].map((cond) => (
+                          <button
+                            key={cond}
+                            type="button"
+                            onClick={() => {
+                              updatePhone(index, 'phone_condition', cond)
+                              if (cond === 'neuf') updatePhone(index, 'phone_grade', null)
+                              else if (!phone.phone_grade) updatePhone(index, 'phone_grade', 'Bon état')
+                            }}
                             className={`py-2 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer ${
-                              form.phone_grade === grade
+                              phone.phone_condition === cond
                                 ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
                                 : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
                             }`}
                           >
-                            {grade}
+                            {cond === 'neuf' ? '🆕 Neuf' : cond === 'occasion' ? '📱 Occasion' : '🔧 Recond.'}
                           </button>
                         ))}
                       </div>
-                    </div>
-                  )}
 
-                  <div className="col-span-2">
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">IMEI *</label>
-                    <input type="text" value={form.imei}
-                      onChange={async (e) => {
-                        const val = e.target.value.replace(/\s/g, '')
-                        setForm((f) => ({ ...f, imei: val }))
-                        setImeiDuplicate(false)
-                        if (val.length === 15) {
-                          if (!validateIMEI(val)) {
-                            setImeiError('IMEI invalide (échec vérification Luhn)')
-                            return
-                          }
-                          setImeiError(null)
-                          const { data } = await supabase
-                            .from('purchase_registry')
-                            .select('id, seller_first_name, seller_last_name, transaction_date')
-                            .eq('imei', val)
-                            .maybeSingle()
-                          if (data) {
-                            setImeiDuplicate(true)
-                            setImeiError(`⚠️ IMEI déjà enregistré le ${new Date(data.transaction_date).toLocaleDateString('fr-BE')} — ${data.seller_first_name} ${data.seller_last_name}`)
-                          }
-                        } else {
-                          setImeiError(null)
-                        }
-                      }}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
-                      placeholder="352999XXXXXXXXX" maxLength={20}/>
-                    {imeiError && (
-                      <p className={`text-xs mt-1 flex items-start gap-1 ${imeiDuplicate ? 'text-orange-600' : 'text-red-500'}`}>
-                        <AlertCircle size={12} className="mt-0.5 flex-shrink-0"/>
-                        {imeiError}
-                      </p>
-                    )}
-                    {!imeiError && form.imei.length === 15 && (
-                      <p className="text-xs text-green-600 mt-1">✅ IMEI valide</p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => window.open(`https://www.imei.info/?imei=${form.imei}`, '_blank')}
-                      disabled={form.imei.length < 15}
-                      className="mt-2 text-xs text-[#00B4CC] underline disabled:opacity-40 disabled:cursor-not-allowed hover:text-cyan-700 transition-colors cursor-pointer">
-                      🔍 Vérifier sur imei.info →
-                    </button>
+                      {/* Grade */}
+                      {phone.phone_condition !== 'neuf' && (
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {['Comme neuf', 'Très bon état', 'Bon état'].map((grade) => (
+                            <button
+                              key={grade}
+                              type="button"
+                              onClick={() => updatePhone(index, 'phone_grade', grade)}
+                              className={`py-1.5 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer ${
+                                phone.phone_grade === grade
+                                  ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                                  : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                              }`}
+                            >
+                              {grade}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Marque *</label>
+                          <select
+                            value={phone.brand}
+                            onChange={(e) => {
+                              updatePhone(index, 'brand', e.target.value)
+                              updatePhone(index, 'model', '')
+                              updatePhone(index, 'color', '')
+                            }}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                          >
+                            {['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'Autre'].map((b) => (
+                              <option key={b} value={b}>{b}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Stockage</label>
+                          <select
+                            value={phone.storage}
+                            onChange={(e) => updatePhone(index, 'storage', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                          >
+                            <option value="">—</option>
+                            {['16Go','32Go','64Go','128Go','256Go','512Go','1To'].map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Modèle *</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={phone.model}
+                              onChange={(e) => updatePhone(index, 'model', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                              placeholder={phone.brand === 'Apple' ? '12, 14 Pro, 15...' : 'Modèle du téléphone'}
+                            />
+                            {phoneSuggestions.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-36 overflow-y-auto mt-1">
+                                {phoneSuggestions.map((iphone) => (
+                                  <button
+                                    key={iphone.model}
+                                    type="button"
+                                    onClick={() => {
+                                      updatePhone(index, 'model', iphone.model)
+                                      updatePhone(index, 'color', '')
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-cyan-50 hover:text-[#00B4CC] border-b border-gray-50 last:border-0 cursor-pointer"
+                                  >
+                                    {iphone.model}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Couleur</label>
+                          {phoneColors.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {phoneColors.map((color) => (
+                                <button
+                                  key={color}
+                                  type="button"
+                                  onClick={() => updatePhone(index, 'color', color)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all cursor-pointer ${
+                                    phone.color === color
+                                      ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                                      : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                                  }`}
+                                >
+                                  {color}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={phone.color}
+                              onChange={(e) => updatePhone(index, 'color', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                              placeholder="Noir, Blanc..."
+                            />
+                          )}
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">IMEI *</label>
+                          <input
+                            type="text"
+                            value={phone.imei}
+                            onChange={(e) => updatePhone(index, 'imei', e.target.value.replace(/\s/g, ''))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
+                            placeholder="352999XXXXXXXXX"
+                            maxLength={20}
+                          />
+                          {phone.imei.length === 15 && (
+                            <p className={`text-xs mt-1 ${validateIMEI(phone.imei) ? 'text-green-600' : 'text-red-500'}`}>
+                              {validateIMEI(phone.imei) ? '✅ IMEI valide' : '⚠️ IMEI invalide (Luhn)'}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Mode de paiement *</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {['Cash', 'Virement bancaire'].map((method) => {
+                              const selected = (phone.payment_method || '').split(' + ').includes(method)
+                              return (
+                                <button
+                                  key={method}
+                                  type="button"
+                                  onClick={() => togglePhonePaymentMethod(index, method)}
+                                  className={`py-2 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer ${
+                                    selected
+                                      ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                                      : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                                  }`}
+                                >
+                                  {method === 'Cash' ? '💵 Cash' : '🏦 Virement'}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Prix d'achat (€) *</label>
+                          {!isMixte && (
+                            <input
+                              type="number"
+                              value={phone.purchase_price}
+                              onChange={(e) => updatePhone(index, 'purchase_price', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                              placeholder="150"
+                            />
+                          )}
+                          {isMixte && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-gray-500 mb-1 block">💵 Cash (€)</label>
+                                <input
+                                  type="number"
+                                  value={phone.cash_amount || ''}
+                                  onChange={(e) => {
+                                    const cash = parseFloat(e.target.value) || 0
+                                    const virement = parseFloat(phone.virement_amount) || 0
+                                    updatePhone(index, 'cash_amount', e.target.value)
+                                    updatePhone(index, 'purchase_price', (cash + virement).toString())
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                                  placeholder="0"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-500 mb-1 block">🏦 Virement (€)</label>
+                                <input
+                                  type="number"
+                                  value={phone.virement_amount || ''}
+                                  onChange={(e) => {
+                                    const virement = parseFloat(e.target.value) || 0
+                                    const cash = parseFloat(phone.cash_amount) || 0
+                                    updatePhone(index, 'virement_amount', e.target.value)
+                                    updatePhone(index, 'purchase_price', (cash + virement).toString())
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                                  placeholder="0"
+                                />
+                              </div>
+                              {phone.purchase_price && (
+                                <div className="col-span-2 bg-green-50 border border-green-200 rounded-xl px-3 py-1.5 text-xs font-bold text-green-700">
+                                  Total : {phone.purchase_price}€
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {phones.length > 1 && (
+                  <div className="bg-[#1B2A4A] rounded-xl p-3 text-white text-sm flex justify-between mb-3">
+                    <span className="font-medium">Total {phones.length} téléphones</span>
+                    <span className="font-black text-[#00B4CC]">
+                      {phones.reduce((acc, p) => acc + (parseFloat(p.purchase_price) || 0), 0)}€
+                    </span>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Marque *</label>
-                    <select value={form.brand}
-                      onChange={(e) => {
-                        const newBrand = e.target.value
-                        setForm((f) => ({ ...f, brand: newBrand, model: '', color: '' }))
-                        setModelSearch('')
-                        setAvailableColors([])
-                      }}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none">
-                      {['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'Autre'].map((b) => (
-                        <option key={b} value={b}>{b}</option>
-                      ))}
-                    </select>
-                  </div>
+                )}
+
+                {/* Champs partagés (vendeur/transaction) */}
+                <div className="grid grid-cols-2 gap-3 mt-3">
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Fournisseur *</label>
                     <select
@@ -927,175 +1169,22 @@ export default function Registre() {
                       })}
                     </select>
                   </div>
-                  <div className="col-span-2" onClick={(e) => e.stopPropagation()}>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Modèle *</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={modelSearch}
-                        onChange={(e) => {
-                          setModelSearch(e.target.value)
-                          setForm((f) => ({ ...f, model: e.target.value }))
-                          setShowModelSuggestions(true)
-                          if (form.brand !== 'Apple') setAvailableColors([])
-                        }}
-                        onFocus={() => setShowModelSuggestions(true)}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                        placeholder={form.brand === 'Apple' ? 'Ex: 12, 14 Pro, 15...' : 'Modèle du téléphone'}
-                      />
-                      {showModelSuggestions && modelSuggestions.length > 0 && form.brand === 'Apple' && (
-                        <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto mt-1">
-                          {modelSuggestions.map((iphone) => (
-                            <button
-                              key={iphone.model}
-                              type="button"
-                              onClick={() => handleSelectModel(iphone)}
-                              className="w-full text-left px-4 py-2.5 text-sm hover:bg-cyan-50 hover:text-[#00B4CC] transition-colors border-b border-gray-50 last:border-0 cursor-pointer"
-                            >
-                              <span className="font-medium">{iphone.model}</span>
-                              <span className="text-xs text-gray-400 ml-2">{iphone.colors.length} couleurs</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Couleur</label>
-                    {availableColors.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {availableColors.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => setForm((f) => ({ ...f, color }))}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all cursor-pointer ${
-                              form.color === color
-                                ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
-                                : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
-                            }`}
-                          >
-                            {color}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <input
-                        type="text"
-                        value={form.color}
-                        onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                        placeholder="Ex: Noir, Blanc, Or..."
-                      />
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Stockage</label>
-                    <select value={form.storage}
-                      onChange={(e) => setForm((f) => ({ ...f, storage: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none">
-                      <option value="">Sélectionner...</option>
-                      {['16Go','32Go','64Go','128Go','256Go','512Go','1To'].map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-xs font-medium text-gray-600 mb-3 block">Mode de paiement *</label>
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      {['Cash', 'Virement bancaire'].map((method) => (
-                        <button
-                          key={method}
-                          type="button"
-                          onClick={() => togglePaymentMode(method)}
-                          className={`py-3 rounded-xl text-sm font-medium border-2 transition-all cursor-pointer ${
-                            paymentModes.includes(method)
-                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
-                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
-                          }`}
-                        >
-                          {method === 'Cash' ? '💵 Cash' : '🏦 Virement bancaire'}
-                        </button>
-                      ))}
-                    </div>
-
-                    {paymentModes.length === 1 && (
-                      <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Prix d'achat (€) *</label>
-                        <input
-                          type="number"
-                          value={form.purchase_price}
-                          onChange={(e) => setForm((f) => ({ ...f, purchase_price: e.target.value }))}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                          placeholder="Ex: 200"
-                        />
-                      </div>
-                    )}
-
-                    {paymentModes.length === 2 && (
-                      <div className="space-y-3">
-                        <p className="text-xs text-gray-500">Indiquez le montant pour chaque mode :</p>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs font-medium text-gray-600 mb-1 block">💵 Montant Cash (€)</label>
-                            <input
-                              type="number"
-                              value={form.cash_amount || ''}
-                              onChange={(e) => {
-                                const cash = parseFloat(e.target.value) || 0
-                                const virement = parseFloat(form.virement_amount) || 0
-                                setForm((f) => ({
-                                  ...f,
-                                  cash_amount: e.target.value,
-                                  purchase_price: (cash + virement).toString(),
-                                }))
-                              }}
-                              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                              placeholder="Ex: 100"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium text-gray-600 mb-1 block">🏦 Montant Virement (€)</label>
-                            <input
-                              type="number"
-                              value={form.virement_amount || ''}
-                              onChange={(e) => {
-                                const virement = parseFloat(e.target.value) || 0
-                                const cash = parseFloat(form.cash_amount) || 0
-                                setForm((f) => ({
-                                  ...f,
-                                  virement_amount: e.target.value,
-                                  purchase_price: (cash + virement).toString(),
-                                }))
-                              }}
-                              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
-                              placeholder="Ex: 100"
-                            />
-                          </div>
-                        </div>
-                        {form.purchase_price && (
-                          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2 text-sm font-bold text-green-700">
-                            Total : {form.purchase_price}€
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {paymentModes.length === 0 && (
-                      <p className="text-xs text-orange-500">⚠️ Sélectionnez au moins un mode de paiement</p>
-                    )}
-                  </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Date de transaction *</label>
-                    <input type="date" value={form.transaction_date}
+                    <input
+                      type="date"
+                      value={form.transaction_date}
                       onChange={(e) => setForm((f) => ({ ...f, transaction_date: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"/>
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                    />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Magasin *</label>
-                    <select value={form.magasin_id}
+                    <select
+                      value={form.magasin_id}
                       onChange={(e) => setForm((f) => ({ ...f, magasin_id: e.target.value }))}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none">
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                    >
                       {MAGASINS_LIST.map((m) => (
                         <option key={m.id} value={m.id}>{m.nom}</option>
                       ))}
@@ -1103,10 +1192,13 @@ export default function Registre() {
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Notes (optionnel)</label>
-                    <textarea value={form.notes} rows={2}
+                    <textarea
+                      value={form.notes}
+                      rows={2}
                       onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none resize-none"
-                      placeholder="Remarques sur l'état, accessoires..."/>
+                      placeholder="Remarques..."
+                    />
                   </div>
                 </div>
               </div>
