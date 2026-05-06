@@ -72,13 +72,21 @@ export default function Dashboard() {
           .limit(5),
       ])
 
-      // CA du mois: somme des deposit_paid ce mois
-      const { data: caData } = await supabase
-        .from('orders')
-        .select('deposit_paid')
-        .gte('created_at', startOfMonth.toISOString())
+      // CA: somme de tous les paiements (table payments)
+      const { data: paymentsData } = await supabase
+        .from('payments')
+        .select('amount')
 
-      const ca = (caData || []).reduce((sum, o) => sum + (o.deposit_paid || 0), 0)
+      const ca = (paymentsData || []).reduce((sum, p) => sum + (p.amount || 0), 0)
+      console.log('totalCA:', ca)
+
+      // Vendus ce mois (debug)
+      const { data: soldThisMonth } = await supabase
+        .from('phones')
+        .select('id')
+        .eq('status', 'vendu')
+        .gte('updated_at', startOfMonth.toISOString())
+      console.log('soldThisMonth:', soldThisMonth?.length)
 
       const { data: beneficeData } = await addFilter(supabase
         .from('phones')
