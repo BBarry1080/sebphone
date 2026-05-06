@@ -464,7 +464,9 @@ export default function Commandes() {
                   const clientName = o.customer_name || '—'
                   return (
                     <tr key={o.id} className="hover:bg-[#F8F9FA] transition-colors">
-                      <td className="px-4 py-3 text-xs text-gray-600 font-mono">{o.phone?.imei || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600 font-mono">
+                        {o.phone?.imei || 'pas'}
+                      </td>
                       <td className="px-4 py-3 font-medium text-[#1B2A4A]">{clientName}</td>
                       <td className="px-4 py-3 text-[#555]">
                         {o.phone_name || o.phone?.model || o.phone?.name || '—'}
