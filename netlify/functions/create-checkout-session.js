@@ -9,6 +9,10 @@ exports.handler = async (event) => {
     }
   }
 
+  console.log('STRIPE KEY type:', typeof process.env.STRIPE_SECRET_KEY)
+  console.log('STRIPE KEY length:', process.env.STRIPE_SECRET_KEY?.length)
+  console.log('STRIPE KEY starts with:', process.env.STRIPE_SECRET_KEY?.substring(0, 10))
+
   if (!process.env.STRIPE_SECRET_KEY) {
     return {
       statusCode: 500,
