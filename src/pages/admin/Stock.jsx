@@ -1009,8 +1009,8 @@ export default function Stock() {
         {[
           'tous',
           'SebPhone',
-          'Marrakech',
           ...MAGASINS_PHYSIQUES.map((m) => m.nom.replace('Seb Telecom — ', '')),
+          'Marrakech',
         ].map((fournisseur) => {
           const isActive = selectedFournisseur === fournisseur
           const activeBg =
