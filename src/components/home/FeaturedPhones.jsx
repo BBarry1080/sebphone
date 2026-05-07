@@ -73,6 +73,7 @@ export default function FeaturedPhones() {
       .from('phones')
       .select('*')
       .eq('status', 'disponible')
+      .or('visible_on_site.eq.true,visible_on_site.is.null')
       .order('price', { ascending: false })
       .limit(12);
     setPhones(data || []);

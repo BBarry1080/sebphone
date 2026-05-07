@@ -82,6 +82,7 @@ export default function BestSellers() {
         .from('phones')
         .select('*')
         .eq('status', 'disponible')
+        .or('visible_on_site.eq.true,visible_on_site.is.null')
         .gte('price', 400)
         .order('price', { ascending: false })
         .limit(8);

@@ -101,6 +101,7 @@ export default function ModelDetailPage() {
         .select('*')
         .ilike('model', decodedModel)
         .eq('status', 'disponible')
+        .or('visible_on_site.eq.true,visible_on_site.is.null')
         .order('price', { ascending: false })
 
       setPhones(data || [])

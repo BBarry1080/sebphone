@@ -12,6 +12,8 @@ import {
 } from '../../data/phonesApi'
 import { phonesMock } from '../../data/phonesMock'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
+import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
+import { PHONES_DATABASE, findPhoneModel, searchModels, BRANDS } from '../../data/phonesDatabase'
 import { MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS as MAGASINS_MAP } from '../../utils/magasins'
 import emailjs from '@emailjs/browser'
 const MAGASINS = MAGASINS_PHYSIQUES
@@ -114,6 +116,10 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const currentUser = useCurrentUser()
   const isEdit = !!phone
 
+  // ── Brand & visibilité ───────────────────────────────────────────
+  const [brand, setBrand]                         = useState(phone?.brand || 'Apple')
+  const [visibleOnSite, setVisibleOnSite]         = useState(phone?.visible_on_site ?? true)
+
   // ── Model autocomplete ───────────────────────────────────────────
   const [modelSearch, setModelSearch]             = useState(phone?.name?.split(' ').slice(0, 3).join(' ') || '')
   const [selectedModel, setSelectedModel]         = useState(null)
@@ -163,9 +169,17 @@ function PhoneModal({ phone, onClose, onSaved }) {
     'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
   ]
 
-  const modelSuggestions = modelSearch.length > 0
-    ? IPHONE_ORDER.filter((name) => name.toLowerCase().includes(modelSearch.toLowerCase()))
-    : []
+  const modelSuggestions = (() => {
+    if (!modelSearch || modelSearch.length === 0) return []
+    if (brand === 'Apple') {
+      return IPHONE_ORDER.filter((name) => name.toLowerCase().includes(modelSearch.toLowerCase()))
+    }
+    if (brand === 'Autre') return []
+    return searchModels(brand, modelSearch)
+  })()
+
+  const availableColors   = selectedModel?.colors   || []
+  const availableStorages = selectedModel?.storages || []
 
   const colorSuggestions = selectedModel
     ? selectedModel.colors.filter((c) => c.toLowerCase().includes(colorSearch.toLowerCase()))
@@ -183,13 +197,23 @@ function PhoneModal({ phone, onClose, onSaved }) {
 
   // ── Handlers ─────────────────────────────────────────────────────
   const handleSelectModel = (modelName) => {
-    const dbEntry = IPHONE_DATABASE.find((m) => m.model === modelName)
-    const m = dbEntry || { model: modelName, storages: [], colors: [] }
+    let m = { model: modelName, storages: [], colors: [] }
+    if (brand === 'Apple') {
+      const apple = IPHONE_ON_DEMAND.find((i) => i.model === modelName)
+      if (apple) m = apple
+      else {
+        const dbEntry = IPHONE_DATABASE.find((d) => d.model === modelName)
+        if (dbEntry) m = dbEntry
+      }
+    } else if (brand !== 'Autre') {
+      const found = findPhoneModel(brand, modelName)
+      if (found) m = found
+    }
     setSelectedModel(m)
     setModelSearch(modelName)
     setShowModelSugg(false)
-    setStorage('')
-    setColorSearch('')
+    setStorage(m.storages?.[0] || '')
+    setColorSearch(m.colors?.[0] || '')
   }
 
   const handleMagasinToggle = (id) => {
@@ -211,7 +235,8 @@ function PhoneModal({ phone, onClose, onSaved }) {
       const phoneData = {
         name:           modelSearch.trim(),
         model:          modelSearch.trim(),
-        brand:          modelSearch.toLowerCase().includes('samsung') ? 'Samsung' : 'Apple',
+        brand:          brand || 'Apple',
+        visible_on_site: visibleOnSite,
         condition:      condition || 'occasion',
         grade:          condition !== 'neuf' ? (grade || null) : null,
         storage:        storage || null,
@@ -279,19 +304,46 @@ function PhoneModal({ phone, onClose, onSaved }) {
 
         <div className="px-6 py-5 space-y-6">
 
+          {/* ── Section 0 — Marque ── */}
+          <div>
+            <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Marque</h3>
+            <div className="flex flex-wrap gap-2">
+              {BRANDS.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => {
+                    setBrand(b)
+                    setSelectedModel(null)
+                    setModelSearch('')
+                    setColorSearch('')
+                    setStorage('')
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all cursor-pointer ${
+                    brand === b
+                      ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                      : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ── Section 1 — Modèle ── */}
           <div>
             <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Modèle</h3>
             <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
               <input
                 type="text"
-                placeholder="Rechercher un modèle... (ex : iPhone 13 Pro)"
+                placeholder={brand === 'Autre' ? 'Modèle libre…' : `Rechercher ${brand}…`}
                 value={modelSearch}
                 onChange={(e) => { setModelSearch(e.target.value); setShowModelSugg(true); setSelectedModel(null) }}
                 onFocus={() => setShowModelSugg(true)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-[#00B4CC] outline-none"
               />
-              {showModelSuggestions && modelSearch && modelSuggestions.length > 0 && (
+              {showModelSuggestions && modelSearch && modelSuggestions.length > 0 && brand !== 'Autre' && (
                 <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-30 max-h-48 overflow-y-auto">
                   {modelSuggestions.map((name) => (
                     <div
@@ -358,48 +410,66 @@ function PhoneModal({ phone, onClose, onSaved }) {
               {/* Stockage dynamique */}
               <div>
                 <label className="text-xs text-[#555] mb-1 block">Stockage</label>
-                <select
-                  disabled={!selectedModel}
-                  value={storage}
-                  onChange={(e) => setStorage(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">
-                    {selectedModel ? 'Choisir la capacité' : 'Sélectionnez d\'abord un modèle'}
-                  </option>
-                  {selectedModel && selectedModel.storages.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
+                {availableStorages.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableStorages.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setStorage(s)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer ${
+                          storage === s
+                            ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                            : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <select
+                    value={storage}
+                    onChange={(e) => setStorage(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none bg-white"
+                  >
+                    <option value="">—</option>
+                    {['16Go','32Go','64Go','128Go','256Go','512Go','1To'].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
-              {/* Couleur autocomplete dynamique */}
+              {/* Couleur dynamique */}
               <div>
                 <label className="text-xs text-[#555] mb-1 block">Couleur</label>
-                <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
+                {availableColors.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {availableColors.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setColorSearch(c)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all cursor-pointer ${
+                          colorSearch === c
+                            ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                            : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
                   <input
                     type="text"
-                    placeholder={selectedModel ? 'Rechercher une couleur...' : 'Sélectionnez d\'abord un modèle'}
-                    disabled={!selectedModel}
+                    placeholder="Couleur…"
                     value={colorSearch}
-                    onChange={(e) => { setColorSearch(e.target.value); setShowColorSugg(true) }}
-                    onFocus={() => setShowColorSugg(true)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-[#00B4CC] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    onChange={(e) => setColorSearch(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-[#00B4CC] outline-none"
                   />
-                  {showColorSuggestions && colorSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-30 max-h-40 overflow-y-auto">
-                      {colorSuggestions.map((c) => (
-                        <div
-                          key={c}
-                          onMouseDown={() => { setColorSearch(c); setShowColorSugg(false) }}
-                          className="px-4 py-2 text-sm hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
-                        >
-                          {c}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -514,6 +584,25 @@ function PhoneModal({ phone, onClose, onSaved }) {
             {magasins.length === 0 && (
               <p className="text-xs text-orange-500 mt-1.5">⚠️ Aucun magasin sélectionné</p>
             )}
+          </div>
+
+          {/* ── Section 4.5 — Visibilité site ── */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+            <div>
+              <p className="text-sm font-medium text-[#1B2A4A]">Visible sur sebphone.be</p>
+              <p className="text-xs text-gray-400 mt-0.5">Désactivez pour un stock interne uniquement</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setVisibleOnSite((v) => !v)}
+              className={`w-12 h-6 rounded-full transition-all relative cursor-pointer ${
+                visibleOnSite ? 'bg-[#00B4CC]' : 'bg-gray-300'
+              }`}
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                visibleOnSite ? 'left-7' : 'left-1'
+              }`} />
+            </button>
           </div>
 
           {/* ── Section 5 — Pièces remplacées (reconditionné) ── */}

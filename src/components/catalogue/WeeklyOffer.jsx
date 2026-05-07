@@ -43,6 +43,7 @@ export default function WeeklyOffer() {
         .from('phones')
         .select('*')
         .eq('status', 'disponible')
+        .or('visible_on_site.eq.true,visible_on_site.is.null')
         .eq('offre_semaine', true)
         .limit(1)
         .maybeSingle();
@@ -55,6 +56,7 @@ export default function WeeklyOffer() {
           .from('phones')
           .select('id, name, model, brand, color, storage, price, purchase_price, condition')
           .eq('status', 'disponible')
+        .or('visible_on_site.eq.true,visible_on_site.is.null')
           .not('purchase_price', 'is', null)
           .lte('price', 150);
 
@@ -74,6 +76,7 @@ export default function WeeklyOffer() {
           .from('phones')
           .select('*')
           .eq('status', 'disponible')
+        .or('visible_on_site.eq.true,visible_on_site.is.null')
           .limit(1);
         if (fb?.[0]) best = fb[0];
       }
@@ -84,6 +87,7 @@ export default function WeeklyOffer() {
           .from('phones')
           .select('*')
           .eq('status', 'disponible')
+        .or('visible_on_site.eq.true,visible_on_site.is.null')
           .eq('model', modelName);
         setOfferPhone(best);
         setRelatedPhones(sameModel?.length ? sameModel : [best]);
@@ -92,7 +96,8 @@ export default function WeeklyOffer() {
       const { count } = await supabase
         .from('phones')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'disponible');
+        .eq('status', 'disponible')
+        .or('visible_on_site.eq.true,visible_on_site.is.null');
       setStockCount(count ?? 0);
       setLoading(false);
     }
