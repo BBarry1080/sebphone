@@ -1003,36 +1003,34 @@ export default function Stock() {
         })}
       </div>
 
-      {/* Filtres payeur */}
+      {/* Filtres fournisseur */}
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-xs font-semibold text-gray-500 mr-1">Filtrer par fournisseur :</p>
-        <button
-          onClick={() => setSelectedFournisseur('tous')}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-            selectedFournisseur === 'tous' ? 'bg-[#1B2A4A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Tous
-        </button>
-        <button
-          onClick={() => setSelectedFournisseur('SebPhone')}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-            selectedFournisseur === 'SebPhone' ? 'bg-cyan-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          💻 SebPhone
-        </button>
-        {MAGASINS_PHYSIQUES.map((mag) => {
-          const shortName = mag.nom.replace('Seb Telecom — ', '')
+        {[
+          'tous',
+          'SebPhone',
+          'Marrakech',
+          ...MAGASINS_PHYSIQUES.map((m) => m.nom.replace('Seb Telecom — ', '')),
+        ].map((fournisseur) => {
+          const isActive = selectedFournisseur === fournisseur
+          const activeBg =
+            fournisseur === 'SebPhone'  ? 'bg-cyan-500 text-white' :
+            fournisseur === 'Marrakech' ? 'bg-orange-500 text-white' :
+                                          'bg-[#1B2A4A] text-white'
+          const label =
+            fournisseur === 'tous'      ? 'Tous' :
+            fournisseur === 'SebPhone'  ? '💻 SebPhone' :
+            fournisseur === 'Marrakech' ? '🌍 Marrakech' :
+                                          fournisseur
           return (
             <button
-              key={mag.id}
-              onClick={() => setSelectedFournisseur(shortName)}
+              key={fournisseur}
+              onClick={() => setSelectedFournisseur(fournisseur)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                selectedFournisseur === shortName ? 'bg-[#1B2A4A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                isActive ? activeBg : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {shortName}
+              {label}
             </button>
           )
         })}
