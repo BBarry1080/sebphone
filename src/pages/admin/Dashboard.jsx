@@ -73,12 +73,15 @@ export default function Dashboard() {
       ])
 
       // CA: somme de tous les paiements (table payments)
-      const { data: paymentsData } = await supabase
+      const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
         .select('amount')
 
+      console.log('paymentsData:', paymentsData)
+      console.log('paymentsError:', paymentsError)
+      console.log('totalCA:', paymentsData?.reduce((acc, p) => acc + (p.amount || 0), 0))
+
       const ca = (paymentsData || []).reduce((sum, p) => sum + (p.amount || 0), 0)
-      console.log('totalCA:', ca)
 
       // Vendus ce mois (debug)
       const { data: soldThisMonth } = await supabase
