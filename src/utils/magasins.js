@@ -35,7 +35,7 @@ export const MAGASINS = {
   },
   marrakech: {
     id:      'marrakech',
-    nom:     'SebPhone Marrakech',
+    nom:     'Marrakech',
     adresse: 'Marrakech, Maroc',
     tel:     '+32(0)492 40.54.57',
   },

@@ -14,7 +14,7 @@ import { phonesMock } from '../../data/phonesMock'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
 import { PHONES_DATABASE, findPhoneModel, searchModels, BRANDS } from '../../data/phonesDatabase'
-import { MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS as MAGASINS_MAP } from '../../utils/magasins'
+import { MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS_ADMIN, MAGASINS as MAGASINS_MAP } from '../../utils/magasins'
 import emailjs from '@emailjs/browser'
 const MAGASINS = MAGASINS_PHYSIQUES
 
@@ -977,7 +977,7 @@ export default function Stock() {
           Tous
         </button>
 
-        {MAGASINS.map((mag) => {
+        {MAGASINS_ADMIN.filter((m) => m.id !== 'sebphone').map((mag) => {
           const shortName = mag.nom.replace('Seb Telecom — ', '').replace('Seb Telecom ', '')
           const count = phones.filter((p) =>
             Array.isArray(p.magasins) && p.magasins.includes(mag.id) && p.status === 'disponible'
