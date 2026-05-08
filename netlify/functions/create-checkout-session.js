@@ -41,7 +41,7 @@ exports.handler = async (event) => {
       : `Paiement total — ${[phoneName, phoneColor, phoneStorage].filter(Boolean).join(' ')} · Code: ${reservationCode}`
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      payment_method_types: ['card', 'bancontact'],
       line_items: [{
         price_data: {
           currency: 'eur',
