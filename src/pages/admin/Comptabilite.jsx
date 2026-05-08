@@ -302,6 +302,23 @@ export default function Comptabilite() {
         </div>
 
         <div
+          onClick={() => setSelectedMethod(selectedMethod === 'bancontact' ? null : 'bancontact')}
+          className={`bg-white rounded-2xl p-5 border shadow-sm cursor-pointer transition-all ${
+            selectedMethod === 'bancontact' ? 'border-purple-500 bg-purple-50' : 'border-gray-100 hover:border-purple-500'
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center">
+              <CreditCard size={18} className="text-purple-600" />
+            </div>
+            <span className="text-xs text-gray-500 font-medium">Bancontact</span>
+            <Eye size={14} className="text-gray-400 ml-auto" />
+          </div>
+          <p className="text-2xl font-black text-purple-600">{fmt(totalBancontact)}€</p>
+          <p className="text-xs text-gray-400 mt-1">Cliquez pour le détail</p>
+        </div>
+
+        <div
           onClick={() => setSelectedMethod(selectedMethod === 'cash' ? null : 'cash')}
           className={`bg-white rounded-2xl p-5 border shadow-sm cursor-pointer transition-all ${
             selectedMethod === 'cash' ? 'border-green-500 bg-green-50' : 'border-gray-100 hover:border-green-500'
@@ -434,7 +451,7 @@ export default function Comptabilite() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
             <h3 className="font-bold text-[#1B2A4A]">
-              Détail — {selectedMethod === 'virement' ? 'Virement bancaire' : 'Cash'}
+              Détail — {selectedMethod === 'virement' ? 'Virement bancaire' : selectedMethod === 'bancontact' ? 'Bancontact' : 'Cash'}
             </h3>
             <button onClick={() => setSelectedMethod(null)} className="text-gray-400 hover:text-gray-600">
               <X size={18} />
@@ -472,7 +489,11 @@ export default function Comptabilite() {
               </thead>
               <tbody>
                 {filteredPayments
-                  .filter((p) => selectedMethod === 'virement' ? isVirement(p.payment_method) : isCash(p.payment_method))
+                  .filter((p) =>
+                    selectedMethod === 'virement'   ? isVirement(p.payment_method)   :
+                    selectedMethod === 'bancontact' ? isBancontact(p.payment_method) :
+                                                      isCash(p.payment_method)
+                  )
                   .map((payment) => (
                     <tr key={payment.id} className="border-t border-gray-100">
                       <td className="px-4 py-3 text-sm text-gray-600">
@@ -492,9 +513,13 @@ export default function Comptabilite() {
                   ))}
               </tbody>
             </table>
-            {filteredPayments.filter((p) => selectedMethod === 'virement' ? isVirement(p.payment_method) : isCash(p.payment_method)).length === 0 && (
+            {filteredPayments.filter((p) =>
+              selectedMethod === 'virement'   ? isVirement(p.payment_method)   :
+              selectedMethod === 'bancontact' ? isBancontact(p.payment_method) :
+                                                isCash(p.payment_method)
+            ).length === 0 && (
               <div className="text-center py-8 text-gray-400 text-sm">
-                Aucun paiement {selectedMethod === 'virement' ? 'virement' : 'cash'} enregistré
+                Aucun paiement {selectedMethod === 'virement' ? 'virement' : selectedMethod === 'bancontact' ? 'bancontact' : 'cash'} enregistré
               </div>
             )}
           </div>
