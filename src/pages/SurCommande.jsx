@@ -5,14 +5,16 @@ import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 import { getColorHex } from '../utils/colors'
 import { STARTING_PRICES } from '../data/startingPrices'
 import { IPHONE_ON_DEMAND } from '../data/iphoneOnDemand'
-import { MAGASINS_PHYSIQUES as MAGASINS_LIST } from '../utils/magasins'
+import { MAGASINS_PHYSIQUES } from '../utils/magasins'
+
+const MAGASINS_CLIENT = MAGASINS_PHYSIQUES.filter((m) => m.id !== 'marrakech')
 
 export default function SurCommande() {
   const navigate = useNavigate()
   const [selectedModel,   setSelectedModel]   = useState(null)
   const [selectedColor,   setSelectedColor]   = useState(null)
   const [selectedStorage, setSelectedStorage] = useState(null)
-  const [selectedMagasin, setSelectedMagasin] = useState(MAGASINS_LIST[0]?.id || 'anderlecht')
+  const [selectedMagasin, setSelectedMagasin] = useState(MAGASINS_CLIENT[0]?.id || 'anderlecht')
   const [deliveryMode,    setDeliveryMode]    = useState('collect')
 
   const handleModelClick = (model) => {
@@ -205,7 +207,7 @@ export default function SurCommande() {
                       onChange={(e) => setSelectedMagasin(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                     >
-                      {MAGASINS_LIST.map((m) => (
+                      {MAGASINS_CLIENT.map((m) => (
                         <option key={m.id} value={m.id}>{m.nom}</option>
                       ))}
                     </select>

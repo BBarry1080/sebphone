@@ -2,7 +2,9 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import ReservationForm from '../components/reservation/ReservationForm'
-import { MAGASINS_PHYSIQUES as MAGASINS_LIST } from '../utils/magasins'
+import { MAGASINS_PHYSIQUES } from '../utils/magasins'
+
+const MAGASINS_CLIENT = MAGASINS_PHYSIQUES.filter((m) => m.id !== 'marrakech')
 
 export default function ReservationCommande() {
   const { state } = useLocation()
@@ -29,7 +31,7 @@ export default function ReservationCommande() {
     grade:          null,
     battery_health: null,
     parts_replaced: [],
-    magasins:       MAGASINS_LIST.map((m) => m.id),
+    magasins:       MAGASINS_CLIENT.map((m) => m.id),
     status:         'disponible',
     surCommande:    true,
   }
