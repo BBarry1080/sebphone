@@ -29,7 +29,7 @@ const CONDITIONS = ['neuf', 'reconditionne', 'occasion']
 const CONDITION_LABELS = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
 const GRADES = ['Bon état', 'Très bon état', 'Comme neuf', 'Neuf']
 const FOURNISSEURS = ['SebPhone', 'Marrakech', 'Molenbeek', 'Louise', 'Anderlecht']
-const LOCATIONS = ['Molenbeek', 'Louise', 'Anderlecht', 'SebPhone', 'Autre']
+const LOCATIONS = ['Molenbeek', 'Louise', 'Anderlecht', 'SebPhone', 'Marrakech', 'Autre']
 const STATUSES = ['disponible', 'reserve', 'vendu']
 const STATUS_LABELS = { disponible: 'En stock', reserve: 'Réservé', vendu: 'Vendu' }
 const STATUS_COLORS = {
@@ -1010,7 +1010,6 @@ export default function Stock() {
           'tous',
           'SebPhone',
           ...MAGASINS_PHYSIQUES.map((m) => m.nom.replace('Seb Telecom — ', '')),
-          'Marrakech',
         ].map((fournisseur) => {
           const isActive = selectedFournisseur === fournisseur
           const activeBg =
