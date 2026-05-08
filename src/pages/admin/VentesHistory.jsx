@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS } from '../../utils/magasins'
-import { Search, Eye, FileText, X } from 'lucide-react'
+import { Search, Eye, FileText, X, Pencil, Trash2 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { useIsAdmin } from '../../hooks/usePermissions'
 
 export default function VentesHistory() {
+  const isAdmin = useIsAdmin()
   const [sales, setSales]                     = useState([])
   const [loading, setLoading]                 = useState(true)
   const [searchQuery, setSearchQuery]         = useState('')
   const [selectedMagasin, setSelectedMagasin] = useState('tous')
   const [saleOrigin, setSaleOrigin]           = useState('tous')
   const [selectedSale, setSelectedSale]       = useState(null)
+  const [editingSale, setEditingSale]         = useState(null)
+  const [editForm, setEditForm]               = useState({})
+  const [saving, setSaving]                   = useState(false)
 
   useEffect(() => { fetchSales() }, [])
 
@@ -73,6 +78,85 @@ export default function VentesHistory() {
     if (monthsLeft <= 0) return { text: 'Expirée',                     color: 'red',    expiry: expiry.toLocaleDateString('fr-BE') }
     if (monthsLeft <= 3) return { text: `${monthsLeft} mois restants`, color: 'orange', expiry: expiry.toLocaleDateString('fr-BE') }
     return                       { text: `${monthsLeft} mois restants`, color: 'green',  expiry: expiry.toLocaleDateString('fr-BE') }
+  }
+
+  const openEdit = (sale) => {
+    setEditingSale(sale)
+    setEditForm({
+      customer_name:  sale.customer_name || '',
+      customer_phone: sale.customer_phone || '',
+      customer_email: sale.customer_email || '',
+      phone_name:     sale.phone_name || '',
+      phone_color:    sale.phone_color || '',
+      phone_storage:  sale.phone_storage || '',
+      phone_grade:    sale.phone_grade || '',
+      total_amount:   sale.total_amount || '',
+      magasin_id:     sale.magasin_id || '',
+      encaisse_at:    sale.encaisse_at ? new Date(sale.encaisse_at).toISOString().split('T')[0] : '',
+    })
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingSale) return
+    setSaving(true)
+    try {
+      await supabase.from('orders').update({
+        customer_name:  editForm.customer_name,
+        customer_phone: editForm.customer_phone,
+        customer_email: editForm.customer_email,
+        phone_name:     editForm.phone_name,
+        phone_color:    editForm.phone_color,
+        phone_storage:  editForm.phone_storage,
+        phone_grade:    editForm.phone_grade,
+        total_amount:   parseFloat(editForm.total_amount) || 0,
+        final_price:    parseFloat(editForm.total_amount) || 0,
+        magasin_id:     editForm.magasin_id,
+        encaisse_at:    new Date(editForm.encaisse_at).toISOString(),
+      }).eq('id', editingSale.id)
+
+      if (editingSale.phone_id) {
+        await supabase.from('phones').update({
+          name:    editForm.phone_name,
+          model:   editForm.phone_name,
+          color:   editForm.phone_color,
+          storage: editForm.phone_storage,
+          grade:   editForm.phone_grade,
+          price:   parseFloat(editForm.total_amount) || 0,
+        }).eq('id', editingSale.phone_id)
+
+        await supabase.from('payments').update({
+          amount:     parseFloat(editForm.total_amount) || 0,
+          magasin_id: editForm.magasin_id,
+        }).eq('phone_id', editingSale.phone_id)
+      }
+
+      setEditingSale(null)
+      fetchSales()
+    } catch (err) {
+      console.error('Erreur modification:', err)
+      alert('Erreur lors de la modification')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteSale = async (sale) => {
+    if (!window.confirm(`Supprimer la vente de ${sale.customer_name || 'ce client'} — ${sale.phone_name || ''} ?`)) return
+    try {
+      if (sale.phone_id) {
+        await supabase.from('payments').delete().eq('phone_id', sale.phone_id)
+        await supabase.from('phones').update({
+          status: 'disponible',
+          price: sale.phone?.purchase_price ? sale.phone.purchase_price * 1.3 : (sale.phone?.price || 0),
+        }).eq('id', sale.phone_id)
+      }
+      await supabase.from('orders').delete().eq('id', sale.id)
+      fetchSales()
+      setTimeout(() => window.location.reload(), 500)
+    } catch (err) {
+      console.error('Erreur suppression:', err)
+      alert('Erreur lors de la suppression')
+    }
   }
 
   const generateInvoice = (sale) => {
@@ -317,6 +401,24 @@ export default function VentesHistory() {
                         >
                           <FileText size={16} />
                         </button>
+                        {isAdmin && (
+                          <>
+                            <button
+                              onClick={() => openEdit(sale)}
+                              title="Modifier la vente"
+                              className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all cursor-pointer"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSale(sale)}
+                              title="Supprimer la vente"
+                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -376,6 +478,149 @@ export default function VentesHistory() {
               >
                 <FileText size={16} />
                 Générer la facture PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingSale && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h2 className="font-bold text-[#1B2A4A] text-lg">Modifier la vente</h2>
+              <button onClick={() => setEditingSale(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-xs font-bold text-[#00B4CC] uppercase">Client</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Nom</label>
+                  <input
+                    value={editForm.customer_name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, customer_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Téléphone</label>
+                  <input
+                    value={editForm.customer_phone}
+                    onChange={(e) => setEditForm((f) => ({ ...f, customer_phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">Email</label>
+                  <input
+                    value={editForm.customer_email}
+                    onChange={(e) => setEditForm((f) => ({ ...f, customer_email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs font-bold text-[#00B4CC] uppercase mt-2">Téléphone</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">Modèle</label>
+                  <input
+                    value={editForm.phone_name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, phone_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Couleur</label>
+                  <input
+                    value={editForm.phone_color}
+                    onChange={(e) => setEditForm((f) => ({ ...f, phone_color: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Stockage</label>
+                  <input
+                    value={editForm.phone_storage}
+                    onChange={(e) => setEditForm((f) => ({ ...f, phone_storage: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Grade</label>
+                  <input
+                    value={editForm.phone_grade}
+                    onChange={(e) => setEditForm((f) => ({ ...f, phone_grade: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs font-bold text-[#00B4CC] uppercase mt-2">Vente</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Montant (€)</label>
+                  <input
+                    type="number"
+                    value={editForm.total_amount}
+                    onChange={(e) => setEditForm((f) => ({ ...f, total_amount: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Date de vente</label>
+                  <input
+                    type="date"
+                    value={editForm.encaisse_at}
+                    onChange={(e) => setEditForm((f) => ({ ...f, encaisse_at: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">Magasin</label>
+                  <select
+                    value={editForm.magasin_id}
+                    onChange={(e) => setEditForm((f) => ({ ...f, magasin_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
+                  >
+                    {Object.entries(MAGASINS).map(([id, mag]) => (
+                      <option key={id} value={id}>{mag.nom.replace('Seb Telecom — ', '')}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 mt-2">
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Remettre ce téléphone en stock ? La vente sera supprimée.')) return
+                    const saleToDelete = editingSale
+                    setEditingSale(null)
+                    await handleDeleteSale(saleToDelete)
+                  }}
+                  className="w-full py-2 rounded-xl border-2 border-orange-300 text-orange-600 text-sm font-medium hover:bg-orange-50 transition-all cursor-pointer"
+                >
+                  📦 Remettre en stock (annuler la vente)
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 p-6 border-t border-gray-100">
+              <button
+                onClick={() => setEditingSale(null)}
+                className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={saving}
+                className="flex-1 py-2 rounded-xl bg-[#1B2A4A] text-white text-sm font-bold hover:bg-[#00B4CC] transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {saving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
             </div>
           </div>
