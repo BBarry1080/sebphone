@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS, MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS_ADMIN } from '../../utils/magasins'
 import {
@@ -9,6 +10,7 @@ import { useRequirePermission, useCurrentUser, usePermission } from '../../hooks
 
 export default function Comptabilite() {
   useRequirePermission('voir_comptabilite')
+  const location = useLocation()
   const currentUser = useCurrentUser()
   const isAdmin = currentUser.role === 'admin' || !currentUser.role
   const canAddPayments = usePermission('ajouter_paiements')
@@ -42,8 +44,14 @@ export default function Comptabilite() {
     payment_date: new Date().toISOString().split('T')[0],
   })
 
-  useEffect(() => { fetchData() }, [])
+  useEffect(() => { fetchData() }, [location.pathname])
   useEffect(() => { setDetailMagasin('tous') }, [selectedMethod])
+
+  useEffect(() => {
+    const handleFocus = () => fetchData()
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
 
   const fetchData = async () => {
     setLoading(true)
