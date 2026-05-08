@@ -479,9 +479,10 @@ export default function Comptabilite() {
               {statsByMagasin.map((mag) => (
                 <div key={mag.id} className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-500 mb-1">{mag.nom.replace('Seb Telecom — ', '')}</p>
-                  <div className="flex justify-between text-xs mt-1">
+                  <div className="flex flex-col gap-0.5 text-xs mt-1">
                     <span className="text-green-600">💵 Cash : {fmt(mag.cash)}€</span>
                     <span className="text-blue-600">🏦 Virement : {fmt(mag.virement)}€</span>
+                    <span className="text-purple-600">💳 Bancontact : {fmt(mag.bancontact || 0)}€</span>
                   </div>
                 </div>
               ))}

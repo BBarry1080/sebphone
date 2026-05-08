@@ -342,6 +342,10 @@ export default function Commandes() {
     if (!window.confirm(`Supprimer définitivement la commande de ${o.customer_name || 'ce client'} ?\nCette action est irréversible.`)) return
     setDeletingId(o.id)
     if (isSupabaseReady) {
+      if (o.phone_id) {
+        await supabase.from('payments').delete().eq('phone_id', o.phone_id)
+        await supabase.from('phones').update({ status: 'disponible' }).eq('id', o.phone_id)
+      }
       await supabase.from('orders').delete().eq('id', o.id)
     }
     setOrders((prev) => prev.filter((x) => x.id !== o.id))
