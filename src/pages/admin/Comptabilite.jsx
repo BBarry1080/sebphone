@@ -58,9 +58,13 @@ export default function Comptabilite() {
 
   const totalReconStock = reconStock.reduce((a, e) => a + (e.purchase_price || 0), 0)
 
+  const sebphonePhoneIds = phones.filter((p) => p.fournisseur === 'SebPhone').map((p) => p.id)
+
   const filteredPhones = selectedMagasin === 'tous'
     ? phones
-    : phones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(selectedMagasin))
+    : selectedMagasin === 'sebphone'
+      ? phones.filter((p) => p.fournisseur === 'SebPhone')
+      : phones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(selectedMagasin))
 
   const stockDisponible = filteredPhones.filter((p) => p.status === 'disponible')
   const stockVendu      = filteredPhones.filter((p) => p.status === 'vendu')
@@ -82,7 +86,9 @@ export default function Comptabilite() {
 
   const filteredPayments = selectedMagasin === 'tous'
     ? payments
-    : payments.filter((p) => p.magasin_id === selectedMagasin)
+    : selectedMagasin === 'sebphone'
+      ? payments.filter((p) => sebphonePhoneIds.includes(p.phone_id))
+      : payments.filter((p) => p.magasin_id === selectedMagasin)
 
   const totalCash       = filteredPayments.filter((p) => isCash(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalVirement   = filteredPayments.filter((p) => isVirement(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
@@ -143,7 +149,6 @@ export default function Comptabilite() {
   const sebphonePhones   = phones.filter((p) => p.fournisseur === 'SebPhone')
   const sebphoneDispo    = sebphonePhones.filter((p) => p.status === 'disponible')
   const sebphoneVendu    = sebphonePhones.filter((p) => p.status === 'vendu')
-  const sebphonePhoneIds = sebphonePhones.map((p) => p.id)
   const sebphonePayments = payments.filter((p) => sebphonePhoneIds.includes(p.phone_id))
   const sebphoneStats = isAdmin ? {
     id: 'sebphone',
@@ -374,7 +379,8 @@ export default function Comptabilite() {
               </thead>
               <tbody>
                 {soldPhonesDetail
-                  .filter((p) => selectedMagasin === 'tous' || p.magasins?.includes(selectedMagasin))
+                  .filter((p) => selectedMagasin === 'tous'
+                    || (selectedMagasin === 'sebphone' ? p.fournisseur === 'SebPhone' : p.magasins?.includes(selectedMagasin)))
                   .map((phone) => (
                     <tr key={phone.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
