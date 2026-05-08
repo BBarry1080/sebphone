@@ -140,10 +140,11 @@ export default function Comptabilite() {
     }
   })
 
-  const sebphonePhones = phones.filter((p) => p.paid_by === 'sebphone')
-  const sebphoneDispo  = sebphonePhones.filter((p) => p.status === 'disponible')
-  const sebphoneVendu  = sebphonePhones.filter((p) => p.status === 'vendu')
-  const sebphonePayments = payments.filter((p) => p.magasin_id === 'sebphone')
+  const sebphonePhones   = phones.filter((p) => p.fournisseur === 'SebPhone')
+  const sebphoneDispo    = sebphonePhones.filter((p) => p.status === 'disponible')
+  const sebphoneVendu    = sebphonePhones.filter((p) => p.status === 'vendu')
+  const sebphonePhoneIds = sebphonePhones.map((p) => p.id)
+  const sebphonePayments = payments.filter((p) => sebphonePhoneIds.includes(p.phone_id))
   const sebphoneStats = isAdmin ? {
     id: 'sebphone',
     nom: 'SebPhone',
@@ -151,7 +152,7 @@ export default function Comptabilite() {
     nbVendu:           sebphoneVendu.length,
     prixAchat:         sebphoneDispo.reduce((a, p) => a + (p.purchase_price || 0), 0),
     beneficePotentiel: sebphoneDispo.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
-    beneficeRealise:   sebphoneVendu.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
+    beneficeRealise:   sebphoneVendu.reduce((a, p) => a + ((p.final_price || p.price || 0) - (p.purchase_price || 0)), 0),
     tva:               sebphoneVendu.reduce((a, p) => a + (p.tva_amount || 0), 0),
     cash:        sebphonePayments.filter((p) => isCash(p.payment_method)).reduce((a, p) => a + p.amount, 0),
     virement:    sebphonePayments.filter((p) => isVirement(p.payment_method)).reduce((a, p) => a + p.amount, 0),
