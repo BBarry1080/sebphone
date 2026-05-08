@@ -776,6 +776,15 @@ export default function Stock() {
     sale_price: '',
     sale_magasin: '',
     notes: '',
+    discount_value:     '',
+    discount_type:      'fixed',
+    is_company_sale:    false,
+    company_name:       '',
+    company_vat:        '',
+    company_address:    '',
+    company_email:      '',
+    company_phone:      '',
+    company_tva_regime: 'marge',
   })
 
   const fetchPhones = async () => {
@@ -812,11 +821,17 @@ export default function Stock() {
       const saleDate = new Date().toISOString()
       const reservationCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
+      const salePriceNum = parseFloat(saleForm.sale_price) || 0
+      const discountAmount = saleForm.discount_type === 'percent'
+        ? salePriceNum * (parseFloat(saleForm.discount_value) || 0) / 100
+        : (parseFloat(saleForm.discount_value) || 0)
+      const finalPrice = Math.max(salePriceNum - discountAmount, 0)
+
       const { error: phoneError } = await supabase
         .from('phones')
         .update({
           status: 'vendu',
-          price: parseFloat(saleForm.sale_price),
+          price: finalPrice,
         })
         .eq('id', salePhone.id)
       if (phoneError) throw phoneError
@@ -824,23 +839,33 @@ export default function Stock() {
       const { error: orderError } = await supabase
         .from('orders')
         .insert([{
-          phone_id:         salePhone.id,
-          customer_name:    `${saleForm.customer_firstname} ${saleForm.customer_name}`,
-          customer_email:   saleForm.customer_email || null,
-          customer_phone:   saleForm.customer_phone || null,
-          phone_name:       salePhone.name || salePhone.model,
-          phone_storage:    salePhone.storage,
-          phone_color:      salePhone.color,
-          phone_grade:      salePhone.grade,
-          delivery_mode:    'collect',
-          magasin_id:       saleForm.sale_magasin,
-          payment_mode:     'total',
-          total_amount:     parseFloat(saleForm.sale_price),
-          deposit_amount:   0,
-          reservation_code: reservationCode,
-          status:           'recupere',
-          encaisse_at:      saleDate,
-          notes:            saleForm.notes || null,
+          phone_id:           salePhone.id,
+          customer_name:      `${saleForm.customer_firstname} ${saleForm.customer_name}`,
+          customer_email:     saleForm.customer_email || null,
+          customer_phone:     saleForm.customer_phone || null,
+          phone_name:         salePhone.name || salePhone.model,
+          phone_storage:      salePhone.storage,
+          phone_color:        salePhone.color,
+          phone_grade:        salePhone.grade,
+          delivery_mode:      'collect',
+          magasin_id:         saleForm.sale_magasin,
+          payment_mode:       'total',
+          total_amount:       finalPrice,
+          deposit_amount:     0,
+          reservation_code:   reservationCode,
+          status:             'recupere',
+          encaisse_at:        saleDate,
+          notes:              saleForm.notes || null,
+          discount_value:     parseFloat(saleForm.discount_value) || 0,
+          discount_type:      saleForm.discount_type,
+          final_price:        finalPrice,
+          is_company_sale:    saleForm.is_company_sale,
+          company_name:       saleForm.company_name || null,
+          company_vat:        saleForm.company_vat || null,
+          company_address:    saleForm.company_address || null,
+          company_email:      saleForm.company_email || null,
+          company_phone:      saleForm.company_phone || null,
+          company_tva_regime: saleForm.company_tva_regime,
         }])
       if (orderError) throw orderError
 
@@ -858,7 +883,7 @@ export default function Stock() {
         phone_id:       salePhone.id,
         magasin_id:     saleForm.sale_magasin,
         payment_method: normalizedMethod,
-        amount:         parseFloat(saleForm.sale_price),
+        amount:         finalPrice,
         purchase_price: salePhone.purchase_price || 0,
         description:    `Vente ${salePhone.name || salePhone.model} — ${saleForm.customer_firstname} ${saleForm.customer_name}`,
         payment_date:   saleDate,
@@ -900,8 +925,10 @@ export default function Stock() {
               phone_condition:  salePhone.condition || '—',
               phone_grade:      salePhone.grade || '—',
               phone_imei:       salePhone.imei || '—',
-              price_total:      `${saleForm.sale_price}€`,
-              deposit_paid:     `${saleForm.sale_price}€`,
+              price_total:      `${finalPrice.toFixed(2)}€`,
+              price_original:   `${salePriceNum.toFixed(2)}€`,
+              discount_amount:  discountAmount > 0 ? `${discountAmount.toFixed(2)}€` : '0€',
+              deposit_paid:     `${finalPrice.toFixed(2)}€`,
               remaining:        '0€',
               payment_label:    'Montant total payé ✓',
               accessories_total: '0€',
@@ -909,6 +936,9 @@ export default function Stock() {
               battery_replace:  'Non',
               warning_message:  '',
               payment_method:   saleForm.payment_method,
+              tva_mention:      salePhone.tva_regime === 'marge'
+                ? "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)"
+                : 'TVA 21% incluse',
               magasin_nom:      magasin?.nom || 'SebPhone',
               magasin_adresse:  magasin?.adresse || 'sebphone.be',
               reservation_code: reservationCode,
@@ -922,6 +952,97 @@ export default function Stock() {
           console.log('✅ Email facture envoyé à:', saleForm.customer_email)
         } catch (emailErr) {
           console.warn('Email facture non envoyé:', emailErr)
+        }
+      }
+
+      /*
+        ────────────────────────────────────────────────────────────────
+        TEMPLATE EMAILJS — `template_societe` (à créer dans EmailJS)
+        ────────────────────────────────────────────────────────────────
+        Subject: Facture {{company_name}} — {{phone_name}}
+
+        Variables disponibles :
+          to_email, to_name
+          company_name, company_vat, company_address, company_phone
+          company_tva_regime  ('marge' ou 'normale')
+          phone_name, phone_color, phone_storage, phone_condition,
+          phone_grade, phone_imei
+          price_original     (ex: '499.00€')
+          discount_amount    (ex: '50.00€' ou '0€')
+          discount_label     (ex: 'Remise 10%' ou 'Remise' ou '')
+          price_final        (ex: '449.00€')
+          payment_method     (ex: 'Cash', 'Bancontact', 'Virement')
+          tva_regime         ('marge' ou 'normale')
+          tva_mention        (texte légal complet)
+          magasin_nom, magasin_adresse
+          sale_date, reservation_code, invoice_url
+          warranty_expiry
+
+        Suggestion HTML :
+          <h2>Facture professionnelle — SebPhone</h2>
+          <p>À l'attention de <b>{{company_name}}</b> — TVA {{company_vat}}</p>
+          <p>{{company_address}}</p>
+          <hr/>
+          <h3>{{phone_name}}</h3>
+          <p>{{phone_color}} · {{phone_storage}} · {{phone_grade}} · IMEI {{phone_imei}}</p>
+          <p>Prix : {{price_original}}<br/>
+             {{discount_label}} : -{{discount_amount}}<br/>
+             <b>Total : {{price_final}}</b></p>
+          <p style="font-style:italic">{{tva_mention}}</p>
+          <p>Paiement : {{payment_method}} · {{magasin_nom}} · {{sale_date}}</p>
+          <p>Garantie 24 mois (jusqu'au {{warranty_expiry}})</p>
+          <a href="{{invoice_url}}">Télécharger ma facture PDF</a>
+        ────────────────────────────────────────────────────────────────
+      */
+
+      // ── Email facture société (si différent du client) ──
+      if (saleForm.is_company_sale && saleForm.company_email && saleForm.company_email !== saleForm.customer_email) {
+        try {
+          const now     = new Date()
+          const expiry  = new Date(now)
+          expiry.setMonth(expiry.getMonth() + 24)
+          const magasin = MAGASINS_MAP[saleForm.sale_magasin]
+
+          await emailjs.send(
+            EMAILJS_SERVICE_ID,
+            'template_societe',
+            {
+              to_email:           saleForm.company_email,
+              to_name:            saleForm.company_name,
+              company_name:       saleForm.company_name,
+              company_vat:        saleForm.company_vat,
+              company_address:    saleForm.company_address,
+              company_phone:      saleForm.company_phone,
+              company_tva_regime: saleForm.company_tva_regime,
+              phone_name:         salePhone.name || salePhone.model,
+              phone_color:        salePhone.color || '—',
+              phone_storage:      salePhone.storage || '—',
+              phone_condition:    salePhone.condition || '—',
+              phone_grade:        salePhone.grade || '—',
+              phone_imei:         salePhone.imei || '—',
+              price_original:     `${salePriceNum.toFixed(2)}€`,
+              discount_amount:    discountAmount > 0 ? `${discountAmount.toFixed(2)}€` : '0€',
+              discount_label:     discountAmount > 0
+                ? (saleForm.discount_type === 'percent' ? `Remise ${saleForm.discount_value}%` : 'Remise')
+                : '',
+              price_final:        `${finalPrice.toFixed(2)}€`,
+              payment_method:     saleForm.payment_method,
+              tva_regime:         saleForm.company_tva_regime,
+              tva_mention:        saleForm.company_tva_regime === 'marge'
+                ? "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)"
+                : 'TVA 21% incluse',
+              magasin_nom:        magasin?.nom || 'SebPhone',
+              magasin_adresse:    magasin?.adresse || 'sebphone.be',
+              sale_date:          now.toLocaleDateString('fr-BE'),
+              reservation_code:   reservationCode,
+              invoice_url:        `https://sebphone.be/facture/${reservationCode}`,
+              warranty_expiry:    expiry.toLocaleDateString('fr-BE'),
+            },
+            EMAILJS_PUBLIC_KEY
+          )
+          console.log('✅ Email société envoyé à:', saleForm.company_email)
+        } catch (err) {
+          console.warn('Email société non envoyé:', err)
         }
       }
 
@@ -1228,6 +1349,15 @@ export default function Stock() {
                             sale_price: phone.price?.toString() || '',
                             sale_magasin: phone.magasins?.[0] || '',
                             notes: '',
+                            discount_value: '',
+                            discount_type: 'fixed',
+                            is_company_sale: false,
+                            company_name: '',
+                            company_vat: '',
+                            company_address: '',
+                            company_email: '',
+                            company_phone: '',
+                            company_tva_regime: 'marge',
                           })
                           setShowSaleModal(true)
                         }}
@@ -1365,6 +1495,15 @@ export default function Stock() {
                                 sale_price: phone.price?.toString() || '',
                                 sale_magasin: phone.magasins?.[0] || '',
                                 notes: '',
+                                discount_value: '',
+                                discount_type: 'fixed',
+                                is_company_sale: false,
+                                company_name: '',
+                                company_vat: '',
+                                company_address: '',
+                                company_email: '',
+                                company_phone: '',
+                                company_tva_regime: 'marge',
                               })
                               setShowSaleModal(true)
                             }}
@@ -1569,6 +1708,147 @@ export default function Stock() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* REMISE */}
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Remise (optionnel)</label>
+                <div className="flex gap-2">
+                  <div className="flex border border-gray-200 rounded-xl overflow-hidden">
+                    {['fixed', 'percent'].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setSaleForm((f) => ({ ...f, discount_type: type }))}
+                        className={`px-3 py-2 text-xs font-medium transition-all cursor-pointer ${
+                          saleForm.discount_type === type ? 'bg-[#1B2A4A] text-white' : 'bg-white text-gray-600'
+                        }`}
+                      >
+                        {type === 'fixed' ? '€' : '%'}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="number"
+                    value={saleForm.discount_value}
+                    onChange={(e) => setSaleForm((f) => ({ ...f, discount_value: e.target.value }))}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                    placeholder="0"
+                    min="0"
+                  />
+                </div>
+                {(() => {
+                  const sp = parseFloat(saleForm.sale_price) || 0
+                  const dv = parseFloat(saleForm.discount_value) || 0
+                  if (dv <= 0) return null
+                  const da = saleForm.discount_type === 'percent' ? sp * dv / 100 : dv
+                  const fp = Math.max(sp - da, 0)
+                  return (
+                    <div className="mt-2 bg-green-50 rounded-xl p-2 flex justify-between text-sm">
+                      <span className="text-gray-500">Prix après remise :</span>
+                      <span className="font-bold text-green-600">
+                        {fp.toFixed(2)}€
+                        <span className="text-xs text-gray-400 ml-1">(-{da.toFixed(2)}€)</span>
+                      </span>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* VENTE SOCIÉTÉ */}
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer p-3 bg-gray-50 rounded-xl">
+                  <input
+                    type="checkbox"
+                    checked={saleForm.is_company_sale}
+                    onChange={(e) => setSaleForm((f) => ({ ...f, is_company_sale: e.target.checked }))}
+                    className="w-4 h-4 accent-[#00B4CC]"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-[#1B2A4A]">🏢 Vente à une société</p>
+                    <p className="text-xs text-gray-400">Facture professionnelle envoyée à la société</p>
+                  </div>
+                </label>
+
+                {saleForm.is_company_sale && (
+                  <div className="mt-3 border-2 border-[#00B4CC] rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-bold text-[#00B4CC] uppercase">Informations société</p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Nom de la société *</label>
+                        <input
+                          type="text"
+                          value={saleForm.company_name}
+                          onChange={(e) => setSaleForm((f) => ({ ...f, company_name: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                          placeholder="ACME SRL"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">N° TVA *</label>
+                        <input
+                          type="text"
+                          value={saleForm.company_vat}
+                          onChange={(e) => setSaleForm((f) => ({ ...f, company_vat: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                          placeholder="BE 1234.567.890"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Téléphone société</label>
+                        <input
+                          type="tel"
+                          value={saleForm.company_phone}
+                          onChange={(e) => setSaleForm((f) => ({ ...f, company_phone: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                          placeholder="+32 2 123 45 67"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Siège social</label>
+                        <input
+                          type="text"
+                          value={saleForm.company_address}
+                          onChange={(e) => setSaleForm((f) => ({ ...f, company_address: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                          placeholder="Rue de la Loi 1, 1000 Bruxelles"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Email société *</label>
+                        <input
+                          type="email"
+                          value={saleForm.company_email}
+                          onChange={(e) => setSaleForm((f) => ({ ...f, company_email: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                          placeholder="comptabilite@societe.be"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs font-medium text-gray-600 mb-2 block">Régime TVA facture</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { value: 'marge',   label: '📊 TVA sur marge',    sub: "Biens d'occasion" },
+                            { value: 'normale', label: '💼 TVA normale 21%',  sub: 'Standard' },
+                          ].map(({ value, label, sub }) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => setSaleForm((f) => ({ ...f, company_tva_regime: value }))}
+                              className={`p-2 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                                saleForm.company_tva_regime === value ? 'border-[#00B4CC] bg-cyan-50' : 'border-gray-200 hover:border-[#00B4CC]'
+                              }`}
+                            >
+                              <p className={`text-xs font-bold ${saleForm.company_tva_regime === value ? 'text-[#00B4CC]' : 'text-[#1B2A4A]'}`}>{label}</p>
+                              <p className="text-xs text-gray-400">{sub}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
