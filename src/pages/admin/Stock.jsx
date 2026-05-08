@@ -760,6 +760,7 @@ export default function Stock() {
   const [filterMagasin, setFilterMagasin] = useState(null)
   const [selectedFournisseur, setSelectedFournisseur] = useState('tous')
   const [selectedTVA, setSelectedTVA] = useState('tous')
+  const [selectedCondition, setSelectedCondition] = useState('tous')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingPhone, setEditingPhone]   = useState(null)
 
@@ -1013,6 +1014,7 @@ export default function Stock() {
       }
       if (selectedFournisseur !== 'tous' && p.fournisseur !== selectedFournisseur) return false
       if (selectedTVA !== 'tous' && (p.tva_regime || 'marge') !== selectedTVA) return false
+      if (selectedCondition !== 'tous' && p.condition !== selectedCondition) return false
       return true
     })
     .sort((a, b) => getModelIndex(a.name) - getModelIndex(b.name))
@@ -1139,6 +1141,27 @@ export default function Stock() {
         <span className="text-xs text-gray-400 self-center ml-auto">
           {filtered.length} téléphone{filtered.length !== 1 ? 's' : ''}
         </span>
+      </div>
+
+      {/* Filtres état (condition) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold text-gray-500 mr-1">Filtrer par état :</p>
+        {[
+          { value: 'tous',          label: 'Tous',              activeBg: 'bg-[#1B2A4A] text-white' },
+          { value: 'neuf',          label: '🆕 Neuf',           activeBg: 'bg-blue-500 text-white' },
+          { value: 'occasion',      label: '📱 Occasion',       activeBg: 'bg-gray-600 text-white' },
+          { value: 'reconditionne', label: '🔧 Reconditionné',  activeBg: 'bg-orange-500 text-white' },
+        ].map(({ value, label, activeBg }) => (
+          <button
+            key={value}
+            onClick={() => setSelectedCondition(value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              selectedCondition === value ? activeBg : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* ── MOBILE CARDS ── */}
