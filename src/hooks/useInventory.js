@@ -25,12 +25,12 @@ export function useInventory(filters = {}) {
     let query = supabase
       .from('phones')
       .select('*')
+      .eq('status', filters.status || 'disponible')
       .or('visible_on_site.eq.true,visible_on_site.is.null')
       .order('created_at', { ascending: false })
 
     if (filters.condition) query = query.eq('condition', filters.condition)
     if (filters.brand)     query = query.eq('brand', filters.brand)
-    if (filters.status)    query = query.eq('status', filters.status)
 
     const { data, error } = await query
     if (error) setError(error)
