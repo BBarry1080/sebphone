@@ -1095,10 +1095,18 @@ export default function Stock() {
     })))
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Supprimer ce téléphone ?')) return
-    await deletePhone(id)
-    fetchPhones()
+  const handleDelete = async (phoneId) => {
+    if (!window.confirm('Supprimer ce téléphone ? Cette action est irréversible.')) return
+    try {
+      await supabase.from('payments').delete().eq('phone_id', phoneId)
+      await supabase.from('orders').delete().eq('phone_id', phoneId)
+      const { error } = await supabase.from('phones').delete().eq('id', phoneId)
+      if (error) throw error
+      fetchPhones()
+    } catch (err) {
+      console.error('Erreur suppression:', err)
+      alert('Erreur lors de la suppression')
+    }
   }
 
   const STOCK_ORDER = [
