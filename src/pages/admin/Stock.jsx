@@ -1694,7 +1694,13 @@ export default function Stock() {
                     />
                     {salePhone.purchase_price && saleForm.sale_price && (
                       <p className="text-xs text-green-600 mt-1 font-medium">
-                        Bénéfice : +{(parseFloat(saleForm.sale_price || 0) - salePhone.purchase_price).toFixed(0)}€
+                        Bénéfice : +{(Math.max(
+                          parseFloat(saleForm.sale_price) -
+                          (saleForm.discount_type === 'percent'
+                            ? parseFloat(saleForm.sale_price) * parseFloat(saleForm.discount_value || 0) / 100
+                            : parseFloat(saleForm.discount_value || 0)),
+                          0
+                        ) - salePhone.purchase_price).toFixed(0)}€
                       </p>
                     )}
                   </div>
@@ -1774,20 +1780,15 @@ export default function Stock() {
                           </div>
                         )
                       }
-                      if (total < fp) {
+                      if (total > fp) {
                         return (
-                          <div className="mt-2 bg-orange-50 rounded-xl p-2 text-xs font-bold text-orange-600 flex justify-between">
+                          <div className="mt-2 bg-red-50 rounded-xl p-2 text-xs font-bold text-red-600 flex justify-between">
                             <span>Total : {total.toFixed(2)}€ / {fp.toFixed(2)}€</span>
-                            <span>Reste : {(fp - total).toFixed(2)}€</span>
+                            <span>Dépassement : +{(total - fp).toFixed(2)}€</span>
                           </div>
                         )
                       }
-                      return (
-                        <div className="mt-2 bg-red-50 rounded-xl p-2 text-xs font-bold text-red-600 flex justify-between">
-                          <span>Total : {total.toFixed(2)}€ / {fp.toFixed(2)}€</span>
-                          <span>Dépassement : +{(total - fp).toFixed(2)}€</span>
-                        </div>
-                      )
+                      return null
                     })()}
                   </div>
                 </div>
