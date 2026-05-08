@@ -528,7 +528,7 @@ export default function Comptabilite() {
                     {mag.id === 'sebphone' ? (
                       <span className="flex items-center gap-2">
                         <span className="bg-cyan-100 text-cyan-700 text-xs font-bold px-2 py-0.5 rounded-full">💻 SebPhone</span>
-                        <span className="text-xs text-gray-400">(entité financière)</span>
+                        <span className="text-xs text-gray-400">(magasin virtuel)</span>
                       </span>
                     ) : (
                       mag.nom.replace('Seb Telecom — ', '')
