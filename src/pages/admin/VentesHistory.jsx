@@ -133,7 +133,7 @@ export default function VentesHistory() {
       startY: doc.lastAutoTable.finalY + 10,
       head: [],
       body: [
-        ['Mode de paiement', getPaymentMethod(sale)],
+        ['Mode de paiement', sale.payment?.[0]?.payment_method || sale.payment_method || '—'],
         ['PRIX DE VENTE',    `${sale.total_amount}€`],
       ],
       theme: 'grid',
