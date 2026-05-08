@@ -749,6 +749,7 @@ export default function Stock() {
   const [search, setSearch]               = useState('')
   const [filterMagasin, setFilterMagasin] = useState(null)
   const [selectedFournisseur, setSelectedFournisseur] = useState('tous')
+  const [selectedTVA, setSelectedTVA] = useState('tous')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingPhone, setEditingPhone]   = useState(null)
 
@@ -1001,6 +1002,7 @@ export default function Stock() {
         if (!mags.includes(filterMagasin)) return false
       }
       if (selectedFournisseur !== 'tous' && p.fournisseur !== selectedFournisseur) return false
+      if (selectedTVA !== 'tous' && (p.tva_regime || 'marge') !== selectedTVA) return false
       return true
     })
     .sort((a, b) => getModelIndex(a.name) - getModelIndex(b.name))
@@ -1104,6 +1106,29 @@ export default function Stock() {
             </button>
           )
         })}
+      </div>
+
+      {/* Filtres TVA */}
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold text-gray-500 mr-1">Filtrer par TVA :</p>
+        {[
+          { value: 'tous',    label: 'Tous',                activeBg: 'bg-[#1B2A4A] text-white' },
+          { value: 'marge',   label: '📊 TVA sur marge',    activeBg: 'bg-purple-500 text-white' },
+          { value: 'normale', label: '💼 TVA normale 21%',  activeBg: 'bg-blue-500 text-white' },
+        ].map(({ value, label, activeBg }) => (
+          <button
+            key={value}
+            onClick={() => setSelectedTVA(value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              selectedTVA === value ? activeBg : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="text-xs text-gray-400 self-center ml-auto">
+          {filtered.length} téléphone{filtered.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {/* ── MOBILE CARDS ── */}
