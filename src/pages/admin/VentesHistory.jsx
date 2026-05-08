@@ -16,26 +16,34 @@ export default function VentesHistory() {
 
   const fetchSales = async () => {
     setLoading(true)
-    let { data: orders } = await supabase
-      .from('orders')
-      .select('*, phone:phones(*), payment:payments(payment_method, amount)')
-      .eq('status', 'recupere')
-      .not('phone_id', 'is', null)
-      .order('encaisse_at', { ascending: false })
-
-    // Fallback si le join payments échoue (pas de FK déclarée)
-    if (!orders) {
-      const res = await supabase
+    try {
+      const { data: ordersData, error } = await supabase
         .from('orders')
         .select('*, phone:phones(*)')
         .eq('status', 'recupere')
-        .not('phone_id', 'is', null)
         .order('encaisse_at', { ascending: false })
-      orders = res.data
+
+      if (error) throw error
+
+      const phoneIds = (ordersData || []).map((o) => o.phone_id).filter(Boolean)
+
+      const { data: paymentsData } = await supabase
+        .from('payments')
+        .select('phone_id, payment_method, amount')
+        .in('phone_id', phoneIds)
+
+      const merged = (ordersData || []).map((order) => ({
+        ...order,
+        payment: paymentsData?.filter((p) => p.phone_id === order.phone_id) || [],
+      }))
+
+      setSales(merged)
+    } catch (err) {
+      console.error('fetchSales error:', err)
+      setSales([])
+    } finally {
+      setLoading(false)
     }
-    console.log('première vente raw:', JSON.stringify(orders?.[0], null, 2))
-    setSales(orders || [])
-    setLoading(false)
   }
 
   const getPaymentMethod = (sale) => {
