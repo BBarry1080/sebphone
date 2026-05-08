@@ -27,6 +27,7 @@ export default function Comptabilite() {
   const [soldMagasinMap, setSoldMagasinMap]       = useState({})
   const [showCADetail, setShowCADetail]           = useState(false)
   const [showReconDetail, setShowReconDetail]     = useState(false)
+  const [detailMagasin, setDetailMagasin]         = useState('tous')
   const [loading, setLoading] = useState(true)
   const [selectedMagasin, setSelectedMagasin] = useState('tous')
   const [selectedMethod, setSelectedMethod] = useState(null)
@@ -42,6 +43,7 @@ export default function Comptabilite() {
   })
 
   useEffect(() => { fetchData() }, [])
+  useEffect(() => { setDetailMagasin('tous') }, [selectedMethod])
 
   const fetchData = async () => {
     setLoading(true)
@@ -593,40 +595,44 @@ export default function Comptabilite() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-8 overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
             <h3 className="font-bold text-[#1B2A4A]">
-              Détail — {selectedMethod === 'virement' ? 'Virement bancaire' : selectedMethod === 'bancontact' ? 'Bancontact' : 'Cash'}
+              Détail —{' '}
+              {selectedMethod === 'bancontact' ? 'Bancontact'
+                : selectedMethod === 'virement' ? 'Virement bancaire'
+                : 'Cash'}
             </h3>
-            <button onClick={() => setSelectedMethod(null)} className="text-gray-400 hover:text-gray-600">
+            <button onClick={() => setSelectedMethod(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
               <X size={18} />
             </button>
           </div>
 
-          <div className="p-4 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Par magasin</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {statsByMagasin.map((mag) => (
-                <div key={mag.id} className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500 mb-1">{mag.nom.replace('Seb Telecom — ', '')}</p>
-                  <div className="flex flex-col gap-0.5 text-xs mt-1">
-                    <span className="text-green-600">💵 Cash : {fmt(mag.cash)}€</span>
-                    <span className="text-blue-600">🏦 Virement : {fmt(mag.virement)}€</span>
-                    <span className="text-purple-600">💳 Bancontact : {fmt(mag.bancontact || 0)}€</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="p-4 border-b border-gray-100 flex gap-2 flex-wrap">
+            <button
+              onClick={() => setDetailMagasin('tous')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                detailMagasin === 'tous' ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'
+              }`}
+            >
+              Tous
+            </button>
+            {MAGASINS_LIST.map((mag) => (
+              <button
+                key={mag.id}
+                onClick={() => setDetailMagasin(mag.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                  detailMagasin === mag.id ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'
+                }`}
+              >
+                {mag.nom.replace('Seb Telecom — ', '')}
+              </button>
+            ))}
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Date', 'Magasin', 'Description', 'Prix achat', 'Montant'].map((h, i) => (
-                    <th
-                      key={h}
-                      className={`px-4 py-3 text-xs font-semibold text-gray-500 ${i === 4 ? 'text-right' : 'text-left'}`}
-                    >
-                      {h}
-                    </th>
+                  {['Date', 'Modèle', 'Magasin', 'Mode paiement', 'Montant'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -637,32 +643,32 @@ export default function Comptabilite() {
                     selectedMethod === 'bancontact' ? isBancontact(p.payment_method) :
                                                       isCash(p.payment_method)
                   )
+                  .filter((p) => detailMagasin === 'tous' || p.magasin_id === detailMagasin)
+                  .sort((a, b) => new Date(b.payment_date || 0) - new Date(a.payment_date || 0))
                   .map((payment) => (
-                    <tr key={payment.id} className="border-t border-gray-100">
+                    <tr key={payment.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                        {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString('fr-BE') : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#1B2A4A] font-medium">{payment.description || '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {new Date(payment.payment_date).toLocaleDateString('fr-BE')}
+                        {(MAGASINS[payment.magasin_id]?.nom || payment.magasin_id || '—').replace('Seb Telecom — ', '')}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {(MAGASINS[payment.magasin_id]?.nom || payment.magasin_id).replace('Seb Telecom — ', '')}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{payment.description || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {payment.purchase_price ? `${payment.purchase_price}€` : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-sm font-bold text-right text-green-600">
-                        +{payment.amount}€
-                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{payment.payment_method || '—'}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-green-600 text-right">+{payment.amount}€</td>
                     </tr>
                   ))}
               </tbody>
             </table>
+
             {filteredPayments.filter((p) =>
-              selectedMethod === 'virement'   ? isVirement(p.payment_method)   :
-              selectedMethod === 'bancontact' ? isBancontact(p.payment_method) :
-                                                isCash(p.payment_method)
+              (selectedMethod === 'virement'   ? isVirement(p.payment_method)   :
+               selectedMethod === 'bancontact' ? isBancontact(p.payment_method) :
+                                                 isCash(p.payment_method)) &&
+              (detailMagasin === 'tous' || p.magasin_id === detailMagasin)
             ).length === 0 && (
               <div className="text-center py-8 text-gray-400 text-sm">
-                Aucun paiement {selectedMethod === 'virement' ? 'virement' : selectedMethod === 'bancontact' ? 'bancontact' : 'cash'} enregistré
+                Aucun paiement enregistré
               </div>
             )}
           </div>
