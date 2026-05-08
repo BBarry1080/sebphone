@@ -17,27 +17,46 @@ export default function Confirmation() {
   const [notFound, setNotFound] = useState(false)
 
   // Si retour Stripe Checkout, ?code=XXX est dans l'URL
-  const code      = searchParams.get('code')
-  const sessionId = searchParams.get('session_id')
+  const codeFromUrl = searchParams.get('code')
+  const sessionId   = searchParams.get('session_id')
 
   useEffect(() => {
     console.log('=== CONFIRMATION ===')
     console.log('URL complète:', window.location.href)
     console.log('Tous les params:', Object.fromEntries(searchParams))
-    console.log('code:', code)
+    console.log('code URL:', codeFromUrl)
     console.log('session_id:', sessionId)
 
     if (state?.reservationCode) return            // déjà reçu via navigate
-    if (!code) {
-      console.warn('⚠️ Pas de code dans URL — affichage erreur')
-      setNotFound(true)
-      return
-    }
     if (!isSupabaseReady) { setNotFound(true); return }
 
     let cancelled = false
     const load = async () => {
       setLoading(true)
+
+      // Fallback Apple Pay mobile : si pas de code mais session_id → récupère depuis Stripe
+      let code = codeFromUrl
+      if (!code && sessionId) {
+        try {
+          console.log('Fallback: récupération code depuis session Stripe...')
+          const res = await fetch(`/.netlify/functions/get-session?session_id=${sessionId}`)
+          const sessionData = await res.json()
+          console.log('sessionData:', sessionData)
+          if (sessionData.reservation_code) {
+            code = sessionData.reservation_code
+            console.log('Code récupéré depuis Stripe:', code)
+          }
+        } catch (err) {
+          console.error('Erreur récupération session:', err)
+        }
+      }
+
+      if (!code) {
+        console.warn('⚠️ Pas de code (URL ni Stripe) — affichage erreur')
+        if (!cancelled) { setNotFound(true); setLoading(false) }
+        return
+      }
+
       const { data: order, error } = await supabase
         .from('orders')
         .select('*')
@@ -107,7 +126,7 @@ export default function Confirmation() {
     load()
     return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code])
+  }, [codeFromUrl, sessionId])
 
   if (loading) {
     return (
