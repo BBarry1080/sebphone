@@ -1005,7 +1005,7 @@ export default function Stock() {
 
           await emailjs.send(
             EMAILJS_SERVICE_ID,
-            'template_societe',
+            'template_qukek6a',
             {
               to_email:           saleForm.company_email,
               to_name:            saleForm.company_name,
