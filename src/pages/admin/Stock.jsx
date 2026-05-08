@@ -584,6 +584,16 @@ function PhoneModal({ phone, onClose, onSaved }) {
                       <span>Prix HT</span>
                       <span>{calc.ht}€</span>
                     </div>
+                    {(() => {
+                      const beneficeNet = parseFloat(calc.ht) - (parseFloat(purchasePrice) || 0)
+                      const positive    = beneficeNet >= 0
+                      return (
+                        <div className={`flex justify-between text-xs font-bold border-t border-gray-200 pt-1.5 ${positive ? 'text-green-600' : 'text-red-500'}`}>
+                          <span>Bénéfice réel après impôts</span>
+                          <span>{positive ? '+' : ''}{beneficeNet.toFixed(2)}€</span>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )
               })()}
