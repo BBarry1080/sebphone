@@ -33,6 +33,7 @@ export default function VentesHistory() {
         .order('encaisse_at', { ascending: false })
       orders = res.data
     }
+    console.log('première vente raw:', JSON.stringify(orders?.[0], null, 2))
     setSales(orders || [])
     setLoading(false)
   }
