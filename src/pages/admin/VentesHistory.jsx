@@ -164,15 +164,6 @@ export default function VentesHistory() {
     doc.setFontSize(9)
     doc.text(`Valable jusqu'au ${warranty.expiry} — ${warranty.text}`, 28, garantieY + 15)
 
-    const sigY = garantieY + 35
-    doc.setDrawColor(200)
-    doc.line(20, sigY, 85, sigY)
-    doc.line(125, sigY, 190, sigY)
-    doc.setFontSize(8)
-    doc.setTextColor(150)
-    doc.text('Signature du client', 20, sigY + 5)
-    doc.text('Cachet & signature SebPhone', 125, sigY + 5)
-
     doc.setFontSize(8)
     doc.setTextColor(150)
     doc.text('SLT Group SRL — N° TVA: BE 1028.764.677 — Chaussée de Mons 711, 1070 Anderlecht', 20, 285)
