@@ -46,7 +46,7 @@ export default function Comptabilite() {
       supabase.from('phones').select('*'),
       supabase.from('payments').select('*').order('payment_date', { ascending: false }),
       supabase.from('purchase_registry')
-        .select('purchase_price')
+        .select('purchase_price, magasin_id, fournisseur')
         .eq('phone_condition', 'reconditionne')
         .eq('reconditioning_status', 'en_attente'),
     ])
@@ -56,7 +56,12 @@ export default function Comptabilite() {
     setLoading(false)
   }
 
-  const totalReconStock = reconStock.reduce((a, e) => a + (e.purchase_price || 0), 0)
+  const filteredReconData = reconStock.filter((e) => {
+    if (selectedMagasin === 'tous') return true
+    if (selectedMagasin === 'sebphone') return e.fournisseur === 'SebPhone'
+    return e.magasin_id === selectedMagasin
+  })
+  const totalReconStock = filteredReconData.reduce((a, e) => a + (e.purchase_price || 0), 0)
 
   const sebphonePhoneIds = phones.filter((p) => p.fournisseur === 'SebPhone').map((p) => p.id)
 
@@ -268,7 +273,7 @@ export default function Comptabilite() {
             <span className="text-xs text-gray-500 font-medium">Stock en reconditionnement</span>
           </div>
           <p className="text-2xl font-black text-orange-600">{fmt(totalReconStock)}€</p>
-          <p className="text-xs text-gray-400 mt-1">Prix d'achat — en attente ({reconStock.length})</p>
+          <p className="text-xs text-gray-400 mt-1">Prix d'achat — en attente ({filteredReconData.length})</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
