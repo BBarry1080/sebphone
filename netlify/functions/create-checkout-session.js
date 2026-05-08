@@ -40,8 +40,12 @@ exports.handler = async (event) => {
       ? `Acompte réservation — Reste ${remaining}€ en magasin · Code: ${reservationCode}`
       : `Paiement total — ${[phoneName, phoneColor, phoneStorage].filter(Boolean).join(' ')} · Code: ${reservationCode}`
 
+    const paymentMethods = isAcompte
+      ? ['card', 'bancontact']
+      : ['card', 'bancontact', 'klarna']
+
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'bancontact', 'klarna'],
+      payment_method_types: paymentMethods,
       line_items: [{
         price_data: {
           currency: 'eur',
