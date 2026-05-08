@@ -538,7 +538,7 @@ export default function Comptabilite() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                {['Magasin', 'Stock dispo', 'Vendus', 'Prix achat', 'Bénéf. potentiel', 'TVA', 'CA', 'Cash', 'Virement'].map((h, i) => (
+                {['Magasin', 'Stock dispo', 'Vendus', 'Prix achat', 'Bénéf. potentiel', 'TVA', 'CA', 'Cash', 'Virement', 'Bancontact'].map((h, i) => (
                   <th
                     key={h}
                     className={`px-4 py-3 text-xs font-semibold text-gray-500 ${
@@ -593,6 +593,9 @@ export default function Comptabilite() {
                   <td className="px-4 py-3 text-right text-sm font-semibold text-blue-600">
                     {fmt(mag.virement)}€
                   </td>
+                  <td className="px-4 py-3 text-right text-sm font-semibold text-purple-600">
+                    {(mag.bancontact || 0).toLocaleString('fr-BE')}€
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -607,6 +610,7 @@ export default function Comptabilite() {
                 <td className="px-4 py-3 text-right text-sm text-cyan-600">{fmt(totalRevenu)}€</td>
                 <td className="px-4 py-3 text-right text-sm">{fmt(totalCash)}€</td>
                 <td className="px-4 py-3 text-right text-sm text-blue-600">{fmt(totalVirement)}€</td>
+                <td className="px-4 py-3 text-right text-sm text-purple-600">{fmt(totalBancontact)}€</td>
               </tr>
             </tfoot>
           </table>
