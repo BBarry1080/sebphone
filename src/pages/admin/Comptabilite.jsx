@@ -72,11 +72,26 @@ export default function Comptabilite() {
   const totalPrixAchat          = stockDisponible.reduce((acc, p) => acc + (p.purchase_price || 0), 0)
   const totalBeneficePotentiel  = stockDisponible.reduce((acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0)
   const totalBeneficeRealise    = stockVendu.reduce((acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0)
-  const totalTVA                = stockVendu.reduce((acc, p) => acc + (p.tva_amount || 0), 0)
+
+  const calcTVA = (phone) => {
+    const ttc   = phone.price || 0
+    const achat = phone.purchase_price || 0
+    if (phone.tva_regime === 'normale') {
+      const ht  = ttc / 1.21
+      const tva = ttc - ht
+      return { ht: ht.toFixed(2), tva: tva.toFixed(2) }
+    }
+    const marge = ttc - achat
+    const tva   = marge > 0 ? marge * 21 / 121 : 0
+    const ht    = ttc - tva
+    return { ht: ht.toFixed(2), tva: tva.toFixed(2) }
+  }
 
   const soldPhonesDetail = phones
     .filter((p) => p.status === 'vendu')
     .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
+
+  const totalTVA = soldPhonesDetail.reduce((acc, p) => acc + parseFloat(calcTVA(p).tva), 0)
 
   const isCash       = (method) => method?.toLowerCase().includes('cash')
   const isVirement   = (method) => method?.toLowerCase().includes('virement')
@@ -136,7 +151,7 @@ export default function Comptabilite() {
       prixAchat:           dispo.reduce((a, p) => a + (p.purchase_price || 0), 0),
       beneficePotentiel:   dispo.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
       beneficeRealise:     vendu.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
-      tva:                 vendu.reduce((a, p) => a + (p.tva_amount || 0), 0),
+      tva:                 vendu.reduce((a, p) => a + parseFloat(calcTVA(p).tva), 0),
       cash:        magPayments.filter((p) => isCash(p.payment_method)).reduce((a, p) => a + p.amount, 0),
       virement:    magPayments.filter((p) => isVirement(p.payment_method)).reduce((a, p) => a + p.amount, 0),
       mixte:       magPayments.filter((p) => isMixte(p.payment_method)).reduce((a, p) => a + p.amount, 0),
@@ -158,7 +173,7 @@ export default function Comptabilite() {
     prixAchat:         sebphoneDispo.reduce((a, p) => a + (p.purchase_price || 0), 0),
     beneficePotentiel: sebphoneDispo.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
     beneficeRealise:   sebphoneVendu.reduce((a, p) => a + ((p.final_price || p.price || 0) - (p.purchase_price || 0)), 0),
-    tva:               sebphoneVendu.reduce((a, p) => a + (p.tva_amount || 0), 0),
+    tva:               sebphoneVendu.reduce((a, p) => a + parseFloat(calcTVA(p).tva), 0),
     cash:        sebphonePayments.filter((p) => isCash(p.payment_method)).reduce((a, p) => a + p.amount, 0),
     virement:    sebphonePayments.filter((p) => isVirement(p.payment_method)).reduce((a, p) => a + p.amount, 0),
     mixte:       sebphonePayments.filter((p) => isMixte(p.payment_method)).reduce((a, p) => a + p.amount, 0),
@@ -368,7 +383,7 @@ export default function Comptabilite() {
             <div className="bg-purple-50 rounded-xl p-3">
               <p className="text-xs text-purple-500 mb-1">TVA sur marge</p>
               <p className="font-bold text-purple-700">
-                {soldPhonesDetail.filter((p) => p.tva_regime === 'marge').reduce((a, p) => a + (p.tva_amount || 0), 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                {soldPhonesDetail.filter((p) => p.tva_regime === 'marge').reduce((a, p) => a + parseFloat(calcTVA(p).tva), 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
               </p>
               <p className="text-xs text-purple-400">
                 {soldPhonesDetail.filter((p) => p.tva_regime === 'marge').length} ventes
@@ -377,7 +392,7 @@ export default function Comptabilite() {
             <div className="bg-blue-50 rounded-xl p-3">
               <p className="text-xs text-blue-500 mb-1">TVA normale 21%</p>
               <p className="font-bold text-blue-700">
-                {soldPhonesDetail.filter((p) => p.tva_regime === 'normale').reduce((a, p) => a + (p.tva_amount || 0), 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                {soldPhonesDetail.filter((p) => p.tva_regime === 'normale').reduce((a, p) => a + parseFloat(calcTVA(p).tva), 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
               </p>
               <p className="text-xs text-blue-400">
                 {soldPhonesDetail.filter((p) => p.tva_regime === 'normale').length} ventes
@@ -418,10 +433,10 @@ export default function Comptabilite() {
                         {(phone.price || 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {(phone.price_ht || 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                        {parseFloat(calcTVA(phone).ht).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
                       </td>
                       <td className="px-4 py-3 text-sm font-bold text-purple-600">
-                        {(phone.tva_amount || 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                        {parseFloat(calcTVA(phone).tva).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {phone.magasins?.[0] ? (MAGASINS[phone.magasins[0]]?.nom?.replace('Seb Telecom — ', '') || phone.magasins[0]) : '—'}
