@@ -1103,6 +1103,7 @@ export default function Stock() {
       const { error } = await supabase.from('phones').delete().eq('id', phoneId)
       if (error) throw error
       fetchPhones()
+      setTimeout(() => window.location.reload(), 500)
     } catch (err) {
       console.error('Erreur suppression:', err)
       alert('Erreur lors de la suppression')

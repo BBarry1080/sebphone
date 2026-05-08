@@ -23,7 +23,10 @@ export default function Comptabilite() {
 
   const [phones, setPhones] = useState([])
   const [payments, setPayments] = useState([])
-  const [reconStock, setReconStock] = useState([])
+  const [reconStock, setReconStock]               = useState([])
+  const [soldMagasinMap, setSoldMagasinMap]       = useState({})
+  const [showCADetail, setShowCADetail]           = useState(false)
+  const [showReconDetail, setShowReconDetail]     = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedMagasin, setSelectedMagasin] = useState('tous')
   const [selectedMethod, setSelectedMethod] = useState(null)
@@ -42,17 +45,23 @@ export default function Comptabilite() {
 
   const fetchData = async () => {
     setLoading(true)
-    const [phonesRes, paymentsRes, reconRes] = await Promise.all([
+    const [phonesRes, paymentsRes, reconRes, soldOrdersRes] = await Promise.all([
       supabase.from('phones').select('*'),
       supabase.from('payments').select('*').order('payment_date', { ascending: false }),
       supabase.from('purchase_registry')
-        .select('purchase_price, magasin_id, fournisseur')
+        .select('purchase_price, magasin_id, fournisseur, brand, model, created_at')
         .eq('phone_condition', 'reconditionne')
         .eq('reconditioning_status', 'en_attente'),
+      supabase.from('orders').select('phone_id, magasin_id').eq('status', 'recupere'),
     ])
     setPhones(phonesRes.data || [])
     setPayments(paymentsRes.data || [])
     setReconStock(reconRes.data || [])
+
+    const map = {}
+    soldOrdersRes.data?.forEach((o) => { if (o.phone_id) map[o.phone_id] = o.magasin_id })
+    setSoldMagasinMap(map)
+
     setLoading(false)
   }
 
@@ -147,7 +156,7 @@ export default function Comptabilite() {
   const statsByMagasin = allowedMagasins.map((mag) => {
     const magPhones   = phones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(mag.id))
     const dispo       = magPhones.filter((p) => p.status === 'disponible')
-    const vendu       = magPhones.filter((p) => p.status === 'vendu')
+    const vendu       = phones.filter((p) => p.status === 'vendu' && soldMagasinMap[p.id] === mag.id)
     const magPayments = payments.filter((p) => p.magasin_id === mag.id)
     return {
       ...mag,
@@ -254,23 +263,35 @@ export default function Comptabilite() {
           <p className="text-xs text-gray-400 mt-1">{stockDisponible.length} appareils disponibles</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <div
+          onClick={() => setShowCADetail((v) => !v)}
+          className={`bg-white rounded-2xl p-5 border shadow-sm cursor-pointer transition-all ${
+            showCADetail ? 'border-[#00B4CC] bg-cyan-50' : 'border-gray-100 hover:border-[#00B4CC]'
+          }`}
+        >
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 bg-cyan-100 rounded-xl flex items-center justify-center">
               <TrendingUp size={18} className="text-cyan-600" />
             </div>
             <span className="text-xs text-gray-500 font-medium">Chiffre d'affaires</span>
+            <Eye size={14} className="text-gray-400 ml-auto" />
           </div>
           <p className="text-2xl font-black text-cyan-600">{fmt(totalRevenu)}€</p>
           <p className="text-xs text-gray-400 mt-1">Total encaissé ({filteredPayments.length} paiements)</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-orange-200 shadow-sm">
+        <div
+          onClick={() => setShowReconDetail((v) => !v)}
+          className={`bg-white rounded-2xl p-5 border shadow-sm cursor-pointer transition-all ${
+            showReconDetail ? 'border-orange-400 bg-orange-50' : 'border-orange-200 hover:border-orange-400'
+          }`}
+        >
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
               <Wrench size={18} className="text-orange-600" />
             </div>
             <span className="text-xs text-gray-500 font-medium">Stock en reconditionnement</span>
+            <Eye size={14} className="text-gray-400 ml-auto" />
           </div>
           <p className="text-2xl font-black text-orange-600">{fmt(totalReconStock)}€</p>
           <p className="text-xs text-gray-400 mt-1">Prix d'achat — en attente ({filteredReconData.length})</p>
@@ -371,6 +392,104 @@ export default function Comptabilite() {
         </div>
       )}
 
+      {/* DÉTAIL CA */}
+      {showCADetail && (
+        <div className="bg-white rounded-2xl border border-cyan-200 shadow-sm mb-8 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 className="font-bold text-[#1B2A4A] flex items-center gap-2">
+              <TrendingUp size={18} className="text-cyan-600" />
+              Dernières ventes ({filteredPayments.length})
+            </h3>
+            <button onClick={() => setShowCADetail(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Date', 'Téléphone', 'Magasin', 'Mode paiement', 'Montant'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...filteredPayments]
+                  .sort((a, b) => new Date(b.payment_date || 0) - new Date(a.payment_date || 0))
+                  .map((p) => {
+                    const phone = phones.find((ph) => ph.id === p.phone_id)
+                    return (
+                      <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                          {p.payment_date ? new Date(p.payment_date).toLocaleDateString('fr-BE') : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <p className="font-medium text-[#1B2A4A]">{phone?.name || phone?.model || '—'}</p>
+                          <p className="text-xs text-gray-400">{phone?.color}{phone?.color && phone?.storage ? ' · ' : ''}{phone?.storage}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {(MAGASINS[p.magasin_id]?.nom || p.magasin_id || '—').replace('Seb Telecom — ', '')}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{p.payment_method || '—'}</td>
+                        <td className="px-4 py-3 text-sm font-bold text-cyan-600 whitespace-nowrap">+{p.amount}€</td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+            {filteredPayments.length === 0 && (
+              <div className="py-8 text-center text-gray-400 text-sm">Aucune vente enregistrée</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DÉTAIL RECONDITIONNEMENT */}
+      {showReconDetail && (
+        <div className="bg-white rounded-2xl border border-orange-200 shadow-sm mb-8 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 className="font-bold text-[#1B2A4A] flex items-center gap-2">
+              <Wrench size={18} className="text-orange-600" />
+              Stock en reconditionnement ({filteredReconData.length})
+            </h3>
+            <button onClick={() => setShowReconDetail(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Date', 'Modèle', 'Fournisseur', 'Magasin', 'Prix achat'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[...filteredReconData]
+                  .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+                  .map((e, idx) => (
+                    <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                        {e.created_at ? new Date(e.created_at).toLocaleDateString('fr-BE') : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-[#1B2A4A]">{e.brand} {e.model}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{e.fournisseur || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {(MAGASINS[e.magasin_id]?.nom || e.magasin_id || '—').replace('Seb Telecom — ', '')}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-bold text-orange-600 whitespace-nowrap">{e.purchase_price}€</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+            {filteredReconData.length === 0 && (
+              <div className="py-8 text-center text-gray-400 text-sm">Aucun téléphone en attente de reconditionnement</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* DÉTAIL TVA */}
       {showTVADetail && (
         <div className="bg-white rounded-2xl border border-purple-200 shadow-sm mb-8 overflow-hidden">
@@ -416,8 +535,11 @@ export default function Comptabilite() {
               </thead>
               <tbody>
                 {soldPhonesDetail
-                  .filter((p) => selectedMagasin === 'tous'
-                    || (selectedMagasin === 'sebphone' ? p.fournisseur === 'SebPhone' : p.magasins?.includes(selectedMagasin)))
+                  .filter((p) => {
+                    if (selectedMagasin === 'tous') return true
+                    if (selectedMagasin === 'sebphone') return p.fournisseur === 'SebPhone'
+                    return soldMagasinMap[p.id] === selectedMagasin
+                  })
                   .map((phone) => (
                     <tr key={phone.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
@@ -572,7 +694,9 @@ export default function Comptabilite() {
               </tr>
             </thead>
             <tbody>
-              {allStats.map((mag) => (
+              {allStats
+                .filter((mag) => selectedMagasin === 'tous' || mag.id === selectedMagasin)
+                .map((mag) => (
                 <tr key={mag.id} className={`border-t border-gray-100 hover:bg-gray-50 ${
                   mag.id === 'sebphone' ? 'bg-cyan-50/50 font-medium' : ''
                 }`}>

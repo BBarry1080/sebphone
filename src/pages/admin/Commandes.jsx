@@ -350,6 +350,7 @@ export default function Commandes() {
     }
     setOrders((prev) => prev.filter((x) => x.id !== o.id))
     setDeletingId(null)
+    setTimeout(() => window.location.reload(), 500)
   }
 
   const fetchOrders = async () => {
@@ -362,6 +363,7 @@ export default function Commandes() {
     const { data, error } = await supabase
       .from('orders')
       .select('*, phone:phones(name, brand, model, grade, storage, color, imei)')
+      .in('status', ['en_attente', 'acompte_paye', 'confirme'])
       .order('created_at', { ascending: false })
     if (error) console.error('fetchOrders error:', error)
     setOrders(data || [])
