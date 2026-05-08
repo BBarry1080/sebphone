@@ -21,6 +21,10 @@ export default function Confirmation() {
   const sessionId = searchParams.get('session_id')
 
   useEffect(() => {
+    console.log('=== CONFIRMATION ===')
+    console.log('code:', code)
+    console.log('session_id:', sessionId)
+
     if (state?.reservationCode) return            // déjà reçu via navigate
     if (!code) { setNotFound(true); return }       // ni state ni code → 404
     if (!isSupabaseReady) { setNotFound(true); return }
@@ -33,6 +37,9 @@ export default function Confirmation() {
         .select('*')
         .eq('reservation_code', code)
         .maybeSingle()
+
+      console.log('order found:', order)
+      console.log('order error:', error)
 
       if (cancelled) return
       if (error || !order) { setNotFound(true); setLoading(false); return }
