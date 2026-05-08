@@ -107,13 +107,20 @@ export default function Comptabilite() {
     .filter((p) => p.status === 'vendu')
     .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
 
-  const totalTVA = soldPhonesDetail.reduce((acc, p) => acc + parseFloat(calcTVA(p).tva), 0)
+  const totalTVA = phones
+    .filter((p) => p.status === 'vendu' && (
+      selectedMagasin === 'tous' ||
+      (selectedMagasin === 'sebphone'
+        ? p.fournisseur === 'SebPhone'
+        : soldMagasinMap[p.id] === selectedMagasin)
+    ))
+    .reduce((acc, p) => acc + parseFloat(calcTVA(p).tva), 0)
 
-  const isCash       = (method) => method?.toLowerCase().includes('cash')
+  const isCash       = (method) => method?.toLowerCase() === 'cash'
+  const isBancontact = (method) => method?.toLowerCase() === 'bancontact'
   const isVirement   = (method) => method?.toLowerCase().includes('virement')
-  const isBancontact = (method) => method?.toLowerCase().includes('bancontact')
   const isStripe     = (method) => method?.toLowerCase().includes('stripe')
-  const isMixte      = (method) => isCash(method) && isVirement(method)
+  const isMixte      = (method) => method?.includes('+')
 
   const filteredPayments = selectedMagasin === 'tous'
     ? payments
@@ -395,56 +402,78 @@ export default function Comptabilite() {
       )}
 
       {/* DÉTAIL CA */}
-      {showCADetail && (
-        <div className="bg-white rounded-2xl border border-cyan-200 shadow-sm mb-8 overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b border-gray-100">
-            <h3 className="font-bold text-[#1B2A4A] flex items-center gap-2">
-              <TrendingUp size={18} className="text-cyan-600" />
-              Dernières ventes ({filteredPayments.length})
-            </h3>
-            <button onClick={() => setShowCADetail(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
-              <X size={18} />
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  {['Date', 'Téléphone', 'Magasin', 'Mode paiement', 'Montant'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...filteredPayments]
-                  .sort((a, b) => new Date(b.payment_date || 0) - new Date(a.payment_date || 0))
-                  .map((p) => {
-                    const phone = phones.find((ph) => ph.id === p.phone_id)
+      {showCADetail && (() => {
+        const groupedPayments = Object.values(
+          filteredPayments.reduce((acc, p) => {
+            const key = p.phone_id || `id-${p.id}`
+            if (!acc[key]) {
+              acc[key] = {
+                ...p,
+                methods:     [{ method: p.payment_method, amount: p.amount }],
+                totalAmount: p.amount || 0,
+              }
+            } else {
+              acc[key].methods.push({ method: p.payment_method, amount: p.amount })
+              acc[key].totalAmount += p.amount || 0
+              if (new Date(p.payment_date || 0) > new Date(acc[key].payment_date || 0)) {
+                acc[key].payment_date = p.payment_date
+              }
+            }
+            return acc
+          }, {})
+        ).sort((a, b) => new Date(b.payment_date || 0) - new Date(a.payment_date || 0))
+
+        return (
+          <div className="bg-white rounded-2xl border border-cyan-200 shadow-sm mb-8 overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-bold text-[#1B2A4A] flex items-center gap-2">
+                <TrendingUp size={18} className="text-cyan-600" />
+                Dernières ventes ({groupedPayments.length})
+              </h3>
+              <button onClick={() => setShowCADetail(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {['Date', 'Téléphone', 'Magasin', 'Mode paiement', 'Montant'].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedPayments.map((sale) => {
+                    const phone = phones.find((ph) => ph.id === sale.phone_id)
                     return (
-                      <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <tr key={sale.phone_id || sale.id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
-                          {p.payment_date ? new Date(p.payment_date).toLocaleDateString('fr-BE') : '—'}
+                          {sale.payment_date ? new Date(sale.payment_date).toLocaleDateString('fr-BE') : '—'}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <p className="font-medium text-[#1B2A4A]">{phone?.name || phone?.model || '—'}</p>
                           <p className="text-xs text-gray-400">{phone?.color}{phone?.color && phone?.storage ? ' · ' : ''}{phone?.storage}</p>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
-                          {(MAGASINS[p.magasin_id]?.nom || p.magasin_id || '—').replace('Seb Telecom — ', '')}
+                          {(MAGASINS[sale.magasin_id]?.nom || sale.magasin_id || '—').replace('Seb Telecom — ', '')}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{p.payment_method || '—'}</td>
-                        <td className="px-4 py-3 text-sm font-bold text-cyan-600 whitespace-nowrap">+{p.amount}€</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {sale.methods.map((m) => `${m.method} ${m.amount}€`).join(' + ')}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-bold text-cyan-600 whitespace-nowrap">+{sale.totalAmount}€</td>
                       </tr>
                     )
                   })}
-              </tbody>
-            </table>
-            {filteredPayments.length === 0 && (
-              <div className="py-8 text-center text-gray-400 text-sm">Aucune vente enregistrée</div>
-            )}
+                </tbody>
+              </table>
+              {groupedPayments.length === 0 && (
+                <div className="py-8 text-center text-gray-400 text-sm">Aucune vente enregistrée</div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* DÉTAIL RECONDITIONNEMENT */}
       {showReconDetail && (
