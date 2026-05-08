@@ -355,6 +355,29 @@ export default function Registre() {
     if (!error) fetchEntries()
   }
 
+  const handleAddPhoneToSeller = (entry) => {
+    setForm({
+      ...initialForm(),
+      seller_first_name:   entry.seller_first_name || '',
+      seller_last_name:    entry.seller_last_name || '',
+      seller_address:      entry.seller_address || '',
+      seller_phone:        entry.seller_phone || '',
+      seller_id_number:    entry.seller_id_number || '',
+      seller_id_type:      entry.seller_id_type || "Carte d'identité",
+      seller_birth_date:   entry.seller_birth_date || '',
+      seller_id_front_url: entry.seller_id_front_url || '',
+      seller_id_back_url:  entry.seller_id_back_url || '',
+      magasin_id:          entry.magasin_id || 'anderlecht',
+      fournisseur:         entry.fournisseur || 'SebPhone',
+      transaction_date:    new Date().toISOString().split('T')[0],
+      notes:               '',
+    })
+    setIdType(entry.seller_id_type || "Carte d'identité")
+    setPhones([emptyPhone()])
+    setEditingEntry(null)
+    setShowForm(true)
+  }
+
   const filteredEntries = entries.filter((entry) => {
     const matchSearch = !searchQuery ||
       `${entry.seller_first_name} ${entry.seller_last_name}`
@@ -694,6 +717,11 @@ export default function Registre() {
                             }}
                             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                             <Pencil size={14}/> Modifier
+                          </button>
+                          <button
+                            onClick={() => { handleAddPhoneToSeller(entry); setOpenMenu(null) }}
+                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-cyan-600 hover:bg-cyan-50 font-medium cursor-pointer">
+                            <Plus size={14}/> Ajouter un téléphone
                           </button>
                           <button
                             onClick={() => { handleAddToStock(entry); setOpenMenu(null) }}

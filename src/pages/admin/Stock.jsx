@@ -30,12 +30,18 @@ const CONDITION_LABELS = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasi
 const GRADES = ['Bon état', 'Très bon état', 'Comme neuf', 'Neuf']
 const FOURNISSEURS = ['SebPhone', 'Marrakech', 'Molenbeek', 'Louise', 'Anderlecht']
 const LOCATIONS = ['Molenbeek', 'Louise', 'Anderlecht', 'SebPhone', 'Marrakech', 'Autre']
-const STATUSES = ['disponible', 'reserve', 'vendu']
-const STATUS_LABELS = { disponible: 'En stock', reserve: 'Réservé', vendu: 'Vendu' }
+const STATUSES = ['disponible', 'reserve', 'vendu', 'sur_commande']
+const STATUS_LABELS = {
+  disponible:   'En stock',
+  reserve:      'Réservé',
+  vendu:        'Vendu',
+  sur_commande: 'Sur commande',
+}
 const STATUS_COLORS = {
-  disponible: 'bg-green-100 text-green-700',
-  reserve:    'bg-yellow-100 text-yellow-800',
-  vendu:      'bg-gray-100 text-gray-600',
+  disponible:   'bg-green-100 text-green-700',
+  reserve:      'bg-yellow-100 text-yellow-800',
+  vendu:        'bg-gray-100 text-gray-600',
+  sur_commande: 'bg-orange-100 text-orange-700',
 }
 const CONDITION_COLORS = {
   neuf:          'bg-green-100 text-green-700',
@@ -119,6 +125,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
   // ── Brand & visibilité ───────────────────────────────────────────
   const [brand, setBrand]                         = useState(phone?.brand || 'Apple')
   const [visibleOnSite, setVisibleOnSite]         = useState(phone?.visible_on_site ?? true)
+  const [phoneStatus, setPhoneStatus]             = useState(phone?.status || 'disponible')
 
   // ── Model autocomplete ───────────────────────────────────────────
   const [modelSearch, setModelSearch]             = useState(phone?.name?.split(' ').slice(0, 3).join(' ') || '')
@@ -152,6 +159,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
     return []
   })()
   const [partsReplaced, setPartsReplaced] = useState(initialPartsReplaced)
+  const [faceIdStatus, setFaceIdStatus]   = useState(phone?.face_id_status || null)
   const [saving, setSaving]       = useState(false)
 
   // ── Suggestions modèles — ordre générationnel strict ────────────
@@ -240,9 +248,11 @@ function PhoneModal({ phone, onClose, onSaved }) {
   }
 
   const togglePart = (part) => {
-    setPartsReplaced((prev) =>
-      prev.includes(part) ? prev.filter((p) => p !== part) : [...prev, part]
-    )
+    setPartsReplaced((prev) => {
+      const next = prev.includes(part) ? prev.filter((p) => p !== part) : [...prev, part]
+      if (part === 'Face ID / Touch ID' && prev.includes(part)) setFaceIdStatus(null)
+      return next
+    })
   }
 
   const handleSave = async () => {
@@ -254,7 +264,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
         name:           modelSearch.trim(),
         model:          modelSearch.trim(),
         brand:          brand || 'Apple',
-        visible_on_site: visibleOnSite,
+        visible_on_site: phoneStatus === 'sur_commande' ? false : visibleOnSite,
         tva_regime:     tvaRegime || 'marge',
         tva_amount:     parseFloat(tvaCalc.tva),
         price_ht:       parseFloat(tvaCalc.ht),
@@ -272,7 +282,8 @@ function PhoneModal({ phone, onClose, onSaved }) {
         fournisseur:    fournisseur || null,
         stock_location: stockLocation || null,
         parts_replaced: condition === 'reconditionne' ? (partsReplaced || []) : [],
-        status:         'disponible',
+        face_id_status: partsReplaced.includes('Face ID / Touch ID') ? faceIdStatus : null,
+        status:         phoneStatus,
         added_by:         currentUser.name || 'Admin',
         added_by_magasin: currentUser.magasin_id || magasins?.[0] || null,
       }
@@ -667,24 +678,52 @@ function PhoneModal({ phone, onClose, onSaved }) {
             )}
           </div>
 
-          {/* ── Section 4.5 — Visibilité site ── */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-            <div>
-              <p className="text-sm font-medium text-[#1B2A4A]">Visible sur sebphone.be</p>
-              <p className="text-xs text-gray-400 mt-0.5">Désactivez pour un stock interne uniquement</p>
+          {/* ── Section 4.4 — Statut ── */}
+          <div>
+            <h3 className="text-sm font-semibold text-[#1B2A4A] mb-2">Statut</h3>
+            <div className="flex flex-wrap gap-2">
+              {['disponible', 'sur_commande'].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setPhoneStatus(s)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border-2 transition-all cursor-pointer ${
+                    phoneStatus === s
+                      ? s === 'sur_commande'
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'
+                  }`}
+                >
+                  {s === 'disponible' ? '✅ Disponible' : '📦 Sur commande'}
+                </button>
+              ))}
             </div>
-            <button
-              type="button"
-              onClick={() => setVisibleOnSite((v) => !v)}
-              className={`w-12 h-6 rounded-full transition-all relative cursor-pointer ${
-                visibleOnSite ? 'bg-[#00B4CC]' : 'bg-gray-300'
-              }`}
-            >
-              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
-                visibleOnSite ? 'left-7' : 'left-1'
-              }`} />
-            </button>
+            {phoneStatus === 'sur_commande' && (
+              <p className="text-xs text-orange-600 mt-1">📦 Téléphone non en stock physique — automatiquement masqué du site public</p>
+            )}
           </div>
+
+          {/* ── Section 4.5 — Visibilité site ── */}
+          {phoneStatus !== 'sur_commande' && (
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+              <div>
+                <p className="text-sm font-medium text-[#1B2A4A]">Visible sur sebphone.be</p>
+                <p className="text-xs text-gray-400 mt-0.5">Désactivez pour un stock interne uniquement</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVisibleOnSite((v) => !v)}
+                className={`w-12 h-6 rounded-full transition-all relative cursor-pointer ${
+                  visibleOnSite ? 'bg-[#00B4CC]' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                  visibleOnSite ? 'left-7' : 'left-1'
+                }`} />
+              </button>
+            </div>
+          )}
 
           {/* ── Section 5 — Pièces remplacées (reconditionné) ── */}
           {condition === 'reconditionne' && (
@@ -703,6 +742,32 @@ function PhoneModal({ phone, onClose, onSaved }) {
                   </label>
                 ))}
               </div>
+              {partsReplaced.includes('Face ID / Touch ID') && (
+                <div className="mt-3 ml-6 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFaceIdStatus('fonctionnel')}
+                    className={`px-2 py-1 rounded-lg text-xs border transition-all cursor-pointer ${
+                      faceIdStatus === 'fonctionnel'
+                        ? 'bg-green-100 border-green-500 text-green-700 font-bold'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-green-500'
+                    }`}
+                  >
+                    ✅ Fonctionnel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFaceIdStatus('non_fonctionnel')}
+                    className={`px-2 py-1 rounded-lg text-xs border transition-all cursor-pointer ${
+                      faceIdStatus === 'non_fonctionnel'
+                        ? 'bg-red-100 border-red-500 text-red-700 font-bold'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-red-500'
+                    }`}
+                  >
+                    ❌ Pas fonctionnel
+                  </button>
+                </div>
+              )}
               {partsReplaced.length === 0 && (
                 <p className="text-xs text-gray-400 mt-2">Aucune pièce remplacée = État original</p>
               )}
@@ -761,6 +826,7 @@ export default function Stock() {
   const [selectedFournisseur, setSelectedFournisseur] = useState('tous')
   const [selectedTVA, setSelectedTVA] = useState('tous')
   const [selectedCondition, setSelectedCondition] = useState('tous')
+  const [selectedStockStatus, setSelectedStockStatus] = useState('tous')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingPhone, setEditingPhone]   = useState(null)
 
@@ -1155,6 +1221,7 @@ export default function Stock() {
       if (selectedFournisseur !== 'tous' && p.fournisseur !== selectedFournisseur) return false
       if (selectedTVA !== 'tous' && (p.tva_regime || 'marge') !== selectedTVA) return false
       if (selectedCondition !== 'tous' && p.condition !== selectedCondition) return false
+      if (selectedStockStatus !== 'tous' && p.status !== selectedStockStatus) return false
       return true
     })
     .sort((a, b) => getModelIndex(a.name) - getModelIndex(b.name))
@@ -1304,6 +1371,27 @@ export default function Stock() {
         ))}
       </div>
 
+      {/* Filtres statut stock */}
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold text-gray-500 mr-1">Filtrer par statut :</p>
+        {[
+          { value: 'tous',         label: 'Tous',           activeBg: 'bg-[#1B2A4A] text-white' },
+          { value: 'disponible',   label: '✅ Disponible',  activeBg: 'bg-green-500 text-white' },
+          { value: 'reserve',      label: '🟡 Réservé',     activeBg: 'bg-yellow-500 text-white' },
+          { value: 'sur_commande', label: '📦 Sur commande', activeBg: 'bg-orange-500 text-white' },
+        ].map(({ value, label, activeBg }) => (
+          <button
+            key={value}
+            onClick={() => setSelectedStockStatus(value)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+              selectedStockStatus === value ? activeBg : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* ── MOBILE CARDS ── */}
       <div className="block lg:hidden">
         {loading ? (
@@ -1355,6 +1443,18 @@ export default function Stock() {
                     <StatusDropdown id={phone.id} value={phone.status} onChange={handleStatusChange} />
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {phone.status === 'sur_commande' && (
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm('Marquer ce téléphone comme reçu et disponible en stock ?')) return
+                          await supabase.from('phones').update({ status: 'disponible', visible_on_site: true }).eq('id', phone.id)
+                          fetchPhones()
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-all whitespace-nowrap cursor-pointer"
+                      >
+                        ✅ Recevoir
+                      </button>
+                    )}
                     {(phone.status === 'disponible' || phone.status === 'reserve') && (
                       <button
                         onClick={() => {

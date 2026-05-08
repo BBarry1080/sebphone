@@ -29,6 +29,7 @@ export default function StockReconditionnement() {
     sale_price_estimated: '',
     magasin_id: 'anderlecht',
     reconditioning_notes: '',
+    face_id_status: null,
   })
 
   const totalPartsCost = Object.values(repairForm.parts_prices)
@@ -101,6 +102,7 @@ export default function StockReconditionnement() {
       sale_price_estimated: entry.sale_price_estimated || '',
       magasin_id: entry.magasin_id || 'anderlecht',
       reconditioning_notes: '',
+      face_id_status: entry.face_id_status || null,
     })
     setShowRepairModal(true)
   }
@@ -123,6 +125,7 @@ export default function StockReconditionnement() {
           sale_price_estimated: parseFloat(repairForm.sale_price_estimated),
           reconditioning_notes: repairForm.reconditioning_notes,
           reconditioning_done_at: new Date().toISOString(),
+          face_id_status: repairForm.face_id_status,
           added_to_stock: true,
         })
         .eq('id', selectedEntry.id)
@@ -145,6 +148,7 @@ export default function StockReconditionnement() {
           magasins:         [repairForm.magasin_id],
           fournisseur:      `${selectedEntry.seller_first_name} ${selectedEntry.seller_last_name}`,
           parts_replaced:   repairForm.parts_replaced,
+          face_id_status:   repairForm.face_id_status,
           notes:            repairForm.reconditioning_notes || null,
           added_by:         currentUser?.name || 'Admin',
           added_by_magasin: repairForm.magasin_id,
@@ -399,41 +403,74 @@ export default function StockReconditionnement() {
                   {PARTS_LIST.map((part) => {
                     const isChecked = repairForm.parts_replaced.includes(part)
                     return (
-                      <div
-                        key={part}
-                        className={`flex items-center gap-3 p-2 rounded-xl transition-all ${
-                          isChecked ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {
-                            const current = repairForm.parts_replaced
-                            const updated = current.includes(part) ? current.filter((p) => p !== part) : [...current, part]
-                            const newPrices = { ...repairForm.parts_prices }
-                            if (!updated.includes(part)) delete newPrices[part]
-                            setRepairForm((f) => ({ ...f, parts_replaced: updated, parts_prices: newPrices }))
-                          }}
-                          className="w-4 h-4 accent-[#00B4CC] flex-shrink-0"
-                        />
-                        <span className={`text-sm flex-1 ${isChecked ? 'font-medium text-orange-700' : 'text-gray-600'}`}>
-                          {part}
-                        </span>
-                        {isChecked && (
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              value={repairForm.parts_prices[part] || ''}
-                              onChange={(e) => setRepairForm((f) => ({
+                      <div key={part}>
+                        <div
+                          className={`flex items-center gap-3 p-2 rounded-xl transition-all ${
+                            isChecked ? 'bg-orange-50 border border-orange-200' : 'bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              const current = repairForm.parts_replaced
+                              const updated = current.includes(part) ? current.filter((p) => p !== part) : [...current, part]
+                              const newPrices = { ...repairForm.parts_prices }
+                              if (!updated.includes(part)) delete newPrices[part]
+                              const resetFaceId = part === 'Face ID / Touch ID' && current.includes(part)
+                              setRepairForm((f) => ({
                                 ...f,
-                                parts_prices: { ...f.parts_prices, [part]: e.target.value },
-                              }))}
-                              className="w-20 px-2 py-1 border border-orange-300 rounded-lg text-sm text-right focus:border-[#00B4CC] outline-none"
-                              placeholder="0"
-                              min="0"
-                            />
-                            <span className="text-xs text-gray-500">€</span>
+                                parts_replaced: updated,
+                                parts_prices: newPrices,
+                                ...(resetFaceId ? { face_id_status: null } : {}),
+                              }))
+                            }}
+                            className="w-4 h-4 accent-[#00B4CC] flex-shrink-0"
+                          />
+                          <span className={`text-sm flex-1 ${isChecked ? 'font-medium text-orange-700' : 'text-gray-600'}`}>
+                            {part}
+                          </span>
+                          {isChecked && (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                value={repairForm.parts_prices[part] || ''}
+                                onChange={(e) => setRepairForm((f) => ({
+                                  ...f,
+                                  parts_prices: { ...f.parts_prices, [part]: e.target.value },
+                                }))}
+                                className="w-20 px-2 py-1 border border-orange-300 rounded-lg text-sm text-right focus:border-[#00B4CC] outline-none"
+                                placeholder="0"
+                                min="0"
+                              />
+                              <span className="text-xs text-gray-500">€</span>
+                            </div>
+                          )}
+                        </div>
+                        {part === 'Face ID / Touch ID' && isChecked && (
+                          <div className="mt-2 ml-6 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setRepairForm((f) => ({ ...f, face_id_status: 'fonctionnel' }))}
+                              className={`px-2 py-1 rounded-lg text-xs border transition-all cursor-pointer ${
+                                repairForm.face_id_status === 'fonctionnel'
+                                  ? 'bg-green-100 border-green-500 text-green-700 font-bold'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-green-500'
+                              }`}
+                            >
+                              ✅ Fonctionnel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRepairForm((f) => ({ ...f, face_id_status: 'non_fonctionnel' }))}
+                              className={`px-2 py-1 rounded-lg text-xs border transition-all cursor-pointer ${
+                                repairForm.face_id_status === 'non_fonctionnel'
+                                  ? 'bg-red-100 border-red-500 text-red-700 font-bold'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-red-500'
+                              }`}
+                            >
+                              ❌ Pas fonctionnel
+                            </button>
                           </div>
                         )}
                       </div>
