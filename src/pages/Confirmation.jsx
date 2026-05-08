@@ -22,11 +22,17 @@ export default function Confirmation() {
 
   useEffect(() => {
     console.log('=== CONFIRMATION ===')
+    console.log('URL complète:', window.location.href)
+    console.log('Tous les params:', Object.fromEntries(searchParams))
     console.log('code:', code)
     console.log('session_id:', sessionId)
 
     if (state?.reservationCode) return            // déjà reçu via navigate
-    if (!code) { setNotFound(true); return }       // ni state ni code → 404
+    if (!code) {
+      console.warn('⚠️ Pas de code dans URL — affichage erreur')
+      setNotFound(true)
+      return
+    }
     if (!isSupabaseReady) { setNotFound(true); return }
 
     let cancelled = false
