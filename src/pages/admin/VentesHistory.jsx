@@ -49,7 +49,7 @@ export default function VentesHistory() {
       if (m.includes('stripe')) return '💳 Stripe'
       return method
     }
-    return sale?.payment_mode === 'total' ? '💵 Cash' : (sale?.payment_mode || '—')
+    return sale?.payment?.[0]?.payment_method || sale?.payment_method || '—'
   }
 
   const getWarranty = (saleDate) => {
