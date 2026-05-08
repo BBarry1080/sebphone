@@ -772,7 +772,7 @@ export default function Stock() {
     customer_name: '',
     customer_phone: '',
     customer_email: '',
-    payment_method: 'Cash',
+    payments: [{ method: 'Cash', amount: '' }],
     sale_price: '',
     sale_magasin: '',
     notes: '',
@@ -871,32 +871,42 @@ export default function Stock() {
 
       console.log('=== VENTE DEBUG ===')
       console.log('sale_magasin:', saleForm.sale_magasin)
-      console.log('payment_method:', saleForm.payment_method)
+      console.log('payments:', saleForm.payments)
       console.log('sale_price:', saleForm.sale_price)
 
-      const normalizedMethod =
-        saleForm.payment_method === 'Cash'     ? 'cash' :
-        saleForm.payment_method === 'Virement' ? 'virement bancaire' :
-        saleForm.payment_method.toLowerCase()
-
-      const paymentData = {
-        phone_id:       salePhone.id,
-        magasin_id:     saleForm.sale_magasin,
-        payment_method: normalizedMethod,
-        amount:         finalPrice,
-        purchase_price: salePhone.purchase_price || 0,
-        description:    `Vente ${salePhone.name || salePhone.model} — ${saleForm.customer_firstname} ${saleForm.customer_name}`,
-        payment_date:   saleDate,
+      const normalizeMethod = (m) => {
+        if (m === 'Cash')               return 'cash'
+        if (m === 'Virement bancaire')  return 'virement bancaire'
+        if (m === 'Bancontact')         return 'bancontact'
+        return (m || '').toLowerCase()
       }
-      console.log('paymentData:', paymentData)
 
-      const { data: paymentResult, error: paymentError } = await supabase
-        .from('payments')
-        .insert([paymentData])
-        .select()
+      const paymentRows = saleForm.payments
+        .filter((p) => parseFloat(p.amount) > 0)
+        .map((p) => ({
+          phone_id:       salePhone.id,
+          magasin_id:     saleForm.sale_magasin,
+          payment_method: normalizeMethod(p.method),
+          amount:         parseFloat(p.amount),
+          purchase_price: salePhone.purchase_price || 0,
+          description:    `Vente ${salePhone.name || salePhone.model} — ${saleForm.customer_firstname} ${saleForm.customer_name}`,
+          payment_date:   saleDate,
+        }))
+      console.log('paymentRows:', paymentRows)
 
-      console.log('paymentResult:', paymentResult)
-      console.log('paymentError:', paymentError)
+      if (paymentRows.length > 0) {
+        const { data: paymentResult, error: paymentError } = await supabase
+          .from('payments')
+          .insert(paymentRows)
+          .select()
+        console.log('paymentResult:', paymentResult)
+        console.log('paymentError:', paymentError)
+      }
+
+      const paymentMethodLabel = saleForm.payments
+        .filter((p) => parseFloat(p.amount) > 0)
+        .map((p) => p.method)
+        .join(' + ') || 'Cash'
 
       if (saleForm.customer_email) {
         try {
@@ -935,7 +945,7 @@ export default function Stock() {
               accessory_pack:   'Aucun',
               battery_replace:  'Non',
               warning_message:  '',
-              payment_method:   saleForm.payment_method,
+              payment_method:   paymentMethodLabel,
               tva_mention:      salePhone.tva_regime === 'marge'
                 ? "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)"
                 : 'TVA 21% incluse',
@@ -1026,7 +1036,7 @@ export default function Stock() {
                 ? (saleForm.discount_type === 'percent' ? `Remise ${saleForm.discount_value}%` : 'Remise')
                 : '',
               price_final:        `${finalPrice.toFixed(2)}€`,
-              payment_method:     saleForm.payment_method,
+              payment_method:     paymentMethodLabel,
               tva_regime:         saleForm.company_tva_regime,
               tva_mention:        saleForm.company_tva_regime === 'marge'
                 ? "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)"
@@ -1345,7 +1355,7 @@ export default function Stock() {
                             customer_name: '',
                             customer_phone: '',
                             customer_email: '',
-                            payment_method: 'Cash',
+                            payments: [{ method: 'Cash', amount: '' }],
                             sale_price: phone.price?.toString() || '',
                             sale_magasin: phone.magasins?.[0] || '',
                             notes: '',
@@ -1491,7 +1501,7 @@ export default function Stock() {
                                 customer_name: '',
                                 customer_phone: '',
                                 customer_email: '',
-                                payment_method: 'Cash',
+                                payments: [{ method: 'Cash', amount: '' }],
                                 sale_price: phone.price?.toString() || '',
                                 sale_magasin: phone.magasins?.[0] || '',
                                 notes: '',
@@ -1673,7 +1683,7 @@ export default function Stock() {
 
               <div>
                 <p className="text-xs font-semibold text-[#1B2A4A] uppercase mb-3">💳 Paiement</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Prix de vente (€) *</label>
                     <input
@@ -1688,24 +1698,97 @@ export default function Stock() {
                       </p>
                     )}
                   </div>
+
+                  {/* Multi-paiements */}
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Mode de paiement</label>
-                    <div className="flex flex-col gap-1.5">
-                      {['Cash', 'Bancontact', 'Virement'].map((method) => (
-                        <button
-                          key={method}
-                          type="button"
-                          onClick={() => setSaleForm((f) => ({ ...f, payment_method: method }))}
-                          className={`py-1.5 rounded-lg text-xs font-medium border-2 transition-all cursor-pointer ${
-                            saleForm.payment_method === method
-                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
-                              : 'border-gray-200 text-gray-600'
-                          }`}
-                        >
-                          {method === 'Cash' ? '💵' : method === 'Bancontact' ? '💳' : '🏦'} {method}
-                        </button>
+                    <label className="text-xs font-medium text-gray-600 mb-2 block">Modes de paiement</label>
+                    <div className="space-y-2">
+                      {saleForm.payments.map((pay, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <div className="flex flex-1 border border-gray-200 rounded-xl overflow-hidden">
+                            {['Cash', 'Bancontact', 'Virement bancaire'].map((method) => (
+                              <button
+                                key={method}
+                                type="button"
+                                onClick={() => setSaleForm((f) => ({
+                                  ...f,
+                                  payments: f.payments.map((p, i) => i === idx ? { ...p, method } : p),
+                                }))}
+                                className={`flex-1 px-2 py-2 text-xs font-medium transition-all cursor-pointer ${
+                                  pay.method === method ? 'bg-[#1B2A4A] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                {method === 'Cash' ? '💵' : method === 'Bancontact' ? '💳' : '🏦'}
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            type="number"
+                            value={pay.amount}
+                            onChange={(e) => setSaleForm((f) => ({
+                              ...f,
+                              payments: f.payments.map((p, i) => i === idx ? { ...p, amount: e.target.value } : p),
+                            }))}
+                            className="w-24 px-2 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                            placeholder="€"
+                          />
+                          {saleForm.payments.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setSaleForm((f) => ({
+                                ...f,
+                                payments: f.payments.filter((_, i) => i !== idx),
+                              }))}
+                              className="p-2 text-red-400 hover:text-red-600 cursor-pointer"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                        </div>
                       ))}
+
+                      <button
+                        type="button"
+                        onClick={() => setSaleForm((f) => ({
+                          ...f,
+                          payments: [...f.payments, { method: 'Cash', amount: '' }],
+                        }))}
+                        className="text-xs text-[#00B4CC] hover:text-cyan-700 font-semibold cursor-pointer"
+                      >
+                        + Ajouter un mode de paiement
+                      </button>
                     </div>
+
+                    {/* Récap dynamique */}
+                    {(() => {
+                      const sp = parseFloat(saleForm.sale_price) || 0
+                      const dv = parseFloat(saleForm.discount_value) || 0
+                      const da = saleForm.discount_type === 'percent' ? sp * dv / 100 : dv
+                      const fp = Math.max(sp - da, 0)
+                      const total = saleForm.payments.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0)
+                      if (sp === 0) return null
+                      if (Math.abs(total - fp) < 0.01) {
+                        return (
+                          <div className="mt-2 bg-green-50 rounded-xl p-2 text-xs font-bold text-green-700 text-center">
+                            ✓ Paiement complet — {total.toFixed(2)}€
+                          </div>
+                        )
+                      }
+                      if (total < fp) {
+                        return (
+                          <div className="mt-2 bg-orange-50 rounded-xl p-2 text-xs font-bold text-orange-600 flex justify-between">
+                            <span>Total : {total.toFixed(2)}€ / {fp.toFixed(2)}€</span>
+                            <span>Reste : {(fp - total).toFixed(2)}€</span>
+                          </div>
+                        )
+                      }
+                      return (
+                        <div className="mt-2 bg-red-50 rounded-xl p-2 text-xs font-bold text-red-600 flex justify-between">
+                          <span>Total : {total.toFixed(2)}€ / {fp.toFixed(2)}€</span>
+                          <span>Dépassement : +{(total - fp).toFixed(2)}€</span>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>
