@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Smartphone, ClipboardList, CheckCircle, Euro, TrendingUp } from 'lucide-react'
+import { Smartphone, ClipboardList, CheckCircle, Euro, TrendingUp, Receipt } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useCurrentUser, usePermission } from '../../hooks/usePermissions'
 
@@ -44,7 +44,7 @@ export default function Dashboard() {
     }
   }, [canSeeDashboard])
 
-  const [metrics, setMetrics] = useState({ disponible: 0, reserve: 0, vendu: 0, ca: 0, benefice: 0, beneficeReel: 0 })
+  const [metrics, setMetrics] = useState({ disponible: 0, reserve: 0, vendu: 0, ca: 0, benefice: 0, beneficeReel: 0, tvaMonth: 0 })
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -111,7 +111,16 @@ export default function Dashboard() {
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
       )
 
-      setMetrics({ disponible: disponible || 0, reserve: reserve || 0, vendu: vendu || 0, ca, benefice, beneficeReel })
+      // TVA collectée ce mois (téléphones vendus)
+      const { data: tvaMonthData } = await addFilter(supabase
+        .from('phones')
+        .select('tva_amount')
+        .eq('status', 'vendu')
+        .gte('updated_at', startOfMonth.toISOString()))
+
+      const tvaMonth = (tvaMonthData || []).reduce((acc, p) => acc + (p.tva_amount || 0), 0)
+
+      setMetrics({ disponible: disponible || 0, reserve: reserve || 0, vendu: vendu || 0, ca, benefice, beneficeReel, tvaMonth })
       setOrders(ordersData || [])
       setLoading(false)
     }
@@ -149,6 +158,12 @@ export default function Dashboard() {
           <MetricCard icon={TrendingUp} iconColor="bg-emerald-500" label="Bénéfice réel"
             value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.beneficeReel)}
             valueClass="text-emerald-600"
+          />
+        )}
+        {canSeeFinance && (
+          <MetricCard icon={Receipt} iconColor="bg-purple-500" label="TVA ce mois"
+            value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.tvaMonth || 0)}
+            valueClass="text-purple-600"
           />
         )}
       </div>

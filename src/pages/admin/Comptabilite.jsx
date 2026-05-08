@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { MAGASINS, MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS_ADMIN } from '../../utils/magasins'
 import {
   TrendingUp, ShoppingBag, CreditCard,
-  Banknote, Store, Plus, X, Eye, Wrench
+  Banknote, Store, Plus, X, Eye, Wrench, Receipt
 } from 'lucide-react'
 import { useRequirePermission, useCurrentUser, usePermission } from '../../hooks/usePermissions'
 
@@ -67,6 +67,7 @@ export default function Comptabilite() {
   const totalPrixAchat          = stockDisponible.reduce((acc, p) => acc + (p.purchase_price || 0), 0)
   const totalBeneficePotentiel  = stockDisponible.reduce((acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0)
   const totalBeneficeRealise    = stockVendu.reduce((acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0)
+  const totalTVA                = stockVendu.reduce((acc, p) => acc + (p.tva_amount || 0), 0)
 
   const isCash       = (method) => method?.toLowerCase().includes('cash')
   const isVirement   = (method) => method?.toLowerCase().includes('virement')
@@ -124,6 +125,7 @@ export default function Comptabilite() {
       prixAchat:           dispo.reduce((a, p) => a + (p.purchase_price || 0), 0),
       beneficePotentiel:   dispo.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
       beneficeRealise:     vendu.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
+      tva:                 vendu.reduce((a, p) => a + (p.tva_amount || 0), 0),
       cash:        magPayments.filter((p) => isCash(p.payment_method)).reduce((a, p) => a + p.amount, 0),
       virement:    magPayments.filter((p) => isVirement(p.payment_method)).reduce((a, p) => a + p.amount, 0),
       mixte:       magPayments.filter((p) => isMixte(p.payment_method)).reduce((a, p) => a + p.amount, 0),
@@ -145,6 +147,7 @@ export default function Comptabilite() {
     prixAchat:         sebphoneDispo.reduce((a, p) => a + (p.purchase_price || 0), 0),
     beneficePotentiel: sebphoneDispo.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
     beneficeRealise:   sebphoneVendu.reduce((a, p) => a + ((p.price || 0) - (p.purchase_price || 0)), 0),
+    tva:               sebphoneVendu.reduce((a, p) => a + (p.tva_amount || 0), 0),
     cash:        sebphonePayments.filter((p) => isCash(p.payment_method)).reduce((a, p) => a + p.amount, 0),
     virement:    sebphonePayments.filter((p) => isVirement(p.payment_method)).reduce((a, p) => a + p.amount, 0),
     mixte:       sebphonePayments.filter((p) => isMixte(p.payment_method)).reduce((a, p) => a + p.amount, 0),
@@ -251,6 +254,17 @@ export default function Comptabilite() {
           </div>
           <p className="text-2xl font-black text-green-600">{fmt(totalBeneficePotentiel)}€</p>
           <p className="text-xs text-gray-400 mt-1">Réalisé : {fmt(totalBeneficeRealise)}€</p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center">
+              <Receipt size={18} className="text-purple-600" />
+            </div>
+            <span className="text-xs text-gray-500 font-medium">TVA collectée</span>
+          </div>
+          <p className="text-2xl font-black text-purple-600">{totalTVA.toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€</p>
+          <p className="text-xs text-gray-400 mt-1">Sur téléphones vendus</p>
         </div>
 
         <div
@@ -387,7 +401,7 @@ export default function Comptabilite() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                {['Magasin', 'Stock dispo', 'Vendus', 'Prix achat', 'Bénéf. potentiel', 'CA', 'Cash', 'Virement'].map((h, i) => (
+                {['Magasin', 'Stock dispo', 'Vendus', 'Prix achat', 'Bénéf. potentiel', 'TVA', 'CA', 'Cash', 'Virement'].map((h, i) => (
                   <th
                     key={h}
                     className={`px-4 py-3 text-xs font-semibold text-gray-500 ${
@@ -430,6 +444,9 @@ export default function Comptabilite() {
                   <td className="px-4 py-3 text-right text-sm font-semibold text-green-600">
                     {fmt(mag.beneficePotentiel)}€
                   </td>
+                  <td className="px-4 py-3 text-right text-sm font-semibold text-purple-600">
+                    {(mag.tva || 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                  </td>
                   <td className="px-4 py-3 text-right text-sm font-semibold text-cyan-600">
                     {fmt(mag.ca)}€
                   </td>
@@ -449,6 +466,7 @@ export default function Comptabilite() {
                 <td className="px-4 py-3 text-center text-sm">{stockVendu.length}</td>
                 <td className="px-4 py-3 text-right text-sm text-orange-600">{fmt(totalPrixAchat)}€</td>
                 <td className="px-4 py-3 text-right text-sm text-green-600">{fmt(totalBeneficePotentiel)}€</td>
+                <td className="px-4 py-3 text-right text-sm text-purple-600">{totalTVA.toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€</td>
                 <td className="px-4 py-3 text-right text-sm text-cyan-600">{fmt(totalRevenu)}€</td>
                 <td className="px-4 py-3 text-right text-sm">{fmt(totalCash)}€</td>
                 <td className="px-4 py-3 text-right text-sm text-blue-600">{fmt(totalVirement)}€</td>

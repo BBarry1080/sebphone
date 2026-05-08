@@ -137,6 +137,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [imei, setImei]               = useState(phone?.imei || '')
   const [price, setPrice]             = useState(phone?.price || '')
   const [purchasePrice, setPurchasePrice] = useState(phone?.purchase_price ?? '')
+  const [tvaRegime, setTvaRegime]     = useState(phone?.tva_regime || (phone?.condition === 'neuf' ? 'normale' : 'marge'))
   const [fournisseur, setFournisseur] = useState(phone?.fournisseur || '')
   const [stockLocation, setStockLocation] = useState(phone?.stock_location || '')
   const [deposit, setDeposit]     = useState(phone?.deposit_amount || 50)
@@ -168,6 +169,26 @@ function PhoneModal({ phone, onClose, onSaved }) {
     'iPhone 16e', 'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max',
     'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
   ]
+
+  useEffect(() => {
+    setTvaRegime(condition === 'neuf' ? 'normale' : 'marge')
+  }, [condition])
+
+  const calculateTVA = (priceVal, purchaseVal, regime) => {
+    const p = parseFloat(priceVal) || 0
+    if (p <= 0) return { ht: '0.00', tva: '0.00', ttc: 0 }
+    if (regime === 'normale') {
+      const ht = p / 1.21
+      const tva = p - ht
+      return { ht: ht.toFixed(2), tva: tva.toFixed(2), ttc: p }
+    }
+    const marge = p - (parseFloat(purchaseVal) || 0)
+    if (marge <= 0) return { ht: p.toFixed(2), tva: '0.00', ttc: p }
+    const margeHT = marge / 1.21
+    const tva = marge - margeHT
+    const ht = p - tva
+    return { ht: ht.toFixed(2), tva: tva.toFixed(2), ttc: p }
+  }
 
   const modelSuggestions = (() => {
     if (!modelSearch || modelSearch.length === 0) return []
@@ -232,11 +253,15 @@ function PhoneModal({ phone, onClose, onSaved }) {
     if (!isEdit && !selectedModel && !modelSearch.trim()) return
     setSaving(true)
     try {
+      const tvaCalc = calculateTVA(price, purchasePrice, tvaRegime)
       const phoneData = {
         name:           modelSearch.trim(),
         model:          modelSearch.trim(),
         brand:          brand || 'Apple',
         visible_on_site: visibleOnSite,
+        tva_regime:     tvaRegime || 'marge',
+        tva_amount:     parseFloat(tvaCalc.tva),
+        price_ht:       parseFloat(tvaCalc.ht),
         condition:      condition || 'occasion',
         grade:          condition !== 'neuf' ? (grade || null) : null,
         storage:        storage || null,
@@ -516,6 +541,56 @@ function PhoneModal({ phone, onClose, onSaved }) {
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
                 />
               </div>
+            </div>
+
+            {/* ── TVA ── */}
+            <div className="mt-4">
+              <label className="text-xs font-medium text-gray-600 mb-2 block">Régime TVA</label>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {[
+                  { value: 'marge',   label: '📊 TVA sur marge',   sub: 'Occasion & Reconditionné' },
+                  { value: 'normale', label: '💼 TVA normale 21%', sub: 'Téléphones neufs' },
+                ].map(({ value, label, sub }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setTvaRegime(value)}
+                    className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                      tvaRegime === value ? 'border-[#00B4CC] bg-cyan-50' : 'border-gray-200 hover:border-[#00B4CC]'
+                    }`}
+                  >
+                    <p className={`text-xs font-bold ${tvaRegime === value ? 'text-[#00B4CC]' : 'text-[#1B2A4A]'}`}>{label}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+                  </button>
+                ))}
+              </div>
+
+              {price && (() => {
+                const calc = calculateTVA(price, purchasePrice, tvaRegime)
+                const marge = (parseFloat(price) || 0) - (parseFloat(purchasePrice) || 0)
+                return (
+                  <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Prix de vente TTC</span>
+                      <span className="font-medium">{(parseFloat(price) || 0).toFixed(2)}€</span>
+                    </div>
+                    {tvaRegime === 'marge' && (
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Marge brute</span>
+                        <span className="font-medium">{marge.toFixed(2)}€</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs text-orange-600">
+                      <span>TVA 21% {tvaRegime === 'marge' ? '(sur marge)' : '(sur prix)'}</span>
+                      <span className="font-bold">{calc.tva}€</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold text-[#1B2A4A] border-t border-gray-200 pt-1.5">
+                      <span>Prix HT</span>
+                      <span>{calc.ht}€</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
 
