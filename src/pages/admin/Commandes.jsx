@@ -333,6 +333,7 @@ export default function Commandes() {
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [saleOrigin, setSaleOrigin]   = useState('tous')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
@@ -378,6 +379,13 @@ export default function Commandes() {
 
   const filtered = orders.filter((o) => {
     if (activeFilter && o.status !== activeFilter) return false
+
+    const matchOrigin = saleOrigin === 'tous' ? true
+      : saleOrigin === 'site'
+        ? (o.stripe_payment_id != null || o.payment_intent_id != null)
+        : (o.stripe_payment_id == null && o.payment_intent_id == null)
+    if (!matchOrigin) return false
+
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
     return (
@@ -411,6 +419,27 @@ export default function Commandes() {
             }`}
           >
             {FILTER_LABELS[String(f)]}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtre origine */}
+      <div className="flex gap-2">
+        {[
+          { value: 'tous',    label: 'Tous' },
+          { value: 'magasin', label: '🏪 Magasin' },
+          { value: 'site',    label: '🌐 Site web' },
+        ].map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => setSaleOrigin(value)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+              saleOrigin === value
+                ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'
+            }`}
+          >
+            {label}
           </button>
         ))}
       </div>

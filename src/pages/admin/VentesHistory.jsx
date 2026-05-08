@@ -10,6 +10,7 @@ export default function VentesHistory() {
   const [loading, setLoading]                 = useState(true)
   const [searchQuery, setSearchQuery]         = useState('')
   const [selectedMagasin, setSelectedMagasin] = useState('tous')
+  const [saleOrigin, setSaleOrigin]           = useState('tous')
   const [selectedSale, setSelectedSale]       = useState(null)
 
   useEffect(() => { fetchSales() }, [])
@@ -179,7 +180,11 @@ export default function VentesHistory() {
       || sale.phone_name?.toLowerCase().includes(q)
       || sale.reservation_code?.toLowerCase().includes(q)
     const matchMagasin = selectedMagasin === 'tous' || sale.magasin_id === selectedMagasin
-    return matchSearch && matchMagasin
+    const matchOrigin = saleOrigin === 'tous' ? true
+      : saleOrigin === 'site'
+        ? (sale.stripe_payment_id != null || sale.payment_intent_id != null)
+        : (sale.stripe_payment_id == null && sale.payment_intent_id == null)
+    return matchSearch && matchMagasin && matchOrigin
   })
 
   if (loading) return (
@@ -219,6 +224,26 @@ export default function VentesHistory() {
               <option key={id} value={id}>{mag.nom.replace('Seb Telecom — ', '')}</option>
             ))}
           </select>
+        </div>
+
+        <div className="flex gap-2 mt-3">
+          {[
+            { value: 'tous',    label: 'Tous' },
+            { value: 'magasin', label: '🏪 Magasin' },
+            { value: 'site',    label: '🌐 Site web' },
+          ].map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => setSaleOrigin(value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                saleOrigin === value
+                  ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
