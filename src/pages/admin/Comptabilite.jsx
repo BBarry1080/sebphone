@@ -28,6 +28,7 @@ export default function Comptabilite() {
   const [selectedMagasin, setSelectedMagasin] = useState('tous')
   const [selectedMethod, setSelectedMethod] = useState(null)
   const [showAddPayment, setShowAddPayment] = useState(false)
+  const [showTVADetail, setShowTVADetail]   = useState(false)
   const [newPayment, setNewPayment] = useState({
     magasin_id: MAGASINS_LIST[0]?.id || 'anderlecht',
     payment_method: 'cash',
@@ -68,6 +69,10 @@ export default function Comptabilite() {
   const totalBeneficePotentiel  = stockDisponible.reduce((acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0)
   const totalBeneficeRealise    = stockVendu.reduce((acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0)
   const totalTVA                = stockVendu.reduce((acc, p) => acc + (p.tva_amount || 0), 0)
+
+  const soldPhonesDetail = phones
+    .filter((p) => p.status === 'vendu')
+    .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
 
   const isCash       = (method) => method?.toLowerCase().includes('cash')
   const isVirement   = (method) => method?.toLowerCase().includes('virement')
@@ -256,15 +261,21 @@ export default function Comptabilite() {
           <p className="text-xs text-gray-400 mt-1">Réalisé : {fmt(totalBeneficeRealise)}€</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <div
+          onClick={() => setShowTVADetail((v) => !v)}
+          className={`bg-white rounded-2xl p-5 border shadow-sm cursor-pointer transition-all ${
+            showTVADetail ? 'border-purple-400 bg-purple-50' : 'border-gray-100 hover:border-purple-400'
+          }`}
+        >
           <div className="flex items-center gap-2 mb-3">
             <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center">
               <Receipt size={18} className="text-purple-600" />
             </div>
             <span className="text-xs text-gray-500 font-medium">TVA collectée</span>
+            <Eye size={14} className="text-gray-400 ml-auto" />
           </div>
           <p className="text-2xl font-black text-purple-600">{totalTVA.toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€</p>
-          <p className="text-xs text-gray-400 mt-1">Sur téléphones vendus</p>
+          <p className="text-xs text-gray-400 mt-1">Cliquez pour le détail</p>
         </div>
 
         <div
@@ -313,6 +324,100 @@ export default function Comptabilite() {
               <p className="text-xs text-gray-500 font-medium">Stripe (en ligne)</p>
               <p className="text-xl font-black text-purple-600">{fmt(totalStripe)}€</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* DÉTAIL TVA */}
+      {showTVADetail && (
+        <div className="bg-white rounded-2xl border border-purple-200 shadow-sm mb-8 overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h3 className="font-bold text-[#1B2A4A] flex items-center gap-2">
+              <Receipt size={18} className="text-purple-600" />
+              Détail TVA collectée
+            </h3>
+            <button onClick={() => setShowTVADetail(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 p-4 border-b border-gray-100">
+            <div className="bg-purple-50 rounded-xl p-3">
+              <p className="text-xs text-purple-500 mb-1">TVA sur marge</p>
+              <p className="font-bold text-purple-700">
+                {soldPhonesDetail.filter((p) => p.tva_regime === 'marge').reduce((a, p) => a + (p.tva_amount || 0), 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+              </p>
+              <p className="text-xs text-purple-400">
+                {soldPhonesDetail.filter((p) => p.tva_regime === 'marge').length} ventes
+              </p>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-3">
+              <p className="text-xs text-blue-500 mb-1">TVA normale 21%</p>
+              <p className="font-bold text-blue-700">
+                {soldPhonesDetail.filter((p) => p.tva_regime === 'normale').reduce((a, p) => a + (p.tva_amount || 0), 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+              </p>
+              <p className="text-xs text-blue-400">
+                {soldPhonesDetail.filter((p) => p.tva_regime === 'normale').length} ventes
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  {['Date', 'Téléphone', 'Régime TVA', 'Prix TTC', 'Prix HT', 'TVA', 'Magasin'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {soldPhonesDetail
+                  .filter((p) => selectedMagasin === 'tous' || p.magasins?.includes(selectedMagasin))
+                  .map((phone) => (
+                    <tr key={phone.id} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                        {phone.updated_at ? new Date(phone.updated_at).toLocaleDateString('fr-BE') : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-[#1B2A4A] text-sm">{phone.name || phone.model}</p>
+                        <p className="text-xs text-gray-400">{phone.color}{phone.color && phone.storage ? ' · ' : ''}{phone.storage}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          phone.tva_regime === 'marge' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {phone.tva_regime === 'marge' ? '📊 Marge' : '💼 Normale'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-[#1B2A4A]">
+                        {(phone.price || 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {(phone.price_ht || 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                      </td>
+                      <td className="px-4 py-3 text-sm font-bold text-purple-600">
+                        {(phone.tva_amount || 0).toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {phone.magasins?.[0] ? (MAGASINS[phone.magasins[0]]?.nom?.replace('Seb Telecom — ', '') || phone.magasins[0]) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+              <tfoot className="bg-gray-50 font-bold">
+                <tr>
+                  <td colSpan={5} className="px-4 py-3 text-sm text-right text-gray-600">TOTAL TVA</td>
+                  <td className="px-4 py-3 text-sm text-purple-600">
+                    {totalTVA.toLocaleString('fr-BE', { minimumFractionDigits: 2 })}€
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+            {soldPhonesDetail.length === 0 && (
+              <div className="py-8 text-center text-gray-400 text-sm">Aucune vente enregistrée</div>
+            )}
           </div>
         </div>
       )}

@@ -170,10 +170,6 @@ function PhoneModal({ phone, onClose, onSaved }) {
     'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
   ]
 
-  useEffect(() => {
-    setTvaRegime(condition === 'neuf' ? 'normale' : 'marge')
-  }, [condition])
-
   const calculateTVA = (priceVal, purchaseVal, regime) => {
     const p = parseFloat(priceVal) || 0
     if (p <= 0) return { ht: '0.00', tva: '0.00', ttc: 0 }

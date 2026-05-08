@@ -111,12 +111,11 @@ export default function Dashboard() {
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
       )
 
-      // TVA collectée ce mois (téléphones vendus)
+      // TVA collectée — tous les téléphones vendus (toutes dates)
       const { data: tvaMonthData } = await addFilter(supabase
         .from('phones')
         .select('tva_amount')
-        .eq('status', 'vendu')
-        .gte('updated_at', startOfMonth.toISOString()))
+        .eq('status', 'vendu'))
 
       const tvaMonth = (tvaMonthData || []).reduce((acc, p) => acc + (p.tva_amount || 0), 0)
 
@@ -161,7 +160,7 @@ export default function Dashboard() {
           />
         )}
         {canSeeFinance && (
-          <MetricCard icon={Receipt} iconColor="bg-purple-500" label="TVA ce mois"
+          <MetricCard icon={Receipt} iconColor="bg-purple-500" label="TVA collectée"
             value={new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format(metrics.tvaMonth || 0)}
             valueClass="text-purple-600"
           />

@@ -244,6 +244,30 @@ export default function StockReconditionnement() {
         </div>
       </div>
 
+      {(() => {
+        const prixAchatParFournisseur = enAttente.reduce((acc, e) => {
+          const f = e.fournisseur || 'Inconnu'
+          acc[f] = (acc[f] || 0) + (e.purchase_price || 0)
+          return acc
+        }, {})
+        const entries = Object.entries(prixAchatParFournisseur)
+        if (entries.length === 0) return null
+        return (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-6">
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-3">Prix achat par fournisseur</p>
+            {entries.map(([fournisseur, total]) => (
+              <div key={fournisseur} className="flex justify-between py-1.5 border-b border-gray-50 last:border-0 text-sm">
+                <span className="text-gray-600">
+                  {fournisseur === 'SebPhone' ? '💻 ' : fournisseur === 'Marrakech' ? '🌍 ' : '📍 '}
+                  {fournisseur}
+                </span>
+                <span className="font-bold text-orange-600">{total.toLocaleString('fr-BE')}€</span>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
+
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
         <div className="p-4 border-b border-gray-100 flex items-center gap-2">
           <Clock size={18} className="text-orange-500" />
@@ -256,7 +280,7 @@ export default function StockReconditionnement() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Date rachat', 'Téléphone', 'IMEI', 'Vendeur', 'Prix achat', 'Magasin', 'Action'].map((h) => (
+                  {['Date rachat', 'Téléphone', 'IMEI', 'Vendeur', 'Prix achat', 'Fournisseur', 'Magasin', 'Action'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
                   ))}
                 </tr>
@@ -277,6 +301,16 @@ export default function StockReconditionnement() {
                       <p className="text-xs text-gray-400">{entry.seller_phone || '—'}</p>
                     </td>
                     <td className="px-4 py-3 text-sm font-bold text-orange-600">{entry.purchase_price}€</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        entry.fournisseur === 'SebPhone' || entry.fournisseur === 'Marrakech'
+                          ? 'bg-cyan-100 text-cyan-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {entry.fournisseur === 'SebPhone' ? '💻 ' : entry.fournisseur === 'Marrakech' ? '🌍 ' : '📍 '}
+                        {entry.fournisseur || '—'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {MAGASINS[entry.magasin_id]?.nom?.replace('Seb Telecom — ', '') || entry.magasin_id}
                     </td>
