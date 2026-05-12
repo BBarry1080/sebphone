@@ -99,6 +99,7 @@ export default function Registre() {
     virement_amount: '',
     phone_condition: 'occasion',
     phone_grade: 'Bon état',
+    showSuggestions: false,
   })
   const [phones, setPhones] = useState([emptyPhone()])
 
@@ -1049,19 +1050,25 @@ export default function Registre() {
                             <input
                               type="text"
                               value={phone.model}
-                              onChange={(e) => updatePhone(index, 'model', e.target.value)}
+                              onChange={(e) => {
+                                updatePhone(index, 'model', e.target.value)
+                                updatePhone(index, 'showSuggestions', true)
+                              }}
+                              onFocus={() => updatePhone(index, 'showSuggestions', true)}
+                              onBlur={() => setTimeout(() => updatePhone(index, 'showSuggestions', false), 150)}
                               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                               placeholder={phone.brand === 'Apple' ? '12, 14 Pro, 15...' : 'Modèle du téléphone'}
                             />
-                            {phoneSuggestions.length > 0 && (
-                              <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-20 max-h-36 overflow-y-auto mt-1">
+                            {phone.showSuggestions && phoneSuggestions.length > 0 && (
+                              <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-36 overflow-y-auto mt-1">
                                 {phoneSuggestions.map((iphone) => (
                                   <button
                                     key={iphone.model}
                                     type="button"
                                     onClick={() => {
-                                      updatePhone(index, 'model', iphone.model)
-                                      updatePhone(index, 'color', '')
+                                      setPhones((prev) => prev.map((p, i) =>
+                                        i === index ? { ...p, model: iphone.model, color: '', showSuggestions: false } : p
+                                      ))
                                     }}
                                     className="w-full text-left px-3 py-2 text-xs hover:bg-cyan-50 hover:text-[#00B4CC] border-b border-gray-50 last:border-0 cursor-pointer"
                                   >
