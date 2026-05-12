@@ -99,6 +99,7 @@ export default function Registre() {
     virement_amount: '',
     phone_condition: 'occasion',
     phone_grade: 'Bon état',
+    battery_health: '',
     showSuggestions: false,
   })
   const [phones, setPhones] = useState([emptyPhone()])
@@ -329,7 +330,7 @@ export default function Registre() {
             phone_condition:  p.phone_condition,
             phone_grade:      p.phone_condition !== 'neuf' ? p.phone_grade : null,
             reconditioning_status: p.phone_condition === 'reconditionne' ? 'en_attente' : null,
-            added_to_stock:   false,
+            added_to_stock:   p.phone_condition !== 'reconditionne',
             notes:            mixedNotes,
           }
         })
@@ -337,7 +338,44 @@ export default function Registre() {
           .from('purchase_registry')
           .insert(inserts)
         if (insertError) throw insertError
-        setSuccess(`${phones.length} téléphone(s) enregistré(s) !`)
+
+        // Phones non-reconditionnés → insertion automatique dans phones (stock)
+        const stockPhones = phones
+          .filter((p) => p.phone_condition !== 'reconditionne')
+          .map((p) => ({
+            name:             p.model,
+            model:            p.model,
+            brand:            p.brand,
+            color:            p.color || '',
+            storage:          p.storage || '',
+            condition:        p.phone_condition,
+            grade:            p.phone_condition !== 'neuf' ? (p.phone_grade || null) : null,
+            price:            parseFloat(p.purchase_price) * 1.3,
+            purchase_price:   parseFloat(p.purchase_price),
+            imei:             p.imei || null,
+            battery_health:   p.battery_health ? parseInt(p.battery_health) : null,
+            status:           'disponible',
+            fournisseur:      form.fournisseur || 'SebPhone',
+            magasins:         [form.magasin_id],
+            stock_location:   form.magasin_id,
+            added_by_magasin: form.magasin_id,
+            added_by:         currentUser?.name || 'Admin',
+            visible_on_site:  true,
+            parts_replaced:   [],
+            tva_regime:       'marge',
+          }))
+
+        if (stockPhones.length > 0) {
+          const { error: phonesError } = await supabase.from('phones').insert(stockPhones)
+          if (phonesError) throw phonesError
+        }
+
+        const nbStock  = stockPhones.length
+        const nbRecond = phones.length - nbStock
+        const parts    = []
+        if (nbStock > 0)  parts.push(`${nbStock} téléphone${nbStock > 1 ? 's' : ''} ajouté${nbStock > 1 ? 's' : ''} au stock ✅`)
+        if (nbRecond > 0) parts.push(`${nbRecond} téléphone${nbRecond > 1 ? 's' : ''} envoyé${nbRecond > 1 ? 's' : ''} en reconditionnement 🔧`)
+        setSuccess(parts.join(' · '))
       }
 
       setShowForm(false)
@@ -1125,6 +1163,19 @@ export default function Registre() {
                               {validateIMEI(phone.imei) ? '✅ IMEI valide' : '⚠️ IMEI invalide (Luhn)'}
                             </p>
                           )}
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Batterie (%)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={phone.battery_health}
+                            onChange={(e) => updatePhone(index, 'battery_health', e.target.value)}
+                            placeholder="ex: 87"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                          />
                         </div>
 
                         <div className="col-span-2">
