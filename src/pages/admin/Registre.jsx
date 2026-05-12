@@ -133,11 +133,24 @@ export default function Registre() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
-  const modelSuggestions = form.brand === 'Apple' && modelSearch.length > 0
-    ? IPHONE_ON_DEMAND.filter((iphone) =>
-        iphone.model.toLowerCase().includes(modelSearch.toLowerCase())
-      )
-    : []
+  const modelSuggestions = (() => {
+    if (form.brand !== 'Apple' || modelSearch.length === 0) return []
+    const q = modelSearch.toLowerCase()
+    return IPHONE_ON_DEMAND
+      .filter((iphone) => iphone.model.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const aExact = a.model.toLowerCase() === q
+        const bExact = b.model.toLowerCase() === q
+        if (aExact && !bExact) return -1
+        if (!aExact && bExact) return 1
+        const aStarts = a.model.toLowerCase().startsWith(q)
+        const bStarts = b.model.toLowerCase().startsWith(q)
+        if (aStarts && !bStarts) return -1
+        if (!aStarts && bStarts) return 1
+        return a.model.length - b.model.length
+      })
+      .slice(0, 8)
+  })()
 
   const handleSelectModel = (iphone) => {
     setForm((f) => ({ ...f, model: iphone.model, color: '' }))
@@ -918,9 +931,24 @@ export default function Registre() {
                 </div>
 
                 {phones.map((phone, index) => {
-                  const phoneSuggestions = phone.brand === 'Apple' && phone.model.length > 0
-                    ? IPHONE_ON_DEMAND.filter((i) => i.model.toLowerCase().includes(phone.model.toLowerCase()))
-                    : []
+                  const phoneSuggestions = (() => {
+                    if (phone.brand !== 'Apple' || phone.model.length === 0) return []
+                    const q = phone.model.toLowerCase()
+                    return IPHONE_ON_DEMAND
+                      .filter((i) => i.model.toLowerCase().includes(q))
+                      .sort((a, b) => {
+                        const aExact = a.model.toLowerCase() === q
+                        const bExact = b.model.toLowerCase() === q
+                        if (aExact && !bExact) return -1
+                        if (!aExact && bExact) return 1
+                        const aStarts = a.model.toLowerCase().startsWith(q)
+                        const bStarts = b.model.toLowerCase().startsWith(q)
+                        if (aStarts && !bStarts) return -1
+                        if (!aStarts && bStarts) return 1
+                        return a.model.length - b.model.length
+                      })
+                      .slice(0, 8)
+                  })()
                   const phoneColors = phone.brand === 'Apple'
                     ? (IPHONE_ON_DEMAND.find((i) => i.model === phone.model)?.colors || [])
                     : []

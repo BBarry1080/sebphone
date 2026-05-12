@@ -128,7 +128,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [phoneStatus, setPhoneStatus]             = useState(phone?.status || 'disponible')
 
   // ── Model autocomplete ───────────────────────────────────────────
-  const [modelSearch, setModelSearch]             = useState(phone?.name?.split(' ').slice(0, 3).join(' ') || '')
+  const [modelSearch, setModelSearch]             = useState(phone?.name || phone?.model || '')
   const [selectedModel, setSelectedModel]         = useState(null)
   const [showModelSuggestions, setShowModelSugg]  = useState(false)
 
@@ -196,11 +196,24 @@ function PhoneModal({ phone, onClose, onSaved }) {
 
   const modelSuggestions = (() => {
     if (!modelSearch || modelSearch.length === 0) return []
+    const q = modelSearch.toLowerCase()
+    const sortByRelevance = (a, b) => {
+      const al = a.toLowerCase(), bl = b.toLowerCase()
+      const aExact  = al === q
+      const bExact  = bl === q
+      if (aExact && !bExact) return -1
+      if (!aExact && bExact) return 1
+      const aStarts = al.startsWith(q)
+      const bStarts = bl.startsWith(q)
+      if (aStarts && !bStarts) return -1
+      if (!aStarts && bStarts) return 1
+      return a.length - b.length
+    }
     if (brand === 'Apple') {
-      return IPHONE_ORDER.filter((name) => name.toLowerCase().includes(modelSearch.toLowerCase()))
+      return IPHONE_ORDER.filter((name) => name.toLowerCase().includes(q)).sort(sortByRelevance).slice(0, 8)
     }
     if (brand === 'Autre') return []
-    return searchModels(brand, modelSearch)
+    return searchModels(brand, modelSearch).sort(sortByRelevance).slice(0, 8)
   })()
 
   const availableColors   = selectedModel?.colors   || []
