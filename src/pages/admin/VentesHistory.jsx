@@ -4,10 +4,11 @@ import { MAGASINS } from '../../utils/magasins'
 import { Search, Eye, FileText, X, Pencil, Trash2 } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { useIsAdmin } from '../../hooks/usePermissions'
+import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 
 export default function VentesHistory() {
   const isAdmin = useIsAdmin()
+  const canEdit = usePermission('modifier_commandes')
   const [sales, setSales]                     = useState([])
   const [loading, setLoading]                 = useState(true)
   const [searchQuery, setSearchQuery]         = useState('')
@@ -401,7 +402,7 @@ export default function VentesHistory() {
                         >
                           <FileText size={16} />
                         </button>
-                        {isAdmin && (
+                        {(isAdmin || canEdit) && (
                           <>
                             <button
                               onClick={() => openEdit(sale)}
