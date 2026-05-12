@@ -206,7 +206,7 @@ export default function Hero() {
                   className="w-full h-full object-contain"
                 />
               </div>
-              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#1B2A4A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-white/20">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#1B2A4A] text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap border border-white/20 z-10">
                 iPhone 14 Pro Max
               </div>
             </motion.div>
@@ -222,7 +222,7 @@ export default function Hero() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.8, duration: 0.4 }}
-              className="absolute bottom-0 right-0 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-2"
+              className="absolute bottom-0 right-0 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-2 z-20"
             >
               <Shield size={20} className="text-[#22C55E]" />
               <div>
