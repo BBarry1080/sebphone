@@ -15,13 +15,9 @@ export default function Comptabilite() {
   const isAdmin = currentUser.role === 'admin' || !currentUser.role
   const canAddPayments = usePermission('ajouter_paiements')
 
-  const adminMagasinsForStats = MAGASINS_ADMIN.filter((m) => m.id !== 'sebphone')
-  const allowedMagasins = isAdmin
-    ? adminMagasinsForStats
-    : adminMagasinsForStats.filter((m) => {
-        const key = 'compta_' + m.id.replace(/-/g, '_')
-        return currentUser.permissions?.[key] === true
-      })
+  // Tous les utilisateurs avec voir_comptabilite voient tous les magasins
+  // (la permission top-level est déjà vérifiée via useRequirePermission)
+  const allowedMagasins = MAGASINS_ADMIN.filter((m) => m.id !== 'sebphone')
 
   const [phones, setPhones] = useState([])
   const [payments, setPayments] = useState([])
