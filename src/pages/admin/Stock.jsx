@@ -1204,20 +1204,19 @@ export default function Stock() {
     'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
   ]
 
-  // Trouve l'index du modèle correspondant (match le plus long pour éviter
-  // qu'iPhone 11 Pro Max soit classé comme iPhone 11)
-  const getModelIndex = (name) => {
-    const n = (name || '').toLowerCase()
-    let bestIdx = 999
-    let bestLen = 0
-    STOCK_ORDER.forEach((m, i) => {
-      const ml = m.toLowerCase()
-      if (n.startsWith(ml) && ml.length > bestLen) {
-        bestIdx = i
-        bestLen = ml.length
-      }
-    })
-    return bestIdx
+  // Trouve l'index du modèle correspondant — nettoie "Apple " préfixe,
+  // match exact d'abord, puis substring (match le plus tardif pour
+  // qu'iPhone 11 Pro Max ne soit pas classé comme iPhone 11)
+  const getModelIndex = (phone) => {
+    const cleanName = (phone.name || phone.model || '')
+      .replace(/^Apple\s+/i, '')
+      .trim()
+    const exactIndex = STOCK_ORDER.indexOf(cleanName)
+    if (exactIndex !== -1) return exactIndex
+    for (let i = STOCK_ORDER.length - 1; i >= 0; i--) {
+      if (cleanName.includes(STOCK_ORDER[i])) return i
+    }
+    return 999
   }
 
   const filtered = phones
@@ -1238,7 +1237,7 @@ export default function Stock() {
       return true
     })
     .sort((a, b) => {
-      const modelDiff = getModelIndex(a.name) - getModelIndex(b.name)
+      const modelDiff = getModelIndex(a) - getModelIndex(b)
       if (modelDiff !== 0) return modelDiff
       return new Date(b.created_at || 0) - new Date(a.created_at || 0)
     })
