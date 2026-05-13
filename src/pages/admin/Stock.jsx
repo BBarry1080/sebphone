@@ -1237,7 +1237,7 @@ export default function Stock() {
       if (selectedStockStatus !== 'tous' && p.status !== selectedStockStatus) return false
       return true
     })
-    .sort((a, b) => getModelIndex(a.name) - getModelIndex(b.name))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
 
   return (
     <div className="space-y-5">
