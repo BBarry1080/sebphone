@@ -9,7 +9,24 @@
       "Bash(git push *)",
       "Bash(git pull *)",
       "Bash(git checkout *)",
-      "Bash(GIT_EDITOR=true git rebase --continue)"
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "Bash(git restore *)",
+      "Bash(ls \"C:\\\\Users\\\\Aliou\\\\Desktop\\\\Transport\\\\Site\\\\\")",
+      "Read(//c/Users/Aliou/Desktop/Transport/**)",
+      "Bash(python -m http.server 8000)",
+      "Bash(curl -s -o /dev/null -w \"index.html: %{http_code}\\\\n\" http://localhost:8000/)",
+      "Bash(curl -s -o /dev/null -w \"styles.css: %{http_code}\\\\n\" http://localhost:8000/assets/styles.css)",
+      "Bash(curl -s -o /dev/null -w \"main.js: %{http_code}\\\\n\" http://localhost:8000/assets/main.js)",
+      "Bash(curl -s -o /dev/null -w \"transport-marchandises: %{http_code}\\\\n\" http://localhost:8000/services/transport-marchandises.html)",
+      "Bash(curl -s -o /dev/null -w \"tournees-regulieres: %{http_code}\\\\n\" http://localhost:8000/services/tournees-regulieres.html)",
+      "Bash(curl -s -o /dev/null -w \"index: %{http_code}\\\\n\" http://localhost:8000/)",
+      "Bash(curl -s -o /dev/null -w \"css: %{http_code}\\\\n\" http://localhost:8000/assets/styles.css)",
+      "Bash(curl -s -o /dev/null -w \"js: %{http_code}\\\\n\" http://localhost:8000/assets/main.js)",
+      "Bash(curl -s http://localhost:8000/)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Aliou\\Desktop\\Transport\\Site\\assets",
+      "C:\\Users\\Aliou\\Desktop\\Transport\\Site"
     ]
   }
 }

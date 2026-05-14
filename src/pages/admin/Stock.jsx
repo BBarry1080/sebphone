@@ -1439,6 +1439,11 @@ export default function Stock() {
                       <p className="text-[#888] text-xs mt-0.5">
                         {phone.storage}{phone.color ? ` · ${phone.color}` : ''}
                       </p>
+                      {phone.imei && (
+                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">
+                          IMEI : {phone.imei}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span className="font-bold text-[#00B4CC] text-sm flex-shrink-0">{phone.price}€</span>
@@ -1567,6 +1572,11 @@ export default function Stock() {
                         <div>
                           <p className="font-semibold text-[#1B2A4A] leading-tight">{phone.name || phone.model?.name}</p>
                           <p className="text-[#888] text-xs">{phone.storage}{phone.color ? ` · ${phone.color}` : ''}</p>
+                          {phone.imei && (
+                            <p className="text-[10px] text-gray-400 font-mono mt-0.5">
+                              IMEI : {phone.imei}
+                            </p>
+                          )}
                           {phone.added_by && (
                             <p className="text-[10px] text-gray-400 mt-0.5">
                               👤 {phone.added_by}{phone.added_by_magasin ? ` · 📍 ${(MAGASINS.find(m => m.id === phone.added_by_magasin)?.nom || phone.added_by_magasin).replace('Seb Telecom — ', '')}` : ''}
