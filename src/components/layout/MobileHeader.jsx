@@ -3,6 +3,7 @@ import { Menu, X, Search, Phone, Mail, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../context/CartContext';
+import LanguageSelector from '../ui/LanguageSelector';
 
 const navLinks = [
   { to: '/',              label: 'Accueil' },
@@ -62,6 +63,7 @@ export default function MobileHeader() {
               </span>
             )}
           </Link>
+          <LanguageSelector />
           <button onClick={() => setOpen(!open)} className="p-2 text-[#1B2A4A] cursor-pointer">
             {open ? <X size={24} /> : <Menu size={24} />}
           </button>

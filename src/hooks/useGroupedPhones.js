@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useGroupedInventory } from './useGroupedInventory'
+import { getPublicModelIndex } from '../utils/phoneImage'
 
 export function useGroupedPhones(initialCondition = null, initialBrand = null) {
   const [search, setSearch]               = useState('')
@@ -45,7 +46,14 @@ export function useGroupedPhones(initialCondition = null, initialBrand = null) {
       case 'price_desc': result.sort((a, b) => b.basePrice - a.basePrice); break
       case 'alpha_desc': result.sort((a, b) => b.model.localeCompare(a.model)); break
       case 'alpha_asc':
-      default:           result.sort((a, b) => a.model.localeCompare(b.model)); break
+      default:
+        result.sort((a, b) => {
+          const ia = getPublicModelIndex(a.model)
+          const ib = getPublicModelIndex(b.model)
+          if (ia !== ib) return ia - ib
+          return a.model.localeCompare(b.model)
+        })
+        break
     }
 
     return result

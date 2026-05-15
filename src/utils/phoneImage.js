@@ -382,6 +382,7 @@ export function getPhoneImage(modelName, colorName = null) {
     if (!str || typeof str !== 'string') return ''
     return str
       .toLowerCase()
+      .replace(/^apple\s+/i, '')
       .trim()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -405,6 +406,33 @@ export function getPhoneImage(modelName, colorName = null) {
   }
 
   return map.default || PLACEHOLDER
+}
+
+// Ordre générationnel officiel Apple pour le tri public et admin
+export const IPHONE_ORDER = [
+  'iPhone 6', 'iPhone 6 Plus', 'iPhone 6s', 'iPhone 6s Plus',
+  'iPhone 7', 'iPhone 7 Plus',
+  'iPhone 8', 'iPhone 8 Plus',
+  'iPhone SE (2020)', 'iPhone SE (2022)',
+  'iPhone X', 'iPhone XR', 'iPhone XS', 'iPhone XS Max',
+  'iPhone 11', 'iPhone 11 Pro', 'iPhone 11 Pro Max',
+  'iPhone 12', 'iPhone 12 mini', 'iPhone 12 Pro', 'iPhone 12 Pro Max',
+  'iPhone 13', 'iPhone 13 mini', 'iPhone 13 Pro', 'iPhone 13 Pro Max',
+  'iPhone 14', 'iPhone 14 Plus', 'iPhone 14 Pro', 'iPhone 14 Pro Max',
+  'iPhone 15', 'iPhone 15 Plus', 'iPhone 15 Pro', 'iPhone 15 Pro Max',
+  'iPhone 16e', 'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max',
+  'iPhone 17e', 'iPhone 17', 'iPhone 17 Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max',
+]
+
+export function getPublicModelIndex(modelName) {
+  const clean = (modelName || '')
+    .replace(/^Apple\s+/i, '')
+    .toLowerCase()
+    .trim()
+  const idx = IPHONE_ORDER.findIndex((m) =>
+    m.toLowerCase() === clean || clean.includes(m.toLowerCase())
+  )
+  return idx === -1 ? 999 : idx
 }
 
 export { PLACEHOLDER }

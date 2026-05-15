@@ -7,6 +7,7 @@ function AdminOnlyRoute({ children }) {
   return children
 }
 import { CartProvider } from './context/CartContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import ScrollToTop from './components/utils/ScrollToTop';
 import Header from './components/layout/Header';
 import MobileHeader from './components/layout/MobileHeader';
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <LanguageProvider>
       <CartProvider>
         <Routes>
           {/* ── PUBLIC SITE ── */}
@@ -147,6 +149,7 @@ export default function App() {
           </Route>
         </Routes>
       </CartProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

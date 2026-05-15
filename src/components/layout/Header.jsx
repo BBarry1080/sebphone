@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, User, Phone, Mail, ShoppingCart, ClipboardList } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
+import LanguageSelector from '../ui/LanguageSelector';
 
 function SebLogo() {
   return (
@@ -119,6 +120,9 @@ export default function Header() {
               </span>
             )}
           </Link>
+          <div className="ml-1 pl-2 border-l border-gray-200">
+            <LanguageSelector />
+          </div>
         </div>
       </div>
     </header>
