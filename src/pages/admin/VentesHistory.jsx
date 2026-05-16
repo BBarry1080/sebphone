@@ -81,7 +81,7 @@ export default function VentesHistory() {
     return                       { text: `${monthsLeft} mois restants`, color: 'green',  expiry: expiry.toLocaleDateString('fr-BE') }
   }
 
-  const openEdit = (sale) => {
+  const openEdit = async (sale) => {
     setEditingSale(sale)
     setEditForm({
       customer_name:  sale.customer_name || '',
@@ -94,7 +94,24 @@ export default function VentesHistory() {
       total_amount:   sale.total_amount || '',
       magasin_id:     sale.magasin_id || '',
       encaisse_at:    sale.encaisse_at ? new Date(sale.encaisse_at).toISOString().split('T')[0] : '',
+      payments:       [], // sera chargé depuis la DB
     })
+
+    const { data: existingPayments } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('phone_id', sale.phone_id)
+
+    setEditForm((f) => ({
+      ...f,
+      payments: existingPayments?.length > 0
+        ? existingPayments.map((p) => ({
+            id: p.id,
+            method: p.payment_method,
+            amount: p.amount,
+          }))
+        : [{ method: 'cash', amount: sale.total_amount || '' }],
+    }))
   }
 
   const handleSaveEdit = async () => {
@@ -125,10 +142,27 @@ export default function VentesHistory() {
           price:   parseFloat(editForm.total_amount) || 0,
         }).eq('id', editingSale.phone_id)
 
-        await supabase.from('payments').update({
-          amount:     parseFloat(editForm.total_amount) || 0,
-          magasin_id: editForm.magasin_id,
-        }).eq('phone_id', editingSale.phone_id)
+        // Supprime les anciens payments
+        await supabase.from('payments')
+          .delete()
+          .eq('phone_id', editingSale.phone_id)
+
+        // Insère les nouveaux
+        const newPayments = editForm.payments
+          .filter((p) => p.amount > 0)
+          .map((p) => ({
+            phone_id: editingSale.phone_id,
+            magasin_id: editForm.magasin_id,
+            payment_method: p.method,
+            amount: parseFloat(p.amount),
+            purchase_price: editingSale.phone?.purchase_price || 0,
+            description: `Vente ${editForm.phone_name} — ${editForm.customer_name}`,
+            payment_date: new Date(editForm.encaisse_at).toISOString(),
+          }))
+
+        if (newPayments.length > 0) {
+          await supabase.from('payments').insert(newPayments)
+        }
       }
 
       setEditingSale(null)
@@ -593,6 +627,90 @@ export default function VentesHistory() {
                   </select>
                 </div>
               </div>
+
+              <p className="text-xs font-bold text-[#00B4CC] uppercase mt-2">
+                Paiement
+              </p>
+
+              {/* Liste des paiements */}
+              {editForm.payments?.map((payment, i) => (
+                <div key={i} className="flex items-center gap-2 mb-2">
+                  {/* Boutons mode */}
+                  <div className="flex gap-1">
+                    {['cash', 'bancontact', 'virement bancaire'].map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => setEditForm((f) => ({
+                          ...f,
+                          payments: f.payments.map((p, idx) =>
+                            idx === i ? { ...p, method } : p
+                          ),
+                        }))}
+                        className={`px-2 py-1 rounded-lg text-xs font-medium border
+                          ${payment.method === method
+                            ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                            : 'bg-white text-gray-600 border-gray-200'}`}>
+                        {method === 'cash' ? '💵' : method === 'bancontact' ? '💳' : '🏦'}
+                        {' '}{method}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Montant */}
+                  <input
+                    type="number"
+                    value={payment.amount}
+                    onChange={(e) => setEditForm((f) => ({
+                      ...f,
+                      payments: f.payments.map((p, idx) =>
+                        idx === i ? { ...p, amount: e.target.value } : p
+                      ),
+                    }))}
+                    placeholder="Montant €"
+                    className="w-24 px-2 py-1 border border-gray-200 rounded-lg text-sm"
+                  />
+                  {/* Supprimer ligne */}
+                  {editForm.payments.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setEditForm((f) => ({
+                        ...f,
+                        payments: f.payments.filter((_, idx) => idx !== i),
+                      }))}
+                      className="text-red-400 hover:text-red-600 text-lg font-bold">
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+
+              {/* Ajouter un mode */}
+              <button
+                type="button"
+                onClick={() => setEditForm((f) => ({
+                  ...f,
+                  payments: [...(f.payments || []), { method: 'cash', amount: '' }],
+                }))}
+                className="text-xs text-[#00B4CC] font-medium hover:underline mt-1">
+                + Ajouter un mode de paiement
+              </button>
+
+              {/* Total vs montant vente */}
+              {(() => {
+                const total = (editForm.payments || []).reduce((a, p) =>
+                  a + (parseFloat(p.amount) || 0), 0)
+                const diff = total - (parseFloat(editForm.total_amount) || 0)
+                return total > 0 && (
+                  <p className={`text-xs mt-1 font-medium
+                    ${Math.abs(diff) < 0.01 ? 'text-green-600'
+                      : diff > 0 ? 'text-red-500' : 'text-orange-500'}`}>
+                    Total paiements : {total.toFixed(2)}€
+                    {Math.abs(diff) < 0.01 ? ' ✓ Correct'
+                      : diff > 0 ? ` (+${diff.toFixed(2)}€ dépassement)`
+                      : ` (${diff.toFixed(2)}€ manquant)`}
+                  </p>
+                )
+              })()}
 
               <div className="border-t border-gray-100 pt-4 mt-2">
                 <button
