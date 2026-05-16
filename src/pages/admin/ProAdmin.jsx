@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, X, Building2, Smartphone } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
+import { useCurrentUser } from '../../hooks/usePermissions'
 import emailjs from '@emailjs/browser'
 
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
@@ -8,6 +9,7 @@ const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMI
 const PRO_TEMPLATE_ID = 'template_769za9g'
 
 export default function ProAdmin() {
+  const currentUser = useCurrentUser()
   const [pending, setPending]   = useState([])
   const [phones, setPhones]     = useState([])
   const [proStock, setProStock] = useState([])
@@ -30,16 +32,20 @@ export default function ProAdmin() {
   useEffect(() => { fetchAll() }, [])
 
   const approve = async (acc) => {
-    const { error } = await supabase
-      .from('pro_accounts')
-      .update({ status: 'approved', approved_at: new Date().toISOString() })
-      .eq('id', acc.id)
-    if (error) { alert('Erreur: ' + error.message); return }
     try {
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        PRO_TEMPLATE_ID,
-        {
+      const { error } = await supabase
+        .from('pro_accounts')
+        .update({
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by: currentUser?.email || 'Admin',
+        })
+        .eq('id', acc.id)
+      if (error) throw error
+
+      // Email en best-effort
+      try {
+        await emailjs.send(EMAILJS_SERVICE_ID, PRO_TEMPLATE_ID, {
           to_email: acc.email,
           to_name: acc.contact_name,
           contact_name: acc.contact_name,
@@ -49,27 +55,29 @@ export default function ProAdmin() {
           status_label: 'Compte approuvé !',
           status_class: 'status-approved',
           message: 'Félicitations ! Votre compte professionnel SebPhone a été approuvé. Vous pouvez dès maintenant accéder à notre catalogue exclusif réservé aux revendeurs.',
-        },
-        EMAILJS_PUBLIC_KEY,
-      )
+        }, EMAILJS_PUBLIC_KEY)
+      } catch (emailErr) {
+        console.warn('Email approbation non envoyé:', emailErr)
+      }
+
+      fetchAll()
     } catch (err) {
-      console.warn('Email approbation non envoyé:', err)
+      console.error('Erreur approbation:', err)
+      alert('Erreur lors de l\'approbation')
     }
-    fetchAll()
   }
 
   const reject = async (acc) => {
     if (!window.confirm(`Refuser la demande de ${acc.company_name} ?`)) return
-    const { error } = await supabase
-      .from('pro_accounts')
-      .update({ status: 'rejected' })
-      .eq('id', acc.id)
-    if (error) { alert('Erreur: ' + error.message); return }
     try {
-      await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        PRO_TEMPLATE_ID,
-        {
+      const { error } = await supabase
+        .from('pro_accounts')
+        .update({ status: 'rejected' })
+        .eq('id', acc.id)
+      if (error) throw error
+
+      try {
+        await emailjs.send(EMAILJS_SERVICE_ID, PRO_TEMPLATE_ID, {
           to_email: acc.email,
           to_name: acc.contact_name,
           contact_name: acc.contact_name,
@@ -79,13 +87,16 @@ export default function ProAdmin() {
           status_label: 'Demande non retenue',
           status_class: 'status-pending',
           message: 'Après examen de votre dossier, nous ne sommes pas en mesure d\'approuver votre demande de compte professionnel pour le moment. Pour toute question, contactez-nous à contact@sebphone.be.',
-        },
-        EMAILJS_PUBLIC_KEY,
-      )
+        }, EMAILJS_PUBLIC_KEY)
+      } catch (emailErr) {
+        console.warn('Email refus non envoyé:', emailErr)
+      }
+
+      fetchAll()
     } catch (err) {
-      console.warn('Email refus non envoyé:', err)
+      console.error('Erreur refus:', err)
+      alert('Erreur lors du refus')
     }
-    fetchAll()
   }
 
   const proStockFor = (phoneId) => proStock.find((s) => s.phone_id === phoneId)
