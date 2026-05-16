@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { supabase, isSupabaseReady } from '../lib/supabase'
 import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 import { getColorHex } from '../utils/colors'
 import { STARTING_PRICES } from '../data/startingPrices'
@@ -18,6 +19,21 @@ export default function SurCommande() {
   const [selectedStorage, setSelectedStorage] = useState(null)
   const [selectedMagasin, setSelectedMagasin] = useState(MAGASINS_CLIENT[0]?.id || 'anderlecht')
   const [deliveryMode,    setDeliveryMode]    = useState('collect')
+  const [orderPhones,     setOrderPhones]     = useState([])
+
+  useEffect(() => {
+    if (!isSupabaseReady) return
+    const load = async () => {
+      const { data } = await supabase
+        .from('phones')
+        .select('*')
+        .eq('status', 'sur_commande')
+        .eq('visible_on_site', true)
+        .order('created_at', { ascending: false })
+      setOrderPhones(data || [])
+    }
+    load()
+  }, [])
 
   const handleModelClick = (model) => {
     setSelectedModel(model)
@@ -62,6 +78,56 @@ export default function SurCommande() {
 
         {!selectedModel ? (
           <div>
+            {orderPhones.length > 0 && (
+              <div className="mb-10">
+                <h2 className="text-xl font-bold text-[#1B2A4A] mb-6">
+                  Disponibles à la commande
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {orderPhones.map((phone) => (
+                    <div
+                      key={phone.id}
+                      onClick={() => navigate('/reservation-commande', {
+                        state: {
+                          model:       phone.name || phone.model,
+                          color:       phone.color,
+                          storage:     phone.storage,
+                          price:       phone.price || 0,
+                          condition:   phone.condition || 'neuf',
+                          magasin:     selectedMagasin,
+                          deliveryMode,
+                          surCommande: true,
+                        },
+                      })}
+                      className="bg-white rounded-2xl p-4 border border-gray-100 cursor-pointer hover:shadow-md hover:border-[#00B4CC] transition-all duration-200"
+                    >
+                      <div className="aspect-square bg-[#f8f8f8] rounded-xl mb-3 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={getPhoneImage(phone.model || phone.name, phone.color)}
+                          alt={phone.name || phone.model}
+                          className="w-full h-full object-contain p-2"
+                          onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+                        />
+                      </div>
+                      <p className="font-semibold text-[#1B2A4A] text-sm leading-tight mb-1">
+                        {phone.name || phone.model}
+                      </p>
+                      <p className="text-xs text-gray-400 mb-2">
+                        {[phone.storage, phone.color].filter(Boolean).join(' · ')}
+                      </p>
+                      <p className="text-xs text-gray-500 mb-1.5">
+                        <span className="font-bold text-[#1B2A4A]">{phone.price}€</span>
+                      </p>
+                      {phone.delai_commande && (
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-lg font-medium">
+                          ⏱ Délai : {phone.delai_commande}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <h2 className="text-xl font-bold text-[#1B2A4A] mb-6">
               Choisissez votre modèle
             </h2>

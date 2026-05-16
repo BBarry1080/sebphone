@@ -44,6 +44,7 @@ import Facture from './pages/Facture';
 import ProLogin from './pages/ProLogin';
 import ProCatalogue from './pages/ProCatalogue';
 import ProAdmin from './pages/admin/ProAdmin';
+import AdminSurCommande from './pages/admin/SurCommande';
 
 function Layout({ children }) {
   return (
@@ -144,6 +145,7 @@ export default function App() {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="stock" element={<Stock />} />
+            <Route path="sur-commande" element={<AdminSurCommande />} />
             <Route path="vendus" element={<VentesHistory />} />
             <Route path="reconditionnement" element={<StockReconditionnement />} />
             <Route path="commandes" element={<Commandes />} />
