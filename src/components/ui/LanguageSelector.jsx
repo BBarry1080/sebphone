@@ -73,8 +73,7 @@ export default function LanguageSelector() {
                             uppercase border transition-all
                             ${lang === l && country === c.name
                               ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                              : 'bg-white text-gray-600 border-gray-200
-                                 hover:border-[#1B2A4A]'}`}>
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
                           {l}
                         </button>
                       ))}
