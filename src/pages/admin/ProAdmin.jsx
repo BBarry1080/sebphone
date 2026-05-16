@@ -40,14 +40,15 @@ export default function ProAdmin() {
         EMAILJS_SERVICE_ID,
         PRO_TEMPLATE_ID,
         {
-          to_email:     acc.email,
+          to_email: acc.email,
+          to_name: acc.contact_name,
           contact_name: acc.contact_name,
           company_name: acc.company_name,
-          vat_number:   acc.vat_number,
-          subject:      'Compte professionnel approuvé',
-          message:      'Votre compte professionnel SebPhone a été approuvé ! Vous pouvez désormais vous connecter sur sebphone.be/pro',
+          vat_number: acc.vat_number || 'Non renseigné',
+          subject: 'Compte professionnel approuvé',
           status_label: 'Compte approuvé !',
           status_class: 'status-approved',
+          message: 'Félicitations ! Votre compte professionnel SebPhone a été approuvé. Vous pouvez dès maintenant accéder à notre catalogue exclusif réservé aux revendeurs.',
         },
         EMAILJS_PUBLIC_KEY,
       )
@@ -64,6 +65,26 @@ export default function ProAdmin() {
       .update({ status: 'rejected' })
       .eq('id', acc.id)
     if (error) { alert('Erreur: ' + error.message); return }
+    try {
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        PRO_TEMPLATE_ID,
+        {
+          to_email: acc.email,
+          to_name: acc.contact_name,
+          contact_name: acc.contact_name,
+          company_name: acc.company_name,
+          vat_number: acc.vat_number || 'Non renseigné',
+          subject: 'Demande de compte professionnel',
+          status_label: 'Demande non retenue',
+          status_class: 'status-pending',
+          message: 'Après examen de votre dossier, nous ne sommes pas en mesure d\'approuver votre demande de compte professionnel pour le moment. Pour toute question, contactez-nous à contact@sebphone.be.',
+        },
+        EMAILJS_PUBLIC_KEY,
+      )
+    } catch (err) {
+      console.warn('Email refus non envoyé:', err)
+    }
     fetchAll()
   }
 
