@@ -30,6 +30,7 @@ export default function StockReconditionnement() {
     magasin_id: 'anderlecht',
     reconditioning_notes: '',
     face_id_status: null,
+    battery_health: '',
   })
 
   const totalPartsCost = Object.values(repairForm.parts_prices)
@@ -103,6 +104,7 @@ export default function StockReconditionnement() {
       magasin_id: entry.magasin_id || 'anderlecht',
       reconditioning_notes: '',
       face_id_status: entry.face_id_status || null,
+      battery_health: entry.battery_health || '',
     })
     setShowRepairModal(true)
   }
@@ -145,6 +147,8 @@ export default function StockReconditionnement() {
           purchase_price:   totalCost,
           imei:             selectedEntry.imei,
           status:           'disponible',
+          visible_on_site:  true,
+          battery_health:   repairForm.battery_health ? parseInt(repairForm.battery_health) : null,
           magasins:         [repairForm.magasin_id],
           fournisseur:      `${selectedEntry.seller_first_name} ${selectedEntry.seller_last_name}`,
           parts_replaced:   repairForm.parts_replaced,
@@ -514,6 +518,23 @@ export default function StockReconditionnement() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Batterie (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={repairForm.battery_health}
+                  onChange={e => setRepairForm(f => ({
+                    ...f, battery_health: e.target.value
+                  }))}
+                  placeholder="ex: 87"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                />
               </div>
 
               <div>
