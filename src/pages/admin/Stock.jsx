@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Smartphone, Plus, Search, Pencil, Trash2, X, Star } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
-import { useRequirePermission, usePermission, useCurrentUser } from '../../hooks/usePermissions'
+import { useRequirePermission, usePermission, useCurrentUser, useIsAdmin } from '../../hooks/usePermissions'
 import {
   addPhone, updatePhone, deletePhone, updatePhoneStatus, updatePhonePrice,
 } from '../../data/phonesApi'
@@ -858,11 +858,12 @@ export default function Stock() {
   useRequirePermission('voir_stock')
   const canAdd    = usePermission('ajouter_stock')
   const canEdit   = usePermission('modifier_stock')
-  const canDelete = usePermission('supprimer_stock')
+  const isAdmin = useIsAdmin()
+  const canDeletePerm = usePermission('supprimer_stock')
+  const canDelete = isAdmin || canDeletePerm
   const canStar   = usePermission('offre_semaine')
 
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}') } catch { return {} } })()
-  const isAdmin = currentUser.role === 'admin' || !currentUser.role
 
   const [phones, setPhones]               = useState([])
   const [loading, setLoading]             = useState(true)
