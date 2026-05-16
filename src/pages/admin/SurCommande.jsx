@@ -1,7 +1,16 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useCurrentUser } from '../../hooks/usePermissions'
+import { IPHONE_ORDER } from '../../utils/phoneImage'
 import { Plus, X, Check, Package, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
+
+const SAMSUNG_MODELS = [
+  'Samsung Galaxy S25 Ultra', 'Samsung Galaxy S25+', 'Samsung Galaxy S25',
+  'Samsung Galaxy S24 Ultra', 'Samsung Galaxy S24+', 'Samsung Galaxy S24',
+  'Samsung Galaxy S23 Ultra', 'Samsung Galaxy S23+', 'Samsung Galaxy S23',
+  'Samsung Galaxy A55', 'Samsung Galaxy A35', 'Samsung Galaxy A25',
+  'Samsung Galaxy A15', 'Samsung Galaxy A06',
+]
 
 const FOURNISSEURS_LIST = [
   'SebPhone', 'Louise', 'Anderlecht', 'Molenbeek',
@@ -18,7 +27,14 @@ const BRANDS = ['Apple', 'Samsung', 'Xiaomi', 'Huawei', 'OnePlus', 'Google', 'Au
 
 const CONDITIONS = ['Neuf', 'Comme neuf', 'Très bon état', 'Bon état', 'Occasion']
 
-const GRADES = ['A+', 'A', 'B', 'C']
+const GRADES_BY_CONDITION = {
+  'Neuf': ['Neuf sous scellé', 'Neuf débloqué'],
+  'Occasion': ['Parfait état', 'Très bon état', 'État correct'],
+  'Comme neuf': ['Comme neuf'],
+  'Reconditionné': ['Grade A+', 'Grade A', 'Grade B', 'Grade C'],
+  'Très bon état': ['Très bon état'],
+  'Bon état': ['Bon état'],
+}
 
 const STORAGES = ['16Go', '32Go', '64Go', '128Go', '256Go', '512Go', '1To']
 
@@ -28,7 +44,7 @@ const emptyForm = {
   color: '',
   storage: '128Go',
   condition: 'Neuf',
-  grade: 'A',
+  grade: 'Neuf sous scellé',
   price: '',
   fournisseur: 'SebPhone',
   fournisseur_custom: '',
@@ -47,6 +63,27 @@ export default function AdminSurCommande() {
   const [saving, setSaving] = useState(false)
   const [showRecuModal, setShowRecuModal] = useState(null)
   const [recuForm, setRecuForm] = useState({ imei: '', battery_health: '' })
+  const [modelSearch, setModelSearch] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  const modelSuggestions = (() => {
+    if (!modelSearch || modelSearch.length < 2) return []
+    const list = form.brand === 'Samsung' ? SAMSUNG_MODELS : IPHONE_ORDER
+    return list
+      .filter(m => m.toLowerCase().includes(modelSearch.toLowerCase()))
+      .sort((a, b) => {
+        const aExact = a.toLowerCase() === modelSearch.toLowerCase()
+        const bExact = b.toLowerCase() === modelSearch.toLowerCase()
+        if (aExact && !bExact) return -1
+        if (!aExact && bExact) return 1
+        const aStarts = a.toLowerCase().startsWith(modelSearch.toLowerCase())
+        const bStarts = b.toLowerCase().startsWith(modelSearch.toLowerCase())
+        if (aStarts && !bStarts) return -1
+        if (!aStarts && bStarts) return 1
+        return a.length - b.length
+      })
+      .slice(0, 8)
+  })()
 
   const fetchPhones = async () => {
     setLoading(true)
@@ -102,6 +139,7 @@ export default function AdminSurCommande() {
     setShowForm(false)
     setEditingId(null)
     setForm(emptyForm)
+    setModelSearch('')
     fetchPhones()
   }
 
@@ -121,6 +159,7 @@ export default function AdminSurCommande() {
       visible_on_site: phone.visible_on_site || false,
       notes: phone.notes || '',
     })
+    setModelSearch(phone.name || phone.model || '')
     setEditingId(phone.id)
     setShowForm(true)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -175,6 +214,7 @@ export default function AdminSurCommande() {
             setShowForm(!showForm)
             setEditingId(null)
             setForm(emptyForm)
+            setModelSearch('')
           }}
           className="flex items-center gap-2 bg-[#1B2A4A] text-white
                      px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#00B4CC]
@@ -207,7 +247,10 @@ export default function AdminSurCommande() {
               <div className="flex flex-wrap gap-2">
                 {BRANDS.map(b => (
                   <button key={b} type="button"
-                    onClick={() => setForm(f => ({ ...f, brand: b }))}
+                    onClick={() => {
+                      setForm(f => ({ ...f, brand: b }))
+                      setModelSearch('')
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-medium border
                       ${form.brand === b
                         ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
@@ -219,17 +262,42 @@ export default function AdminSurCommande() {
             </div>
 
             {/* Modèle */}
-            <div>
+            <div className="relative">
               <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
                 Modèle *
               </label>
               <input
-                value={form.model}
-                onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
+                value={modelSearch}
+                onChange={e => {
+                  setModelSearch(e.target.value)
+                  setForm(f => ({ ...f, model: e.target.value }))
+                  setShowSuggestions(true)
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 placeholder="ex: iPhone 15 Pro Max"
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl
                            text-sm focus:border-[#00B4CC] outline-none"
               />
+              {showSuggestions && modelSuggestions.length > 0 && (
+                <div className="absolute z-50 w-full bg-white border border-gray-200
+                                rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto">
+                  {modelSuggestions.map(model => (
+                    <button
+                      key={model}
+                      type="button"
+                      onMouseDown={() => {
+                        setModelSearch(model)
+                        setForm(f => ({ ...f, model }))
+                        setShowSuggestions(false)
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50
+                                 border-b border-gray-100 last:border-0">
+                      {model}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Couleur */}
@@ -273,7 +341,11 @@ export default function AdminSurCommande() {
               <div className="flex flex-wrap gap-2">
                 {CONDITIONS.map(c => (
                   <button key={c} type="button"
-                    onClick={() => setForm(f => ({ ...f, condition: c }))}
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      condition: c,
+                      grade: (GRADES_BY_CONDITION[c] || [])[0] || ''
+                    }))}
                     className={`px-3 py-1.5 rounded-xl text-xs font-medium border
                       ${form.condition === c
                         ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
@@ -289,8 +361,8 @@ export default function AdminSurCommande() {
               <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
                 Grade
               </label>
-              <div className="flex gap-2">
-                {GRADES.map(g => (
+              <div className="flex flex-wrap gap-2">
+                {(GRADES_BY_CONDITION[form.condition] || ['A+', 'A', 'B', 'C']).map(g => (
                   <button key={g} type="button"
                     onClick={() => setForm(f => ({ ...f, grade: g }))}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold border
