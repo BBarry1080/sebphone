@@ -15,15 +15,24 @@ export default function ProAdmin() {
   const [proStock, setProStock] = useState([])
   const [loading, setLoading]   = useState(true)
 
+  const fetchAccounts = async () => {
+    if (!isSupabaseReady) return
+    const { data } = await supabase
+      .from('pro_accounts')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+    setPending(data || [])
+  }
+
   const fetchAll = async () => {
     setLoading(true)
     if (!isSupabaseReady) { setLoading(false); return }
-    const [{ data: accs }, { data: ph }, { data: ps }] = await Promise.all([
-      supabase.from('pro_accounts').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
+    const [{ data: ph }, { data: ps }] = await Promise.all([
       supabase.from('phones').select('*').eq('status', 'disponible').order('created_at', { ascending: false }),
       supabase.from('pro_stock').select('*'),
     ])
-    setPending(accs || [])
+    await fetchAccounts()
     setPhones(ph || [])
     setProStock(ps || [])
     setLoading(false)
@@ -33,17 +42,14 @@ export default function ProAdmin() {
 
   const approve = async (acc) => {
     try {
-      const { error } = await supabase
-        .from('pro_accounts')
+      await supabase.from('pro_accounts')
         .update({
           status: 'approved',
           approved_at: new Date().toISOString(),
-          approved_by: currentUser?.email || 'Admin',
+          approved_by: currentUser?.email || 'Admin'
         })
         .eq('id', acc.id)
-      if (error) throw error
 
-      // Email en best-effort
       try {
         await emailjs.send(EMAILJS_SERVICE_ID, PRO_TEMPLATE_ID, {
           to_email: acc.email,
@@ -60,7 +66,7 @@ export default function ProAdmin() {
         console.warn('Email approbation non envoyé:', emailErr)
       }
 
-      fetchAll()
+      fetchAccounts()
     } catch (err) {
       console.error('Erreur approbation:', err)
       alert('Erreur lors de l\'approbation')
@@ -68,13 +74,10 @@ export default function ProAdmin() {
   }
 
   const reject = async (acc) => {
-    if (!window.confirm(`Refuser la demande de ${acc.company_name} ?`)) return
     try {
-      const { error } = await supabase
-        .from('pro_accounts')
+      await supabase.from('pro_accounts')
         .update({ status: 'rejected' })
         .eq('id', acc.id)
-      if (error) throw error
 
       try {
         await emailjs.send(EMAILJS_SERVICE_ID, PRO_TEMPLATE_ID, {
@@ -92,7 +95,7 @@ export default function ProAdmin() {
         console.warn('Email refus non envoyé:', emailErr)
       }
 
-      fetchAll()
+      fetchAccounts()
     } catch (err) {
       console.error('Erreur refus:', err)
       alert('Erreur lors du refus')
