@@ -139,9 +139,6 @@ export default function Comptabilite() {
   const totalStripe     = filteredPayments.filter((p) => isStripe(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalRevenu     = filteredPayments.reduce((acc, p) => acc + (p.amount || 0), 0)
 
-  console.log('filteredPayments:', filteredPayments.length)
-  console.log('totalRevenu:', totalRevenu)
-
   const handleAddPayment = async () => {
     if (!newPayment.amount) return
     const { error } = await supabase.from('payments').insert([{

@@ -147,18 +147,11 @@ function EmployeeModal({ employee, onClose, onSaved }) {
       const { error: e } = await supabase.from('staff').update(data).eq('id', employee.id)
       err = e
     } else {
-      console.log('=== CREATE STAFF ===')
-      console.log('email généré:', email)
-      console.log('hash:', data.password_hash)
-      console.log('données à insérer:', data)
-
-      const { data: insertData, error: e } = await supabase
+      const { error: e } = await supabase
         .from('staff')
         .insert([data])
         .select()
 
-      console.log('résultat insert:', insertData)
-      console.log('erreur insert:', e)
       err = e
     }
 

@@ -334,8 +334,6 @@ function PhoneModal({ phone, onClose, onSaved }) {
         return
       }
 
-      console.log('Succès:', data)
-
       onSaved()
       onClose()
     } catch (err) {
@@ -995,11 +993,6 @@ export default function Stock() {
         }])
       if (orderError) throw orderError
 
-      console.log('=== VENTE DEBUG ===')
-      console.log('sale_magasin:', saleForm.sale_magasin)
-      console.log('payments:', saleForm.payments)
-      console.log('sale_price:', saleForm.sale_price)
-
       const normalizeMethod = (m) => {
         if (m === 'Cash')               return 'cash'
         if (m === 'Virement bancaire')  return 'virement bancaire'
@@ -1018,15 +1011,12 @@ export default function Stock() {
           description:    `Vente ${salePhone.name || salePhone.model} — ${saleForm.customer_firstname} ${saleForm.customer_name}`,
           payment_date:   saleDate,
         }))
-      console.log('paymentRows:', paymentRows)
 
       if (paymentRows.length > 0) {
-        const { data: paymentResult, error: paymentError } = await supabase
+        await supabase
           .from('payments')
           .insert(paymentRows)
           .select()
-        console.log('paymentResult:', paymentResult)
-        console.log('paymentError:', paymentError)
       }
 
       const paymentMethodLabel = saleForm.payments
@@ -1040,13 +1030,6 @@ export default function Stock() {
           const expiry   = new Date(now)
           expiry.setMonth(expiry.getMonth() + 24)
           const magasin  = MAGASINS_MAP[saleForm.sale_magasin]
-
-          console.log('=== EMAIL FACTURE ===')
-          console.log('customer_email:', saleForm.customer_email)
-          console.log('SERVICE_ID:', EMAILJS_SERVICE_ID)
-          console.log('INVOICE_TEMPLATE_ID:', INVOICE_TEMPLATE_ID)
-          console.log('PUBLIC_KEY:', EMAILJS_PUBLIC_KEY)
-          console.log('invoice_url:', `https://sebphone.be/facture/${reservationCode}`)
 
           await emailjs.send(
             EMAILJS_SERVICE_ID,
@@ -1085,7 +1068,6 @@ export default function Stock() {
             },
             EMAILJS_PUBLIC_KEY
           )
-          console.log('✅ Email facture envoyé à:', saleForm.customer_email)
         } catch (emailErr) {
           console.warn('Email facture non envoyé:', emailErr)
         }
@@ -1176,7 +1158,6 @@ export default function Stock() {
             },
             EMAILJS_PUBLIC_KEY
           )
-          console.log('✅ Email société envoyé à:', saleForm.company_email)
         } catch (err) {
           console.warn('Email société non envoyé:', err)
         }

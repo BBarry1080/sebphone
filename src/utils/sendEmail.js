@@ -89,30 +89,17 @@ export async function sendConfirmationEmail(params) {
     reply_to: 'contact@sebphone.be',
   }
 
-  console.log('SERVICE_ID:', SERVICE_ID)
-  console.log('TEMPLATE_ID:', TEMPLATE_ID)
-  console.log('PUBLIC_KEY:', PUBLIC_KEY)
-  console.log('clientEmail reçu:', clientEmail)
-  console.log('to_email envoyé:', templateParams.to_email)
-  console.log('to_name envoyé:', templateParams.to_name)
-  console.log('reservation_code:', reservationCode)
-  console.log('reservation_url:', templateParams.reservation_url)
-
   if (!clientEmail) {
     console.error('❌ Pas d\'email client !')
     return false
   }
 
-  console.log('📧 Envoi email à:', clientEmail)
-  console.log('📧 Params:', templateParams)
-
   try {
-    const result = await emailjs.send(
+    await emailjs.send(
       SERVICE_ID,
       TEMPLATE_ID,
       templateParams
     )
-    console.log('✅ Email envoyé:', result)
     return true
   } catch (error) {
     console.error('❌ EmailJS erreur:', JSON.stringify(error))

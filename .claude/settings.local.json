@@ -23,7 +23,11 @@
       "Bash(curl -s -o /dev/null -w \"css: %{http_code}\\\\n\" http://localhost:8000/assets/styles.css)",
       "Bash(curl -s -o /dev/null -w \"js: %{http_code}\\\\n\" http://localhost:8000/assets/main.js)",
       "Bash(curl -s http://localhost:8000/)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(npm run *)",
+      "Bash(npx eslint *)",
+      "Bash(grep -E \"no-undef|react/jsx-no-undef|is not defined|Parsing error|^\\\\S.*\\\\.jsx$|^\\\\S.*\\\\.js$\")",
+      "Bash(grep -vE \"^\\\\s*$\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Aliou\\Desktop\\Transport\\Site\\assets",

@@ -73,23 +73,11 @@ export default function Dashboard() {
       ])
 
       // CA: somme de tous les paiements (table payments)
-      const { data: paymentsData, error: paymentsError } = await supabase
+      const { data: paymentsData } = await supabase
         .from('payments')
         .select('amount')
 
-      console.log('paymentsData:', paymentsData)
-      console.log('paymentsError:', paymentsError)
-      console.log('totalCA:', paymentsData?.reduce((acc, p) => acc + (p.amount || 0), 0))
-
       const ca = (paymentsData || []).reduce((sum, p) => sum + (p.amount || 0), 0)
-
-      // Vendus ce mois (debug)
-      const { data: soldThisMonth } = await supabase
-        .from('phones')
-        .select('id')
-        .eq('status', 'vendu')
-        .gte('updated_at', startOfMonth.toISOString())
-      console.log('soldThisMonth:', soldThisMonth?.length)
 
       const { data: beneficeData } = await addFilter(supabase
         .from('phones')
@@ -104,8 +92,6 @@ export default function Dashboard() {
         .from('phones')
         .select('price, purchase_price')
         .eq('status', 'vendu'))
-
-      console.log('soldPhones:', beneficeReelData?.length, 'vendus')
 
       const beneficeReel = (beneficeReelData || []).reduce(
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
