@@ -134,7 +134,6 @@ export default function Comptabilite() {
 
   const totalCash       = filteredPayments.filter((p) => isCash(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalVirement   = filteredPayments.filter((p) => isVirement(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
-  const totalMixte      = filteredPayments.filter((p) => isMixte(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalBancontact = filteredPayments.filter((p) => isBancontact(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalStripe     = filteredPayments.filter((p) => isStripe(p.payment_method)).reduce((acc, p) => acc + (p.amount || 0), 0)
   const totalRevenu     = filteredPayments.reduce((acc, p) => acc + (p.amount || 0), 0)

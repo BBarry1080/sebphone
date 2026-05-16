@@ -8,7 +8,7 @@ import { Smartphone, Plus, Search, Pencil, Trash2, X, Star } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useRequirePermission, usePermission, useCurrentUser, useIsAdmin } from '../../hooks/usePermissions'
 import {
-  addPhone, updatePhone, deletePhone, updatePhoneStatus, updatePhonePrice,
+  updatePhone, updatePhoneStatus, updatePhonePrice,
 } from '../../data/phonesApi'
 import { phonesMock } from '../../data/phonesMock'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
