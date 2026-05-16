@@ -5,7 +5,7 @@ import emailjs from '@emailjs/browser'
 
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
 const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMIGNP6IQB9O'
-const PRO_TEMPLATE_ID = 'template_qukek6a'
+const PRO_TEMPLATE_ID = 'template_769za9g'
 
 export default function ProAdmin() {
   const [pending, setPending]   = useState([])
@@ -40,9 +40,14 @@ export default function ProAdmin() {
         EMAILJS_SERVICE_ID,
         PRO_TEMPLATE_ID,
         {
-          to_email: acc.email,
+          to_email:     acc.email,
+          contact_name: acc.contact_name,
           company_name: acc.company_name,
-          message: `Votre compte professionnel SebPhone a été approuvé ! Vous pouvez désormais vous connecter sur sebphone.be/pro`,
+          vat_number:   acc.vat_number,
+          subject:      'Compte professionnel approuvé',
+          message:      'Votre compte professionnel SebPhone a été approuvé ! Vous pouvez désormais vous connecter sur sebphone.be/pro',
+          status_label: 'Compte approuvé !',
+          status_class: 'status-approved',
         },
         EMAILJS_PUBLIC_KEY,
       )

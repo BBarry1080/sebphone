@@ -8,7 +8,7 @@ import emailjs from '@emailjs/browser'
 const SALT = 'sebphone_salt_2026'
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
 const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMIGNP6IQB9O'
-const PRO_TEMPLATE_ID = 'template_qukek6a'
+const PRO_TEMPLATE_ID = 'template_769za9g'
 
 export default function ProLogin() {
   const navigate = useNavigate()
@@ -131,9 +131,14 @@ export default function ProLogin() {
           EMAILJS_SERVICE_ID,
           PRO_TEMPLATE_ID,
           {
-            to_email: 'contact@sebphone.be',
+            to_email:     cleanEmail,
+            contact_name: form.contact_name,
             company_name: form.company_name,
-            message: `Nouvelle demande d'accès pro : ${form.company_name} (${cleanEmail}) — TVA ${form.vat_number}`,
+            vat_number:   form.vat_number,
+            subject:      'Demande de compte professionnel reçue',
+            message:      'Votre demande est en cours d\'examen. Nous vous contacterons sous 24-48h.',
+            status_label: 'Demande reçue !',
+            status_class: 'status-pending',
           },
           EMAILJS_PUBLIC_KEY,
         )
