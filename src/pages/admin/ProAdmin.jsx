@@ -11,9 +11,11 @@ const PRO_TEMPLATE_ID = 'template_rs9zkwo'
 export default function ProAdmin() {
   const currentUser = useCurrentUser()
   const [pending, setPending]   = useState([])
+  const [processedAccounts, setProcessedAccounts] = useState([])
   const [phones, setPhones]     = useState([])
   const [proStock, setProStock] = useState([])
   const [loading, setLoading]   = useState(true)
+  const [processing, setProcessing] = useState(null) // stocke l'id en cours
 
   const fetchAccounts = async () => {
     if (!isSupabaseReady) return
@@ -23,6 +25,13 @@ export default function ProAdmin() {
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
     setPending(data || [])
+
+    const { data: allAccounts } = await supabase
+      .from('pro_accounts')
+      .select('*')
+      .in('status', ['approved', 'rejected'])
+      .order('created_at', { ascending: false })
+    setProcessedAccounts(allAccounts || [])
   }
 
   const fetchAll = async () => {
@@ -41,6 +50,7 @@ export default function ProAdmin() {
   useEffect(() => { fetchAll() }, [])
 
   const approve = async (acc) => {
+    setProcessing(acc.id)
     try {
       await supabase.from('pro_accounts')
         .update({
@@ -70,10 +80,13 @@ export default function ProAdmin() {
     } catch (err) {
       console.error('Erreur approbation:', err)
       alert('Erreur lors de l\'approbation')
+    } finally {
+      setProcessing(null)
     }
   }
 
   const reject = async (acc) => {
+    setProcessing(acc.id)
     try {
       await supabase.from('pro_accounts')
         .update({ status: 'rejected' })
@@ -99,6 +112,8 @@ export default function ProAdmin() {
     } catch (err) {
       console.error('Erreur refus:', err)
       alert('Erreur lors du refus')
+    } finally {
+      setProcessing(null)
     }
   }
 
@@ -180,13 +195,15 @@ export default function ProAdmin() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => approve(acc)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 cursor-pointer"
+                          disabled={processing === acc.id}
+                          className={`flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 cursor-pointer ${processing === acc.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <Check size={13} /> Approuver
                         </button>
                         <button
                           onClick={() => reject(acc)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-600 rounded-lg text-xs font-bold hover:bg-red-200 cursor-pointer"
+                          disabled={processing === acc.id}
+                          className={`flex items-center gap-1 px-2.5 py-1.5 bg-red-100 text-red-600 rounded-lg text-xs font-bold hover:bg-red-200 cursor-pointer ${processing === acc.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                           <X size={13} /> Refuser
                         </button>
@@ -199,6 +216,56 @@ export default function ProAdmin() {
           </div>
         )}
       </section>
+
+      {/* Comptes sociétés (traités) */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mt-6">
+        <div className="p-4 border-b border-gray-100">
+          <h2 className="font-bold text-[#1B2A4A] flex items-center gap-2">
+            🏢 Comptes sociétés ({processedAccounts.length})
+          </h2>
+        </div>
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              {['Société', 'Contact', 'Email', 'TVA', 'Date', 'Statut'].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {processedAccounts.map(acc => (
+              <tr key={acc.id} className="border-t border-gray-100 hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm font-bold text-[#1B2A4A]">
+                  {acc.company_name}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-600">{acc.contact_name}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{acc.email}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{acc.vat_number || '—'}</td>
+                <td className="px-4 py-3 text-sm text-gray-500">
+                  {new Date(acc.created_at).toLocaleDateString('fr-BE')}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`text-xs px-2 py-1 rounded-lg font-bold
+                    ${acc.status === 'approved'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-red-100 text-red-700'}`}>
+                    {acc.status === 'approved' ? '✅ Approuvé' : '❌ Refusé'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {processedAccounts.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400 text-sm">
+                  Aucun compte traité
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Section B — Stock professionnel */}
       <section className="bg-white rounded-2xl border border-gray-100 p-5">

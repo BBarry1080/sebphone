@@ -55,12 +55,12 @@ export default function ProLogin() {
         return
       }
 
-      if (account.status === 'pending') {
-        setInfo('Votre compte est en cours d\'approbation. Vous recevrez un email dès validation.')
+      if (account.status === 'rejected') {
+        setError('Votre demande a été refusée. Contactez-nous à contact@sebphone.be pour plus d\'informations.')
         return
       }
-      if (account.status === 'rejected') {
-        setError('Votre demande a été refusée. Contactez-nous pour plus d\'informations.')
+      if (account.status === 'pending') {
+        setError('Votre compte est en cours d\'approbation. Vous recevrez un email sous 1h à 72h.')
         return
       }
       if (account.status === 'approved') {
