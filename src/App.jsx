@@ -41,6 +41,9 @@ import CodeVerification from './pages/admin/CodeVerification';
 import VentesHistory from './pages/admin/VentesHistory';
 import StockReconditionnement from './pages/admin/StockReconditionnement';
 import Facture from './pages/Facture';
+import ProLogin from './pages/ProLogin';
+import ProCatalogue from './pages/ProCatalogue';
+import ProAdmin from './pages/admin/ProAdmin';
 
 function Layout({ children }) {
   return (
@@ -115,6 +118,12 @@ export default function App() {
           <Route path="/panier" element={
             <Layout><Cart /></Layout>
           } />
+          <Route path="/pro" element={
+            <Layout><ProLogin /></Layout>
+          } />
+          <Route path="/pro/catalogue" element={
+            <Layout><ProCatalogue /></Layout>
+          } />
           <Route path="/compte" element={
             <Layout>
               <main className="max-w-xl mx-auto px-4 py-20 text-center">
@@ -142,6 +151,7 @@ export default function App() {
             <Route path="verifier-code" element={<CodeVerification />} />
             <Route path="comptabilite" element={<Comptabilite />} />
             <Route path="registre" element={<Registre />} />
+            <Route path="pro" element={<ProAdmin />} />
             <Route path="clients" element={
               <div className="text-center py-20 text-[#888]">Page Clients — à venir</div>
             } />

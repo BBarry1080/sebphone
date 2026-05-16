@@ -26,6 +26,7 @@ const navLinks = [
   { to: '/reconditiones', labelKey: 'nav_reconditionnes', end: false },
   { to: '/sur-commande',  labelKey: 'nav_sur_commande', end: false, highlight: true, icon: '📦 ' },
   { to: '/rachat',        labelKey: 'nav_revendre',     end: false },
+  { to: '/pro',           labelKey: 'nav_pro',          end: false },
 ];
 
 export default function Header() {

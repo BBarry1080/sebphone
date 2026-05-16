@@ -45,19 +45,6 @@ const CONDITION_LABEL = {
 import { MAGASINS } from '../utils/magasins'
 import { useLanguage } from '../contexts/LanguageContext'
 
-function BatteryBar({ value }) {
-  if (!value) return <span className="text-gray-400 text-xs">—</span>
-  const color = value >= 90 ? 'bg-green-400' : value >= 80 ? 'bg-orange-400' : 'bg-red-400'
-  const textColor = value >= 90 ? 'text-green-700' : value >= 80 ? 'text-orange-600' : 'text-red-600'
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full`} style={{ width: `${value}%` }} />
-      </div>
-      <span className={`text-xs font-medium ${textColor}`}>{value}%</span>
-    </div>
-  )
-}
 
 function FilterPill({ label, active, onClick }) {
   return (
@@ -335,7 +322,7 @@ export default function ModelDetailPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <BatteryBar value={phone.battery_health} />
+                              <span className="text-xs text-gray-600 italic">{t('battery_range')}</span>
                             </td>
                             <td className="px-4 py-3 max-w-[220px]">
                               {phone.condition === 'neuf' ? (
@@ -455,7 +442,7 @@ export default function ModelDetailPage() {
                               </div>
                             ) : null
                           ) : null}
-                          <BatteryBar value={phone.battery_health} />
+                          <span className="text-xs text-gray-600 italic">{t('battery_range')}</span>
                         </div>
 
                         <button

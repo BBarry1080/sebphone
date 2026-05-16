@@ -29,6 +29,18 @@ const CONDITIONS = ['neuf', 'reconditionne', 'occasion']
 const CONDITION_LABELS = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
 const GRADES = ['Bon état', 'Très bon état', 'Comme neuf', 'Neuf']
 const FOURNISSEURS = ['SebPhone', 'Marrakech', 'Molenbeek', 'Louise', 'Anderlecht']
+const FOURNISSEURS_LIST = [
+  'SebPhone',
+  'Louise',
+  'Anderlecht',
+  'Molenbeek',
+  'Rue Neuve',
+  'Marrakech',
+  'Zainab Debboun',
+  'Fournisseur externe 1',
+  'Fournisseur externe 2',
+  'Autre',
+]
 const LOCATIONS = ['Molenbeek', 'Louise', 'Anderlecht', 'SebPhone', 'Marrakech', 'Autre']
 const STATUSES = ['disponible', 'reserve', 'vendu', 'sur_commande']
 const STATUS_LABELS = {
@@ -146,6 +158,9 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [purchasePrice, setPurchasePrice] = useState(phone?.purchase_price ?? '')
   const [tvaRegime, setTvaRegime]     = useState(phone?.tva_regime || (phone?.condition === 'neuf' ? 'normale' : 'marge'))
   const [fournisseur, setFournisseur] = useState(phone?.fournisseur || '')
+  const [fournisseurCustom, setFournisseurCustom] = useState(
+    phone?.fournisseur && !FOURNISSEURS_LIST.includes(phone.fournisseur) ? phone.fournisseur : ''
+  )
   const [stockLocation, setStockLocation] = useState(phone?.stock_location || '')
   const [deposit, setDeposit]     = useState(phone?.deposit_amount || 50)
   const [magasins, setMagasins]   = useState(phone?.magasins || [])
@@ -641,13 +656,30 @@ function PhoneModal({ phone, onClose, onSaved }) {
               <div>
                 <label className="text-xs text-[#555] mb-1 block">Fournisseur</label>
                 <select
-                  value={fournisseur}
-                  onChange={(e) => setFournisseur(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                  value={FOURNISSEURS_LIST.includes(fournisseur) ? fournisseur : (fournisseur ? 'Autre' : '')}
+                  onChange={(e) => {
+                    if (e.target.value === 'Autre') {
+                      setFournisseur(fournisseurCustom)
+                    } else {
+                      setFournisseur(e.target.value)
+                    }
+                  }}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none mb-2"
                 >
                   <option value="">— Choisir —</option>
-                  {FOURNISSEURS.map((f) => <option key={f} value={f}>{f}</option>)}
+                  {FOURNISSEURS_LIST.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
+                {(!FOURNISSEURS_LIST.includes(fournisseur)) && (
+                  <input
+                    value={fournisseurCustom}
+                    onChange={(e) => {
+                      setFournisseurCustom(e.target.value)
+                      setFournisseur(e.target.value)
+                    }}
+                    placeholder="Nom du fournisseur"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                )}
               </div>
               <div>
                 <label className="text-xs text-[#555] mb-1 block">Localisation</label>
@@ -864,7 +896,97 @@ export default function Stock() {
     company_email:      '',
     company_phone:      '',
     company_tva_regime: 'marge',
+    imei_confirm:       '',
   })
+
+  // ── Import liste fournisseur ──────────────────────────────────────
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importSupplier, setImportSupplier]   = useState('')
+  const [importText, setImportText]           = useState('')
+  const [importPreview, setImportPreview]     = useState([])
+
+  const parseImportList = (text) => {
+    return text.split('\n')
+      .filter((line) => line.trim())
+      .map((line, index) => {
+        const storageMatch = line.match(/(\d+)\s*(Go|To|GB|TB)/i)
+        const storage = storageMatch
+          ? storageMatch[1] + (storageMatch[2].toLowerCase().includes('t') ? 'To' : 'Go')
+          : ''
+
+        const withoutStorage = line.replace(/\d+\s*(Go|To|GB|TB)/gi, '').trim()
+
+        const modelPatterns = [
+          'iPhone 17 Pro Max', 'iPhone 17 Pro', 'iPhone 17 Air', 'iPhone 17',
+          'iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone 16 Plus', 'iPhone 16e', 'iPhone 16',
+          'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
+          'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
+          'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13 mini', 'iPhone 13',
+          'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12 mini', 'iPhone 12',
+          'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
+          'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
+          'iPhone SE', 'iPhone 8 Plus', 'iPhone 8', 'iPhone 7 Plus', 'iPhone 7',
+          'Samsung Galaxy S25 Ultra', 'Samsung Galaxy S25+', 'Samsung Galaxy S25',
+          'Samsung Galaxy S24 Ultra', 'Samsung Galaxy S24+', 'Samsung Galaxy S24',
+          'Samsung Galaxy A55', 'Samsung Galaxy A35', 'Samsung Galaxy A25',
+          'Samsung Galaxy A15',
+        ]
+
+        let detectedModel = ''
+        for (const pattern of modelPatterns) {
+          if (withoutStorage.toLowerCase().includes(pattern.toLowerCase())) {
+            detectedModel = pattern
+            break
+          }
+        }
+
+        const color = withoutStorage.replace(detectedModel, '').trim()
+
+        return {
+          id: index,
+          raw: line,
+          model: detectedModel || withoutStorage,
+          storage,
+          color,
+          price: '',
+          brand: detectedModel.includes('Samsung') ? 'Samsung' : 'Apple',
+        }
+      })
+  }
+
+  const handleImportPhones = async () => {
+    if (!importSupplier) {
+      alert('Sélectionne un fournisseur')
+      return
+    }
+    const inserts = importPreview.map((item) => ({
+      name: item.model,
+      model: item.model,
+      brand: item.brand,
+      color: item.color || '',
+      storage: item.storage || '',
+      condition: 'neuf',
+      status: 'sur_commande',
+      price: parseFloat(item.price) || 0,
+      purchase_price: 0,
+      fournisseur: importSupplier,
+      magasins: [],
+      visible_on_site: false,
+      tva_regime: 'marge',
+      parts_replaced: [],
+      added_by: currentUser?.name || 'Admin',
+    }))
+    const { error } = await supabase.from('phones').insert(inserts)
+    if (error) {
+      alert('Erreur lors de l\'import: ' + error.message)
+    } else {
+      alert(`✅ ${inserts.length} téléphone(s) importé(s) dans le stock sur commande !`)
+      setShowImportModal(false)
+      setImportPreview([])
+      setImportText('')
+      fetchPhones()
+    }
+  }
 
   const fetchPhones = async () => {
     setLoading(true)
@@ -895,8 +1017,21 @@ export default function Stock() {
       alert('Sélectionnez le magasin de vente')
       return
     }
+    // Vérifie IMEI si téléphone n'en a pas
+    const imeiToUse = salePhone?.imei || saleForm.imei_confirm
+    if (!imeiToUse || imeiToUse.length < 10) {
+      alert('⚠️ Veuillez saisir l\'IMEI du téléphone avant de valider la vente')
+      return
+    }
     setSaleLoading(true)
     try {
+      // Met à jour l'IMEI si nouveau
+      if (!salePhone?.imei && saleForm.imei_confirm) {
+        await supabase.from('phones')
+          .update({ imei: saleForm.imei_confirm })
+          .eq('id', salePhone.id)
+      }
+
       const saleDate = new Date().toISOString()
       const reservationCode = Math.random().toString(36).substring(2, 8).toUpperCase()
 
@@ -1406,6 +1541,12 @@ export default function Stock() {
             {label}
           </button>
         ))}
+        <button
+          onClick={() => setShowImportModal(true)}
+          className="ml-auto px-3 py-1.5 rounded-full text-xs font-bold bg-[#1B2A4A] text-white hover:bg-[#243a64] transition-all cursor-pointer"
+        >
+          📋 Importer une liste fournisseur
+        </button>
       </div>
 
       {/* ── MOBILE CARDS ── */}
@@ -1498,6 +1639,7 @@ export default function Stock() {
                             company_email: '',
                             company_phone: '',
                             company_tva_regime: 'marge',
+                            imei_confirm: phone.imei || '',
                           })
                           setShowSaleModal(true)
                         }}
@@ -1649,6 +1791,7 @@ export default function Stock() {
                                 company_email: '',
                                 company_phone: '',
                                 company_tva_regime: 'marge',
+                                imei_confirm: phone.imei || '',
                               })
                               setShowSaleModal(true)
                             }}
@@ -1706,6 +1849,114 @@ export default function Stock() {
           onClose={() => setModalOpen(false)}
           onSaved={fetchPhones}
         />
+      )}
+
+      {/* Modal import liste fournisseur */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="font-bold text-[#1B2A4A] text-lg">
+                📋 Importer une liste fournisseur
+              </h2>
+              <button onClick={() => { setShowImportModal(false); setImportPreview([]) }} className="cursor-pointer">
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+
+              {/* Fournisseur */}
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Fournisseur
+                </label>
+                <select
+                  value={importSupplier}
+                  onChange={(e) => setImportSupplier(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                >
+                  <option value="">Sélectionner un fournisseur</option>
+                  {FOURNISSEURS_LIST.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Zone texte */}
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Coller la liste (une ligne par téléphone)
+                </label>
+                <textarea
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  placeholder={"iPhone 13 128Go Noir\niPhone 14 Pro 256Go Violet\nSamsung Galaxy S24 128Go Blanc"}
+                  rows={8}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono"
+                />
+              </div>
+
+              <button
+                onClick={() => setImportPreview(parseImportList(importText))}
+                className="w-full py-2 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold cursor-pointer"
+              >
+                🔍 Analyser la liste
+              </button>
+
+              {/* Preview */}
+              {importPreview.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                    {importPreview.length} téléphone(s) détecté(s) — remplis les prix de vente
+                  </p>
+                  <div className="border border-gray-100 rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          {['Modèle', 'Stockage', 'Couleur', 'Prix vente (€)'].map((h) => (
+                            <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.map((item, i) => (
+                          <tr key={i} className="border-t border-gray-100">
+                            <td className="px-3 py-2 text-sm font-medium">{item.model}</td>
+                            <td className="px-3 py-2 text-sm text-gray-600">{item.storage}</td>
+                            <td className="px-3 py-2 text-sm text-gray-600">{item.color}</td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                placeholder="0"
+                                value={item.price}
+                                onChange={(e) => setImportPreview((prev) =>
+                                  prev.map((p, idx) => idx === i
+                                    ? { ...p, price: e.target.value } : p)
+                                )}
+                                className="w-24 px-2 py-1 border border-gray-200 rounded-lg text-sm"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <button
+                    onClick={handleImportPhones}
+                    className="w-full mt-3 py-2 bg-green-600 text-white rounded-xl text-sm font-bold cursor-pointer"
+                  >
+                    ✅ Importer dans le stock sur commande
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal vente manuelle */}
@@ -1837,6 +2088,29 @@ export default function Stock() {
                           0
                         ) - salePhone.purchase_price).toFixed(0)}€
                       </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                      IMEI {!salePhone?.imei && <span className="text-red-500">*</span>}
+                    </label>
+                    {salePhone?.imei ? (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-mono text-gray-700 bg-gray-50 px-3 py-2 rounded-xl flex-1">
+                          {salePhone.imei}
+                        </p>
+                        <span className="text-green-500 text-xs font-bold">✓ Déjà renseigné</span>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={saleForm.imei_confirm}
+                        onChange={(e) => setSaleForm((f) => ({ ...f, imei_confirm: e.target.value }))}
+                        placeholder="Saisir l'IMEI avant de vendre"
+                        maxLength={15}
+                        className="w-full px-3 py-2 border border-orange-300 rounded-xl text-sm font-mono focus:border-[#00B4CC] outline-none"
+                      />
                     )}
                   </div>
 

@@ -14,6 +14,7 @@ const navLinks = [
   { to: '/reconditiones', labelKey: 'nav_reconditionnes' },
   { to: '/sur-commande',  labelKey: 'nav_sur_commande', highlight: true, icon: '📦 ' },
   { to: '/rachat',        labelKey: 'nav_revendre' },
+  { to: '/pro',           labelKey: 'nav_pro' },
 ];
 
 function SebLogo() {
