@@ -25,15 +25,19 @@ const DELAIS = [
 
 const BRANDS = ['Apple', 'Samsung', 'Xiaomi', 'Huawei', 'OnePlus', 'Google', 'Autre']
 
-const CONDITIONS = ['Neuf', 'Comme neuf', 'Très bon état', 'Bon état', 'Occasion']
+const CONDITIONS = [
+  'Neuf',
+  'Occasion',
+  'Reconditionné',
+]
 
 const GRADES_BY_CONDITION = {
   'Neuf': ['Neuf sous scellé', 'Neuf débloqué'],
   'Occasion': ['Parfait état', 'Très bon état', 'État correct'],
-  'Comme neuf': ['Comme neuf'],
-  'Reconditionné': ['Grade A+', 'Grade A', 'Grade B', 'Grade C'],
-  'Très bon état': ['Très bon état'],
-  'Bon état': ['Bon état'],
+  'Comme neuf': ['Parfait état', 'Très bon état'],
+  'Reconditionné': ['Parfait état', 'Très bon état', 'État correct'],
+  'Très bon état': ['Parfait état', 'Très bon état', 'État correct'],
+  'Bon état': ['Très bon état', 'État correct'],
 }
 
 const STORAGES = ['16Go', '32Go', '64Go', '128Go', '256Go', '512Go', '1To']
