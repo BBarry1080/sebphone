@@ -19,19 +19,21 @@ export default function ProAdmin() {
 
   const fetchAccounts = async () => {
     if (!isSupabaseReady) return
-    const { data } = await supabase
+    // Demandes en attente
+    const { data: pendingData } = await supabase
       .from('pro_accounts')
       .select('*')
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
-    setPending(data || [])
+    setPending(pendingData || [])
 
-    const { data: allAccounts } = await supabase
+    // Comptes traités
+    const { data: processed } = await supabase
       .from('pro_accounts')
       .select('*')
       .in('status', ['approved', 'rejected'])
       .order('created_at', { ascending: false })
-    setProcessedAccounts(allAccounts || [])
+    setProcessedAccounts(processed || [])
   }
 
   const fetchAll = async () => {
@@ -77,6 +79,8 @@ export default function ProAdmin() {
       }
 
       fetchAccounts()
+      // Force re-fetch après 500ms
+      setTimeout(() => fetchAccounts(), 500)
     } catch (err) {
       console.error('Erreur approbation:', err)
       alert('Erreur lors de l\'approbation')
@@ -109,6 +113,8 @@ export default function ProAdmin() {
       }
 
       fetchAccounts()
+      // Force re-fetch après 500ms
+      setTimeout(() => fetchAccounts(), 500)
     } catch (err) {
       console.error('Erreur refus:', err)
       alert('Erreur lors du refus')
