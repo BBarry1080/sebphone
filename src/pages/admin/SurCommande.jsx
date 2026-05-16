@@ -4,13 +4,147 @@ import { useCurrentUser } from '../../hooks/usePermissions'
 import { IPHONE_ORDER } from '../../utils/phoneImage'
 import { Plus, X, Check, Package, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
 
-const SAMSUNG_MODELS = [
-  'Samsung Galaxy S25 Ultra', 'Samsung Galaxy S25+', 'Samsung Galaxy S25',
-  'Samsung Galaxy S24 Ultra', 'Samsung Galaxy S24+', 'Samsung Galaxy S24',
-  'Samsung Galaxy S23 Ultra', 'Samsung Galaxy S23+', 'Samsung Galaxy S23',
-  'Samsung Galaxy A55', 'Samsung Galaxy A35', 'Samsung Galaxy A25',
-  'Samsung Galaxy A15', 'Samsung Galaxy A06',
-]
+const MODELS_BY_BRAND = {
+  'Apple': IPHONE_ORDER,
+
+  'Samsung': [
+    // S26
+    'Samsung Galaxy S26 Ultra', 'Samsung Galaxy S26+', 'Samsung Galaxy S26',
+    // S25
+    'Samsung Galaxy S25 Ultra', 'Samsung Galaxy S25+', 'Samsung Galaxy S25',
+    // S24
+    'Samsung Galaxy S24 Ultra', 'Samsung Galaxy S24+', 'Samsung Galaxy S24',
+    // S23
+    'Samsung Galaxy S23 Ultra', 'Samsung Galaxy S23+', 'Samsung Galaxy S23',
+    // S22
+    'Samsung Galaxy S22 Ultra', 'Samsung Galaxy S22+', 'Samsung Galaxy S22',
+    // A Series
+    'Samsung Galaxy A56', 'Samsung Galaxy A55', 'Samsung Galaxy A35',
+    'Samsung Galaxy A25', 'Samsung Galaxy A15', 'Samsung Galaxy A06',
+    // Z Series
+    'Samsung Galaxy Z Fold 6', 'Samsung Galaxy Z Flip 6',
+    'Samsung Galaxy Z Fold 5', 'Samsung Galaxy Z Flip 5',
+  ],
+
+  'Xiaomi': [
+    'Xiaomi 15 Ultra', 'Xiaomi 15 Pro', 'Xiaomi 15',
+    'Xiaomi 14 Ultra', 'Xiaomi 14 Pro', 'Xiaomi 14',
+    'Xiaomi 13 Ultra', 'Xiaomi 13 Pro', 'Xiaomi 13',
+    'Xiaomi 12 Pro', 'Xiaomi 12',
+    'Xiaomi Redmi Note 14 Pro+', 'Xiaomi Redmi Note 14 Pro',
+    'Xiaomi Redmi Note 14', 'Xiaomi Redmi Note 13 Pro+',
+    'Xiaomi Redmi Note 13 Pro', 'Xiaomi Redmi Note 13',
+  ],
+
+  'Huawei': [
+    'Huawei Pura 70 Ultra', 'Huawei Pura 70 Pro', 'Huawei Pura 70',
+    'Huawei P60 Pro', 'Huawei P60',
+    'Huawei Mate 60 Pro', 'Huawei Mate 60',
+    'Huawei Nova 12 Pro', 'Huawei Nova 12',
+    'Huawei Nova 11 Pro', 'Huawei Nova 11',
+  ],
+
+  'OnePlus': [
+    'OnePlus 13', 'OnePlus 12', 'OnePlus 11',
+    'OnePlus Nord 4', 'OnePlus Nord 3', 'OnePlus Nord CE 4',
+    'OnePlus Nord CE 3 Lite', 'OnePlus Nord CE 3',
+    'OnePlus Open',
+  ],
+
+  'Google': [
+    'Google Pixel 9 Pro XL', 'Google Pixel 9 Pro Fold',
+    'Google Pixel 9 Pro', 'Google Pixel 9',
+    'Google Pixel 8 Pro', 'Google Pixel 8',
+    'Google Pixel 8a', 'Google Pixel 7 Pro',
+    'Google Pixel 7', 'Google Pixel 7a',
+  ],
+
+  'Autre': [],
+}
+
+const COLORS_BY_MODEL = {
+  // iPhone 17
+  'iPhone 17 Pro Max': ['Titane naturel', 'Titane désert', 'Titane noir', 'Titane blanc'],
+  'iPhone 17 Pro': ['Titane naturel', 'Titane désert', 'Titane noir', 'Titane blanc'],
+  'iPhone 17 Air': ['Blanc', 'Noir', 'Bleu', 'Rose'],
+  'iPhone 17': ['Blanc', 'Noir', 'Bleu', 'Rose', 'Vert'],
+
+  // iPhone 16
+  'iPhone 16 Pro Max': ['Titane naturel', 'Titane blanc', 'Titane noir', 'Titane du désert'],
+  'iPhone 16 Pro': ['Titane naturel', 'Titane blanc', 'Titane noir', 'Titane du désert'],
+  'iPhone 16 Plus': ['Blanc', 'Noir', 'Rose', 'Bleu azur', 'Vert jade', 'Ultraviolet'],
+  'iPhone 16': ['Blanc', 'Noir', 'Rose', 'Bleu azur', 'Vert jade', 'Ultraviolet'],
+  'iPhone 16e': ['Blanc', 'Noir'],
+
+  // iPhone 15
+  'iPhone 15 Pro Max': ['Titane naturel', 'Titane blanc', 'Titane noir', 'Titane bleu'],
+  'iPhone 15 Pro': ['Titane naturel', 'Titane blanc', 'Titane noir', 'Titane bleu'],
+  'iPhone 15 Plus': ['Noir', 'Blanc', 'Rose', 'Jaune', 'Vert'],
+  'iPhone 15': ['Noir', 'Blanc', 'Rose', 'Jaune', 'Vert'],
+
+  // iPhone 14
+  'iPhone 14 Pro Max': ['Violet intense', 'Or', 'Argent', 'Noir sidéral'],
+  'iPhone 14 Pro': ['Violet intense', 'Or', 'Argent', 'Noir sidéral'],
+  'iPhone 14 Plus': ['Bleu', 'Violet', 'Minuit', 'Lumière stellaire', 'PRODUCT RED'],
+  'iPhone 14': ['Bleu', 'Violet', 'Minuit', 'Lumière stellaire', 'PRODUCT RED'],
+
+  // iPhone 13
+  'iPhone 13 Pro Max': ['Or', 'Argent', 'Graphite', 'Bleu alpin', 'Vert sierra'],
+  'iPhone 13 Pro': ['Or', 'Argent', 'Graphite', 'Bleu alpin', 'Vert sierra'],
+  'iPhone 13': ['Minuit', 'Lumière stellaire', 'Bleu', 'Rose', 'PRODUCT RED', 'Vert'],
+  'iPhone 13 mini': ['Minuit', 'Lumière stellaire', 'Bleu', 'Rose', 'PRODUCT RED', 'Vert'],
+
+  // iPhone 12
+  'iPhone 12 Pro Max': ['Or', 'Argent', 'Graphite', 'Bleu Pacifique'],
+  'iPhone 12 Pro': ['Or', 'Argent', 'Graphite', 'Bleu Pacifique'],
+  'iPhone 12': ['Noir', 'Blanc', 'PRODUCT RED', 'Bleu', 'Vert', 'Violet'],
+  'iPhone 12 mini': ['Noir', 'Blanc', 'PRODUCT RED', 'Bleu', 'Vert', 'Violet'],
+
+  // iPhone 11
+  'iPhone 11 Pro Max': ['Or', 'Argent', 'Gris sidéral', 'Vert nuit'],
+  'iPhone 11 Pro': ['Or', 'Argent', 'Gris sidéral', 'Vert nuit'],
+  'iPhone 11': ['Noir', 'Blanc', 'PRODUCT RED', 'Vert', 'Jaune', 'Violet'],
+
+  // iPhone X/XS/XR
+  'iPhone XS Max': ['Or', 'Argent', 'Gris sidéral'],
+  'iPhone XS': ['Or', 'Argent', 'Gris sidéral'],
+  'iPhone XR': ['Noir', 'Blanc', 'PRODUCT RED', 'Bleu', 'Jaune', 'Corail'],
+  'iPhone X': ['Argent', 'Gris sidéral'],
+
+  // Samsung S26
+  'Samsung Galaxy S26 Ultra': ['Noir', 'Blanc', 'Titane gris', 'Titane bleu'],
+  'Samsung Galaxy S26+': ['Noir', 'Blanc', 'Bleu', 'Rose'],
+  'Samsung Galaxy S26': ['Noir', 'Blanc', 'Bleu', 'Rose', 'Vert'],
+
+  // Samsung S25
+  'Samsung Galaxy S25 Ultra': ['Noir', 'Blanc', 'Titane bleu', 'Titane gris'],
+  'Samsung Galaxy S25+': ['Noir', 'Blanc', 'Bleu givré', 'Rose doré'],
+  'Samsung Galaxy S25': ['Noir', 'Blanc', 'Bleu givré', 'Rose doré', 'Menthe'],
+
+  // Samsung S24
+  'Samsung Galaxy S24 Ultra': ['Noir', 'Gris', 'Violet', 'Jaune'],
+  'Samsung Galaxy S24+': ['Noir', 'Gris', 'Violet', 'Jaune'],
+  'Samsung Galaxy S24': ['Noir', 'Gris', 'Violet', 'Jaune', 'Cobalt'],
+
+  // Samsung S23
+  'Samsung Galaxy S23 Ultra': ['Noir', 'Crème', 'Vert', 'Lavande'],
+  'Samsung Galaxy S23+': ['Noir', 'Crème', 'Vert', 'Lavande'],
+  'Samsung Galaxy S23': ['Noir', 'Crème', 'Vert', 'Lavande'],
+
+  // Google Pixel
+  'Google Pixel 9 Pro XL': ['Obsidienne', 'Porcelaine', 'Rose quartz', 'Vert achée'],
+  'Google Pixel 9 Pro': ['Obsidienne', 'Porcelaine', 'Rose quartz', 'Vert achée'],
+  'Google Pixel 9': ['Obsidienne', 'Porcelaine', 'Rose quartz', 'Vert achée'],
+  'Google Pixel 8 Pro': ['Obsidienne', 'Porcelaine', 'Baie'],
+  'Google Pixel 8': ['Obsidienne', 'Rose', 'Menthe'],
+
+  // OnePlus
+  'OnePlus 13': ['Noir', 'Blanc', 'Bleu'],
+  'OnePlus 12': ['Noir silicieux', 'Vert émeraude'],
+
+  // Default fallback
+  'default': ['Noir', 'Blanc', 'Gris', 'Bleu', 'Rouge', 'Or', 'Argent', 'Rose', 'Vert', 'Violet'],
+}
 
 const FOURNISSEURS_LIST = [
   'SebPhone', 'Louise', 'Anderlecht', 'Molenbeek',
@@ -72,7 +206,7 @@ export default function AdminSurCommande() {
 
   const modelSuggestions = (() => {
     if (!modelSearch || modelSearch.length < 2) return []
-    const list = form.brand === 'Samsung' ? SAMSUNG_MODELS : IPHONE_ORDER
+    const list = MODELS_BY_BRAND[form.brand] || []
     return list
       .filter(m => m.toLowerCase().includes(modelSearch.toLowerCase()))
       .sort((a, b) => {
@@ -292,7 +426,7 @@ export default function AdminSurCommande() {
                       type="button"
                       onMouseDown={() => {
                         setModelSearch(model)
-                        setForm(f => ({ ...f, model }))
+                        setForm(f => ({ ...f, model, color: '' }))
                         setShowSuggestions(false)
                       }}
                       className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50
@@ -309,13 +443,38 @@ export default function AdminSurCommande() {
               <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
                 Couleur
               </label>
-              <input
-                value={form.color}
-                onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-                placeholder="ex: Noir, Blanc, Bleu..."
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl
-                           text-sm focus:border-[#00B4CC] outline-none"
-              />
+              {(COLORS_BY_MODEL[form.model] || COLORS_BY_MODEL['default']).length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {(COLORS_BY_MODEL[form.model] || COLORS_BY_MODEL['default']).map(c => (
+                    <button key={c} type="button"
+                      onClick={() => setForm(f => ({ ...f, color: c }))}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border
+                        ${form.color === c
+                          ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                          : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {c}
+                    </button>
+                  ))}
+                  {/* Option couleur personnalisée */}
+                  <input
+                    value={!(COLORS_BY_MODEL[form.model] ||
+                             COLORS_BY_MODEL['default']).includes(form.color)
+                           ? form.color : ''}
+                    onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
+                    placeholder="Autre couleur..."
+                    className="px-3 py-1.5 border border-dashed border-gray-300
+                               rounded-xl text-xs focus:border-[#00B4CC] outline-none w-32"
+                  />
+                </div>
+              ) : (
+                <input
+                  value={form.color}
+                  onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
+                  placeholder="ex: Noir, Blanc..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl
+                             text-sm focus:border-[#00B4CC] outline-none"
+                />
+              )}
             </div>
 
             {/* Stockage */}
