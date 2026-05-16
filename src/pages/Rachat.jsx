@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, CheckCircle, Phone, TrendingDown, MapPin, ExternalLink, X } from 'lucide-react'
 import { IPHONE_DATABASE } from '../data/iphoneDatabase'
 import { STARTING_PRICES } from '../data/startingPrices'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const STORES = [
   { name: "Anderlecht", address: "Chaussée de Mons 711, 1070 Anderlecht", maps: "https://maps.google.com/?q=Chaussée+de+Mons+711+Anderlecht" },
@@ -150,6 +151,7 @@ function ProgressBar({ step }) {
 }
 
 function SummaryPanel({ model, storage, answers, estimatedPrice }) {
+  const { t } = useLanguage()
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-24">
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Valeur estimée</p>
@@ -158,7 +160,7 @@ function SummaryPanel({ model, storage, answers, estimatedPrice }) {
       </p>
       {(model || storage) && (
         <div className="border-t border-gray-100 pt-4 flex flex-col gap-2 text-sm">
-          {model && <div className="flex justify-between"><span className="text-gray-400">Modèle</span><span className="font-medium text-[#1B2A4A]">{model}</span></div>}
+          {model && <div className="flex justify-between"><span className="text-gray-400">{t('revendre_model')}</span><span className="font-medium text-[#1B2A4A]">{model}</span></div>}
           {storage && <div className="flex justify-between"><span className="text-gray-400">Capacité</span><span className="font-medium text-[#1B2A4A]">{storage}</span></div>}
           {answers.battery && <div className="flex justify-between"><span className="text-gray-400">Batterie</span><span className="font-medium text-[#1B2A4A]">{answers.battery}%</span></div>}
         </div>
@@ -168,6 +170,7 @@ function SummaryPanel({ model, storage, answers, estimatedPrice }) {
 }
 
 export default function Rachat() {
+  const { t } = useLanguage()
   const [showStores, setShowStores] = useState(false)
   const [step, setStep]       = useState(1)
   const [model, setModel]     = useState('')
@@ -259,7 +262,7 @@ export default function Rachat() {
             </div>
             <div className="mt-5 border-t border-white/10 pt-4 text-xs text-gray-400">
               <p className="font-medium text-gray-300 mb-2">Vos réponses</p>
-              <div className="flex justify-between"><span>Modèle</span><span className="text-white">{model}</span></div>
+              <div className="flex justify-between"><span>{t('revendre_model')}</span><span className="text-white">{model}</span></div>
               <div className="flex justify-between mt-1"><span>Capacité</span><span className="text-white">{storage}</span></div>
               {answers.battery && <div className="flex justify-between mt-1"><span>Batterie</span><span className="text-white">{answers.battery}%</span></div>}
             </div>
@@ -311,7 +314,7 @@ export default function Rachat() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Revendre mon iPhone</h1>
+          <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">{t('revendre_title')}</h1>
           <p className="text-sm text-[#555555] mt-0.5">Estimation gratuite en 2 minutes</p>
         </div>
         <button

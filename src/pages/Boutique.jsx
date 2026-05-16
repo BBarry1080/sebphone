@@ -5,8 +5,10 @@ import { useGroupedPhones } from '../hooks/useGroupedPhones'
 import FilterSidebar, { MobileFilterBar, SortDropdown } from '../components/catalogue/FilterSidebar'
 import PhoneListCard from '../components/catalogue/PhoneListCard'
 import Spinner from '../components/ui/Spinner'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Boutique({ defaultBrand = null }) {
+  const { t } = useLanguage()
   const [viewMode, setViewMode] = useState('list')
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -77,9 +79,9 @@ export default function Boutique({ defaultBrand = null }) {
         <div className="flex-1 min-w-0 w-full">
           <div className="flex items-center justify-between mb-5">
             <p className="text-sm text-[#555555]">
-              <span className="font-semibold text-[#1B2A4A]">{groups.length}</span> modèle{groups.length !== 1 ? 's' : ''}
+              <span className="font-semibold text-[#1B2A4A]">{groups.length}</span> {t('home_models')}
               {' '}·{' '}
-              <span className="font-semibold text-[#1B2A4A]">{totalPhones}</span> appareil{totalPhones !== 1 ? 's' : ''}
+              <span className="font-semibold text-[#1B2A4A]">{totalPhones}</span> {t('home_devices')}
             </p>
             <div className="flex items-center gap-2">
               <div className="flex border border-gray-200 rounded-lg overflow-hidden">

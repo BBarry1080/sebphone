@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Phone, Mail, Globe } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 function InstagramIcon() {
   return (
@@ -21,6 +22,7 @@ function TikTokIcon() {
 
 
 export default function Footer() {
+  const { t } = useLanguage();
   return (
     <footer className="bg-[#1B2A4A] text-white">
       <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
@@ -30,7 +32,7 @@ export default function Footer() {
               <span className="text-[#00B4CC]">SEB</span>
               <span className="text-white">PHONE</span>
             </span>
-            <p className="text-xs text-gray-400 mt-1">Où tu veux, quand tu veux</p>
+            <p className="text-xs text-gray-400 mt-1">{t('footer_slogan')}</p>
           </div>
           <p className="text-sm text-gray-400 leading-relaxed">
             Votre boutique de confiance pour téléphones neufs, reconditionnés et occasions en Belgique.
@@ -39,7 +41,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="font-semibold text-sm uppercase tracking-widest text-[#00B4CC] mb-4">Liens rapides</h3>
+          <h3 className="font-semibold text-sm uppercase tracking-widest text-[#00B4CC] mb-4">{t('footer_links')}</h3>
           <ul className="flex flex-col gap-2">
             {[
               { to: '/boutique',      label: 'Boutique' },
@@ -57,7 +59,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="font-semibold text-sm uppercase tracking-widest text-[#00B4CC] mb-4">Contact</h3>
+          <h3 className="font-semibold text-sm uppercase tracking-widest text-[#00B4CC] mb-4">{t('footer_contact')}</h3>
           <ul className="flex flex-col gap-3">
             <li>
               <a href="tel:0472728524" className="flex items-center gap-2.5 text-sm text-gray-400 hover:text-[#00B4CC] transition-colors">
@@ -81,7 +83,7 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="font-semibold text-sm uppercase tracking-widest text-[#00B4CC] mb-4">Suivez-nous</h3>
+          <h3 className="font-semibold text-sm uppercase tracking-widest text-[#00B4CC] mb-4">{t('footer_follow')}</h3>
           <div className="flex gap-3">
             <a
               href="https://www.instagram.com/seb.phone/"
@@ -125,7 +127,7 @@ export default function Footer() {
             <p>Chaussée de Mons 711, 1070 Anderlecht</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-1 mt-1">
-            <p className="text-xs text-gray-500">© 2025 SEBPHONE — Tous droits réservés</p>
+            <p className="text-xs text-gray-500">© 2025 SEBPHONE — {t('footer_rights')}</p>
             <p className="text-xs text-gray-600">Belgique · Livraison rapide · Garantie incluse</p>
           </div>
         </div>

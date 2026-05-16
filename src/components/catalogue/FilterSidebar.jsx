@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 import { MAGASINS_LIST } from '../../utils/magasins';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const SORT_OPTIONS = [
   { value: 'recent',      label: 'Plus récents' },
@@ -60,6 +61,7 @@ function SidebarContent({
   onReset,
   phones = [],
 }) {
+  const { t } = useLanguage();
   const count = (fn) => phones.filter(fn).length;
 
   const brands = [
@@ -74,7 +76,7 @@ function SidebarContent({
   ].filter((c) => c.count > 0);
 
   const statuses = [
-    { value: 'disponible', label: 'En stock', count: count((p) => p.status === 'disponible') },
+    { value: 'disponible', label: t('home_filter_in_stock'), count: count((p) => p.status === 'disponible') },
     { value: 'reserve',    label: 'Réservé',  count: count((p) => p.status === 'reserve') },
     { value: 'vendu',      label: 'Vendu',    count: count((p) => p.status === 'vendu') },
   ].filter((s) => s.count > 0);
@@ -96,7 +98,7 @@ function SidebarContent({
 
   return (
     <div className="flex flex-col">
-      <Section title="Prix">
+      <Section title={t('home_filter_price')}>
         <div className="flex flex-col gap-2">
           <input
             type="range"
@@ -114,7 +116,7 @@ function SidebarContent({
       </Section>
 
       {magasins.length > 0 && (
-        <Section title="Disponible en">
+        <Section title={t('home_filter_available')}>
           <div className="flex flex-col gap-1.5">
             {magasins.map((m) => (
               <CheckRow key={m.value} label={m.label} count={m.count}
@@ -126,7 +128,7 @@ function SidebarContent({
         </Section>
       )}
 
-      <Section title="Disponibilité">
+      <Section title={t('home_filter_availability')}>
         <div className="flex flex-col gap-1.5">
           {statuses.map((s) => (
             <CheckRow key={s.value} label={s.label} count={s.count}
@@ -312,6 +314,7 @@ export default function FilterSidebar({
   hideBrandFilter = false,
   phones = [],
 }) {
+  const { t } = useLanguage();
   const [priceRange, setPriceRange] = useState([0, 1500]);
 
   const onReset = () => {
@@ -326,10 +329,10 @@ export default function FilterSidebar({
   return (
     <aside className="hidden lg:flex flex-col w-[280px] flex-shrink-0">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="font-poppins font-bold text-[#1B2A4A]">Filtrer</h3>
+        <h3 className="font-poppins font-bold text-[#1B2A4A]">{t('home_filter_title')}</h3>
         <button onClick={onReset} className="text-xs text-[#555555] hover:text-[#00B4CC] cursor-pointer transition-colors flex items-center gap-1">
           <X size={13} />
-          Effacer
+          {t('home_filter_clear')}
         </button>
       </div>
 
@@ -337,7 +340,7 @@ export default function FilterSidebar({
         type="text"
         value={search || ''}
         onChange={(e) => setSearch?.(e.target.value)}
-        placeholder="Rechercher un modèle..."
+        placeholder={t('home_filter_search')}
         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#00B4CC] mb-5 transition-all"
       />
 

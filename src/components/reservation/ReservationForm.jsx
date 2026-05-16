@@ -10,6 +10,7 @@ const MAGASINS_LIST = MAGASINS_PHYSIQUES.filter((m) => m.id !== 'marrakech');
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { sendConfirmationEmail } from '../../utils/sendEmail';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -22,6 +23,7 @@ function generateCode() {
 
 export default function ReservationForm({ phone }) {
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   // Parse magasins — Supabase peut renvoyer un tableau ou une string JSON
   const phoneShops = (() => {
@@ -467,20 +469,20 @@ export default function ReservationForm({ phone }) {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">Prénom *</label>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('reservation_firstname')} *</label>
             <input type="text" name="firstName" value={form.firstName} onChange={handleChange} required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
               placeholder="Jean" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">Nom *</label>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('reservation_lastname')} *</label>
             <input type="text" name="lastName" value={form.lastName} onChange={handleChange} required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
               placeholder="Dupont" />
           </div>
           <div>
             <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-              <span className="flex items-center gap-1"><Mail size={13} /> Email *</span>
+              <span className="flex items-center gap-1"><Mail size={13} /> {t('reservation_email')} *</span>
             </label>
             <input type="email" name="email" value={form.email} onChange={handleChange} required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
@@ -488,7 +490,7 @@ export default function ReservationForm({ phone }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-              <span className="flex items-center gap-1"><Phone size={13} /> Téléphone *</span>
+              <span className="flex items-center gap-1"><Phone size={13} /> {t('reservation_phone')} *</span>
             </label>
             <input type="tel" name="phone" value={form.phone} onChange={handleChange} required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
@@ -501,12 +503,12 @@ export default function ReservationForm({ phone }) {
       <div>
         <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-4 flex items-center gap-2">
           <MapPin size={18} className="text-[#00B4CC]" />
-          Mode de réception
+          {t('reservation_pickup')}
         </h3>
         <div className="grid grid-cols-2 gap-3 mb-4">
           {[
-            { value: 'collect',  Icon: Store, label: 'Click & Collect', sub: 'Retrait en magasin' },
-            { value: 'delivery', Icon: Truck, label: 'Livraison',        sub: 'À domicile' },
+            { value: 'collect',  Icon: Store, label: t('reservation_collect'), sub: 'Retrait en magasin' },
+            { value: 'delivery', Icon: Truck, label: t('reservation_delivery'), sub: 'À domicile' },
           ].map(({ value, Icon, label, sub }) => (
             <button key={value} type="button"
               onClick={() => setForm((p) => ({ ...p, delivery: value }))}
@@ -527,7 +529,7 @@ export default function ReservationForm({ phone }) {
             {availableMagasins.length === 1 ? (
               <div>
                 <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-                  Magasin de retrait
+                  {t('reservation_store')}
                 </label>
                 <div className="flex items-start gap-3 bg-cyan-50 border-2 border-[#00B4CC] rounded-xl p-4">
                   <MapPin size={18} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
@@ -585,7 +587,7 @@ export default function ReservationForm({ phone }) {
 
         {form.delivery === 'delivery' && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.3 }}>
-            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">Adresse de livraison *</label>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('reservation_address')} *</label>
             <input type="text" name="address" value={form.address} onChange={handleChange}
               required={form.delivery === 'delivery'}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"

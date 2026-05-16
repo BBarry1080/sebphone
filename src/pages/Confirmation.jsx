@@ -5,10 +5,12 @@ import { supabase, isSupabaseReady } from '../lib/supabase'
 import { sendConfirmationEmail } from '../utils/sendEmail'
 import { MAGASINS } from '../utils/magasins'
 import { ACCESSORY_PACKS } from '../data/accessories'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Confirmation() {
   const { state } = useLocation()
   const navigate  = useNavigate()
+  const { t } = useLanguage()
   const [searchParams] = useSearchParams()
 
   // Données affichées (soit depuis state navigate, soit depuis DB après Stripe)
@@ -144,7 +146,7 @@ export default function Confirmation() {
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">Page introuvable</h1>
         <p className="text-[#555] mb-6">Aucune réservation à afficher.</p>
         <button onClick={() => navigate('/')} className="px-6 py-3 bg-[#1B2A4A] text-white font-bold rounded-xl cursor-pointer">
-          Retour à l'accueil
+          {t('confirmation_back')}
         </button>
       </main>
     )
@@ -171,7 +173,7 @@ export default function Confirmation() {
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-4 animate-[scale-in_0.4s_ease-out]">
           <CheckCircle size={44} className="text-green-500" />
         </div>
-        <h1 className="font-poppins font-bold text-3xl text-[#1B2A4A] mb-1">Réservation confirmée !</h1>
+        <h1 className="font-poppins font-bold text-3xl text-[#1B2A4A] mb-1">{t('confirmation_title')}</h1>
         <p className="text-[#555] text-sm">
           Un email de confirmation a été envoyé à{' '}
           <span className="font-semibold text-[#1B2A4A]">{clientEmail}</span>
@@ -236,11 +238,11 @@ export default function Confirmation() {
           {/* Paiement */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs text-[#555]">
-              <span>Acompte payé</span>
+              <span>{t('confirmation_deposit')}</span>
               <span className="font-semibold text-green-600">−{depositPaid}€</span>
             </div>
             <div className="flex justify-between text-xs text-[#555]">
-              <span>Reste à payer en magasin</span>
+              <span>{t('confirmation_remaining')}</span>
               <span className="font-semibold text-[#1B2A4A]">{remaining}€</span>
             </div>
           </div>
@@ -297,7 +299,7 @@ export default function Confirmation() {
           onClick={() => navigate('/')}
           className="w-full py-3 bg-[#1B2A4A] hover:bg-[#243a64] text-white font-bold rounded-xl transition-colors cursor-pointer text-sm"
         >
-          Retour à l'accueil
+          {t('confirmation_back')}
         </button>
         <button
           onClick={() => navigate('/boutique')}

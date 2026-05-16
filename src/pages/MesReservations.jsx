@@ -8,6 +8,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase'
 import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 import { ACCESSORY_PACKS } from '../data/accessories'
 import { MAGASINS } from '../utils/magasins'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const STATUS_CONFIG = {
   en_attente:   { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', dot: '🟡' },
@@ -156,6 +157,7 @@ function OrderCard({ order }) {
 }
 
 export default function MesReservations() {
+  const { t } = useLanguage()
   const [email,   setEmail]   = useState('')
   const [orders,  setOrders]  = useState([])
   const [loading, setLoading] = useState(false)
@@ -193,8 +195,8 @@ export default function MesReservations() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8 pb-28 md:pb-12">
       <div className="mb-8">
-        <h1 className="font-poppins font-bold text-3xl text-[#1B2A4A] mb-1">
-          Mes <span className="text-[#00B4CC]">réservations</span>
+        <h1 className="font-poppins font-bold text-3xl text-[#00B4CC] mb-1">
+          {t('my_reservations_title')}
         </h1>
         <p className="text-[#555] text-sm">Entrez votre email pour retrouver vos commandes</p>
       </div>
@@ -239,7 +241,7 @@ export default function MesReservations() {
         orders.length === 0 ? (
           <div className="text-center py-16">
             <AlertCircle size={40} className="text-gray-300 mx-auto mb-3" />
-            <p className="font-semibold text-[#1B2A4A]">Aucune réservation trouvée</p>
+            <p className="font-semibold text-[#1B2A4A]">{t('my_reservations_empty')}</p>
             <p className="text-sm text-[#888] mt-1">Vérifiez l'email utilisé lors de la réservation</p>
           </div>
         ) : (

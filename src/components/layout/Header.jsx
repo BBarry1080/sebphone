@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, User, Phone, Mail, ShoppingCart, ClipboardList } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import LanguageSelector from '../ui/LanguageSelector';
 
 function SebLogo() {
@@ -18,13 +19,13 @@ function SebLogo() {
 }
 
 const navLinks = [
-  { to: '/',              label: 'Accueil',       end: true },
-  { to: '/iphone',        label: 'iPhone',        end: false },
-  { to: '/samsung',       label: 'Samsung',       end: false },
-  { to: '/occasions',     label: 'Occasions',     end: false },
-  { to: '/reconditiones', label: 'Reconditionnés', end: false },
-  { to: '/sur-commande',  label: '📦 Sur commande', end: false, highlight: true },
-  { to: '/rachat',        label: 'Revendre',      end: false },
+  { to: '/',              labelKey: 'nav_home',         end: true },
+  { to: '/iphone',        labelKey: 'nav_iphone',       end: false },
+  { to: '/samsung',       labelKey: 'nav_samsung',      end: false },
+  { to: '/occasions',     labelKey: 'nav_occasions',    end: false },
+  { to: '/reconditiones', labelKey: 'nav_reconditionnes', end: false },
+  { to: '/sur-commande',  labelKey: 'nav_sur_commande', end: false, highlight: true, icon: '📦 ' },
+  { to: '/rachat',        labelKey: 'nav_revendre',     end: false },
 ];
 
 export default function Header() {
@@ -32,6 +33,7 @@ export default function Header() {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
   const { totalItems } = useCart();
+  const { t } = useLanguage();
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -57,7 +59,7 @@ export default function Header() {
               contact@sebphone.be
             </span>
           </div>
-          <span className="text-[#00B4CC] font-medium">Livraison en Belgique · Click &amp; Collect disponible</span>
+          <span className="text-[#00B4CC] font-medium">{t('banner_delivery')}</span>
         </div>
       </div>
 
@@ -68,7 +70,7 @@ export default function Header() {
         <nav className="flex items-center gap-1">
           {navLinks.map((link) => (
             <NavLink
-              key={link.to + link.label}
+              key={link.to + link.labelKey}
               to={link.to}
               end={link.end}
               className={({ isActive }) =>
@@ -79,7 +81,7 @@ export default function Header() {
                 }`
               }
             >
-              {link.label}
+              {link.icon || ''}{t(link.labelKey)}
             </NavLink>
           ))}
         </nav>

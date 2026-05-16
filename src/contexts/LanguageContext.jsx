@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from 'react'
+import { t as translate } from '../i18n/translations'
 
 const LANGUAGES = {
   fr: { label: 'Français', flag: '🇧🇪🇫🇷' },
@@ -47,8 +48,10 @@ export function LanguageProvider({ children }) {
     if (newCountry) localStorage.setItem('sebphone_country', newCountry)
   }
 
+  const t = (key) => translate(lang, key)
+
   return (
-    <LanguageContext.Provider value={{ lang, country, changeLang, LANGUAGES, COUNTRIES }}>
+    <LanguageContext.Provider value={{ lang, country, changeLang, t, LANGUAGES, COUNTRIES }}>
       {children}
     </LanguageContext.Provider>
   )

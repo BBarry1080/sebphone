@@ -4,6 +4,7 @@ import { Smartphone } from 'lucide-react'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 import { charmPrice } from '../../utils/charmPrice'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 export const colorToHex = (colorName) => {
   const map = {
@@ -44,6 +45,7 @@ const conditionColor = {
 /* ── Grouped model card — vue LISTE ── */
 function GroupCard({ group }) {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [selectedColor, setSelectedColor] = useState(group.colors?.[0] || null)
   const imgSrc = getPhoneImage(group.model, selectedColor)
 
@@ -63,7 +65,7 @@ function GroupCard({ group }) {
       </div>
       <div className="flex-1 min-w-0">
         <h3 className="font-bold text-[#1B2A4A] text-[15px] leading-tight mb-1 truncate">{group.model}</h3>
-        <span className="text-[11px] text-green-600 font-medium">● {group.totalStock} disponible{group.totalStock > 1 ? 's' : ''}</span>
+        <span className="text-[11px] text-green-600 font-medium">● {group.totalStock} {group.totalStock > 1 ? t('phone_availables') : t('phone_available')}</span>
         {group.storages.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
             {group.storages.map((s) => (
@@ -82,7 +84,7 @@ function GroupCard({ group }) {
           </div>
         )}
         <div className="flex items-baseline gap-1 mt-1.5">
-          <span className="text-[11px] text-gray-400">À partir de</span>
+          <span className="text-[11px] text-gray-400">{t('home_from')}</span>
           <span className="font-bold text-[16px] text-[#1B2A4A]">{charmPrice(refPrice ?? group.basePrice)}€</span>
         </div>
       </div>
@@ -93,6 +95,7 @@ function GroupCard({ group }) {
 /* ── Grouped model card — vue GRILLE ── */
 function GroupCardGrid({ group }) {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [selectedColor, setSelectedColor] = useState(group.colors?.[0] || null)
   const imgSrc = getPhoneImage(group.model, selectedColor)
 
@@ -114,7 +117,7 @@ function GroupCardGrid({ group }) {
 
       {/* Infos */}
       <div className="flex-1 flex flex-col">
-        <p className="text-[11px] text-green-600 font-medium mb-1">● {group.totalStock} disponible{group.totalStock > 1 ? 's' : ''}</p>
+        <p className="text-[11px] text-green-600 font-medium mb-1">● {group.totalStock} {group.totalStock > 1 ? t('phone_availables') : t('phone_available')}</p>
         <h3 className="font-bold text-[#1B2A4A] text-[14px] leading-tight mb-2">{group.model}</h3>
 
         {group.storages.length > 0 && (
@@ -138,7 +141,7 @@ function GroupCardGrid({ group }) {
         )}
 
         <div className="mt-auto">
-          <p className="text-[10px] text-gray-400">À partir de</p>
+          <p className="text-[10px] text-gray-400">{t('home_from')}</p>
           <p className="font-bold text-[18px] text-[#1B2A4A] leading-tight">{charmPrice(refPrice ?? group.basePrice)}€</p>
         </div>
       </div>
@@ -148,6 +151,7 @@ function GroupCardGrid({ group }) {
 
 /* ── Individual phone card (backward compat) ── */
 function PhoneCard({ phone, onClick }) {
+  const { t } = useLanguage()
   const imgSrc = getPhoneImage(
     (typeof phone.model === 'string' ? phone.model : phone.model?.name) || phone.name,
     phone.color
@@ -197,7 +201,7 @@ function PhoneCard({ phone, onClick }) {
           </div>
         )}
         <div className="flex items-baseline gap-1">
-          <span className="text-[11px] text-gray-400">À partir de</span>
+          <span className="text-[11px] text-gray-400">{t('home_from')}</span>
           <span className="font-bold text-[16px] text-[#1B2A4A]">{charmPrice(phone.price)}€</span>
         </div>
       </div>

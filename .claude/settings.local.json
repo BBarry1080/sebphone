@@ -22,7 +22,8 @@
       "Bash(curl -s -o /dev/null -w \"index: %{http_code}\\\\n\" http://localhost:8000/)",
       "Bash(curl -s -o /dev/null -w \"css: %{http_code}\\\\n\" http://localhost:8000/assets/styles.css)",
       "Bash(curl -s -o /dev/null -w \"js: %{http_code}\\\\n\" http://localhost:8000/assets/main.js)",
-      "Bash(curl -s http://localhost:8000/)"
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(npx vite *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Aliou\\Desktop\\Transport\\Site\\assets",

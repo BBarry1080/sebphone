@@ -6,11 +6,13 @@ import { getColorHex } from '../utils/colors'
 import { STARTING_PRICES } from '../data/startingPrices'
 import { IPHONE_ON_DEMAND } from '../data/iphoneOnDemand'
 import { MAGASINS_PHYSIQUES } from '../utils/magasins'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const MAGASINS_CLIENT = MAGASINS_PHYSIQUES.filter((m) => m.id !== 'marrakech')
 
 export default function SurCommande() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [selectedModel,   setSelectedModel]   = useState(null)
   const [selectedColor,   setSelectedColor]   = useState(null)
   const [selectedStorage, setSelectedStorage] = useState(null)
@@ -45,7 +47,7 @@ export default function SurCommande() {
       <div className="bg-[#1B2A4A] text-white py-12 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <span className="bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full mb-4 inline-block">
-            📦 Sur commande
+            📦 {t('sur_commande_title')}
           </span>
           <h1 className="text-3xl md:text-4xl font-bold mb-3">
             Commandez votre iPhone
@@ -101,7 +103,7 @@ export default function SurCommande() {
                     </span>
                   </p>
                   <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium mt-1.5 inline-block">
-                    Sur commande
+                    {t('sur_commande_title')}
                   </span>
                 </div>
               ))}
@@ -129,7 +131,7 @@ export default function SurCommande() {
                 </div>
                 <div>
                   <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium mb-1 inline-block">
-                    📦 Sur commande
+                    📦 {t('sur_commande_title')}
                   </span>
                   <h2 className="text-xl font-bold text-[#1B2A4A]">{selectedModel.model}</h2>
                   <p className="text-[#00B4CC] font-bold text-lg">

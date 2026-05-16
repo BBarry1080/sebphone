@@ -3,16 +3,17 @@ import { Menu, X, Search, Phone, Mail, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../context/CartContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import LanguageSelector from '../ui/LanguageSelector';
 
 const navLinks = [
-  { to: '/',              label: 'Accueil' },
-  { to: '/iphone',        label: 'iPhone' },
-  { to: '/samsung',       label: 'Samsung' },
-  { to: '/occasions',     label: 'Occasions' },
-  { to: '/reconditiones', label: 'Reconditionnés' },
-  { to: '/sur-commande',  label: '📦 Sur commande', highlight: true },
-  { to: '/rachat',        label: 'Revendre' },
+  { to: '/',              labelKey: 'nav_home' },
+  { to: '/iphone',        labelKey: 'nav_iphone' },
+  { to: '/samsung',       labelKey: 'nav_samsung' },
+  { to: '/occasions',     labelKey: 'nav_occasions' },
+  { to: '/reconditiones', labelKey: 'nav_reconditionnes' },
+  { to: '/sur-commande',  labelKey: 'nav_sur_commande', highlight: true, icon: '📦 ' },
+  { to: '/rachat',        labelKey: 'nav_revendre' },
 ];
 
 function SebLogo() {
@@ -33,6 +34,7 @@ export default function MobileHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const { totalItems } = useCart();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleSearch = (e) => {
@@ -123,7 +125,7 @@ export default function MobileHeader() {
               <div className="flex flex-col py-4 flex-1">
                 {navLinks.map((link) => (
                   <Link
-                    key={link.to + link.label}
+                    key={link.to + link.labelKey}
                     to={link.to}
                     onClick={() => setOpen(false)}
                     className={`px-6 py-4 font-medium text-base border-b border-gray-50 transition-colors ${
@@ -132,7 +134,7 @@ export default function MobileHeader() {
                         : 'text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC]'
                     }`}
                   >
-                    {link.label}
+                    {link.icon || ''}{t(link.labelKey)}
                   </Link>
                 ))}
               </div>

@@ -1,12 +1,43 @@
 import { useState } from 'react'
 import { useLanguage } from '../../contexts/LanguageContext'
 
+const FLAGS = {
+  'België / Belgique': (
+    <svg width="20" height="14" viewBox="0 0 20 14" style={{display:'inline-block'}}>
+      <rect width="6.67" height="14" fill="#000"/>
+      <rect x="6.67" width="6.67" height="14" fill="#FFD90C"/>
+      <rect x="13.33" width="6.67" height="14" fill="#F00"/>
+    </svg>
+  ),
+  'France': (
+    <svg width="20" height="14" viewBox="0 0 20 14" style={{display:'inline-block'}}>
+      <rect width="6.67" height="14" fill="#002395"/>
+      <rect x="6.67" width="6.67" height="14" fill="#fff"/>
+      <rect x="13.33" width="6.67" height="14" fill="#ED2939"/>
+    </svg>
+  ),
+  'Deutschland': (
+    <svg width="20" height="14" viewBox="0 0 20 14" style={{display:'inline-block'}}>
+      <rect width="20" height="4.67" fill="#000"/>
+      <rect y="4.67" width="20" height="4.67" fill="#DD0000"/>
+      <rect y="9.33" width="20" height="4.67" fill="#FFCE00"/>
+    </svg>
+  ),
+  'Nederland': (
+    <svg width="20" height="14" viewBox="0 0 20 14" style={{display:'inline-block'}}>
+      <rect width="20" height="4.67" fill="#AE1C28"/>
+      <rect y="4.67" width="20" height="4.67" fill="#fff"/>
+      <rect y="9.33" width="20" height="4.67" fill="#21468B"/>
+    </svg>
+  ),
+}
+
 export default function LanguageSelector() {
   const { lang, country, changeLang, COUNTRIES } = useLanguage()
   const [open, setOpen] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState(null)
 
-  const currentFlag = COUNTRIES.find(c => c.name === country)?.flag || '🇧🇪'
+  const currentFlag = FLAGS[country] || '🌐'
 
   return (
     <div className="relative">
@@ -15,7 +46,7 @@ export default function LanguageSelector() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 text-sm font-medium
                    text-gray-700 hover:text-[#1B2A4A] transition-colors">
-        <span className="text-lg">{currentFlag}</span>
+        <span className="inline-flex items-center">{currentFlag}</span>
         <span className="uppercase text-xs font-bold">{lang}</span>
       </button>
 
@@ -55,7 +86,7 @@ export default function LanguageSelector() {
                         ? 'bg-[#f0f7ff] border border-[#1B2A4A]'
                         : 'hover:bg-gray-50 border border-transparent'}`}>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{c.flag}</span>
+                      <span className="inline-flex items-center">{FLAGS[c.name] || c.flag}</span>
                       <span className="font-medium text-[#1B2A4A]">{c.name}</span>
                     </div>
                     {/* Boutons langues */}

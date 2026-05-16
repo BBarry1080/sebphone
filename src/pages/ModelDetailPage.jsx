@@ -43,6 +43,7 @@ const CONDITION_LABEL = {
 }
 
 import { MAGASINS } from '../utils/magasins'
+import { useLanguage } from '../contexts/LanguageContext'
 
 function BatteryBar({ value }) {
   if (!value) return <span className="text-gray-400 text-xs">—</span>
@@ -76,6 +77,7 @@ function FilterPill({ label, active, onClick }) {
 export default function ModelDetailPage() {
   const { modelSlug } = useParams()
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [phones, setPhones]             = useState([])
   const [loading, setLoading]           = useState(true)
   const [filterStorage, setFilterStorage] = useState(null)
@@ -144,7 +146,7 @@ export default function ModelDetailPage() {
         className="flex items-center gap-2 text-sm text-[#555] hover:text-[#1B2A4A] mb-6 cursor-pointer transition-colors"
       >
         <ArrowLeft size={16} />
-        Retour
+        {t('back')}
       </button>
 
       {loading ? (
@@ -196,9 +198,9 @@ export default function ModelDetailPage() {
               {/* Filtre stockage */}
               {storages.length > 1 && (
                 <div className="mb-3">
-                  <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">Capacité</p>
+                  <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_capacity')}</p>
                   <div className="flex flex-wrap gap-2">
-                    <FilterPill label="Tous" active={!filterStorage} onClick={() => setFilterStorage(null)} />
+                    <FilterPill label={t('phone_all')} active={!filterStorage} onClick={() => setFilterStorage(null)} />
                     {storages.map((s) => (
                       <FilterPill key={s} label={s} active={filterStorage === s} onClick={() => setFilterStorage(s)} />
                     ))}
@@ -209,7 +211,7 @@ export default function ModelDetailPage() {
               {/* Filtre couleur */}
               {colors.length > 1 && (
                 <div>
-                  <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">Couleur</p>
+                  <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_color')}</p>
                   <div className="flex flex-wrap gap-2 items-center">
                     <button
                       onClick={() => setFilterColor(null)}
@@ -248,12 +250,12 @@ export default function ModelDetailPage() {
           {/* Magasins Click & Collect */}
           <div className="mb-4">
             <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2 flex items-center gap-1.5">
-              <MapPin size={12} className="text-[#00B4CC]" /> Click &amp; Collect
+              <MapPin size={12} className="text-[#00B4CC]" /> {t('phone_click_collect')}
             </p>
             {bestPhone?.magasins?.length > 0 ? (
               <div>
                 <p className="text-xs text-[#555] mb-2">
-                  Ce téléphone est disponible en Click &amp; Collect uniquement dans ce(s) magasin(s) :
+                  {t('phone_click_collect_desc')}
                 </p>
                 <div className="space-y-1.5">
                   {bestPhone.magasins.map((id) => {
@@ -279,9 +281,9 @@ export default function ModelDetailPage() {
           {/* ── SECTION BASSE — Tableau de sélection ── */}
           <div>
             <div className="mb-4">
-              <h2 className="font-poppins font-bold text-xl text-[#1B2A4A]">Choisissez votre exemplaire</h2>
+              <h2 className="font-poppins font-bold text-xl text-[#1B2A4A]">{t('phone_choose')}</h2>
               <p className="text-sm text-[#555]">
-                {filtered.length} appareil{filtered.length !== 1 ? 's' : ''} disponible{filtered.length !== 1 ? 's' : ''}
+                {filtered.length} {t('phone_devices_available')}
               </p>
             </div>
 
@@ -296,7 +298,7 @@ export default function ModelDetailPage() {
                   <table className="w-full text-sm">
                     <thead className="bg-[#F8F9FA] border-b border-gray-100">
                       <tr>
-                        {['État / Grade', 'Batterie', 'Détails', 'Prix', ''].map((h) => (
+                        {[t('phone_condition_grade'), t('phone_battery'), t('phone_details'), t('phone_price'), ''].map((h) => (
                           <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555] uppercase tracking-wide">
                             {h}
                           </th>
@@ -327,7 +329,7 @@ export default function ModelDetailPage() {
                                 )}
                                 {isBest && (
                                   <span className="text-[10px] font-bold text-[#00B4CC] bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-full w-fit">
-                                    ★ Meilleur choix
+                                    ★ {t('phone_best_choice')}
                                   </span>
                                 )}
                               </div>
@@ -348,7 +350,7 @@ export default function ModelDetailPage() {
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-green-600 text-xs font-medium">✓ Aucune réparation — État original</span>
+                                  <span className="text-green-600 text-xs font-medium">✓ {t('phone_no_repair')}</span>
                                 )
                               ) : phone.condition === 'reconditionne' ? (
                                 allParts.length > 0 ? (
@@ -440,7 +442,7 @@ export default function ModelDetailPage() {
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-green-600 font-medium">✓ Aucune réparation — État original</p>
+                              <p className="text-green-600 font-medium">✓ {t('phone_no_repair')}</p>
                             )
                           ) : phone.condition === 'reconditionne' ? (
                             allParts.length > 0 ? (
