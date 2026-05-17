@@ -42,6 +42,115 @@ const FOURNISSEURS_LIST = [
   'Fournisseur externe 2',
   'Autre',
 ]
+const CATEGORIES = [
+  { value: 'telephone', label: '📱 Téléphone', icon: '📱' },
+  { value: 'tablette', label: '📟 Tablette', icon: '📟' },
+  { value: 'montre', label: '⌚ Montre connectée', icon: '⌚' },
+  { value: 'ecouteur', label: '🎧 Écouteurs / AirPods', icon: '🎧' },
+  { value: 'ordinateur', label: '💻 Ordinateur', icon: '💻' },
+  { value: 'accessoire', label: '🛍️ Accessoire', icon: '🛍️' },
+]
+
+const MODELS_BY_CATEGORIE = {
+  tablette: {
+    'Apple': [
+      'iPad Pro 13"', 'iPad Pro 11"', 'iPad Air 13"', 'iPad Air 11"',
+      'iPad mini 7', 'iPad mini 6', 'iPad 10', 'iPad 9',
+    ],
+    'Samsung': [
+      'Samsung Galaxy Tab S9 Ultra', 'Samsung Galaxy Tab S9+',
+      'Samsung Galaxy Tab S9', 'Samsung Galaxy Tab S8 Ultra',
+      'Samsung Galaxy Tab S8+', 'Samsung Galaxy Tab S8',
+      'Samsung Galaxy Tab A9+', 'Samsung Galaxy Tab A9',
+      'Samsung Galaxy Tab A8',
+    ],
+    'Microsoft': [
+      'Microsoft Surface Pro 11', 'Microsoft Surface Pro 10',
+      'Microsoft Surface Pro 9', 'Microsoft Surface Go 3',
+    ],
+  },
+  montre: {
+    'Apple': [
+      'Apple Watch Ultra 2', 'Apple Watch Series 10',
+      'Apple Watch Series 9', 'Apple Watch Series 8',
+      'Apple Watch SE 2', 'Apple Watch SE',
+    ],
+    'Samsung': [
+      'Samsung Galaxy Watch 7', 'Samsung Galaxy Watch 6 Classic',
+      'Samsung Galaxy Watch 6', 'Samsung Galaxy Watch 5 Pro',
+      'Samsung Galaxy Watch 5',
+    ],
+    'Garmin': [
+      'Garmin Fenix 8', 'Garmin Forerunner 965',
+      'Garmin Venu 3',
+    ],
+  },
+  ecouteur: {
+    'Apple': [
+      'AirPods Pro 2', 'AirPods 4', 'AirPods 3',
+      'AirPods Max',
+    ],
+    'Samsung': [
+      'Samsung Galaxy Buds3 Pro', 'Samsung Galaxy Buds3',
+      'Samsung Galaxy Buds2 Pro', 'Samsung Galaxy Buds2',
+      'Samsung Galaxy Buds Live',
+    ],
+    'Sony': [
+      'Sony WH-1000XM6', 'Sony WH-1000XM5',
+      'Sony WF-1000XM5', 'Sony WF-1000XM4',
+    ],
+    'Bose': [
+      'Bose QuietComfort Ultra', 'Bose QuietComfort 45',
+      'Bose QuietComfort Earbuds 2',
+    ],
+    'JBL': [
+      'JBL Tour Pro 3', 'JBL Tour Pro 2',
+      'JBL Live Pro 2', 'JBL Tune 770NC',
+    ],
+  },
+  ordinateur: {
+    'Apple': [
+      'MacBook Pro 16" M4', 'MacBook Pro 14" M4',
+      'MacBook Air 15" M3', 'MacBook Air 13" M3',
+      'MacBook Pro 16" M3', 'MacBook Pro 14" M3',
+      'MacBook Air 15" M2', 'MacBook Air 13" M2',
+    ],
+    'Dell': [
+      'Dell XPS 15', 'Dell XPS 13', 'Dell Latitude 14',
+      'Dell Inspiron 15', 'Dell Inspiron 14',
+    ],
+    'HP': [
+      'HP Spectre x360 14', 'HP EliteBook 840',
+      'HP Pavilion 15', 'HP Envy 13',
+    ],
+    'Lenovo': [
+      'Lenovo ThinkPad X1 Carbon', 'Lenovo ThinkPad T14',
+      'Lenovo IdeaPad 5', 'Lenovo Yoga 9i',
+    ],
+    'Microsoft': [
+      'Microsoft Surface Laptop 6', 'Microsoft Surface Laptop 5',
+      'Microsoft Surface Pro 11',
+    ],
+  },
+  accessoire: {
+    'Apple': [
+      'Coque iPhone 16 Pro Max', 'Coque iPhone 16 Pro',
+      'Coque iPhone 16', 'Chargeur MagSafe',
+      'Câble USB-C Apple', 'Adaptateur Lightning',
+    ],
+    'Samsung': [
+      'Coque Samsung S25 Ultra', 'Coque Samsung S25',
+      'Chargeur Samsung 45W', 'Câble USB-C Samsung',
+    ],
+    'Autre': [
+      'Verre trempé', 'Coque universelle',
+      'Chargeur rapide', 'Câble USB-C',
+      'Câble Lightning', 'Support téléphone',
+      'Batterie externe', 'Hub USB-C',
+    ],
+  },
+}
+
 const LOCATIONS = ['Molenbeek', 'Louise', 'Anderlecht', 'SebPhone', 'Marrakech', 'Autre']
 const STATUSES = ['disponible', 'reserve', 'vendu', 'sur_commande']
 const STATUS_LABELS = {
@@ -135,6 +244,9 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const currentUser = useCurrentUser()
   const isEdit = !!phone
 
+  // ── Catégorie ────────────────────────────────────────────────────
+  const [categorie, setCategorie]                 = useState(phone?.categorie || 'telephone')
+
   // ── Brand & visibilité ───────────────────────────────────────────
   const [brand, setBrand]                         = useState(phone?.brand || 'Apple')
   const [visibleOnSite, setVisibleOnSite]         = useState(phone?.visible_on_site ?? true)
@@ -225,6 +337,10 @@ function PhoneModal({ phone, onClose, onSaved }) {
       if (!aStarts && bStarts) return 1
       return a.length - b.length
     }
+    if (categorie !== 'telephone') {
+      const list = MODELS_BY_CATEGORIE[categorie]?.[brand] || []
+      return list.filter((name) => name.toLowerCase().includes(q)).sort(sortByRelevance).slice(0, 8)
+    }
     if (brand === 'Apple') {
       return IPHONE_ORDER.filter((name) => name.toLowerCase().includes(q)).sort(sortByRelevance).slice(0, 8)
     }
@@ -313,6 +429,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
         parts_replaced: condition === 'reconditionne' ? (partsReplaced || []) : [],
         face_id_status: partsReplaced.includes('Face ID / Touch ID') ? faceIdStatus : null,
         status:         phoneStatus,
+        categorie:      categorie || 'telephone',
         added_by:         currentUser.name || 'Admin',
         added_by_magasin: currentUser.magasin_id || magasins?.[0] || null,
       }
@@ -363,11 +480,49 @@ function PhoneModal({ phone, onClose, onSaved }) {
 
         <div className="px-6 py-5 space-y-6">
 
+          {/* ── Catégorie ── */}
+          <div>
+            <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+              Catégorie
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => {
+                    setCategorie(cat.value)
+                    setSelectedModel(null)
+                    setModelSearch('')
+                    setColorSearch('')
+                    setStorage('')
+                    if (cat.value !== 'telephone') {
+                      const brands = Object.keys(MODELS_BY_CATEGORIE[cat.value] || {})
+                      setBrand(brands[0] || 'Apple')
+                    } else {
+                      setBrand('Apple')
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                    categorie === cat.value
+                      ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                      : 'bg-white text-gray-600 border-gray-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ── Section 0 — Marque ── */}
           <div>
             <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Marque</h3>
             <div className="flex flex-wrap gap-2">
-              {BRANDS.map((b) => (
+              {(categorie === 'telephone'
+                ? BRANDS
+                : Object.keys(MODELS_BY_CATEGORIE[categorie] || {})
+              ).map((b) => (
                 <button
                   key={b}
                   type="button"
@@ -402,7 +557,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
                 onFocus={() => setShowModelSugg(true)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-[#00B4CC] outline-none"
               />
-              {showModelSuggestions && modelSearch && modelSuggestions.length > 0 && brand !== 'Autre' && (
+              {showModelSuggestions && modelSearch && modelSuggestions.length > 0 && (categorie !== 'telephone' || brand !== 'Autre') && (
                 <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-30 max-h-48 overflow-y-auto">
                   {modelSuggestions.map((name) => (
                     <div
@@ -872,6 +1027,7 @@ export default function Stock() {
   const [selectedTVA, setSelectedTVA] = useState('tous')
   const [selectedCondition, setSelectedCondition] = useState('tous')
   const [selectedStockStatus, setSelectedStockStatus] = useState('tous')
+  const [selectedCategorie, setSelectedCategorie] = useState('tous')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingPhone, setEditingPhone]   = useState(null)
   const [etiquettePhone, setEtiquettePhone] = useState(null)
@@ -1264,6 +1420,9 @@ export default function Stock() {
       if (selectedTVA !== 'tous' && (p.tva_regime || 'marge') !== selectedTVA) return false
       if (selectedCondition !== 'tous' && p.condition !== selectedCondition) return false
       if (selectedStockStatus !== 'tous' && p.status !== selectedStockStatus) return false
+      const matchCategorie = selectedCategorie === 'tous' ||
+        (p.categorie || 'telephone') === selectedCategorie
+      if (!matchCategorie) return false
       return true
     })
     .sort((a, b) => {
@@ -1434,6 +1593,34 @@ export default function Stock() {
             }`}
           >
             {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtres catégorie */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-gray-500 font-medium">Catégorie :</span>
+        <button
+          onClick={() => setSelectedCategorie('tous')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+            selectedCategorie === 'tous'
+              ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+              : 'bg-white text-gray-600 border-gray-200'
+          }`}
+        >
+          Tous
+        </button>
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.value}
+            onClick={() => setSelectedCategorie(cat.value)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+              selectedCategorie === cat.value
+                ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                : 'bg-white text-gray-600 border-gray-200'
+            }`}
+          >
+            {cat.label}
           </button>
         ))}
       </div>
