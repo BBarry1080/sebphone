@@ -1,25 +1,22 @@
 export const GOOGLE_REVIEW_LINKS = {
   anderlecht: {
     nom: 'SebPhone Anderlecht',
-    url: 'https://g.page/r/ANDERLECHT_PLACE_ID/review',
+    url: 'https://share.google/xrhPmHx9Yi1TmiL6D',
   },
   molenbeek: {
     nom: 'SebPhone Molenbeek',
-    url: 'https://g.page/r/MOLENBEEK_PLACE_ID/review',
+    url: 'https://share.google/WeWI1pXPwCUBFbv7a',
   },
   louise: {
     nom: 'SebPhone Louise',
-    url: 'https://g.page/r/LOUISE_PLACE_ID/review',
+    url: 'https://share.google/GVjumedmp1kPxSWFn',
+  },
+  tubize: {
+    nom: 'SebPhone Tubize',
+    url: 'https://share.google/J5vGByQl6ZTNLMMkk',
   },
   'rue-neuve': {
     nom: 'SebPhone Rue Neuve',
-    url: 'https://g.page/r/RUENEUVE_PLACE_ID/review',
-  },
-  marrakech: {
-    nom: 'SebPhone Marrakech',
-    url: 'https://g.page/r/MARRAKECH_PLACE_ID/review',
+    url: 'https://share.google/Xmzx8hzy5IW6ToE1q',
   },
 }
-
-// ⚠️ Remplace les PLACE_ID par les vrais IDs Google My Business
-// Pour les trouver : Google Maps → ton établissement → Partager → Copier le lien

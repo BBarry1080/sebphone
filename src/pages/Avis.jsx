@@ -11,8 +11,8 @@ const MAGASINS_LIST = [
   { id: 'anderlecht', nom: 'Anderlecht' },
   { id: 'molenbeek', nom: 'Molenbeek' },
   { id: 'louise', nom: 'Louise' },
+  { id: 'tubize', nom: 'Tubize' },
   { id: 'rue-neuve', nom: 'Rue Neuve' },
-  { id: 'marrakech', nom: 'Marrakech' },
 ]
 
 export default function Avis() {
