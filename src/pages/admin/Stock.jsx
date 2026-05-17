@@ -4,7 +4,7 @@
 // ALTER TABLE phones ADD COLUMN IF NOT EXISTS parts_replaced JSONB DEFAULT '[]'::jsonb;
 
 import { useState, useEffect, useRef } from 'react'
-import { Smartphone, Plus, Search, Pencil, Trash2, X, Star } from 'lucide-react'
+import { Smartphone, Plus, Search, Pencil, Trash2, X, Star, Tag } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useRequirePermission, usePermission, useCurrentUser, useIsAdmin } from '../../hooks/usePermissions'
 import {
@@ -1583,23 +1583,27 @@ export default function Stock() {
             <table className="w-full text-sm">
               <thead className="bg-[#F8F9FA] border-b border-gray-100">
                 <tr>
-                  {['Modèle', 'État', 'Grade', 'Batterie', 'Prix', 'Achat / Bénéf.', 'Localisation', 'Fournisseur', 'Statut', 'Actions'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#555555] uppercase tracking-wide">
-                      {h}
-                    </th>
-                  ))}
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide w-56">Modèle</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide w-32">État / Grade</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide w-16">Bat.</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide w-20">Prix</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide w-24">Ach./Bén.</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide w-28">Magasin</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide w-24">Fournis.</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide w-32">Statut</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-[#555555] uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtered.map((phone) => (
                   <tr key={phone.id} className="hover:bg-[#F8F9FA] transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                           <img
                             src={getPhoneImage(phone)}
                             alt={phone.name || phone.model}
-                            className="w-full h-full object-contain p-1"
+                            className="w-full h-full object-contain p-0.5"
                             onError={(e) => {
                               e.target.onerror = null
                               const entry = IPHONE_DATABASE.find((p) => p.model?.toLowerCase() === (phone.model || '').toLowerCase())
@@ -1607,64 +1611,63 @@ export default function Stock() {
                             }}
                           />
                         </div>
-                        <div>
-                          <p className="font-semibold text-[#1B2A4A] leading-tight">{phone.name || phone.model?.name}</p>
-                          <p className="text-[#888] text-xs">{phone.storage}{phone.color ? ` · ${phone.color}` : ''}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-[#1B2A4A] leading-tight">{phone.name || phone.model?.name}</p>
+                          <p className="text-xs text-[#888]">{phone.storage}{phone.color ? ` · ${phone.color}` : ''}</p>
                           {phone.imei && (
-                            <p className="text-[10px] text-gray-400 font-mono mt-0.5">
-                              IMEI : {phone.imei}
-                            </p>
+                            <p className="text-[10px] text-gray-400 font-mono">IMEI : {phone.imei}</p>
                           )}
                           {phone.added_by && (
-                            <p className="text-[10px] text-gray-400 mt-0.5">
-                              👤 {phone.added_by}{phone.added_by_magasin ? ` · 📍 ${(MAGASINS.find(m => m.id === phone.added_by_magasin)?.nom || phone.added_by_magasin).replace('Seb Telecom — ', '')}` : ''}
+                            <p className="text-[10px] text-gray-400">
+                              👤 {phone.added_by}{phone.added_by_magasin ? ` · ${(MAGASINS.find(m => m.id === phone.added_by_magasin)?.nom || phone.added_by_magasin).replace('Seb Telecom — ', '')}` : ''}
                             </p>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${CONDITION_COLORS[phone.condition] || 'bg-gray-100 text-gray-600'}`}>
-                        {CONDITION_LABELS[phone.condition] || phone.condition}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {phone.grade
-                        ? <span className="inline-block px-2 py-0.5 bg-[#1B2A4A]/10 text-[#1B2A4A] rounded-full text-[11px] font-bold whitespace-nowrap">{phone.grade}</span>
-                        : <span className="text-[#bbb]">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[#555]">
-                      {phone.battery_health != null
-                        ? <span className={`font-semibold ${phone.battery_health >= 85 ? 'text-green-600' : phone.battery_health >= 75 ? 'text-orange-500' : 'text-red-500'}`}>{phone.battery_health}%</span>
-                        : <span className="text-[#bbb]">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <InlinePrice id={phone.id} value={phone.price} onSave={handlePriceChange} />
-                    </td>
-                    <td className="px-4 py-3">
-                      {phone.purchase_price != null ? (
-                        <div>
-                          <p className="text-xs text-[#888]">Achat : {phone.purchase_price}€</p>
-                          <p className={`text-xs font-bold ${(phone.price - phone.purchase_price) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {(phone.price - phone.purchase_price) >= 0 ? '+' : ''}{phone.price - phone.purchase_price}€
-                          </p>
-                        </div>
-                      ) : <span className="text-[#bbb]">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-[#555]">
-                      <div>
-                        <p className="font-medium">{phone.stock_location || <span className="text-[#bbb]">—</span>}</p>
-                        {phone.fournisseur && <p className="text-[#aaa] text-[11px]">{phone.fournisseur}</p>}
+                    <td className="px-3 py-3">
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2 py-0.5 rounded-lg text-xs font-medium w-fit ${CONDITION_COLORS[phone.condition] || 'bg-gray-100 text-gray-700'}`}>
+                          {CONDITION_LABELS[phone.condition] || phone.condition}
+                        </span>
+                        {phone.grade && (
+                          <span className="px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 w-fit">
+                            {phone.grade}
+                          </span>
+                        )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-3 py-3">
+                      {phone.battery_health != null
+                        ? <span className={`text-sm font-bold ${phone.battery_health >= 85 ? 'text-green-600' : phone.battery_health >= 75 ? 'text-orange-500' : 'text-red-500'}`}>{phone.battery_health}%</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-3">
+                      <InlinePrice id={phone.id} value={phone.price} onSave={handlePriceChange} />
+                    </td>
+                    <td className="px-3 py-3">
+                      {phone.purchase_price != null ? (
+                        <p className="text-xs whitespace-nowrap">
+                          <span className="text-[#888]">{phone.purchase_price}€</span>
+                          <span className={`font-bold ${(phone.price - phone.purchase_price) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {' / '}{(phone.price - phone.purchase_price) >= 0 ? '+' : ''}{phone.price - phone.purchase_price}€
+                          </span>
+                        </p>
+                      ) : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-3 text-xs font-medium text-gray-700">
+                      {phone.magasins?.[0]
+                        ? (MAGASINS_MAP[phone.magasins[0]]?.nom?.replace('Seb Telecom — ', '') || phone.magasins[0])
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-3 py-3 text-xs text-gray-600">
                       {phone.fournisseur || <span className="text-gray-300">—</span>}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <StatusDropdown id={phone.id} value={phone.status} onChange={handleStatusChange} />
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-1 flex-nowrap">
                         {(phone.status === 'disponible' || phone.status === 'reserve') && (
                           <button
                             onClick={() => {
@@ -1691,19 +1694,26 @@ export default function Stock() {
                               })
                               setShowSaleModal(true)
                             }}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-all whitespace-nowrap cursor-pointer"
+                            className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-2 py-1.5 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
                             title="Vendre"
                           >
-                            💰 Vendu
+                            Vendu
                           </button>
                         )}
+                        <button
+                          onClick={() => setEtiquettePhone(phone)}
+                          title="Imprimer étiquette"
+                          className="p-1.5 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Tag size={14} />
+                        </button>
                         {canStar && (
                           <button
                             onClick={() => handleToggleOffreSemaine(phone)}
                             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                               phone.offre_semaine
-                                ? 'text-yellow-500 bg-yellow-50'
-                                : 'text-[#888] hover:text-yellow-500 hover:bg-yellow-50'
+                                ? 'text-yellow-400 bg-yellow-50'
+                                : 'text-gray-300 hover:text-yellow-400 hover:bg-yellow-50'
                             }`}
                             title="Offre de la semaine"
                           >
@@ -1713,7 +1723,7 @@ export default function Stock() {
                         {canEdit && (
                           <button
                             onClick={() => { setEditingPhone(phone); setModalOpen(true) }}
-                            className="p-1.5 text-[#888] hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Modifier"
                           >
                             <Pencil size={14} />
@@ -1722,19 +1732,12 @@ export default function Stock() {
                         {canDelete && (
                           <button
                             onClick={() => handleDelete(phone.id)}
-                            className="p-1.5 text-[#888] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             title="Supprimer"
                           >
                             <Trash2 size={14} />
                           </button>
                         )}
-                        <button
-                          onClick={() => setEtiquettePhone(phone)}
-                          title="Imprimer étiquette"
-                          className="p-1.5 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          🏷️
-                        </button>
                       </div>
                     </td>
                   </tr>
