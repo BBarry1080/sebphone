@@ -27,7 +27,8 @@
       "Bash(npm run *)",
       "Bash(npx eslint *)",
       "Bash(grep -E \"no-undef|react/jsx-no-undef|is not defined|Parsing error|^\\\\S.*\\\\.jsx$|^\\\\S.*\\\\.js$\")",
-      "Bash(grep -vE \"^\\\\s*$\")"
+      "Bash(grep -vE \"^\\\\s*$\")",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies.jsbarcode || 'NOT FOUND'\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Aliou\\Desktop\\Transport\\Site\\assets",

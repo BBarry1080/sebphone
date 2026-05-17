@@ -23,6 +23,7 @@ const EMAILJS_PUBLIC_KEY   = import.meta.env.VITE_EMAILJS_PUBLIC_KEY         || 
 const INVOICE_TEMPLATE_ID  = 'template_pzv7w8d'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
+import Etiquette from '../../components/admin/Etiquette'
 
 
 const CONDITIONS = ['neuf', 'reconditionne', 'occasion']
@@ -873,6 +874,7 @@ export default function Stock() {
   const [selectedStockStatus, setSelectedStockStatus] = useState('tous')
   const [modalOpen, setModalOpen]         = useState(false)
   const [editingPhone, setEditingPhone]   = useState(null)
+  const [etiquettePhone, setEtiquettePhone] = useState(null)
 
   const [showSaleModal, setShowSaleModal] = useState(false)
   const [salePhone, setSalePhone]         = useState(null)
@@ -1551,6 +1553,13 @@ export default function Stock() {
                         <Trash2 size={15} />
                       </button>
                     )}
+                    <button
+                      onClick={() => setEtiquettePhone(phone)}
+                      title="Imprimer étiquette"
+                      className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      🏷️
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1719,6 +1728,13 @@ export default function Stock() {
                             <Trash2 size={14} />
                           </button>
                         )}
+                        <button
+                          onClick={() => setEtiquettePhone(phone)}
+                          title="Imprimer étiquette"
+                          className="p-1.5 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          🏷️
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1735,6 +1751,13 @@ export default function Stock() {
           phone={editingPhone}
           onClose={() => setModalOpen(false)}
           onSaved={fetchPhones}
+        />
+      )}
+
+      {etiquettePhone && (
+        <Etiquette
+          phone={etiquettePhone}
+          onClose={() => setEtiquettePhone(null)}
         />
       )}
 
