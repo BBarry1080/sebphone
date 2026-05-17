@@ -23,6 +23,7 @@ const EMAILJS_PUBLIC_KEY   = import.meta.env.VITE_EMAILJS_PUBLIC_KEY         || 
 const INVOICE_TEMPLATE_ID  = 'template_pzv7w8d'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
+import { GOOGLE_REVIEW_LINKS } from '../../data/googleReviews'
 import Etiquette from '../../components/admin/Etiquette'
 
 
@@ -1229,6 +1230,29 @@ export default function Stock() {
         } catch (emailErr) {
           console.warn('Email facture non envoyé:', emailErr)
         }
+      }
+
+      // ── Email avis Google (post-vente) ──
+      try {
+        const reviewLink = GOOGLE_REVIEW_LINKS[saleForm.sale_magasin]
+        if (reviewLink && saleForm.customer_email) {
+          await emailjs.send(
+            EMAILJS_SERVICE_ID,
+            'template_review_google',
+            {
+              to_email: saleForm.customer_email,
+              to_name: `${saleForm.customer_firstname} ${saleForm.customer_name}`,
+              customer_name: `${saleForm.customer_firstname} ${saleForm.customer_name}`,
+              phone_name: salePhone.name || salePhone.model,
+              magasin_nom: reviewLink.nom,
+              google_review_url: reviewLink.url,
+              review_page_url: `https://sebphone.be/avis?email=${encodeURIComponent(saleForm.customer_email)}&magasin=${saleForm.sale_magasin}`,
+            },
+            EMAILJS_PUBLIC_KEY
+          )
+        }
+      } catch (reviewEmailErr) {
+        console.warn('Email avis Google non envoyé:', reviewEmailErr)
       }
 
       /*

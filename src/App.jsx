@@ -46,6 +46,7 @@ import ProCatalogue from './pages/ProCatalogue';
 import ProAdmin from './pages/admin/ProAdmin';
 import AdminSurCommande from './pages/admin/SurCommande';
 import CataloguePage from './pages/CataloguePage';
+import Avis from './pages/Avis';
 
 function Layout({ children }) {
   return (
@@ -128,6 +129,9 @@ export default function App() {
           } />
           <Route path="/catalogue/:categorie" element={
             <Layout><CataloguePage /></Layout>
+          } />
+          <Route path="/avis" element={
+            <Layout><Avis /></Layout>
           } />
           <Route path="/compte" element={
             <Layout>
