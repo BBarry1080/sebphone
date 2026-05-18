@@ -69,7 +69,7 @@ export default function SurCommande() {
             Commandez votre iPhone
           </h1>
           <p className="text-gray-300 text-sm max-w-lg mx-auto">
-            Le modèle que vous souhaitez n'est pas en stock ? Réservez-le et nous vous le procurons sous 2 à 5 jours.
+            Le modèle que vous souhaitez n'est pas en stock ? Réservez-le et nous vous le procurons sous 1h à 72h.
           </p>
         </div>
       </div>
