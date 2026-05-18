@@ -2,9 +2,11 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Phone, Mail, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../ui/Button';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function ConfirmationCard({ phone, form }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <motion.div
@@ -19,16 +21,16 @@ export default function ConfirmationCard({ phone, form }) {
       </div>
 
       <h2 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">
-        Réservation confirmée !
+        {t('confirm_card_title')}
       </h2>
       <p className="text-[#555555] text-sm mb-6 max-w-sm">
-        Merci <strong>{form.firstName}</strong> ! Votre réservation pour le{' '}
+        {t('confirm_card_thanks')} <strong>{form.firstName}</strong> ! Votre réservation pour le{' '}
         <strong>{phone?.name}</strong> a bien été enregistrée.
       </p>
 
       {/* Details card */}
       <div className="w-full bg-[#F5F5F5] rounded-2xl p-6 mb-6 text-left">
-        <h3 className="font-semibold text-[#1B2A4A] text-sm mb-4">Récapitulatif</h3>
+        <h3 className="font-semibold text-[#1B2A4A] text-sm mb-4">{t('confirm_card_summary')}</h3>
         <ul className="flex flex-col gap-2 text-sm">
           <li className="flex justify-between">
             <span className="text-[#555555]">Téléphone</span>
@@ -53,7 +55,7 @@ export default function ConfirmationCard({ phone, form }) {
 
       {/* Next steps */}
       <div className="w-full bg-cyan-50 border border-cyan-200 rounded-2xl p-5 mb-6 text-left">
-        <p className="font-semibold text-[#00B4CC] text-sm mb-3">Prochaines étapes</p>
+        <p className="font-semibold text-[#00B4CC] text-sm mb-3">{t('confirm_card_next')}</p>
         <ol className="flex flex-col gap-2">
           {[
             'Notre équipe vous contacte sous 2h pour confirmer la disponibilité',
@@ -74,7 +76,7 @@ export default function ConfirmationCard({ phone, form }) {
 
       {/* Contact */}
       <p className="text-sm text-[#555555] mb-6">
-        Une question ? Contactez-nous :
+        {t('confirm_card_contact')} :
       </p>
       <div className="flex gap-4 mb-8">
         <a
@@ -95,7 +97,7 @@ export default function ConfirmationCard({ phone, form }) {
 
       <Button variant="secondary" size="md" onClick={() => navigate('/boutique')}>
         <ArrowLeft size={16} className="mr-1" />
-        Retour à la boutique
+        {t('confirm_card_back')}
       </Button>
     </motion.div>
   );

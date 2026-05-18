@@ -4,6 +4,7 @@ import { Trash2, ChevronDown, ChevronUp, Lock, ShoppingBag } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 import Button from '../components/ui/Button';
+import { useLanguage } from '../contexts/LanguageContext';
 
 function PaymentIcons() {
   const methods = ['Visa', 'MC', 'Amex', 'PayPal', 'GPay'];
@@ -20,6 +21,7 @@ function PaymentIcons() {
 
 export default function Cart() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { items, removeFromCart, updateQuantity, coupon, applyCoupon, removeCoupon, subtotal, discountAmount, total } = useCart();
   const [couponInput, setCouponInput] = useState('');
   const [couponError, setCouponError] = useState('');
@@ -29,7 +31,7 @@ export default function Cart() {
   const handleCoupon = async () => {
     if (!couponInput.trim()) return;
     const ok = await applyCoupon(couponInput, subtotal);
-    if (!ok) setCouponError('Code invalide. Essayez SEBPHONE10 ou BIENVENUE.');
+    if (!ok) setCouponError(t('cart_invalid_promo'));
     else setCouponError('');
   };
 
@@ -39,7 +41,7 @@ export default function Cart() {
         <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-6">
           <ShoppingBag size={36} className="text-gray-400" />
         </div>
-        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">Votre panier est vide</h1>
+        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('cart_empty')}</h1>
         <p className="text-[#555555] mb-6">Découvrez nos téléphones reconditionnés et occasions.</p>
         <Button variant="primary" size="md" onClick={() => navigate('/boutique')}>
           Voir la boutique
@@ -57,9 +59,9 @@ export default function Cart() {
         <div className="lg:col-span-2 flex flex-col gap-4">
           {/* Header desktop */}
           <div className="hidden md:grid grid-cols-3 text-xs font-semibold text-[#555555] uppercase tracking-wide pb-2 border-b border-gray-100">
-            <span>Produit</span>
-            <span className="text-center">Quantité</span>
-            <span className="text-right">Total</span>
+            <span>{t('cart_product')}</span>
+            <span className="text-center">{t('cart_quantity')}</span>
+            <span className="text-right">{t('cart_total')}</span>
           </div>
 
           {items.map((item) => (
@@ -87,7 +89,7 @@ export default function Cart() {
                     className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 mt-1 transition-colors cursor-pointer"
                   >
                     <Trash2 size={12} />
-                    Supprimer
+                    {t('cart_delete')}
                   </button>
                 </div>
               </div>
@@ -122,7 +124,7 @@ export default function Cart() {
               onClick={() => setShippingOpen(!shippingOpen)}
               className="w-full flex items-center justify-between px-5 py-4 text-sm font-medium text-[#1B2A4A] hover:bg-gray-50 transition-colors cursor-pointer"
             >
-              Estimer les frais de livraison
+              {t('cart_delivery_estimate')}
               {shippingOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
             <AnimatePresence>
@@ -141,10 +143,10 @@ export default function Cart() {
                     </select>
                     <input
                       type="text"
-                      placeholder="Code postal"
+                      placeholder={t('cart_postal')}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#00B4CC]"
                     />
-                    <Button variant="secondary" size="sm" className="self-start">Estimer</Button>
+                    <Button variant="secondary" size="sm" className="self-start">{t('cart_estimate_btn')}</Button>
                   </div>
                 </motion.div>
               )}
@@ -155,10 +157,10 @@ export default function Cart() {
         {/* Summary card */}
         <div className="lg:sticky lg:top-24">
           <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col gap-4">
-            <h2 className="font-poppins font-bold text-[#1B2A4A] text-lg">Récapitulatif</h2>
+            <h2 className="font-poppins font-bold text-[#1B2A4A] text-lg">{t('cart_summary')}</h2>
 
             <div className="flex justify-between text-sm">
-              <span className="text-[#555555]">Sous-total</span>
+              <span className="text-[#555555]">{t('cart_subtotal')}</span>
               <span className="font-semibold">{subtotal}€</span>
             </div>
 
@@ -178,7 +180,7 @@ export default function Cart() {
                   value={couponInput}
                   onChange={(e) => setCouponInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCoupon()}
-                  placeholder="Code promo"
+                  placeholder={t('cart_promo')}
                   className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#00B4CC] min-w-0"
                 />
                 <Button variant="secondary" size="sm" onClick={handleCoupon}>OK</Button>
@@ -188,20 +190,20 @@ export default function Cart() {
 
             {discountAmount > 0 && (
               <div className="flex justify-between text-sm text-green-700">
-                <span>Réduction</span>
+                <span>{t('cart_discount')}</span>
                 <span className="font-semibold">−{discountAmount}€</span>
               </div>
             )}
 
             <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-              <span className="font-bold text-[#1B2A4A]">Total</span>
+              <span className="font-bold text-[#1B2A4A]">{t('cart_total_label')}</span>
               <span className="font-bold text-[#1B2A4A] text-xl">{total}€</span>
             </div>
             <p className="text-xs text-[#555555] -mt-2">Taxes incluses. Frais d'expédition calculés à l'étape de paiement.</p>
 
             {/* Note */}
             <div>
-              <label className="block text-xs font-medium text-[#555555] mb-1.5">Note pour la commande (optionnel)</label>
+              <label className="block text-xs font-medium text-[#555555] mb-1.5">{t('cart_order_note')}</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
@@ -213,11 +215,11 @@ export default function Cart() {
 
             <button className="w-full flex items-center justify-center gap-2 bg-[#1a1a1a] hover:bg-black text-white font-bold py-4 rounded-xl transition-colors cursor-pointer min-h-[52px] text-base">
               <Lock size={16} />
-              Commander
+              {t('cart_checkout')}
             </button>
 
             <div className="text-center">
-              <p className="text-xs text-[#555555] mb-2">Nous acceptons</p>
+              <p className="text-xs text-[#555555] mb-2">{t('cart_we_accept')}</p>
               <PaymentIcons />
             </div>
           </div>

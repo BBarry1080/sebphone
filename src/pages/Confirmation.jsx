@@ -134,7 +134,7 @@ export default function Confirmation() {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <div className="inline-block w-10 h-10 border-4 border-[#00B4CC] border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-[#555]">Confirmation de votre paiement...</p>
+        <p className="text-[#555]">{t('confirm_loading')}</p>
       </main>
     )
   }
@@ -143,7 +143,7 @@ export default function Confirmation() {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">🔍</p>
-        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">Page introuvable</h1>
+        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('confirm_not_found')}</h1>
         <p className="text-[#555] mb-6">Aucune réservation à afficher.</p>
         <button onClick={() => navigate('/')} className="px-6 py-3 bg-[#1B2A4A] text-white font-bold rounded-xl cursor-pointer">
           {t('confirmation_back')}
@@ -200,7 +200,7 @@ export default function Confirmation() {
       {/* Code de réservation */}
       <div className="bg-white border-2 border-[#00B4CC] rounded-2xl p-6 mb-6 text-center shadow-sm">
         <p className="text-xs font-bold uppercase tracking-widest text-[#555] mb-3">
-          Votre code de réservation
+          {t('confirm_resa_code')}
         </p>
         <div className="flex items-center justify-center gap-1 mb-3">
           {reservationCode.split('').map((char, i) => (
@@ -218,7 +218,7 @@ export default function Confirmation() {
       {/* Récapitulatif */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
         <div className="bg-[#F8F9FA] px-5 py-3 border-b border-gray-100">
-          <h2 className="font-poppins font-semibold text-[#1B2A4A] text-sm">Récapitulatif de la commande</h2>
+          <h2 className="font-poppins font-semibold text-[#1B2A4A] text-sm">{t('confirm_summary')}</h2>
         </div>
 
         <div className="px-5 py-4 space-y-3 text-sm">
@@ -260,7 +260,7 @@ export default function Confirmation() {
                   {magasinInfo?.gmaps && (
                     <a href={magasinInfo.gmaps} target="_blank" rel="noreferrer"
                       className="text-xs text-[#00B4CC] hover:underline">
-                      Voir sur Google Maps →
+                      {t('confirm_maps')}
                     </a>
                   )}
                 </div>
@@ -288,7 +288,7 @@ export default function Confirmation() {
           {/* Client */}
           <hr className="border-gray-100" />
           <p className="text-xs text-[#888]">
-            Réservé par <span className="font-semibold text-[#1B2A4A]">{clientName}</span>
+            {t('confirm_reserved_by')} <span className="font-semibold text-[#1B2A4A]">{clientName}</span>
           </p>
         </div>
       </div>
@@ -306,7 +306,7 @@ export default function Confirmation() {
           className="w-full py-3 border-2 border-[#00B4CC] text-[#00B4CC] hover:bg-cyan-50 font-bold rounded-xl transition-colors cursor-pointer text-sm flex items-center justify-center gap-2"
         >
           <Smartphone size={16} />
-          Voir d'autres téléphones
+          {t('confirm_see_more')}
         </button>
       </div>
     </main>

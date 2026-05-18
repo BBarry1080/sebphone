@@ -6,13 +6,14 @@ import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 import { ACCESSORY_PACKS } from '../data/accessories'
 import { MAGASINS } from '../utils/magasins'
 import Spinner from '../components/ui/Spinner'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const STATUS_CONFIG = {
-  en_attente:   { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  acompte_paye: { label: 'Acompte reçu — En cours',   color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  confirme:     { label: 'Confirmé par le magasin',    color: 'bg-green-100 text-green-700 border-green-200' },
-  recupere:     { label: 'Récupéré — Terminé',         color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  annule:       { label: 'Annulé',                     color: 'bg-red-100 text-red-600 border-red-200' },
+  en_attente:   { labelKey: 'my_resa_status_pending',   color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  acompte_paye: { labelKey: 'my_resa_status_deposit',   color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  confirme:     { labelKey: 'my_resa_status_confirmed', color: 'bg-green-100 text-green-700 border-green-200' },
+  recupere:     { labelKey: 'my_resa_status_collected', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  annule:       { labelKey: 'my_resa_status_cancelled', color: 'bg-red-100 text-red-600 border-red-200' },
 }
 
 function Section({ title, children }) {
@@ -29,6 +30,7 @@ function Section({ title, children }) {
 export default function DetailCommande() {
   const { code }   = useParams()
   const navigate   = useNavigate()
+  const { t }      = useLanguage()
   const [order,    setOrder]   = useState(null)
   const [loading,  setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -57,7 +59,7 @@ export default function DetailCommande() {
   if (loading) {
     return (
       <main className="max-w-xl mx-auto px-4 py-20">
-        <Spinner message="Chargement de la commande..." />
+        <Spinner message={t('detail_loading')} />
       </main>
     )
   }
@@ -66,7 +68,7 @@ export default function DetailCommande() {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">🔍</p>
-        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">Commande introuvable</h1>
+        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('detail_not_found')}</h1>
         <p className="text-[#555] mb-6">Le code <span className="font-mono font-bold">{code}</span> ne correspond à aucune réservation.</p>
         <button onClick={() => navigate('/mes-reservations')} className="px-6 py-3 bg-[#1B2A4A] text-white font-bold rounded-xl cursor-pointer">
           Mes réservations
@@ -80,7 +82,7 @@ export default function DetailCommande() {
   const magasin      = order.magasin_id ? MAGASINS[order.magasin_id] : null
   const pack         = ACCESSORY_PACKS.find(p => p.id === order.accessory_pack)
   const remaining    = (order.total_amount || 0) - (order.deposit_amount || 0)
-  const statusCfg    = STATUS_CONFIG[order.status] || { label: order.status, color: 'bg-gray-100 text-gray-600 border-gray-200' }
+  const statusCfg    = STATUS_CONFIG[order.status] || { labelKey: null, color: 'bg-gray-100 text-gray-600 border-gray-200' }
   const isRecupere   = order.status === 'recupere'
 
   const fmtDate = (iso, opts = {}) => iso
@@ -107,12 +109,12 @@ export default function DetailCommande() {
           <p className="text-sm text-[#888] mt-0.5">Code : <span className="font-mono font-bold text-[#1B2A4A] tracking-widest">{order.reservation_code}</span></p>
         </div>
         <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border ${statusCfg.color}`}>
-          {statusCfg.label}
+          {statusCfg.labelKey ? t(statusCfg.labelKey) : order.status}
         </span>
       </div>
 
       {/* Section 1 — Téléphone + image */}
-      <Section title="Téléphone">
+      <Section title={t('detail_phone')}>
         <div className="flex gap-4 items-center">
           <div className="w-24 h-24 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden flex items-center justify-center">
             <img
@@ -144,7 +146,7 @@ export default function DetailCommande() {
 
       {/* Section 2 — Ce qui a été fait */}
       {(order.phone_condition === 'reconditionne' || order.phone_condition === 'occasion') && (
-        <Section title="Ce qui a été fait">
+        <Section title={t('detail_done')}>
           <ul className="space-y-2">
             {order.phone_condition === 'reconditionne' ? (
               <>
@@ -166,14 +168,14 @@ export default function DetailCommande() {
       )}
 
       {/* Section 3 — Paiement */}
-      <Section title="Paiement">
+      <Section title={t('detail_payment')}>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-[#555]">Prix total</span>
+            <span className="text-[#555]">{t('detail_total')}</span>
             <span className="font-bold text-[#1B2A4A]">{order.total_amount || 0}€</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-[#555]">Acompte payé</span>
+            <span className="text-[#555]">{t('detail_deposit')}</span>
             <span className="font-semibold text-green-600">−{order.deposit_amount || 0}€</span>
           </div>
           {isRecupere ? (
@@ -183,7 +185,7 @@ export default function DetailCommande() {
             </div>
           ) : (
             <div className="flex justify-between border-t border-gray-100 pt-2 mt-1">
-              <span className="font-semibold text-[#1B2A4A]">Reste à payer en magasin</span>
+              <span className="font-semibold text-[#1B2A4A]">{t('detail_remaining')}</span>
               <span className="font-bold text-[#1B2A4A]">{remaining}€</span>
             </div>
           )}
@@ -195,7 +197,7 @@ export default function DetailCommande() {
 
       {/* Section 4 — Accessoires */}
       {pack && pack.id !== 'none' && pack.items.length > 0 && (
-        <Section title="Accessoires inclus">
+        <Section title={t('detail_accessories')}>
           <ul className="space-y-2">
             {pack.items.map((item) => (
               <li key={item} className="text-sm text-[#555] flex items-center gap-2">
@@ -209,7 +211,7 @@ export default function DetailCommande() {
       )}
 
       {/* Section 5 — Magasin / Livraison */}
-      <Section title={order.delivery_mode === 'delivery' ? 'Livraison' : 'Magasin de retrait'}>
+      <Section title={order.delivery_mode === 'delivery' ? t('detail_delivery') : 'Magasin de retrait'}>
         {magasin ? (
           <div className="space-y-2">
             <div className="flex items-start gap-2">
@@ -220,7 +222,7 @@ export default function DetailCommande() {
                 {magasin.gmaps && (
                   <a href={magasin.gmaps} target="_blank" rel="noreferrer"
                     className="text-xs text-[#00B4CC] hover:underline">
-                    Voir sur Google Maps →
+                    {t('detail_maps')}
                   </a>
                 )}
               </div>
@@ -251,7 +253,7 @@ export default function DetailCommande() {
         className="w-full py-3 border-2 border-[#1B2A4A] text-[#1B2A4A] hover:bg-[#1B2A4A] hover:text-white font-bold rounded-xl transition-colors cursor-pointer text-sm flex items-center justify-center gap-2"
       >
         <Smartphone size={16} />
-        Toutes mes réservations
+        {t('detail_all_resa')}
       </button>
     </main>
   )

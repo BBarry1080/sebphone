@@ -11,25 +11,27 @@ import { MAGASINS } from '../utils/magasins'
 import { useLanguage } from '../contexts/LanguageContext'
 
 const STATUS_CONFIG = {
-  en_attente:   { label: 'En attente de confirmation', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', dot: '🟡' },
-  acompte_paye: { label: 'Acompte reçu — En cours',   color: 'bg-blue-100 text-blue-700 border-blue-200',       dot: '🔵' },
-  confirme:     { label: 'Confirmé par le magasin',    color: 'bg-green-100 text-green-700 border-green-200',    dot: '🟢' },
-  recupere:     { label: 'Récupéré — Terminé',         color: 'bg-emerald-100 text-emerald-800 border-emerald-200', dot: '✅' },
-  annule:       { label: 'Annulé',                     color: 'bg-red-100 text-red-600 border-red-200',          dot: '🔴' },
+  en_attente:   { labelKey: 'my_resa_status_pending',   color: 'bg-yellow-100 text-yellow-700 border-yellow-200', dot: '🟡' },
+  acompte_paye: { labelKey: 'my_resa_status_deposit',   color: 'bg-blue-100 text-blue-700 border-blue-200',       dot: '🔵' },
+  confirme:     { labelKey: 'my_resa_status_confirmed', color: 'bg-green-100 text-green-700 border-green-200',    dot: '🟢' },
+  recupere:     { labelKey: 'my_resa_status_collected', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', dot: '✅' },
+  annule:       { labelKey: 'my_resa_status_cancelled', color: 'bg-red-100 text-red-600 border-red-200',          dot: '🔴' },
 }
 
 function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || { label: status, color: 'bg-gray-100 text-gray-600 border-gray-200', dot: '⚪' }
+  const { t } = useLanguage()
+  const cfg = STATUS_CONFIG[status] || { labelKey: null, color: 'bg-gray-100 text-gray-600 border-gray-200', dot: '⚪' }
   return (
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${cfg.color}`}>
       <span>{cfg.dot}</span>
-      {cfg.label}
+      {cfg.labelKey ? t(cfg.labelKey) : status}
     </span>
   )
 }
 
 function OrderCard({ order }) {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const phoneName  = order.phone_name || '—'
   const imageUrl   = getPhoneImage(phoneName, order.phone_color)
   const magasin    = order.magasin_id ? MAGASINS[order.magasin_id] : null
@@ -72,20 +74,20 @@ function OrderCard({ order }) {
         <div className="flex-1 min-w-0">
           <h3 className="font-poppins font-bold text-[#1B2A4A] text-base leading-tight">{phoneName}</h3>
           <p className="text-xs text-[#888] mt-0.5">
-            {[order.phone_color, order.phone_storage, order.phone_grade ? `Grade ${order.phone_grade}` : ''].filter(Boolean).join(' · ')}
+            {[order.phone_color, order.phone_storage, order.phone_grade ? `${t('my_resa_grade')} ${order.phone_grade}` : ''].filter(Boolean).join(' · ')}
           </p>
 
           {/* Prix */}
           <div className="flex items-baseline gap-2 mt-2">
             <span className="font-bold text-lg text-[#1B2A4A]">{order.total_amount || 0}€</span>
             {order.deposit_amount > 0 && (
-              <span className="text-xs text-[#888]">acompte {order.deposit_amount}€ payé</span>
+              <span className="text-xs text-[#888]">{t('my_resa_deposit_paid')} {order.deposit_amount}€</span>
             )}
           </div>
 
           {/* Reste à payer si pas encaissé */}
           {!isRecupere && remaining > 0 && (
-            <p className="text-xs text-orange-600 font-medium mt-0.5">Reste à payer en magasin : {remaining}€</p>
+            <p className="text-xs text-orange-600 font-medium mt-0.5">{t('my_resa_remaining')} : {remaining}€</p>
           )}
 
           {/* Date récupération */}
@@ -120,7 +122,7 @@ function OrderCard({ order }) {
       {/* Section "Ce qui a été fait" */}
       {(order.phone_condition === 'reconditionne' || order.phone_condition === 'occasion') && (
         <div className="mx-5 mb-4 border border-gray-100 rounded-xl p-3 bg-gray-50">
-          <p className="text-xs font-semibold text-[#555] uppercase tracking-wide mb-2">Ce qui a été fait</p>
+          <p className="text-xs font-semibold text-[#555] uppercase tracking-wide mb-2">{t('my_resa_checklist')}</p>
           <ul className="space-y-1">
             {order.phone_condition === 'reconditionne' ? (
               <>
@@ -148,7 +150,7 @@ function OrderCard({ order }) {
             onClick={() => navigate(`/commande/${order.reservation_code}`)}
             className="w-full py-2.5 border border-[#00B4CC] text-[#00B4CC] hover:bg-cyan-50 font-semibold rounded-xl text-sm transition-colors cursor-pointer"
           >
-            Voir le détail complet →
+            {t('my_resa_detail')}
           </button>
         )}
       </div>
@@ -196,7 +198,7 @@ export default function MesReservations() {
     <main className="max-w-2xl mx-auto px-4 py-8 pb-28 md:pb-12">
       <div className="mb-8">
         <h1 className="font-poppins font-bold text-3xl text-[#00B4CC] mb-1">
-          {t('my_reservations_title')}
+          {t('my_resa_title')}
         </h1>
         <p className="text-[#555] text-sm">Entrez votre email pour retrouver vos commandes</p>
       </div>
@@ -209,7 +211,7 @@ export default function MesReservations() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="votre@email.com"
+            placeholder={t('my_resa_search')}
             required
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] transition-colors"
           />
@@ -241,13 +243,13 @@ export default function MesReservations() {
         orders.length === 0 ? (
           <div className="text-center py-16">
             <AlertCircle size={40} className="text-gray-300 mx-auto mb-3" />
-            <p className="font-semibold text-[#1B2A4A]">{t('my_reservations_empty')}</p>
+            <p className="font-semibold text-[#1B2A4A]">{t('my_resa_empty')}</p>
             <p className="text-sm text-[#888] mt-1">Vérifiez l'email utilisé lors de la réservation</p>
           </div>
         ) : (
           <div className="space-y-4">
             <p className="text-sm text-[#555]">
-              <span className="font-semibold text-[#1B2A4A]">{orders.length}</span> réservation{orders.length > 1 ? 's' : ''} trouvée{orders.length > 1 ? 's' : ''}
+              <span className="font-semibold text-[#1B2A4A]">{orders.length}</span> {t('my_resa_found')}
             </p>
             {orders.map((order) => (
               <OrderCard key={order.id} order={order} />

@@ -109,7 +109,7 @@ export default function ReservationForm({ phone }) {
 
     setPromoLoading(false)
 
-    if (error || !data) { setPromoError('Code invalide ou expiré.'); return }
+    if (error || !data) { setPromoError(t('form_error_promo')); return }
     if (data.expires_at && new Date(data.expires_at) < new Date()) { setPromoError('Ce code a expiré.'); return }
     if (data.max_uses && data.uses_count >= data.max_uses) { setPromoError('Ce code a atteint sa limite d\'utilisation.'); return }
     if (data.min_order && basePrice < data.min_order) { setPromoError(`Commande minimum de ${data.min_order}€ requis.`); return }
@@ -322,7 +322,7 @@ export default function ReservationForm({ phone }) {
       })
     } catch (err) {
       console.error('❌ CATCH submitReservation:', err)
-      setSubmitError('Une erreur est survenue. Veuillez réessayer.')
+      setSubmitError(t('form_error_submit'))
       setLoading(false)
     }
   };
@@ -465,36 +465,36 @@ export default function ReservationForm({ phone }) {
       <div>
         <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-4 flex items-center gap-2">
           <User size={18} className="text-[#00B4CC]" />
-          Vos informations
+          {t('form_your_info')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('reservation_firstname')} *</label>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('form_firstname')} *</label>
             <input type="text" name="firstName" value={form.firstName} onChange={handleChange} required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
-              placeholder="Jean" />
+              placeholder={t('form_placeholder_firstname')} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('reservation_lastname')} *</label>
+            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('form_lastname')} *</label>
             <input type="text" name="lastName" value={form.lastName} onChange={handleChange} required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
-              placeholder="Dupont" />
+              placeholder={t('form_placeholder_lastname')} />
           </div>
           <div>
             <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-              <span className="flex items-center gap-1"><Mail size={13} /> {t('reservation_email')} *</span>
+              <span className="flex items-center gap-1"><Mail size={13} /> {t('form_email')} *</span>
             </label>
             <input type="email" name="email" value={form.email} onChange={handleChange} required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
-              placeholder="jean@exemple.com" />
+              placeholder={t('form_placeholder_email')} />
           </div>
           <div>
             <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-              <span className="flex items-center gap-1"><Phone size={13} /> {t('reservation_phone')} *</span>
+              <span className="flex items-center gap-1"><Phone size={13} /> {t('form_phone')} *</span>
             </label>
             <input type="tel" name="phone" value={form.phone} onChange={handleChange} required
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
-              placeholder="+32 XXX XX XX XX" />
+              placeholder={t('form_placeholder_phone')} />
           </div>
         </div>
       </div>
@@ -550,7 +550,7 @@ export default function ReservationForm({ phone }) {
             ) : (
               <div>
                 <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-                  <span className="flex items-center gap-1"><Store size={13} /> Choisir le magasin de retrait *</span>
+                  <span className="flex items-center gap-1"><Store size={13} /> {t('form_store_pickup')} *</span>
                 </label>
                 <select name="magasin" value={form.magasin} onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all bg-white">
@@ -600,7 +600,7 @@ export default function ReservationForm({ phone }) {
       <div>
         <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-4 flex items-center gap-2">
           <Package size={18} className="text-[#00B4CC]" />
-          Pack accessoires
+          {t('form_accessories_pack')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {ACCESSORY_PACKS.map((pack) => (
@@ -620,7 +620,7 @@ export default function ReservationForm({ phone }) {
                 <div className="flex items-center justify-between w-full mb-2">
                   <span className="font-semibold text-sm text-[#1B2A4A]">{pack.label}</span>
                   {pack.price === 0 ? (
-                    <span className="text-lg font-bold text-gray-400">Gratuit</span>
+                    <span className="text-lg font-bold text-gray-400">{t('form_free')}</span>
                   ) : (
                     <div className="flex flex-col items-end">
                       <span className="text-xs text-gray-400 line-through">+{pack.originalPrice}€</span>
@@ -651,7 +651,7 @@ export default function ReservationForm({ phone }) {
         <div>
           <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-3 flex items-center gap-2">
             <BatteryCharging size={18} className="text-[#00B4CC]" />
-            Option batterie neuve
+            {t('form_new_battery')}
           </h3>
           <button
             type="button"
@@ -682,7 +682,7 @@ export default function ReservationForm({ phone }) {
       <div>
         <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-3 flex items-center gap-2">
           <Tag size={18} className="text-[#00B4CC]" />
-          Code promo
+          {t('form_promo_code')}
         </h3>
         {promoCode ? (
           <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
@@ -714,7 +714,7 @@ export default function ReservationForm({ phone }) {
               disabled={promoLoading || !promoInput.trim()}
               className="px-5 py-3 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
             >
-              {promoLoading ? '…' : 'Appliquer'}
+              {promoLoading ? '…' : t('form_apply')}
             </button>
           </div>
         )}
@@ -725,7 +725,7 @@ export default function ReservationForm({ phone }) {
       <div>
         <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-4 flex items-center gap-2">
           <CreditCard size={18} className="text-[#00B4CC]" />
-          Mode de paiement
+          {t('form_payment_method')}
         </h3>
         <div
           onClick={() => setPaymentMode('acompte')}
@@ -735,7 +735,7 @@ export default function ReservationForm({ phone }) {
         >
           <div className="flex justify-between items-start gap-3">
             <div className="flex-1">
-              <p className="font-semibold text-[#1B2A4A] text-sm">Réserver avec acompte</p>
+              <p className="font-semibold text-[#1B2A4A] text-sm">{t('form_reserve_deposit')}</p>
               <p className="text-xs text-gray-500 mt-0.5">Payez 50€ maintenant pour bloquer le téléphone. Le reste est réglé en magasin.</p>
               <p className="text-xs text-orange-500 mt-1">⚠️ L'acompte n'est pas remboursable</p>
             </div>
@@ -750,7 +750,7 @@ export default function ReservationForm({ phone }) {
         >
           <div className="flex justify-between items-start gap-3">
             <div className="flex-1">
-              <p className="font-semibold text-[#1B2A4A] text-sm">Payer le montant total</p>
+              <p className="font-semibold text-[#1B2A4A] text-sm">{t('form_pay_total')}</p>
               <p className="text-xs text-gray-500 mt-0.5">Réglez la totalité maintenant. Récupération en magasin ou livraison.</p>
             </div>
             <span className="font-bold text-[#1B2A4A] text-xl flex-shrink-0">{totalPrice}€</span>
@@ -784,9 +784,9 @@ export default function ReservationForm({ phone }) {
             Préparation du paiement...
           </span>
         ) : paymentMode === 'acompte' ? (
-          '🔒 Réserver et payer 50€'
+          t('form_reserve_btn')
         ) : (
-          `🔒 Payer ${totalPrice}€ maintenant`
+          `${t('form_pay_btn')} ${totalPrice}€`
         )}
       </button>
     </motion.form>

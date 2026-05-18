@@ -5,9 +5,11 @@ import { MAGASINS } from '../utils/magasins'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { Download } from 'lucide-react'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Facture() {
   const { code } = useParams()
+  const { t } = useLanguage()
   const [order, setOrder]     = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState(null)
@@ -20,7 +22,7 @@ export default function Facture() {
       .select('*, phone:phones(*)')
       .eq('reservation_code', code)
       .single()
-    if (err || !data) setError('Facture introuvable')
+    if (err || !data) setError(t('invoice_not_found'))
     else setOrder(data)
     setLoading(false)
   }
@@ -47,7 +49,7 @@ export default function Facture() {
 
     doc.setTextColor(100, 116, 139)
     doc.setFontSize(10)
-    doc.text('FACTURE DE VENTE', 140, 15)
+    doc.text(t('invoice_title'), 140, 15)
     doc.setFontSize(9)
     doc.text(`Date : ${saleDate.toLocaleDateString('fr-BE')}`, 140, 22)
     doc.text(`Ref. : ${order.reservation_code}`, 140, 28)
@@ -58,7 +60,7 @@ export default function Facture() {
     doc.setFontSize(12)
     doc.setTextColor(27, 42, 74)
     doc.setFont('helvetica', 'bold')
-    doc.text('CLIENT', 20, 58)
+    doc.text(t('invoice_client'), 20, 58)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)
     doc.setTextColor(50, 50, 50)
@@ -69,11 +71,11 @@ export default function Facture() {
     doc.setFontSize(12)
     doc.setTextColor(27, 42, 74)
     doc.setFont('helvetica', 'bold')
-    doc.text('TELEPHONE ACHETE', 20, 95)
+    doc.text(t('invoice_phone_bought'), 20, 95)
 
     autoTable(doc, {
       startY: 99,
-      head: [['Designation', 'Detail']],
+      head: [[t('invoice_designation'), t('invoice_detail')]],
       body: [
         ['Modele',   order.phone_name || '—'],
         ['Couleur',  order.phone_color || '—'],
@@ -94,8 +96,8 @@ export default function Facture() {
       startY: doc.lastAutoTable.finalY + 10,
       head: [],
       body: [
-        ['Mode de paiement', order.payment_mode || '—'],
-        ['PRIX TOTAL',       `${order.total_amount}€`],
+        [t('invoice_payment_method'), order.payment_mode || '—'],
+        [t('invoice_total'),         `${order.total_amount}€`],
       ],
       theme: 'grid',
       styles: { fontSize: 10 },
@@ -111,7 +113,7 @@ export default function Facture() {
     doc.setFontSize(11)
     doc.setTextColor(22, 101, 52)
     doc.setFont('helvetica', 'bold')
-    doc.text('Garantie SebPhone 24 mois', 28, garantieY + 9)
+    doc.text(t('invoice_guarantee'), 28, garantieY + 9)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     doc.text(`Valable jusqu au ${warrantyExpiry.toLocaleDateString('fr-BE')}`, 28, garantieY + 17)
@@ -122,7 +124,7 @@ export default function Facture() {
     doc.line(125, sigY, 190, sigY)
     doc.setFontSize(8)
     doc.setTextColor(150)
-    doc.text('Signature du client', 20, sigY + 5)
+    doc.text(t('invoice_signature'), 20, sigY + 5)
     doc.text('Cachet & signature SebPhone', 125, sigY + 5)
 
     doc.setFontSize(8)
@@ -141,7 +143,7 @@ export default function Facture() {
   if (error) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
-        <p className="text-xl font-bold text-[#1B2A4A] mb-2">Facture introuvable</p>
+        <p className="text-xl font-bold text-[#1B2A4A] mb-2">{t('invoice_not_found')}</p>
         <p className="text-gray-500 text-sm">Vérifiez le lien ou contactez SebPhone</p>
       </div>
     </div>
@@ -161,13 +163,13 @@ export default function Facture() {
         </div>
 
         <div className="bg-white rounded-2xl p-6 mb-4 border border-gray-100 shadow-sm text-center">
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Référence</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">{t('invoice_ref')}</p>
           <p className="text-3xl font-black text-[#00B4CC] tracking-widest font-mono">{order.reservation_code}</p>
           <p className="text-xs text-gray-400 mt-2">Date : {saleDate.toLocaleDateString('fr-BE')}</p>
         </div>
 
         <div className="bg-white rounded-2xl p-6 mb-4 border border-gray-100 shadow-sm">
-          <h3 className="font-bold text-[#1B2A4A] mb-4">📱 Téléphone acheté</h3>
+          <h3 className="font-bold text-[#1B2A4A] mb-4">{t('invoice_phone_label')}</h3>
           {[
             ['Modèle',   order.phone_name],
             ['Couleur',  order.phone_color || '—'],
@@ -181,7 +183,7 @@ export default function Facture() {
             </div>
           ))}
           <div className="flex justify-between py-2 text-sm mt-2">
-            <span className="font-bold text-[#1B2A4A] text-base">Total payé</span>
+            <span className="font-bold text-[#1B2A4A] text-base">{t('invoice_total_paid')}</span>
             <span className="font-black text-[#00B4CC] text-xl">{order.total_amount}€</span>
           </div>
         </div>
@@ -199,11 +201,11 @@ export default function Facture() {
           className="w-full flex items-center justify-center gap-3 bg-[#1B2A4A] text-white rounded-2xl py-4 font-bold text-base hover:bg-[#243660] transition-all mb-4 cursor-pointer"
         >
           <Download size={20} />
-          Télécharger ma facture PDF
+          {t('invoice_download')}
         </button>
 
         <p className="text-xs text-gray-400 text-center">
-          Des questions ? Contactez-nous au 0472 72 85 24<br />
+          {t('invoice_questions')} Contactez-nous au 0472 72 85 24<br />
           ou par email : contact@sebphone.be
         </p>
       </div>

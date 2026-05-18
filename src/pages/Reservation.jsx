@@ -6,10 +6,12 @@ import { phonesMock } from '../data/phonesMock';
 import Spinner from '../components/ui/Spinner';
 import ReservationForm from '../components/reservation/ReservationForm';
 import Button from '../components/ui/Button';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function Reservation() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [phone, setPhone]     = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ export default function Reservation() {
   if (loading) {
     return (
       <main className="max-w-xl mx-auto px-4 py-20">
-        <Spinner message="Chargement du téléphone..." />
+        <Spinner message={t('reservation_loading')} />
       </main>
     );
   }
@@ -81,7 +83,7 @@ export default function Reservation() {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">📱</p>
-        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">Téléphone introuvable</h1>
+        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('reservation_not_found')}</h1>
         <p className="text-red-500 text-sm mb-1">{error}</p>
         <p className="text-gray-400 text-xs mb-6">ID recherché : {id}</p>
         <div className="flex flex-col gap-3 items-center">
@@ -89,7 +91,7 @@ export default function Reservation() {
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-[#00B4CC] text-sm cursor-pointer"
           >
-            ← Retour
+            ← {t('reservation_back')}
           </button>
           <Button variant="primary" size="md" onClick={() => navigate('/boutique')}>
             Retour à la boutique
@@ -103,7 +105,7 @@ export default function Reservation() {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">😔</p>
-        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">Téléphone vendu</h1>
+        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('reservation_sold')}</h1>
         <p className="text-[#555555] mb-6">Ce téléphone n'est plus disponible à la réservation.</p>
         <Button variant="primary" size="md" onClick={() => navigate('/boutique')}>
           Voir d'autres offres
@@ -119,15 +121,15 @@ export default function Reservation() {
         className="flex items-center gap-2 text-[#555555] hover:text-[#00B4CC] text-sm mb-6 transition-colors cursor-pointer"
       >
         <ArrowLeft size={16} />
-        Retour
+        {t('reservation_back')}
       </button>
 
       <div className="mb-8">
         <h1 className="font-poppins font-bold text-3xl text-[#1B2A4A] mb-2">
-          Réserver ce <span className="text-[#00B4CC]">téléphone</span>
+          {t('reservation_title')}
         </h1>
         <p className="text-[#555555] text-sm">
-          Remplissez le formulaire pour réserver — acompte de 50€ à la confirmation.
+          {t('reservation_subtitle')}
         </p>
       </div>
 
