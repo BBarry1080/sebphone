@@ -16,6 +16,10 @@ export default function ProAdmin() {
   const [proStock, setProStock] = useState([])
   const [loading, setLoading]   = useState(true)
   const [processing, setProcessing] = useState(null) // stocke l'id en cours
+  const [showImportCSV, setShowImportCSV] = useState(false)
+  const [csvData, setCsvData] = useState([])
+  const [importing, setImporting] = useState(false)
+  const [marge, setMarge] = useState(20) // % de marge par défaut
 
   const fetchAccounts = async () => {
     if (!isSupabaseReady) return
@@ -160,11 +164,199 @@ export default function ProAdmin() {
       s.id === existing.id ? { ...s, [field]: value === '' ? null : Number(value) } : s))
   }
 
+  // ── Import CSV Price My Phone ────────────────────────────────────
+  const convertGrade = (productName) => {
+    const name = productName.toLowerCase()
+    if (name.includes('eco repair +')) return 'D'
+    if (name.includes('eco repair')) return 'D'
+    if (name.includes('éco rayure') || name.includes('eco rayure')) return 'C'
+    if (name.includes('éco bat') || name.includes('eco bat')) return 'C'
+    if (name.includes('éco') || name.includes('eco')) return 'C'
+    if (name.includes('bc correct') || name.includes('correct')) return 'B'
+    if (name.includes('très bon') || name.includes('tres bon') || name.includes('b ')) return 'A'
+    if (name.includes('excellent') || name.includes('ab')) return 'A+'
+    return 'B' // défaut
+  }
+
+  const convertColor = (color) => {
+    const colors = {
+      'black': 'Noir', 'white': 'Blanc', 'blue': 'Bleu',
+      'red': 'Rouge', 'green': 'Vert', 'yellow': 'Jaune',
+      'pink': 'Rose', 'purple': 'Violet', 'gold': 'Or',
+      'silver': 'Argent', 'grey': 'Gris sidéral', 'gray': 'Gris sidéral',
+      'rose gold': 'Rose Gold', 'midnight': 'Minuit',
+      'starlight': 'Lumière stellaire', 'coral': 'Corail',
+      'orange': 'Orange', 'teal': 'Sarcelle',
+      'graphite': 'Graphite', 'pacific blue': 'Bleu Pacifique',
+      'sierra blue': 'Bleu alpin', 'alpine green': 'Vert alpin',
+      'deep purple': 'Violet intense', 'space gray': 'Gris sidéral',
+      'natural titanium': 'Titane naturel', 'black titanium': 'Titane noir',
+    }
+    const lower = color.toLowerCase()
+    for (const [en, fr] of Object.entries(colors)) {
+      if (lower === en || lower.includes(en)) return fr
+    }
+    return color
+  }
+
+  const parseCSVLine = (productName, prixAchat) => {
+    // Retire "Apple " au début
+    let name = productName.replace(/^Apple\s+/i, '').trim()
+
+    // Vérifie iCloud verrouillé → skip
+    if (name.toLowerCase().includes('icloud verrouillé') ||
+        name.toLowerCase().includes('icloud verrouille')) {
+      return null
+    }
+
+    // Extrait batterie si mentionnée
+    const batterieMatch = name.match(/batterie\s+(\d+)\s*%/i)
+    const battery = batterieMatch ? parseInt(batterieMatch[1]) : null
+    name = name.replace(/batterie\s+\d+\s*%/i, '').trim()
+
+    // Extrait stockage (ex: 128GB, 256GB)
+    const storageMatch = name.match(/(\d+)\s*GB/i)
+    const storage = storageMatch ? storageMatch[1] + 'Go' : ''
+    name = name.replace(/\d+\s*GB/i, '').trim()
+
+    // Grade PMP
+    const grade = convertGrade(name)
+
+    // Retire les mentions de grade du nom
+    name = name
+      .replace(/eco repair \+/gi, '')
+      .replace(/eco repair/gi, '')
+      .replace(/éco rayure/gi, '')
+      .replace(/éco bat/gi, '')
+      .replace(/éco/gi, '')
+      .replace(/eco/gi, '')
+      .replace(/ab excellent/gi, '')
+      .replace(/excellent/gi, '')
+      .replace(/très bon/gi, '')
+      .replace(/bc correct/gi, '')
+      .replace(/correct/gi, '')
+      .trim()
+
+    const modelPatterns = [
+      'iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone 16 Plus', 'iPhone 16e', 'iPhone 16',
+      'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
+      'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
+      'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13 mini', 'iPhone 13',
+      'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12 mini', 'iPhone 12',
+      'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
+      'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
+      'iPhone SE (2022)', 'iPhone SE (2020)', 'iPhone SE',
+      'iPhone 8 Plus', 'iPhone 8', 'iPhone 7 Plus', 'iPhone 7',
+    ]
+
+    let model = ''
+    let colorPart = name
+    for (const pattern of modelPatterns) {
+      if (name.toLowerCase().includes(pattern.toLowerCase())) {
+        model = pattern
+        colorPart = name.replace(new RegExp(pattern, 'i'), '').trim()
+        break
+      }
+    }
+
+    const color = convertColor(colorPart.trim())
+
+    // Prix de vente avec marge
+    const prixVente = Math.ceil(parseFloat(prixAchat) * (1 + marge / 100))
+
+    return {
+      name: model,
+      model,
+      brand: 'Apple',
+      storage,
+      color,
+      grade,
+      condition: 'occasion',
+      price: prixVente,
+      purchase_price: parseFloat(prixAchat),
+      battery_health: battery,
+      status: 'disponible',
+      visible_on_site: false, // caché par défaut dans le stock pro
+      categorie: 'telephone',
+      fournisseur: 'Price MyPhone',
+      tva_regime: 'marge',
+      parts_replaced: [],
+      magasins: [],
+      has_esim: false,
+    }
+  }
+
+  const handleCSVUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const text = evt.target.result
+      const lines = text.split('\n').filter((l) => l.trim())
+
+      // Skip header
+      const dataLines = lines.filter((l) =>
+        !l.startsWith('Produit') &&
+        l.includes(',') &&
+        l.includes('"')
+      )
+
+      const parsed = dataLines.map((line) => {
+        // Parse CSV ligne : "Nom du produit",prix
+        const match = line.match(/"([^"]+)",(\d+)/)
+        if (!match) return null
+        return parseCSVLine(match[1], match[2])
+      }).filter(Boolean)
+
+      setCsvData(parsed)
+    }
+    reader.readAsText(file, 'UTF-8')
+  }
+
+  const handleImport = async () => {
+    if (!csvData.length) return
+    setImporting(true)
+
+    try {
+      // Insère par batch de 50
+      for (let i = 0; i < csvData.length; i += 50) {
+        const batch = csvData.slice(i, i + 50)
+        const { error } = await supabase
+          .from('phones')
+          .insert(batch.map((p) => ({
+            ...p,
+            added_by: 'Admin',
+            added_by_magasin: 'sebphone',
+          })))
+        if (error) throw error
+      }
+
+      alert(`✅ ${csvData.length} téléphones importés dans le stock pro !`)
+      setCsvData([])
+      setShowImportCSV(false)
+      fetchAll() // refresh le stock pro
+    } catch (err) {
+      console.error('Erreur import:', err)
+      alert('Erreur lors de l\'import: ' + err.message)
+    }
+    setImporting(false)
+  }
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">👔 Espace Pro</h1>
-        <p className="text-sm text-[#555]">Gestion des comptes et du stock professionnels</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">👔 Espace Pro</h1>
+          <p className="text-sm text-[#555]">Gestion des comptes et du stock professionnels</p>
+        </div>
+        <button
+          onClick={() => setShowImportCSV(true)}
+          className="flex items-center gap-2 bg-green-600 text-white
+                     px-4 py-2 rounded-xl font-bold text-sm
+                     hover:bg-green-700 transition-all">
+          📥 Importer CSV Price MyPhone
+        </button>
       </div>
 
       {/* Section A — Demandes d'accès */}
@@ -288,7 +480,7 @@ export default function ProAdmin() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Modèle', 'État', 'Stockage', 'Visible pro', 'Prix pro (€)', 'Prix lot (€)', 'Taille lot'].map((h) => (
+                  {['Modèle', 'État', 'Stockage', 'Prix vente (€)', 'Visible pro', 'Prix pro (€)', 'Prix lot (€)', 'Taille lot'].map((h) => (
                     <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500">{h}</th>
                   ))}
                 </tr>
@@ -307,6 +499,20 @@ export default function ProAdmin() {
                       </td>
                       <td className="px-3 py-2 text-gray-600">{phone.condition}</td>
                       <td className="px-3 py-2 text-gray-600">{phone.storage || '—'}</td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="number"
+                          defaultValue={phone.price}
+                          onBlur={async (e) => {
+                            const newPrice = parseFloat(e.target.value)
+                            if (!newPrice || newPrice === phone.price) return
+                            await supabase.from('phones')
+                              .update({ price: newPrice })
+                              .eq('id', phone.id)
+                          }}
+                          className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-sm text-center font-bold"
+                        />
+                      </td>
                       <td className="px-3 py-2">
                         <button
                           onClick={() => togglePro(phone)}
@@ -352,6 +558,121 @@ export default function ProAdmin() {
           </div>
         )}
       </section>
+
+      {showImportCSV && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6">
+
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-[#1B2A4A] text-lg">
+                📥 Importer stock Price MyPhone
+              </h2>
+              <button onClick={() => { setShowImportCSV(false); setCsvData([]) }}>
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Marge */}
+            <div className="mb-4 p-4 bg-blue-50 rounded-xl">
+              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
+                Marge bénéficiaire (%)
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  value={marge}
+                  onChange={(e) => setMarge(Number(e.target.value))}
+                  className="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-center"
+                  min="0" max="200"
+                />
+                <span className="text-sm text-gray-600">
+                  Ex: achat 100€ → vente {Math.ceil(100 * (1 + marge / 100))}€
+                </span>
+              </div>
+            </div>
+
+            {/* Upload */}
+            <div className="mb-4">
+              <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
+                Fichier CSV Price MyPhone
+              </label>
+              <input
+                type="file"
+                accept=".csv,.txt"
+                onChange={handleCSVUpload}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+              />
+            </div>
+
+            {/* Preview */}
+            {csvData.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-bold text-green-600 mb-2">
+                  ✅ {csvData.length} téléphones détectés
+                </p>
+                <div className="max-h-48 overflow-y-auto border border-gray-100 rounded-xl">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['Modèle', 'Stockage', 'Couleur', 'Grade', 'Achat', 'Vente'].map((h) => (
+                          <th key={h} className="px-2 py-2 text-left font-semibold text-gray-500">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvData.slice(0, 10).map((p, i) => (
+                        <tr key={i} className="border-t border-gray-100">
+                          <td className="px-2 py-1.5 font-medium">{p.model}</td>
+                          <td className="px-2 py-1.5 text-gray-500">{p.storage}</td>
+                          <td className="px-2 py-1.5 text-gray-500">{p.color}</td>
+                          <td className="px-2 py-1.5">
+                            <span className={`px-1.5 py-0.5 rounded font-bold text-white text-[10px]
+                              ${p.grade === 'A+' ? 'bg-green-500'
+                                : p.grade === 'A' ? 'bg-blue-500'
+                                : p.grade === 'B' ? 'bg-yellow-500'
+                                : p.grade === 'C' ? 'bg-orange-500'
+                                : 'bg-red-500'}`}>
+                              {p.grade}
+                            </span>
+                          </td>
+                          <td className="px-2 py-1.5 text-gray-500">{p.purchase_price}€</td>
+                          <td className="px-2 py-1.5 font-bold text-green-600">{p.price}€</td>
+                        </tr>
+                      ))}
+                      {csvData.length > 10 && (
+                        <tr>
+                          <td colSpan={6} className="px-2 py-2 text-center text-gray-400 text-xs">
+                            ... et {csvData.length - 10} autres téléphones
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Boutons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowImportCSV(false); setCsvData([]) }}
+                className="flex-1 py-2 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Annuler
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!csvData.length || importing}
+                className="flex-1 py-2 bg-green-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-green-700 transition-all">
+                {importing
+                  ? 'Import en cours...'
+                  : `📥 Importer ${csvData.length} téléphones`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
