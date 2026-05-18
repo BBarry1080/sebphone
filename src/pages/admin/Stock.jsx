@@ -152,6 +152,103 @@ const MODELS_BY_CATEGORIE = {
   },
 }
 
+const WATCH_SIZES = {
+  'Apple': {
+    'Apple Watch Ultra 2': ['49mm'],
+    'Apple Watch Series 10': ['42mm', '46mm'],
+    'Apple Watch Series 9': ['41mm', '45mm'],
+    'Apple Watch Series 8': ['41mm', '45mm'],
+    'Apple Watch SE 2': ['40mm', '44mm'],
+    'Apple Watch SE': ['40mm', '44mm'],
+    'default': ['40mm', '41mm', '42mm', '44mm', '45mm', '46mm', '49mm'],
+  },
+  'Samsung': {
+    'Samsung Galaxy Watch 7': ['40mm', '44mm'],
+    'Samsung Galaxy Watch 6 Classic': ['43mm', '47mm'],
+    'Samsung Galaxy Watch 6': ['40mm', '44mm'],
+    'Samsung Galaxy Watch 5 Pro': ['45mm'],
+    'Samsung Galaxy Watch 5': ['40mm', '44mm'],
+    'default': ['40mm', '43mm', '44mm', '45mm', '47mm'],
+  },
+  'Garmin': {
+    'default': ['42mm', '45mm', '47mm', '51mm'],
+  },
+  'default': ['38mm', '40mm', '41mm', '42mm', '44mm', '45mm', '46mm', '47mm', '49mm'],
+}
+
+const WATCH_COLORS = {
+  'Apple': {
+    'Apple Watch Series 10': ['Jet Noir', 'Rose Gold', 'Argent', 'Titane naturel', 'Titane or', 'Titane ardoise'],
+    'Apple Watch Series 9': ['Minuit', 'Lumière stellaire', 'Rose', 'PRODUCT RED', 'Argent', 'Or', 'Graphite'],
+    'Apple Watch Series 8': ['Minuit', 'Lumière stellaire', 'PRODUCT RED', 'Argent', 'Or', 'Graphite'],
+    'Apple Watch Ultra 2': ['Titane naturel', 'Titane noir'],
+    'Apple Watch SE 2': ['Minuit', 'Lumière stellaire', 'Argent'],
+    'default': ['Noir', 'Argent', 'Or', 'Rose Gold', 'Blanc'],
+  },
+  'Samsung': {
+    'Samsung Galaxy Watch 7': ['Vert', 'Crème', 'Argent'],
+    'Samsung Galaxy Watch 6 Classic': ['Noir', 'Argent', 'Camel', 'Indigo'],
+    'Samsung Galaxy Watch 6': ['Graphite', 'Argent', 'Crème', 'Or', 'Bleu glacier', 'Indigo', 'Menthe'],
+    'Samsung Galaxy Watch 5 Pro': ['Noir', 'Gris'],
+    'Samsung Galaxy Watch 5': ['Argent', 'Or', 'Saphir'],
+    'default': ['Noir', 'Argent', 'Or', 'Vert', 'Crème'],
+  },
+  'Garmin': {
+    'default': ['Noir', 'Ardoise', 'Blanc', 'Bleu'],
+  },
+  'default': ['Noir', 'Blanc', 'Argent', 'Or', 'Rose Gold'],
+}
+
+const WATCH_BRACELETS = [
+  'Silicone Sport', 'Tissu', 'Cuir', 'Métal Milanais',
+  'Métal Link', 'Nylon', 'Caoutchouc', 'Non inclus',
+]
+
+const EARPHONE_COLORS = {
+  'Apple': {
+    'AirPods Pro 2': ['Blanc'],
+    'AirPods 4': ['Blanc'],
+    'AirPods 3': ['Blanc'],
+    'AirPods Max': ['Blanc lumière stellaire', 'Noir minuit', 'Bleu', 'Orange', 'Violet'],
+    'default': ['Blanc'],
+  },
+  'Samsung': {
+    'Samsung Galaxy Buds3 Pro': ['Blanc', 'Argent'],
+    'Samsung Galaxy Buds3': ['Blanc', 'Argent'],
+    'Samsung Galaxy Buds2 Pro': ['Blanc', 'Graphite', 'Violet'],
+    'Samsung Galaxy Buds2': ['Blanc', 'Graphite', 'Olive', 'Lavande'],
+    'Samsung Galaxy Buds Live': ['Mystic Bronze', 'Mystic Blanc', 'Mystic Noir'],
+    'default': ['Blanc', 'Noir'],
+  },
+  'Sony': {
+    'default': ['Noir', 'Blanc', 'Argent'],
+  },
+  'Bose': {
+    'default': ['Noir', 'Blanc', 'Bleu'],
+  },
+  'default': ['Noir', 'Blanc', 'Gris'],
+}
+
+const COMPUTER_COLORS = {
+  'Apple': {
+    'default': ['Gris sidéral', 'Argent', 'Or', 'Noir sidéral'],
+  },
+  'Dell': { 'default': ['Noir', 'Argent', 'Blanc'] },
+  'HP': { 'default': ['Noir', 'Argent', 'Bleu nuit'] },
+  'Lenovo': { 'default': ['Noir', 'Gris', 'Bleu arctique'] },
+  'Microsoft': { 'default': ['Platine', 'Noir mat', 'Saphir', 'Forêt'] },
+  'default': ['Noir', 'Argent', 'Gris'],
+}
+
+const COMPUTER_RAM = ['4Go', '8Go', '16Go', '32Go', '64Go']
+const COMPUTER_STORAGE = ['128Go SSD', '256Go SSD', '512Go SSD', '1To SSD', '2To SSD']
+const COMPUTER_SCREEN = ['11"', '13"', '13.3"', '14"', '15"', '15.6"', '16"']
+const COMPUTER_CPU = [
+  'Apple M1', 'Apple M2', 'Apple M3', 'Apple M4',
+  'Intel Core i5', 'Intel Core i7', 'Intel Core i9',
+  'AMD Ryzen 5', 'AMD Ryzen 7', 'AMD Ryzen 9',
+]
+
 const LOCATIONS = ['Molenbeek', 'Louise', 'Anderlecht', 'SebPhone', 'Marrakech', 'Autre']
 const STATUSES = ['disponible', 'reserve', 'vendu', 'sur_commande']
 const STATUS_LABELS = {
@@ -591,8 +688,8 @@ function PhoneModal({ phone, onClose, onSaved }) {
                 </select>
               </div>
 
-              {/* Grade (si pas neuf) */}
-              {condition !== 'neuf' && (
+              {/* Grade (sauf accessoire, si pas neuf) */}
+              {categorie !== 'accessoire' && condition !== 'neuf' && (
                 <div>
                   <label className="text-xs text-[#555] mb-1 block">Grade</label>
                   <select
@@ -605,8 +702,8 @@ function PhoneModal({ phone, onClose, onSaved }) {
                 </div>
               )}
 
-              {/* Santé batterie */}
-              {condition !== 'neuf' && (
+              {/* Santé batterie — téléphone/tablette uniquement */}
+              {(categorie === 'telephone' || categorie === 'tablette') && condition !== 'neuf' && (
                 <div>
                   <label className="text-xs text-[#555] mb-1 block">Santé batterie (%)</label>
                   <input
@@ -622,70 +719,284 @@ function PhoneModal({ phone, onClose, onSaved }) {
                 </div>
               )}
 
-              {/* Stockage dynamique */}
-              <div>
-                <label className="text-xs text-[#555] mb-1 block">Stockage</label>
-                {availableStorages.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {availableStorages.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setStorage(s)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer ${
-                          storage === s
-                            ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
-                            : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <select
-                    value={storage}
-                    onChange={(e) => setStorage(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none bg-white"
-                  >
-                    <option value="">—</option>
-                    {['16Go','32Go','64Go','128Go','256Go','512Go','1To'].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
+              {/* Stockage dynamique — téléphone/tablette */}
+              {(categorie === 'telephone' || categorie === 'tablette') && (
+                <div>
+                  <label className="text-xs text-[#555] mb-1 block">Stockage</label>
+                  {availableStorages.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableStorages.map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setStorage(s)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border-2 transition-all cursor-pointer ${
+                            storage === s
+                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <select
+                      value={storage}
+                      onChange={(e) => setStorage(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none bg-white"
+                    >
+                      <option value="">—</option>
+                      {['16Go','32Go','64Go','128Go','256Go','512Go','1To'].map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
 
-              {/* Couleur dynamique */}
-              <div>
-                <label className="text-xs text-[#555] mb-1 block">Couleur</label>
-                {availableColors.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {availableColors.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setColorSearch(c)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all cursor-pointer ${
-                          colorSearch === c
-                            ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
-                            : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
+              {/* Couleur dynamique — téléphone/tablette */}
+              {(categorie === 'telephone' || categorie === 'tablette') && (
+                <div>
+                  <label className="text-xs text-[#555] mb-1 block">Couleur</label>
+                  {availableColors.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableColors.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setColorSearch(c)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all cursor-pointer ${
+                            colorSearch === c
+                              ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                              : 'border-gray-200 text-gray-600 hover:border-[#00B4CC]'
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="Couleur…"
+                      value={colorSearch}
+                      onChange={(e) => setColorSearch(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-[#00B4CC] outline-none"
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* ── MONTRE ── */}
+              {categorie === 'montre' && (
+                <>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Taille boîtier</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(WATCH_SIZES[brand]?.[modelSearch] || WATCH_SIZES[brand]?.['default'] || WATCH_SIZES['default']).map((size) => (
+                        <button key={size} type="button"
+                          onClick={() => setStorage(size)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            storage === size ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {size}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <input
-                    type="text"
-                    placeholder="Couleur…"
-                    value={colorSearch}
-                    onChange={(e) => setColorSearch(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-[#00B4CC] outline-none"
-                  />
-                )}
-              </div>
+
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Couleur</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(WATCH_COLORS[brand]?.[modelSearch] || WATCH_COLORS[brand]?.['default'] || WATCH_COLORS['default']).map((c) => (
+                        <button key={c} type="button"
+                          onClick={() => setColorSearch(c)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            colorSearch === c ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Bracelet</label>
+                    <div className="flex flex-wrap gap-2">
+                      {WATCH_BRACELETS.map((b) => (
+                        <button key={b} type="button"
+                          onClick={() => setNotes((prev) => `Bracelet: ${b}. ${prev.replace(/Bracelet:.*?\. ?/, '')}`)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            notes.includes(`Bracelet: ${b}`) ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox"
+                        checked={notes.includes('GPS.')}
+                        onChange={(e) => setNotes((prev) => e.target.checked ? `GPS. ${prev}` : prev.replace('GPS. ', ''))}
+                        className="w-4 h-4 rounded" />
+                      <span className="text-sm font-medium text-gray-700">GPS</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox"
+                        checked={notes.includes('Cellular.')}
+                        onChange={(e) => setNotes((prev) => e.target.checked ? `Cellular. ${prev}` : prev.replace('Cellular. ', ''))}
+                        className="w-4 h-4 rounded" />
+                      <span className="text-sm font-medium text-gray-700">Cellular / LTE</span>
+                    </label>
+                  </div>
+                </>
+              )}
+
+              {/* ── ECOUTEUR ── */}
+              {categorie === 'ecouteur' && (
+                <>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Couleur</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(EARPHONE_COLORS[brand]?.[modelSearch] || EARPHONE_COLORS[brand]?.['default'] || EARPHONE_COLORS['default']).map((c) => (
+                        <button key={c} type="button"
+                          onClick={() => setColorSearch(c)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            colorSearch === c ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 flex gap-4 flex-wrap">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox"
+                        checked={notes.includes('Réduction de bruit active.')}
+                        onChange={(e) => setNotes((prev) => e.target.checked ? `Réduction de bruit active. ${prev}` : prev.replace('Réduction de bruit active. ', ''))}
+                        className="w-4 h-4 rounded" />
+                      <span className="text-sm font-medium text-gray-700">Réduction de bruit active (ANC)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox"
+                        checked={notes.includes('Boîtier inclus.')}
+                        onChange={(e) => setNotes((prev) => e.target.checked ? `Boîtier inclus. ${prev}` : prev.replace('Boîtier inclus. ', ''))}
+                        className="w-4 h-4 rounded" />
+                      <span className="text-sm font-medium text-gray-700">Boîtier inclus</span>
+                    </label>
+                  </div>
+                </>
+              )}
+
+              {/* ── ORDINATEUR ── */}
+              {categorie === 'ordinateur' && (
+                <>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Couleur</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(COMPUTER_COLORS[brand]?.['default'] || COMPUTER_COLORS['default']).map((c) => (
+                        <button key={c} type="button"
+                          onClick={() => setColorSearch(c)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            colorSearch === c ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Stockage SSD</label>
+                    <div className="flex flex-wrap gap-2">
+                      {COMPUTER_STORAGE.map((s) => (
+                        <button key={s} type="button"
+                          onClick={() => setStorage(s)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            storage === s ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">RAM</label>
+                    <div className="flex flex-wrap gap-2">
+                      {COMPUTER_RAM.map((r) => (
+                        <button key={r} type="button"
+                          onClick={() => setNotes((prev) => `RAM: ${r}. ${prev.replace(/RAM:.*?\. ?/, '')}`)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            notes.includes(`RAM: ${r}`) ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Taille écran</label>
+                    <div className="flex flex-wrap gap-2">
+                      {COMPUTER_SCREEN.map((s) => (
+                        <button key={s} type="button"
+                          onClick={() => setNotes((prev) => `Écran: ${s}. ${prev.replace(/Écran:.*?\. ?/, '')}`)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            notes.includes(`Écran: ${s}`) ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Processeur</label>
+                    <div className="flex flex-wrap gap-2">
+                      {COMPUTER_CPU.map((cpu) => (
+                        <button key={cpu} type="button"
+                          onClick={() => setNotes((prev) => `CPU: ${cpu}. ${prev.replace(/CPU:.*?\. ?/, '')}`)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border ${
+                            notes.includes(`CPU: ${cpu}`) ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+                          }`}>
+                          {cpu}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ── ACCESSOIRE ── */}
+              {categorie === 'accessoire' && (
+                <>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Couleur</label>
+                    <input
+                      type="text"
+                      placeholder="Couleur…"
+                      value={colorSearch}
+                      onChange={(e) => setColorSearch(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-[#00B4CC] outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Compatibilité</label>
+                    <input
+                      type="text"
+                      placeholder="ex: iPhone 15 Pro, Samsung S24..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:border-[#00B4CC] outline-none"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
