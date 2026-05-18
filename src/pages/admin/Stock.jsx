@@ -472,7 +472,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-20">
           <h2 className="font-poppins font-bold text-[#1B2A4A]">
-            {isEdit ? 'Modifier le téléphone' : 'Ajouter un téléphone'}
+            {isEdit ? 'Modifier le téléphone' : 'Ajouter un appareil'}
           </h2>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer">
             <X size={18} />
@@ -1469,7 +1469,7 @@ export default function Stock() {
             className="flex items-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer text-sm"
           >
             <Plus size={16} />
-            Ajouter un téléphone
+            Ajouter un appareil
           </button>
         )}
       </div>
