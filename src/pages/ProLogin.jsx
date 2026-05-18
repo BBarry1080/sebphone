@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../lib/supabase'
 import { sha256 } from 'js-sha256'
 import emailjs from '@emailjs/browser'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const SALT = 'sebphone_salt_2026'
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
@@ -12,6 +13,7 @@ const PRO_TEMPLATE_ID = 'template_rs9zkwo'
 
 export default function ProLogin() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [tab, setTab] = useState('login')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState(null)
@@ -38,7 +40,7 @@ export default function ProLogin() {
     e.preventDefault()
     setError(null)
     setInfo(null)
-    if (!isSupabaseReady) { setError('Service indisponible'); return }
+    if (!isSupabaseReady) { setError(t('pro_error_service')); return }
     setLoading(true)
     try {
       const cleanEmail = loginEmail.trim().toLowerCase()
@@ -51,16 +53,16 @@ export default function ProLogin() {
         .maybeSingle()
 
       if (!account || account.password_hash !== hashedPassword) {
-        setError('Email ou mot de passe incorrect')
+        setError(t('pro_error_credentials'))
         return
       }
 
       if (account.status === 'rejected') {
-        setError('Votre demande a été refusée. Contactez-nous à contact@sebphone.be pour plus d\'informations.')
+        setError(t('pro_error_rejected'))
         return
       }
       if (account.status === 'pending') {
-        setError('Votre compte est en cours d\'approbation. Vous recevrez un email sous 1h à 72h.')
+        setError(t('pro_error_pending'))
         return
       }
       if (account.status === 'approved') {
@@ -86,9 +88,9 @@ export default function ProLogin() {
     e.preventDefault()
     setError(null)
     setInfo(null)
-    if (!isSupabaseReady) { setError('Service indisponible'); return }
+    if (!isSupabaseReady) { setError(t('pro_error_service')); return }
     if (form.password !== form.password_confirm) {
-      setError('Les mots de passe ne correspondent pas')
+      setError(t('pro_error_passwords'))
       return
     }
     if (form.password.length < 6) {
@@ -147,7 +149,7 @@ export default function ProLogin() {
         console.warn('Notification email non envoyée:', mailErr)
       }
 
-      setInfo('Demande envoyée ! Votre compte sera activé après validation par notre équipe.')
+      setInfo(t('pro_success_register'))
       setTab('login')
     } catch (err) {
       console.error('Pro register error:', err)
@@ -166,14 +168,14 @@ export default function ProLogin() {
     <main className="max-w-md mx-auto px-4 py-10 pb-28 md:pb-12">
       <div className="bg-white rounded-2xl shadow-md p-8">
         <div className="text-center mb-6">
-          <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Espace Professionnels</h1>
+          <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">{t('pro_title')}</h1>
           <p className="text-sm text-[#555] mt-1">Accédez à nos tarifs et stocks B2B</p>
         </div>
 
         <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
           {[
-            { id: 'login', label: 'Se connecter' },
-            { id: 'register', label: 'Créer un compte pro' },
+            { id: 'login', label: t('pro_tab_login') },
+            { id: 'register', label: t('pro_tab_register') },
           ].map((tb) => (
             <button
               key={tb.id}
@@ -201,7 +203,7 @@ export default function ProLogin() {
         {tab === 'login' ? (
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Email professionnel</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_email')}</label>
               <input
                 type="email"
                 value={loginEmail}
@@ -211,7 +213,7 @@ export default function ProLogin() {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Mot de passe</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_password')}</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -234,48 +236,48 @@ export default function ProLogin() {
               disabled={loading}
               className="w-full bg-[#1B2A4A] hover:bg-[#243a64] text-white font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 mt-1"
             >
-              {loading ? 'Connexion...' : 'Se connecter'}
+              {loading ? t('pro_login_loading') : t('pro_login_btn')}
             </button>
           </form>
         ) : (
           <form onSubmit={handleRegister} className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Nom de la société *</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_company')} *</label>
               <input {...fld('company_name')} required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Nom du contact *</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_contact')} *</label>
               <input {...fld('contact_name')} required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Email professionnel *</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_email')} *</label>
               <input type="email" {...fld('email')} required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Téléphone *</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_phone')} *</label>
               <input type="tel" {...fld('phone')} required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Numéro de TVA *</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_vat')} *</label>
               <input {...fld('vat_number')} required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Adresse *</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_address')} *</label>
               <input {...fld('address')} required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Mot de passe *</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_password')} *</label>
               <input type="password" {...fld('password')} required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#1B2A4A]">Confirmer le mot de passe *</label>
+              <label className="text-sm font-medium text-[#1B2A4A]">{t('pro_password_confirm')} *</label>
               <input type="password" {...fld('password_confirm')} required
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
             </div>
@@ -284,7 +286,7 @@ export default function ProLogin() {
               disabled={loading}
               className="w-full bg-[#1B2A4A] hover:bg-[#243a64] text-white font-bold py-3 rounded-xl transition-colors cursor-pointer disabled:opacity-60 mt-1"
             >
-              {loading ? 'Envoi...' : 'Créer mon compte pro'}
+              {loading ? t('pro_register_loading') : t('pro_register_btn')}
             </button>
           </form>
         )}

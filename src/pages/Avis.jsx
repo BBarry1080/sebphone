@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { GOOGLE_REVIEW_LINKS } from '../data/googleReviews'
 import emailjs from '@emailjs/browser'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
 const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMIGNP6IQB9O'
@@ -16,6 +17,7 @@ const MAGASINS_LIST = [
 ]
 
 export default function Avis() {
+  const { t } = useLanguage()
   const [searchParams] = useSearchParams()
   const email = searchParams.get('email') || ''
   const magasinParam = searchParams.get('magasin') || ''
@@ -68,7 +70,7 @@ export default function Avis() {
 
   const handlePostReview = async (magasin) => {
     if (!inputEmail) {
-      alert('Entre ton email pour suivre ta progression')
+      alert(t('avis_email_prompt'))
       return
     }
     // Ouvre le lien Google dans un nouvel onglet
@@ -90,7 +92,7 @@ export default function Avis() {
         }])
 
       if (error && error.code === '23505') {
-        alert('Tu as déjà confirmé ton avis pour ce magasin !')
+        alert(t('avis_already_posted'))
         setSubmitting(null)
         return
       }
@@ -148,9 +150,9 @@ export default function Avis() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-[#1B2A4A] text-white py-10 px-4 text-center">
-        <h1 className="text-2xl font-black mb-2">⭐ Vos avis Google</h1>
+        <h1 className="text-2xl font-black mb-2">⭐ {t('avis_title')}</h1>
         <p className="text-gray-300 text-sm">
-          Partagez votre expérience et gagnez des cadeaux !
+          {t('avis_subtitle')}
         </p>
       </div>
 
@@ -160,19 +162,19 @@ export default function Avis() {
         {!email && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
             <p className="text-sm font-bold text-[#1B2A4A] mb-3">
-              Entre ton email pour voir ta progression
+              {t('avis_email_prompt')}
             </p>
             <div className="flex gap-2">
               <input
                 value={inputEmail}
                 onChange={e => setInputEmail(e.target.value)}
-                placeholder="ton@email.com"
+                placeholder={t('avis_email_placeholder')}
                 className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
               />
               <button
                 onClick={() => fetchReviews(inputEmail)}
                 className="bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold">
-                Voir
+                {t('avis_see_btn')}
               </button>
             </div>
           </div>
@@ -183,7 +185,7 @@ export default function Avis() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-bold text-[#1B2A4A]">
-                Ma progression
+                {t('avis_progress')}
               </h2>
               <span className="text-2xl font-black text-[#00B4CC]">
                 {totalReviews}/5
@@ -209,10 +211,10 @@ export default function Avis() {
             <div className="flex justify-between text-xs text-gray-500">
               <span>0</span>
               <span className={`font-bold ${totalReviews >= 3 ? 'text-orange-500' : ''}`}>
-                3 → 🎁 Coque offerte
+                {t('avis_reward_3')}
               </span>
               <span className={`font-bold ${totalReviews >= 5 ? 'text-green-600' : ''}`}>
-                5 → 🎁 Coque + Verre trempé
+                {t('avis_reward_5')}
               </span>
             </div>
 
@@ -222,14 +224,14 @@ export default function Avis() {
                 <p className="text-2xl mb-2">🎉</p>
                 <p className="font-bold text-green-700 text-sm">
                   {success.reward === 'coque_verre'
-                    ? 'Félicitations ! Coque + Verre trempé offerts !'
-                    : 'Bravo ! Une coque au choix offerte !'}
+                    ? t('avis_reward_coque')
+                    : t('avis_reward_coque_simple')}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Votre code promo vous a été envoyé par email
+                  {t('avis_reward_email')}
                 </p>
                 <div className="mt-3 bg-white border border-green-300 rounded-xl px-4 py-2">
-                  <p className="text-xs text-gray-500">Code promo</p>
+                  <p className="text-xs text-gray-500">{t('avis_promo_label')}</p>
                   <p className="font-black text-[#1B2A4A] text-lg tracking-wider">
                     {success.promoCode}
                   </p>
@@ -263,7 +265,7 @@ export default function Avis() {
                         SebPhone {magasin.nom}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {done ? 'Avis posté ✓' : 'Avis non encore posté'}
+                        {done ? t('avis_posted') : t('avis_not_posted')}
                       </p>
                     </div>
                   </div>
@@ -275,7 +277,7 @@ export default function Avis() {
                         onClick={() => handlePostReview(magasin)}
                         className="bg-[#1B2A4A] text-white text-xs font-bold
                                    px-3 py-2 rounded-xl hover:bg-[#00B4CC] transition-all">
-                        ⭐ Poster l'avis
+                        {t('avis_post_btn')}
                       </button>
                       {/* Bouton confirmer */}
                       <button
@@ -284,13 +286,13 @@ export default function Avis() {
                         className="bg-green-500 text-white text-xs font-bold
                                    px-3 py-2 rounded-xl hover:bg-green-600
                                    transition-all disabled:opacity-50">
-                        {submitting === magasin.id ? '...' : '✓ Confirmé'}
+                        {submitting === magasin.id ? '...' : t('avis_confirm_btn')}
                       </button>
                     </div>
                   )}
 
                   {done && (
-                    <span className="text-green-600 font-bold text-sm">✓ Fait</span>
+                    <span className="text-green-600 font-bold text-sm">{t('avis_done')}</span>
                   )}
                 </div>
               </div>
@@ -300,19 +302,19 @@ export default function Avis() {
 
         {/* Explication */}
         <div className="mt-6 bg-[#f0f7ff] border border-[#1B2A4A]/10 rounded-2xl p-4">
-          <p className="text-xs text-gray-600 font-bold mb-2">💡 Comment ça marche ?</p>
+          <p className="text-xs text-gray-600 font-bold mb-2">{t('avis_how_title')}</p>
           <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
-            <li>Clique "Poster l'avis" → Google s'ouvre</li>
-            <li>Laisse un avis 5 étoiles ⭐⭐⭐⭐⭐</li>
-            <li>Reviens ici et clique "Confirmé"</li>
-            <li>À 3 avis → reçois une coque offerte 🎁</li>
-            <li>À 5 avis (5 magasins) → coque + verre trempé 🎁🎁</li>
+            <li>{t('avis_how_1')}</li>
+            <li>{t('avis_how_2')}</li>
+            <li>{t('avis_how_3')}</li>
+            <li>{t('avis_how_4')}</li>
+            <li>{t('avis_how_5')}</li>
           </ol>
         </div>
 
         <div className="text-center mt-6">
           <Link to="/" className="text-sm text-[#00B4CC] hover:underline">
-            ← Retour à l'accueil
+            {t('avis_back')}
           </Link>
         </div>
       </div>
