@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getPhoneImage } from '../utils/phoneImage'
+import { useLanguage } from '../contexts/LanguageContext'
 
 const CATEGORIE_CONFIG = {
   tablette: {
@@ -38,6 +39,7 @@ const CATEGORIE_CONFIG = {
 
 export default function CataloguePage() {
   const { categorie } = useParams()
+  const { t } = useLanguage()
   const config = CATEGORIE_CONFIG[categorie] || {}
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -74,7 +76,7 @@ export default function CataloguePage() {
       <div className="bg-[#1B2A4A] text-white py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <Link to="/" className="text-[#00B4CC] text-sm mb-4 inline-block">
-            ← Accueil
+            {t('cat_back')}
           </Link>
           <div className="flex items-center gap-3">
             <span className="text-4xl">{config.emoji}</span>
@@ -92,7 +94,7 @@ export default function CataloguePage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher un modèle..."
+            placeholder={t('cat_search')}
             className="px-4 py-2 border border-gray-200 rounded-xl text-sm
                        focus:border-[#00B4CC] outline-none flex-1 min-w-48 bg-white"
           />
@@ -103,17 +105,17 @@ export default function CataloguePage() {
                 ${filterCondition === c
                   ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
                   : 'bg-white text-gray-600 border-gray-200'}`}>
-              {c === 'tous' ? 'Tous'
-                : c === 'neuf' ? 'Neuf'
-                : c === 'occasion' ? 'Occasion'
-                : 'Reconditionné'}
+              {c === 'tous' ? t('cat_filter_all')
+                : c === 'neuf' ? t('cat_filter_new')
+                : c === 'occasion' ? t('cat_filter_used')
+                : t('cat_filter_refurbished')}
             </button>
           ))}
         </div>
 
         {/* Résultats */}
         {loading ? (
-          <div className="text-center py-12 text-gray-400">Chargement...</div>
+          <div className="text-center py-12 text-gray-400">{t('cat_loading')}</div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12">
             <span className="text-5xl">{config.emoji}</span>
@@ -121,12 +123,12 @@ export default function CataloguePage() {
               Aucun {config.titre?.toLowerCase()} disponible pour le moment
             </p>
             <p className="text-sm text-gray-400 mt-1">
-              Revenez bientôt ou contactez-nous
+              {t('cat_empty_desc')}
             </p>
             <a href="mailto:contact@sebphone.be"
               className="mt-4 inline-block bg-[#00B4CC] text-white
                          px-6 py-2 rounded-xl font-bold text-sm">
-              Nous contacter
+              {t('cat_contact')}
             </a>
           </div>
         ) : (
@@ -165,9 +167,9 @@ export default function CataloguePage() {
                 <div className="flex gap-1 flex-wrap mb-3">
                   <span className="text-xs px-2 py-0.5 bg-gray-100
                                    text-gray-600 rounded-lg font-medium">
-                    {product.condition === 'neuf' ? 'Neuf'
-                      : product.condition === 'occasion' ? 'Occasion'
-                      : 'Reconditionné'}
+                    {product.condition === 'neuf' ? t('cat_filter_new')
+                      : product.condition === 'occasion' ? t('cat_filter_used')
+                      : t('cat_filter_refurbished')}
                   </span>
                   {product.grade && (
                     <span className="text-xs px-2 py-0.5 bg-blue-50
@@ -185,13 +187,13 @@ export default function CataloguePage() {
                   <a href={`mailto:contact@sebphone.be?subject=Intérêt pour ${product.name}`}
                     className="bg-[#00B4CC] text-white text-xs font-bold
                                px-3 py-1.5 rounded-lg hover:bg-[#1B2A4A] transition-all">
-                    Intéressé
+                    {t('cat_interested')}
                   </a>
                 </div>
 
                 {/* Garantie */}
                 <p className="text-xs text-green-600 font-medium mt-2">
-                  ✓ Garantie 24 mois SebPhone
+                  {t('cat_guarantee')}
                 </p>
               </div>
             ))}

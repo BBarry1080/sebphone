@@ -66,10 +66,10 @@ export default function SurCommande() {
             📦 {t('sur_commande_title')}
           </span>
           <h1 className="text-3xl md:text-4xl font-bold mb-3">
-            Commandez votre iPhone
+            {t('surcommande_title')}
           </h1>
           <p className="text-gray-300 text-sm max-w-lg mx-auto">
-            Le modèle que vous souhaitez n'est pas en stock ? Réservez-le et nous vous le procurons sous 1h à 72h.
+            {t('surcommande_subtitle')}
           </p>
         </div>
       </div>
@@ -81,7 +81,7 @@ export default function SurCommande() {
             {orderPhones.length > 0 && (
               <div className="mb-10">
                 <h2 className="text-xl font-bold text-[#1B2A4A] mb-6">
-                  Disponibles à la commande
+                  {t('surcommande_available')}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {orderPhones.map((phone) => (
@@ -120,7 +120,7 @@ export default function SurCommande() {
                       </p>
                       {phone.delai_commande && (
                         <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-lg font-medium">
-                          ⏱ Délai : {phone.delai_commande}
+                          ⏱ {t('surcommande_delay')} {phone.delai_commande}
                         </span>
                       )}
                     </div>
@@ -129,7 +129,7 @@ export default function SurCommande() {
               </div>
             )}
             <h2 className="text-xl font-bold text-[#1B2A4A] mb-6">
-              Choisissez votre modèle
+              {t('surcommande_choose')}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {IPHONE_ON_DEMAND.map((iphone) => (
@@ -163,7 +163,7 @@ export default function SurCommande() {
                     ))}
                   </div>
                   <p className="text-xs text-gray-500">
-                    À partir de{' '}
+                    {t('surcommande_from')}{' '}
                     <span className="font-bold text-[#1B2A4A]">
                       {STARTING_PRICES[iphone.model] || '—'}€
                     </span>
@@ -182,7 +182,7 @@ export default function SurCommande() {
               className="flex items-center gap-2 text-sm text-gray-500 mb-6 hover:text-[#1B2A4A] cursor-pointer"
             >
               <ArrowLeft size={16} />
-              Retour aux modèles
+              {t('surcommande_back')}
             </button>
 
             <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -201,14 +201,14 @@ export default function SurCommande() {
                   </span>
                   <h2 className="text-xl font-bold text-[#1B2A4A]">{selectedModel.model}</h2>
                   <p className="text-[#00B4CC] font-bold text-lg">
-                    À partir de {STARTING_PRICES[selectedModel.model] || '—'}€
+                    {t('surcommande_from')} {STARTING_PRICES[selectedModel.model] || '—'}€
                   </p>
                 </div>
               </div>
 
               <div className="mb-5">
                 <p className="text-sm font-semibold text-[#1B2A4A] mb-2">
-                  Couleur — {selectedColor}
+                  {t('surcommande_color')} — {selectedColor}
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   {selectedModel.colors.map((color) => (
@@ -226,7 +226,7 @@ export default function SurCommande() {
               </div>
 
               <div className="mb-5">
-                <p className="text-sm font-semibold text-[#1B2A4A] mb-2">Stockage</p>
+                <p className="text-sm font-semibold text-[#1B2A4A] mb-2">{t('surcommande_storage')}</p>
                 <div className="flex gap-2 flex-wrap">
                   {selectedModel.storages.map((storage) => (
                     <button
@@ -245,11 +245,11 @@ export default function SurCommande() {
               </div>
 
               <div className="mb-5">
-                <p className="text-sm font-semibold text-[#1B2A4A] mb-2">Mode de réception</p>
+                <p className="text-sm font-semibold text-[#1B2A4A] mb-2">{t('surcommande_receive')}</p>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   {[
-                    { value: 'collect',  label: 'Click & Collect', sub: 'Retrait en magasin' },
-                    { value: 'delivery', label: 'Livraison',       sub: 'À domicile' },
+                    { value: 'collect',  label: t('surcommande_collect'),  sub: 'Retrait en magasin' },
+                    { value: 'delivery', label: t('surcommande_delivery'), sub: 'À domicile' },
                   ].map(({ value, label, sub }) => (
                     <button
                       key={value}
@@ -269,7 +269,7 @@ export default function SurCommande() {
 
                 {deliveryMode === 'collect' && (
                   <div>
-                    <p className="text-sm font-medium text-[#1B2A4A] mb-2">Choisir le magasin</p>
+                    <p className="text-sm font-medium text-[#1B2A4A] mb-2">{t('surcommande_store')}</p>
                     <select
                       value={selectedMagasin}
                       onChange={(e) => setSelectedMagasin(e.target.value)}
@@ -284,7 +284,7 @@ export default function SurCommande() {
               </div>
 
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-5 text-sm text-orange-700">
-                ⏱️ Délai de commande : <strong>1h à 72h</strong><br />
+                ⏱️ {t('surcommande_delay_label')}<br />
                 📦 Neuf sous scellé · Garantie 1 an Apple · 2 ans SebPhone
               </div>
 
@@ -292,11 +292,11 @@ export default function SurCommande() {
                 onClick={handleReserver}
                 className="w-full bg-[#1B2A4A] text-white rounded-xl py-4 font-bold text-base hover:bg-[#243660] transition-all cursor-pointer"
               >
-                🔒 Réserver — Acompte 50€
+                {t('surcommande_reserve')}
               </button>
 
               <p className="text-xs text-gray-400 text-center mt-2">
-                Acompte de 50€ à la réservation · Reste à payer à la livraison
+                {t('surcommande_deposit_note')}
               </p>
             </div>
           </div>

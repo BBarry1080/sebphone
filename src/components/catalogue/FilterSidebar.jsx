@@ -4,13 +4,13 @@ import { MAGASINS_LIST } from '../../utils/magasins';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 const SORT_OPTIONS = [
-  { value: 'recent',      label: 'Plus récents' },
+  { value: 'recent',      label: 'Plus récents',          labelKey: 'sort_newest' },
   { value: 'featured',    label: 'En vedette' },
   { value: 'best_seller', label: 'Meilleures ventes' },
-  { value: 'alpha_asc',   label: 'Alphabétique, A à Z' },
+  { value: 'alpha_asc',   label: 'Alphabétique, A à Z',   labelKey: 'sort_alpha' },
   { value: 'alpha_desc',  label: 'Alphabétique, Z à A' },
-  { value: 'price_asc',   label: 'Prix : faible à élevé' },
-  { value: 'price_desc',  label: 'Prix : élevé à faible' },
+  { value: 'price_asc',   label: 'Prix : faible à élevé', labelKey: 'sort_price_asc' },
+  { value: 'price_desc',  label: 'Prix : élevé à faible', labelKey: 'sort_price_desc' },
   { value: 'date_asc',    label: 'Date, plus ancienne' },
   { value: 'date_desc',   label: 'Date, plus récente' },
 ];
@@ -70,15 +70,15 @@ function SidebarContent({
   ].filter((b) => b.count > 0);
 
   const conditions = [
-    { value: 'neuf',          label: 'Neuf',         count: count((p) => p.condition === 'neuf') },
-    { value: 'reconditionne', label: 'Reconditionné', count: count((p) => p.condition === 'reconditionne') },
-    { value: 'occasion',      label: 'Occasion',      count: count((p) => p.condition === 'occasion') },
+    { value: 'neuf',          label: t('condition_new'),         count: count((p) => p.condition === 'neuf') },
+    { value: 'reconditionne', label: t('condition_refurbished'), count: count((p) => p.condition === 'reconditionne') },
+    { value: 'occasion',      label: t('condition_used'),        count: count((p) => p.condition === 'occasion') },
   ].filter((c) => c.count > 0);
 
   const statuses = [
     { value: 'disponible', label: t('home_filter_in_stock'), count: count((p) => p.status === 'disponible') },
-    { value: 'reserve',    label: 'Réservé',  count: count((p) => p.status === 'reserve') },
-    { value: 'vendu',      label: 'Vendu',    count: count((p) => p.status === 'vendu') },
+    { value: 'reserve',    label: t('status_reserved'),  count: count((p) => p.status === 'reserve') },
+    { value: 'vendu',      label: t('status_sold'),    count: count((p) => p.status === 'vendu') },
   ].filter((s) => s.count > 0);
 
   const gradesList = [
@@ -140,7 +140,7 @@ function SidebarContent({
       </Section>
 
       {!hideBrandFilter && (
-        <Section title="Marque">
+        <Section title={t('filter_brand')}>
           <div className="flex flex-col gap-1.5">
             {brands.map((b) => (
               <CheckRow key={b.value} label={b.label} count={b.count}
@@ -152,7 +152,7 @@ function SidebarContent({
         </Section>
       )}
 
-      <Section title="État">
+      <Section title={t('filter_condition')}>
         <div className="flex flex-col gap-1.5">
           {conditions.map((c) => (
             <CheckRow key={c.value} label={c.label} count={c.count}
@@ -164,7 +164,7 @@ function SidebarContent({
       </Section>
 
       {gradesList.length > 0 && (
-        <Section title="Grade" defaultOpen={false}>
+        <Section title={t('filter_grade')} defaultOpen={false}>
           <div className="flex flex-col gap-1.5">
             {gradesList.map((g) => (
               <CheckRow key={g.value} label={g.label} count={g.count}
@@ -180,7 +180,7 @@ function SidebarContent({
         onClick={onReset}
         className="w-full text-center text-sm text-[#555555] hover:text-[#00B4CC] py-2 transition-colors cursor-pointer"
       >
-        Effacer tout
+        {t('filter_clear_all')}
       </button>
     </div>
   );
@@ -201,6 +201,7 @@ export function MobileFilterBar({
   hideBrandFilter = false,
   phones = [],
 }) {
+  const { t } = useLanguage();
   const [priceRange, setPriceRange] = useState([0, 1500]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
@@ -214,7 +215,10 @@ export function MobileFilterBar({
     setPriceRange([0, 1500]);
   };
 
-  const activeSortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label || 'Trier';
+  const activeSortOpt = SORT_OPTIONS.find((o) => o.value === sortBy);
+  const activeSortLabel = activeSortOpt
+    ? (activeSortOpt.labelKey ? t(activeSortOpt.labelKey) : activeSortOpt.label)
+    : t('filter_sort');
 
   return (
     <div className="lg:hidden mb-4 flex items-center justify-between gap-3">
@@ -223,7 +227,7 @@ export function MobileFilterBar({
         className="flex items-center gap-2 border border-gray-200 rounded-full px-4 py-2 text-sm font-medium text-[#555555] hover:border-[#00B4CC] hover:text-[#00B4CC] transition-colors cursor-pointer"
       >
         <SlidersHorizontal size={14} />
-        Filtrer par
+        {t('filter_filters')}
       </button>
 
       <div className="relative">
@@ -248,7 +252,7 @@ export function MobileFilterBar({
                       : 'text-[#333] hover:bg-gray-50'
                   }`}
                 >
-                  {o.label}
+                  {o.labelKey ? t(o.labelKey) : o.label}
                 </button>
               ))}
             </div>
@@ -269,7 +273,7 @@ export function MobileFilterBar({
         }`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h3 className="font-poppins font-bold text-[#1B2A4A]">Filtres</h3>
+          <h3 className="font-poppins font-bold text-[#1B2A4A]">{t('filter_filters')}</h3>
           <button onClick={() => setDrawerOpen(false)} className="p-1 cursor-pointer">
             <X size={20} className="text-[#555555]" />
           </button>
@@ -292,7 +296,7 @@ export function MobileFilterBar({
             onClick={() => setDrawerOpen(false)}
             className="w-full bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold py-3.5 rounded-xl transition-colors cursor-pointer"
           >
-            Voir les {total} résultats
+            {t('filter_see_results')} ({total})
           </button>
         </div>
       </div>
@@ -363,8 +367,12 @@ export default function FilterSidebar({
    SortDropdown — affiché uniquement desktop (lg+)
 ───────────────────────────────────────────────────────── */
 export function SortDropdown({ sortBy, setSortBy }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
-  const label = SORT_OPTIONS.find((o) => o.value === sortBy)?.label || 'Trier';
+  const activeOpt = SORT_OPTIONS.find((o) => o.value === sortBy);
+  const label = activeOpt
+    ? (activeOpt.labelKey ? t(activeOpt.labelKey) : activeOpt.label)
+    : t('filter_sort');
 
   return (
     <div className="relative hidden lg:block">
@@ -389,7 +397,7 @@ export function SortDropdown({ sortBy, setSortBy }) {
                     : 'text-[#333] hover:bg-gray-50'
                 }`}
               >
-                {o.label}
+                {o.labelKey ? t(o.labelKey) : o.label}
               </button>
             ))}
           </div>

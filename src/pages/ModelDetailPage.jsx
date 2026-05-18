@@ -144,11 +144,11 @@ export default function ModelDetailPage() {
       </button>
 
       {loading ? (
-        <Spinner message="Chargement des appareils..." />
+        <Spinner message={t('model_loading')} />
       ) : phones.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-4xl mb-4">📱</p>
-          <p className="text-[#1B2A4A] font-semibold text-lg">Modèle introuvable</p>
+          <p className="text-[#1B2A4A] font-semibold text-lg">{t('model_not_found')}</p>
           <p className="text-[#555] text-sm mt-1">Ce modèle n'est plus disponible ou n'existe pas.</p>
           <button
             onClick={() => navigate('/boutique')}
@@ -182,7 +182,7 @@ export default function ModelDetailPage() {
               </h1>
               {minPrice !== null && (
                 <p className="text-[#555] text-sm mb-4">
-                  À partir de{' '}
+                  {t('model_from')}{' '}
                   <span className="font-bold text-xl text-[#1B2A4A]">
                     {charmPrice(refPrice ?? minPrice)}€
                   </span>
@@ -210,7 +210,7 @@ export default function ModelDetailPage() {
                     <button
                       onClick={() => setFilterColor(null)}
                       className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs cursor-pointer transition-all ${!filterColor ? 'border-[#1B2A4A]' : 'border-gray-300 hover:border-gray-400'}`}
-                      title="Toutes"
+                      title={t('model_all')}
                     >
                       <span className="text-[10px] text-gray-500">∀</span>
                     </button>
@@ -232,10 +232,10 @@ export default function ModelDetailPage() {
           {/* Neuf badges */}
           {bestPhone?.condition === 'neuf' && (
             <div className="flex flex-wrap gap-2 mb-4">
-              {['Sous scellé', 'Garantie 1 an Apple', 'Garantie 2 ans SebPhone'].map((t) => (
-                <span key={t} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-full font-medium">
+              {[t('model_sealed'), t('model_guarantee_apple'), t('model_guarantee_seb')].map((label) => (
+                <span key={label} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-full font-medium">
                   <CheckCircle size={11} />
-                  {t}
+                  {label}
                 </span>
               ))}
             </div>
@@ -272,7 +272,7 @@ export default function ModelDetailPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-gray-400">Disponible dans tous nos magasins</p>
+              <p className="text-xs text-gray-400">{t('model_available_stores')}</p>
             )}
           </div>
 
@@ -335,7 +335,7 @@ export default function ModelDetailPage() {
                             <td className="px-4 py-3">
                               {phone.status === 'sur_commande' ? (
                                 <span className="text-sm italic text-gray-400">
-                                  Batterie 85-99% selon stock
+                                  {t('model_battery_range')}
                                 </span>
                               ) : phone.battery_health ? (
                                 <div className="flex items-center gap-2">
@@ -410,7 +410,7 @@ export default function ModelDetailPage() {
                                 }}
                                 className="px-4 py-2 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
                               >
-                                Choisir →
+                                {t('model_choose_btn')}
                               </button>
                             </td>
                           </tr>
@@ -448,7 +448,7 @@ export default function ModelDetailPage() {
                             )}
                             {isBest && (
                               <span className="text-[10px] font-bold text-[#00B4CC] bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-full w-fit">
-                                ★ Meilleur choix
+                                ★ {t('model_best_choice')}
                               </span>
                             )}
                           </div>
@@ -491,7 +491,7 @@ export default function ModelDetailPage() {
                           ) : null}
                           {phone.status === 'sur_commande' ? (
                             <span className="text-xs italic text-gray-400">
-                              Batterie 85-99% selon stock
+                              {t('model_battery_range')}
                             </span>
                           ) : phone.battery_health ? (
                             <div className="flex items-center gap-2">
@@ -525,7 +525,7 @@ export default function ModelDetailPage() {
                           }}
                           className="w-full py-2.5 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
                         >
-                          Choisir cet appareil →
+                          {t('model_choose_btn')}
                         </button>
                       </div>
                     )

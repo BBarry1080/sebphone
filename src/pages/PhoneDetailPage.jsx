@@ -9,6 +9,7 @@ import StarRating from '../components/ui/StarRating';
 import { charmPrice } from '../utils/charmPrice';
 import { useCart } from '../context/CartContext';
 import Spinner from '../components/ui/Spinner';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' };
 
@@ -43,6 +44,7 @@ export default function PhoneDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { t } = useLanguage();
 
   const [phone, setPhone] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +81,7 @@ export default function PhoneDetailPage() {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">📱</p>
-        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">Téléphone introuvable</h1>
+        <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('phone_not_found')}</h1>
         <button onClick={() => navigate('/boutique')} className="px-6 py-3 bg-[#00B4CC] text-white rounded-xl font-bold">
           Retour boutique
         </button>
@@ -171,17 +173,17 @@ export default function PhoneDetailPage() {
             <span className="font-poppins font-bold text-3xl text-[#1B2A4A]">{charmPrice(basePrice)}€</span>
             <span className="text-gray-400 line-through text-lg">{charmPrice(originalPrice)}€</span>
             <span className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded-full">
-              Économisez {savings}€
+              {t('phone_save')} {savings}€
             </span>
           </div>
 
           {/* Neuf badges */}
           {phone.condition === 'neuf' && (
             <div className="flex flex-wrap gap-2">
-              {['Sous scellé', 'Garantie 1 an Apple', 'Garantie 2 ans SebPhone'].map((t) => (
-                <span key={t} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-full font-medium">
+              {[t('model_sealed'), t('phone_guarantee_apple'), t('phone_guarantee_seb')].map((label) => (
+                <span key={label} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-full font-medium">
                   <CheckCircle size={11} />
-                  {t}
+                  {label}
                 </span>
               ))}
             </div>
@@ -218,7 +220,7 @@ export default function PhoneDetailPage() {
             ) : (
               <div className="flex items-start gap-2 text-sm text-[#555555]">
                 <MapPin size={16} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
-                <span>Disponible dans tous nos magasins</span>
+                <span>{t('model_available_stores')}</span>
               </div>
             )}
           </div>
@@ -226,7 +228,7 @@ export default function PhoneDetailPage() {
           {/* Color selection */}
           <div>
             <p className="font-semibold text-[#1B2A4A] text-sm mb-3">
-              Couleur : <span className="font-normal text-[#555555]">{colors[activeColor].name}</span>
+              {t('phone_color_label')} <span className="font-normal text-[#555555]">{colors[activeColor].name}</span>
             </p>
             <div className="flex gap-2 flex-wrap">
               {colors.map((c, i) => (
@@ -247,7 +249,7 @@ export default function PhoneDetailPage() {
           {/* Grade selection */}
           {phone.condition === 'reconditionne' && (
             <div>
-              <p className="font-semibold text-[#1B2A4A] text-sm mb-3">État du produit</p>
+              <p className="font-semibold text-[#1B2A4A] text-sm mb-3">{t('phone_condition_label')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {GRADES_CONFIG.map((g, i) => (
                   <button
@@ -273,7 +275,7 @@ export default function PhoneDetailPage() {
 
           {/* Storage selection */}
           <div>
-            <p className="font-semibold text-[#1B2A4A] text-sm mb-3">Capacité de stockage</p>
+            <p className="font-semibold text-[#1B2A4A] text-sm mb-3">{t('phone_storage_label')}</p>
             <div className="flex gap-2 flex-wrap">
               {storages.map((s, i) => (
                 <button
@@ -296,7 +298,7 @@ export default function PhoneDetailPage() {
 
           {/* Battery health */}
           <div>
-            <p className="font-semibold text-[#1B2A4A] text-sm mb-3">Santé de la batterie</p>
+            <p className="font-semibold text-[#1B2A4A] text-sm mb-3">{t('phone_battery_label')}</p>
             <div className="flex flex-col gap-2">
               {BATTERY_OPTIONS.map((b, i) => (
                 <button
@@ -339,7 +341,7 @@ export default function PhoneDetailPage() {
               </div>
             </div>
 
-            <span className="text-xs text-[#166534] font-medium">Économisez {savings}€</span>
+            <span className="text-xs text-[#166534] font-medium">{t('phone_save')} {savings}€</span>
 
             <button
               onClick={handleAddToCart}
@@ -352,11 +354,11 @@ export default function PhoneDetailPage() {
                   : 'bg-[#1a1a1a] hover:bg-black text-white'
               }`}
             >
-              {added ? '✓ Ajouté au panier !' : phone.status === 'vendu' ? 'Indisponible' : 'Ajouter au panier'}
+              {added ? t('phone_added_cart') : phone.status === 'vendu' ? t('phone_unavailable_btn') : t('phone_add_cart')}
             </button>
 
             <div className="flex justify-around text-xs text-[#555555]">
-              <span className="flex items-center gap-1"><CheckCircle size={12} className="text-[#166534]" /> 30 jours pour changer d'avis</span>
+              <span className="flex items-center gap-1"><CheckCircle size={12} className="text-[#166534]" /> {t('phone_return')}</span>
               <span className="flex items-center gap-1"><CheckCircle size={12} className="text-[#166534]" /> Garantie {GRADES_CONFIG[activeGrade].warranty}</span>
             </div>
           </div>
@@ -372,12 +374,12 @@ export default function PhoneDetailPage() {
             const allParts = parts.length > 0 ? parts.map((p) => p.part_type) : partsReplaced
             if (phone.condition === 'neuf') return (
               <div className="border border-blue-200 bg-blue-50 rounded-xl p-4">
-                <p className="text-sm text-blue-700 font-medium">Neuf sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>
+                <p className="text-sm text-blue-700 font-medium">{t('model_sealed')} · {t('phone_guarantee_apple')} · {t('phone_guarantee_seb')}</p>
               </div>
             )
             if (phone.condition === 'occasion') return allParts.length > 0 ? (
               <div className="border border-gray-200 rounded-xl p-4">
-                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">Réparations effectuées</h3>
+                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">{t('phone_repairs')}</h3>
                 <ul className="flex flex-col gap-2">
                   {allParts.map((p, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-[#333]">
@@ -388,12 +390,12 @@ export default function PhoneDetailPage() {
               </div>
             ) : (
               <div className="border border-green-200 bg-green-50 rounded-xl p-4">
-                <p className="text-sm text-green-700 font-medium">✓ Aucune réparation — État original</p>
+                <p className="text-sm text-green-700 font-medium">✓ {t('model_no_repair')}</p>
               </div>
             )
             if (phone.condition === 'reconditionne' && allParts.length > 0) return (
               <div className="border border-gray-200 rounded-xl p-4">
-                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">Pièces remplacées</h3>
+                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">{t('phone_parts')}</h3>
                 <ul className="flex flex-col gap-2">
                   {allParts.map((p, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-[#333]">

@@ -25,17 +25,17 @@ export default function Occasions() {
       <div className="mb-6">
         <div className="inline-flex items-center gap-2 bg-[#F5F5F5] text-[#555555] text-xs font-medium px-3 py-1.5 rounded-full mb-3">
           <span className="w-2 h-2 rounded-full bg-[#555555]" />
-          Téléphones d'occasion
+          {t('catalogue_occasions_title')}
         </div>
         <h1 className="font-poppins font-bold text-3xl md:text-4xl text-[#1B2A4A] mb-1">
-          Téléphones <span className="text-[#00B4CC]">Occasion</span>
+          {t('catalogue_occasions_title')}
         </h1>
-        <p className="text-[#555555]">Les meilleurs prix pour des smartphones vérifiés</p>
+        <p className="text-[#555555]">{t('catalogue_occasions_subtitle')}</p>
       </div>
 
       {error && (
         <div className="text-center py-10 text-red-500 text-sm">
-          Erreur de chargement des données. Veuillez réessayer.
+          {t('catalogue_error')}
         </div>
       )}
 
@@ -66,9 +66,9 @@ export default function Occasions() {
         <div className="flex-1 min-w-0 w-full">
           <div className="flex items-center justify-between mb-5">
             <p className="text-sm text-[#555555]">
-              <span className="font-semibold text-[#1B2A4A]">{groups.length}</span> {t('home_models')}
+              <span className="font-semibold text-[#1B2A4A]">{groups.length}</span> {t('catalogue_models')}
               {' '}·{' '}
-              <span className="font-semibold text-[#1B2A4A]">{totalPhones}</span> {t('home_devices')}
+              <span className="font-semibold text-[#1B2A4A]">{totalPhones}</span> {t('catalogue_devices')}
             </p>
             <div className="flex items-center gap-2">
               <div className="flex border border-gray-200 rounded-lg overflow-hidden">
@@ -84,8 +84,8 @@ export default function Occasions() {
           ) : groups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="text-4xl mb-4">📱</p>
-              <p className="text-[#1B2A4A] font-semibold text-lg">Aucun téléphone trouvé</p>
-              <p className="text-[#555555] text-sm mt-1">Essayez de modifier vos filtres</p>
+              <p className="text-[#1B2A4A] font-semibold text-lg">{t('catalogue_empty')}</p>
+              <p className="text-[#555555] text-sm mt-1">{t('catalogue_try_filters')}</p>
             </div>
           ) : (
             <div className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-2' : 'grid-cols-1'}`}>

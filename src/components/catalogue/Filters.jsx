@@ -1,22 +1,23 @@
 import { Search, SlidersHorizontal } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const conditionFilters = [
-  { value: null,          label: 'Tous' },
-  { value: 'neuf',        label: 'Neuf' },
-  { value: 'reconditionne', label: 'Reconditionné' },
-  { value: 'occasion',    label: 'Occasion' },
+  { value: null,          labelKey: 'cat_filter_all' },
+  { value: 'neuf',        labelKey: 'condition_new' },
+  { value: 'reconditionne', labelKey: 'condition_refurbished' },
+  { value: 'occasion',    labelKey: 'condition_used' },
 ];
 
 const brandFilters = [
-  { value: null,     label: 'Toutes marques' },
+  { value: null,     labelKey: 'filter_all_brands' },
   { value: 'Apple',  label: 'Apple' },
   { value: 'Samsung', label: 'Samsung' },
 ];
 
 const sortOptions = [
-  { value: 'recent',     label: 'Plus récents' },
-  { value: 'price_asc',  label: 'Prix croissant' },
-  { value: 'price_desc', label: 'Prix décroissant' },
+  { value: 'recent',     labelKey: 'sort_newest' },
+  { value: 'price_asc',  labelKey: 'sort_price_asc' },
+  { value: 'price_desc', labelKey: 'sort_price_desc' },
 ];
 
 export default function Filters({
@@ -26,6 +27,7 @@ export default function Filters({
   sortBy, setSortBy,
   total,
 }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4">
       {/* Search bar */}
@@ -35,7 +37,7 @@ export default function Filters({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un téléphone..."
+          placeholder={t('cat_search')}
           className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
         />
       </div>
@@ -44,7 +46,7 @@ export default function Filters({
       <div className="flex flex-wrap gap-2 items-center">
         <div className="flex items-center gap-1 text-[#555555]">
           <SlidersHorizontal size={16} />
-          <span className="text-sm font-medium">Filtres :</span>
+          <span className="text-sm font-medium">{t('filter_filters')} :</span>
         </div>
 
         {/* Condition pills */}
@@ -58,7 +60,7 @@ export default function Filters({
                   ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
                   : 'bg-white text-[#555555] border-gray-200 hover:border-[#00B4CC] hover:text-[#00B4CC]'}`}
             >
-              {f.label}
+              {f.labelKey ? t(f.labelKey) : f.label}
             </button>
           ))}
         </div>
@@ -74,7 +76,7 @@ export default function Filters({
                   ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
                   : 'bg-white text-[#555555] border-gray-200 hover:border-[#1B2A4A] hover:text-[#1B2A4A]'}`}
             >
-              {f.label}
+              {f.labelKey ? t(f.labelKey) : f.label}
             </button>
           ))}
         </div>
@@ -86,14 +88,14 @@ export default function Filters({
           className="ml-auto px-3 py-1.5 border border-gray-200 rounded-xl text-sm text-[#555555] outline-none focus:border-[#00B4CC] cursor-pointer bg-white"
         >
           {sortOptions.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
           ))}
         </select>
       </div>
 
       {/* Result count */}
       <p className="text-sm text-[#555555]">
-        <span className="font-semibold text-[#1B2A4A]">{total}</span> téléphone{total !== 1 ? 's' : ''} trouvé{total !== 1 ? 's' : ''}
+        <span className="font-semibold text-[#1B2A4A]">{total}</span> {t('filter_phones_found')}
       </p>
     </div>
   );
