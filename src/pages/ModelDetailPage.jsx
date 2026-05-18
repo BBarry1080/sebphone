@@ -256,14 +256,14 @@ export default function ModelDetailPage() {
                     const mag = MAGASINS[magasinId];
                     if (!mag) return null;
                     return (
-                      <div key={magasinId} className="flex items-start gap-2">
-                        <span className="text-[#00B4CC] mt-0.5">📍</span>
+                      <div key={magasinId} className="flex items-start gap-2 mt-2">
+                        <MapPin size={14} className="text-[#00B4CC] mt-0.5 flex-shrink-0" />
                         <div>
                           <p className="text-sm font-semibold text-[#1B2A4A]">
                             {mag.nom}
                           </p>
                           {mag.adresse && (
-                            <p className="text-xs text-gray-500">{mag.adresse}</p>
+                            <p className="text-xs text-gray-400">{mag.adresse}</p>
                           )}
                         </div>
                       </div>
