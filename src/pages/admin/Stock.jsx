@@ -61,6 +61,7 @@ const MODELS_BY_CATEGORIE = {
   },
   montre: {
     'Apple': [
+      'Apple Watch Ultra 3', 'Apple Watch Series 11', 'Apple Watch SE 3',
       'Apple Watch Ultra 2', 'Apple Watch Series 10',
       'Apple Watch Series 9', 'Apple Watch Series 8',
       'Apple Watch SE 2', 'Apple Watch SE',
@@ -143,6 +144,9 @@ const MODELS_BY_CATEGORIE = {
 
 const WATCH_SIZES = {
   'Apple': {
+    'Apple Watch Ultra 3': ['49mm'],
+    'Apple Watch Series 11': ['42mm', '46mm'],
+    'Apple Watch SE 3': ['40mm', '44mm'],
     'Apple Watch Ultra 2': ['49mm'],
     'Apple Watch Series 10': ['42mm', '46mm'],
     'Apple Watch Series 9': ['41mm', '45mm'],
@@ -167,6 +171,12 @@ const WATCH_SIZES = {
 
 const WATCH_COLORS = {
   'Apple': {
+    'Apple Watch Ultra 3': ['Titane naturel', 'Titane noir'],
+    'Apple Watch Series 11': [
+      'Gris sidéral', 'Jet Noir', 'Rose Gold', 'Argent',
+      'Titane naturel', 'Titane or', 'Titane ardoise'
+    ],
+    'Apple Watch SE 3': ['Lumière stellaire', 'Moonlight'],
     'Apple Watch Series 10': ['Jet Noir', 'Rose Gold', 'Argent', 'Titane naturel', 'Titane or', 'Titane ardoise'],
     'Apple Watch Series 9': ['Minuit', 'Lumière stellaire', 'Rose', 'PRODUCT RED', 'Argent', 'Or', 'Graphite'],
     'Apple Watch Series 8': ['Minuit', 'Lumière stellaire', 'PRODUCT RED', 'Argent', 'Or', 'Graphite'],
