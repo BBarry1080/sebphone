@@ -1,4 +1,7 @@
+import { useLanguage } from '../../contexts/LanguageContext';
+
 export default function StarRating({ rating, count, size = 14 }) {
+  const { t } = useLanguage?.() || { t: (k) => k };
   const stars = [];
   for (let i = 1; i <= 5; i++) {
     const diff = rating - (i - 1);
@@ -36,7 +39,7 @@ export default function StarRating({ rating, count, size = 14 }) {
       <span className="inline-flex">{stars}</span>
       {count !== undefined && (
         <span className="text-[#555555]" style={{ fontSize: size - 1 }}>
-          {count} avis
+          {count} {t('stars_reviews')}
         </span>
       )}
     </span>

@@ -36,6 +36,7 @@ function modelToSlug(name) {
 }
 
 const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
+const conditionKey = { neuf: 'condition_new', reconditionne: 'condition_refurbished', occasion: 'condition_used' }
 const conditionColor = {
   neuf:          'bg-green-100 text-green-700',
   reconditionne: 'bg-cyan-100 text-cyan-700',
@@ -180,7 +181,7 @@ function PhoneCard({ phone, onClick }) {
       <div className="flex-1 min-w-0">
         <div className="mb-1.5 flex items-center gap-1.5">
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${conditionColor[phone.condition] || 'bg-gray-100 text-gray-600'}`}>
-            {conditionLabel[phone.condition] || phone.condition}
+            {conditionKey[phone.condition] ? t(conditionKey[phone.condition]) : (conditionLabel[phone.condition] || phone.condition)}
           </span>
           {phone.has_esim && (
             <span className="text-xs font-bold bg-[#1B2A4A] text-white px-2 py-0.5 rounded-lg">

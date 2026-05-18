@@ -1,18 +1,20 @@
 import { NavLink } from 'react-router-dom';
 import { Home, ShoppingBag, ClipboardList, User } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const tabs = [
-  { to: '/',         label: 'Accueil',       Icon: Home,          end: true },
-  { to: '/boutique', label: 'Boutique',      Icon: ShoppingBag,   end: false },
-  { to: '/rachat',   label: 'Revendre',      Icon: ClipboardList, end: false },
-  { to: '/mes-reservations', label: 'Compte', Icon: User, end: false },
+  { to: '/',         labelKey: 'bottomnav_home',    Icon: Home,          end: true },
+  { to: '/boutique', labelKey: 'bottomnav_shop',    Icon: ShoppingBag,   end: false },
+  { to: '/rachat',   labelKey: 'bottomnav_sell',    Icon: ClipboardList, end: false },
+  { to: '/mes-reservations', labelKey: 'bottomnav_account', Icon: User, end: false },
 ];
 
 export default function BottomNav() {
+  const { t } = useLanguage();
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
       <div className="grid grid-cols-4 h-16">
-        {tabs.map(({ to, label, Icon, end }) => (
+        {tabs.map(({ to, labelKey, Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -27,7 +29,7 @@ export default function BottomNav() {
               <>
                 <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
                 <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>
-                  {label}
+                  {t(labelKey)}
                 </span>
               </>
             )}

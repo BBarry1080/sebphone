@@ -96,7 +96,7 @@ export default function Header() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onBlur={() => { if (!query) setShowSearch(false); }}
-                placeholder="Rechercher..."
+                placeholder={t('search_placeholder')}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#00B4CC] w-44"
               />
             </form>
@@ -111,7 +111,7 @@ export default function Header() {
           <Link
             to="/mes-reservations"
             className="p-2 rounded-lg hover:bg-gray-50 text-[#555555] hover:text-[#00B4CC] transition-colors flex items-center gap-1.5 text-sm font-medium"
-            title="Mes réservations"
+            title={t('nav_my_reservations')}
           >
             <User size={20} />
           </Link>

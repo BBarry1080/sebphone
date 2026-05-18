@@ -44,10 +44,10 @@ export default function Footer() {
           <h3 className="font-semibold text-sm uppercase tracking-widest text-[#00B4CC] mb-4">{t('footer_links')}</h3>
           <ul className="flex flex-col gap-2">
             {[
-              { to: '/boutique',      label: 'Boutique' },
-              { to: '/occasions',     label: 'Occasions' },
-              { to: '/reconditiones', label: 'Reconditionnés' },
-              { to: '/rachat',        label: 'Revendre mon téléphone' },
+              { to: '/boutique',      label: t('footer_boutique') },
+              { to: '/occasions',     label: t('footer_occasions') },
+              { to: '/reconditiones', label: t('footer_reconditiones') },
+              { to: '/rachat',        label: t('footer_revendre') },
             ].map((link) => (
               <li key={link.to}>
                 <Link to={link.to} className="text-sm text-gray-400 hover:text-[#00B4CC] transition-colors">
@@ -128,7 +128,7 @@ export default function Footer() {
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-1 mt-1">
             <p className="text-xs text-gray-500">© 2025 SEBPHONE — {t('footer_rights')}</p>
-            <p className="text-xs text-gray-600">Belgique · Livraison rapide · Garantie incluse</p>
+            <p className="text-xs text-gray-600">{t('footer_belgique')} · {t('footer_livraison')} · {t('footer_garantie')}</p>
           </div>
         </div>
       </div>

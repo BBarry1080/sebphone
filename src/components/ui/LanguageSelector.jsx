@@ -33,7 +33,7 @@ const FLAGS = {
 }
 
 export default function LanguageSelector() {
-  const { lang, country, changeLang, COUNTRIES } = useLanguage()
+  const { lang, country, changeLang, COUNTRIES, t } = useLanguage()
   const [open, setOpen] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState(null)
 
@@ -63,7 +63,7 @@ export default function LanguageSelector() {
             {/* Header */}
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-bold text-[#1B2A4A]">
-                Sélectionner la région et la langue
+                {t('lang_selector_title')}
               </p>
               <button
                 onClick={() => { setOpen(false); setSelectedCountry(null) }}

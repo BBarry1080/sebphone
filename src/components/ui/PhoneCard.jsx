@@ -4,14 +4,16 @@ import { Smartphone } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import GradeTag from './GradeTag';
 import Button from './Button';
+import { useLanguage } from '../../contexts/LanguageContext';
 
-const conditionLabel = {
-  neuf: 'NEUF',
-  reconditionne: 'RECONDITIONNÉ',
-  occasion: 'OCCASION',
+const conditionKey = {
+  neuf: 'condition_new',
+  reconditionne: 'condition_refurbished',
+  occasion: 'condition_used',
 };
 
 export default function PhoneCard({ phone, onClick, index = 0 }) {
+  const { t } = useLanguage();
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -56,7 +58,7 @@ export default function PhoneCard({ phone, onClick, index = 0 }) {
         <div>
           <h3 className="font-bold text-[#1B2A4A] text-sm leading-tight line-clamp-2">{phone.name}</h3>
           <p className="text-xs text-[#555555] uppercase tracking-wide mt-0.5">
-            {conditionLabel[phone.condition]}
+            {conditionKey[phone.condition] ? t(conditionKey[phone.condition]) : phone.condition}
           </p>
         </div>
 
@@ -72,11 +74,11 @@ export default function PhoneCard({ phone, onClick, index = 0 }) {
               onClick={(e) => { e.stopPropagation(); onClick?.(phone); }}
               disabled={phone.status === 'vendu'}
             >
-              {phone.status === 'reserve' ? 'Voir le détail' : 'Réserver (Acompte)'}
+              {phone.status === 'reserve' ? t('phone_view_detail') : t('phone_reserve')}
             </Button>
           ) : (
             <Button variant="ghost" size="full" disabled className="opacity-50 cursor-not-allowed">
-              Indisponible
+              {t('phone_unavailable')}
             </Button>
           )}
         </div>

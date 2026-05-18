@@ -3,10 +3,12 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import PhoneCard from '../ui/PhoneCard';
 import PhoneListCard from './PhoneListCard';
 import PhoneDetail from './PhoneDetail';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const PAGE_SIZE = 24;
 
 export default function PhoneGrid({ phones, view = 'grid' }) {
+  const { t } = useLanguage();
   const [selected, setSelected] = useState(null);
   const [page, setPage] = useState(1);
 
@@ -24,8 +26,8 @@ export default function PhoneGrid({ phones, view = 'grid' }) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <p className="text-4xl mb-4">📱</p>
-        <p className="text-[#1B2A4A] font-semibold text-lg">Aucun téléphone trouvé</p>
-        <p className="text-[#555555] text-sm mt-1">Essayez de modifier vos filtres</p>
+        <p className="text-[#1B2A4A] font-semibold text-lg">{t('no_phones_found')}</p>
+        <p className="text-[#555555] text-sm mt-1">{t('try_filters')}</p>
       </div>
     );
   }

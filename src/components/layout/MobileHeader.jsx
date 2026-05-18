@@ -91,7 +91,7 @@ export default function MobileHeader() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher un téléphone..."
+                placeholder={t('search_placeholder_phone')}
                 className="flex-1 outline-none text-sm bg-transparent"
               />
               <button
@@ -140,7 +140,7 @@ export default function MobileHeader() {
                 ))}
               </div>
               <div className="px-6 py-6 bg-[#F5F5F5] border-t border-gray-100">
-                <p className="text-xs text-[#555555] font-semibold uppercase tracking-wide mb-3">Contact</p>
+                <p className="text-xs text-[#555555] font-semibold uppercase tracking-wide mb-3">{t('mobilenav_contact')}</p>
                 <a href="tel:+3249240540057" className="flex items-center gap-2 text-sm text-[#1B2A4A] mb-2">
                   <Phone size={14} className="text-[#00B4CC]" />
                   +32(0)492 / 40.54.57

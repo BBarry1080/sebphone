@@ -1,8 +1,11 @@
+import { useLanguage } from '../../contexts/LanguageContext';
+
 export default function StatusBadge({ status, size = 'md' }) {
+  const { t } = useLanguage?.() || { t: (k) => k };
   const config = {
-    disponible: { label: 'Stock disponible', dot: 'bg-[#22C55E]', text: 'text-[#22C55E]', bg: 'bg-green-50 border border-green-200' },
-    reserve:    { label: 'Réservé',          dot: 'bg-[#F97316]', text: 'text-[#F97316]', bg: 'bg-orange-50 border border-orange-200' },
-    vendu:      { label: 'Vendu',            dot: 'bg-[#EF4444]', text: 'text-[#EF4444]', bg: 'bg-red-50 border border-red-200' },
+    disponible: { label: t('status_available'), dot: 'bg-[#22C55E]', text: 'text-[#22C55E]', bg: 'bg-green-50 border border-green-200' },
+    reserve:    { label: t('status_reserved'),  dot: 'bg-[#F97316]', text: 'text-[#F97316]', bg: 'bg-orange-50 border border-orange-200' },
+    vendu:      { label: t('status_sold'),      dot: 'bg-[#EF4444]', text: 'text-[#EF4444]', bg: 'bg-red-50 border border-red-200' },
   };
 
   const c = config[status] || config.disponible;
