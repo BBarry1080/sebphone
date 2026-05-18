@@ -116,7 +116,7 @@ export default function Avis() {
         try {
           await emailjs.send(
             EMAILJS_SERVICE_ID,
-            'template_reward_avis',
+            'template_202rbo1',
             {
               to_email: inputEmail,
               to_name: customerName || inputEmail,

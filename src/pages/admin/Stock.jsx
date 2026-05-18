@@ -1238,7 +1238,7 @@ export default function Stock() {
         if (reviewLink && saleForm.customer_email) {
           await emailjs.send(
             EMAILJS_SERVICE_ID,
-            'template_review_google',
+            'template_jg2nh5n',
             {
               to_email: saleForm.customer_email,
               to_name: `${saleForm.customer_firstname} ${saleForm.customer_name}`,
