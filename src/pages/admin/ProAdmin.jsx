@@ -133,28 +133,6 @@ export default function ProAdmin() {
 
   const proStockFor = (phoneId) => proStock.find((s) => s.phone_id === phoneId)
 
-  const togglePro = async (phone) => {
-    const existing = proStockFor(phone.id)
-    if (existing) {
-      const { error } = await supabase
-        .from('pro_stock')
-        .update({ visible: !existing.visible })
-        .eq('id', existing.id)
-      if (error) { alert('Erreur: ' + error.message); return }
-    } else {
-      const { error } = await supabase
-        .from('pro_stock')
-        .insert([{
-          phone_id:  phone.id,
-          pro_price: phone.price || 0,
-          lot_price: null,
-          lot_size:  null,
-          visible:   true,
-        }])
-      if (error) { alert('Erreur: ' + error.message); return }
-    }
-    fetchAll()
-  }
 
   const updateProField = async (phoneId, field, value) => {
     const existing = proStockFor(phoneId)
@@ -491,7 +469,7 @@ export default function ProAdmin() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Modèle', 'État', 'Stockage', 'Prix vente (€)', 'Visible pro', 'Prix pro (€)', 'Prix lot (€)', 'Taille lot'].map((h) => (
+                  {['Modèle', 'Couleur', 'Grade', 'Stockage', 'Prix vente (€)', 'Visible acheteurs', 'Prix pro (€)', 'Prix lot (€)', 'Taille lot'].map((h) => (
                     <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500">{h}</th>
                   ))}
                 </tr>
@@ -508,7 +486,48 @@ export default function ProAdmin() {
                           <span className="ml-2 text-[10px] font-bold bg-[#00B4CC] text-white px-1.5 py-0.5 rounded">PRO</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-gray-600">{phone.condition}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div style={{
+                            width: '14px',
+                            height: '14px',
+                            borderRadius: '50%',
+                            flexShrink: 0,
+                            border: '1px solid rgba(0,0,0,0.1)',
+                            backgroundColor: (() => {
+                              const c = (phone.color || '').toLowerCase()
+                              if (c.includes('noir') || c.includes('black') || c.includes('minuit') || c.includes('graphite')) return '#1a1a1a'
+                              if (c.includes('blanc') || c.includes('white') || c.includes('lumière stellaire') || c.includes('starlight') || c.includes('argent') || c.includes('silver')) return '#f0f0f0'
+                              if (c.includes('bleu') || c.includes('blue') || c.includes('pacifique') || c.includes('alpin')) return '#3b82f6'
+                              if (c.includes('rouge') || c.includes('red')) return '#ef4444'
+                              if (c.includes('vert') || c.includes('green')) return '#22c55e'
+                              if (c.includes('jaune') || c.includes('yellow')) return '#eab308'
+                              if (c.includes('rose') && c.includes('gold')) return '#f9a8d4'
+                              if (c.includes('rose') || c.includes('pink')) return '#ec4899'
+                              if (c.includes('violet') || c.includes('purple')) return '#8b5cf6'
+                              if (c.includes('or') || c.includes('gold')) return '#d97706'
+                              if (c.includes('titane') || c.includes('titanium')) return '#9ca3af'
+                              if (c.includes('corail') || c.includes('coral')) return '#f97316'
+                              if (c.includes('gris') || c.includes('grey') || c.includes('gray')) return '#6b7280'
+                              return '#d1d5db'
+                            })()
+                          }}/>
+                          <span className="text-xs text-gray-600">{phone.color || '—'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-bold px-2 py-1 rounded-lg text-white
+                          ${phone.grade === 'A+' ? 'bg-green-500'
+                            : phone.grade === 'B' ? 'bg-blue-500'
+                            : phone.grade === 'C' ? 'bg-yellow-500'
+                            : phone.grade === 'C-BAT' ? 'bg-orange-400'
+                            : phone.grade === 'C-REF' ? 'bg-orange-600'
+                            : phone.grade === 'PEACE' ? 'bg-purple-500'
+                            : phone.grade === 'LCD' ? 'bg-red-400'
+                            : 'bg-gray-400'}`}>
+                          {phone.grade || '—'}
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-gray-600">{phone.storage || '—'}</td>
                       <td className="px-3 py-2">
                         <input
@@ -524,14 +543,19 @@ export default function ProAdmin() {
                           className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-sm text-center font-bold"
                         />
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-4 py-3">
                         <button
-                          onClick={() => togglePro(phone)}
-                          className={`px-2.5 py-1 rounded-full text-xs font-bold cursor-pointer ${
-                            isPro ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                          }`}
-                        >
-                          {isPro ? 'Visible' : 'Masqué'}
+                          onClick={async () => {
+                            await supabase.from('phones')
+                              .update({ visible_on_site: !phone.visible_on_site })
+                              .eq('id', phone.id)
+                            fetchAll()
+                          }}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition-all
+                            ${phone.visible_on_site
+                              ? 'bg-green-100 text-green-700 border border-green-300'
+                              : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                          {phone.visible_on_site ? '✅ Visible' : 'Masqué'}
                         </button>
                       </td>
                       <td className="px-3 py-2">
