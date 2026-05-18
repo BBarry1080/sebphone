@@ -109,7 +109,7 @@ export default function FeaturedPhones() {
           <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#00B4CC] mb-3">
             {t('featured_title')}
           </h2>
-          <p className="text-[#555555] text-base">Découvrez nos téléphones disponibles dès maintenant</p>
+          <p className="text-[#555555] text-base">{t('featured_subtitle')}</p>
         </div>
 
         {/* Pilules */}

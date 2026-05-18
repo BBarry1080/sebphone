@@ -12,6 +12,14 @@ import { sendConfirmationEmail } from '../../utils/sendEmail';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 import { useLanguage } from '../../contexts/LanguageContext';
 
+const PACK_ITEM_KEYS = {
+  'Coque de protection': 'pack_protection',
+  'Verre trempé': 'pack_glass',
+  'Câble': 'pack_cable',
+  'Chargeur 20W': 'pack_charger',
+  'Écouteurs filaires': 'pack_earphones',
+}
+
 function generateCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
@@ -607,7 +615,7 @@ export default function ReservationForm({ phone }) {
             <div key={pack.id} className="relative">
               {pack.id === 'recommande' && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00B4CC] text-white text-xs font-bold px-4 py-1 rounded-full z-10 whitespace-nowrap">
-                  ⭐ Le plus populaire
+                  ⭐ {t('pack_popular')}
                 </div>
               )}
               <button
@@ -618,7 +626,7 @@ export default function ReservationForm({ phone }) {
                 }`}
               >
                 <div className="flex items-center justify-between w-full mb-2">
-                  <span className="font-semibold text-sm text-[#1B2A4A]">{pack.label}</span>
+                  <span className="font-semibold text-sm text-[#1B2A4A]">{pack.labelKey ? t(pack.labelKey) : pack.label}</span>
                   {pack.price === 0 ? (
                     <span className="text-lg font-bold text-gray-400">{t('form_free')}</span>
                   ) : (
@@ -633,7 +641,7 @@ export default function ReservationForm({ phone }) {
                     {pack.items.map((item) => (
                       <li key={item} className="flex items-center gap-1.5 text-xs text-[#555]">
                         <CheckCircle size={11} className="text-[#00B4CC] flex-shrink-0" />
-                        {item}
+                        {PACK_ITEM_KEYS[item] ? t(PACK_ITEM_KEYS[item]) : item}
                       </li>
                     ))}
                   </ul>
@@ -736,8 +744,8 @@ export default function ReservationForm({ phone }) {
           <div className="flex justify-between items-start gap-3">
             <div className="flex-1">
               <p className="font-semibold text-[#1B2A4A] text-sm">{t('form_reserve_deposit')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Payez 50€ maintenant pour bloquer le téléphone. Le reste est réglé en magasin.</p>
-              <p className="text-xs text-orange-500 mt-1">⚠️ L'acompte n'est pas remboursable</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('form_deposit_desc')}</p>
+              <p className="text-xs text-orange-500 mt-1">{t('form_deposit_warning')}</p>
             </div>
             <span className="font-bold text-[#00B4CC] text-xl flex-shrink-0">50€</span>
           </div>
@@ -751,7 +759,7 @@ export default function ReservationForm({ phone }) {
           <div className="flex justify-between items-start gap-3">
             <div className="flex-1">
               <p className="font-semibold text-[#1B2A4A] text-sm">{t('form_pay_total')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">Réglez la totalité maintenant. Récupération en magasin ou livraison.</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('form_total_desc')}</p>
             </div>
             <span className="font-bold text-[#1B2A4A] text-xl flex-shrink-0">{totalPrice}€</span>
           </div>
@@ -760,10 +768,10 @@ export default function ReservationForm({ phone }) {
 
       {/* Notes */}
       <div>
-        <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">Notes (optionnel)</label>
+        <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('form_notes_optional')}</label>
         <textarea name="notes" value={form.notes} onChange={handleChange} rows={3}
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all resize-none"
-          placeholder="Informations complémentaires, questions..." />
+          placeholder={t('form_notes_placeholder')} />
       </div>
 
       {submitError && (

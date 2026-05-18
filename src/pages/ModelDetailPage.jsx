@@ -45,6 +45,36 @@ const CONDITION_LABEL = {
 import { MAGASINS } from '../utils/magasins'
 import { useLanguage } from '../contexts/LanguageContext'
 
+const translateRepair = (name, t) => {
+  const map = {
+    'batterie': t('repair_battery'),
+    'battery': t('repair_battery'),
+    'écran': t('repair_screen'),
+    'screen': t('repair_screen'),
+    'caméra': t('repair_camera'),
+    'camera': t('repair_camera'),
+    'bouton': t('repair_button'),
+    'button': t('repair_button'),
+    'haut-parleur': t('repair_speaker'),
+    'speaker': t('repair_speaker'),
+    'connecteur': t('repair_charging'),
+    'charging': t('repair_charging'),
+  }
+  return map[name?.toLowerCase()] || name
+}
+
+const translateGrade = (grade, t) => {
+  const map = {
+    'comme neuf': t('grade_comme_neuf'),
+    'bon état': t('grade_bon_etat'),
+    'très bon état': t('grade_tres_bon'),
+    'parfait état': t('grade_parfait'),
+    'like new': t('grade_comme_neuf'),
+    'good condition': t('grade_bon_etat'),
+  }
+  return map[grade?.toLowerCase()] || grade
+}
+
 
 function FilterPill({ label, active, onClick }) {
   return (
@@ -322,7 +352,7 @@ export default function ModelDetailPage() {
                                 </span>
                                 {phone.grade && (
                                   <span className={`px-2 py-0.5 rounded border text-xs font-bold w-fit ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                                    {phone.grade}
+                                    {translateGrade(phone.grade, t)}
                                   </span>
                                 )}
                                 {isBest && (
@@ -369,7 +399,7 @@ export default function ModelDetailPage() {
                                   <div className="flex flex-col gap-0.5">
                                     {allParts.map((p) => (
                                       <div key={p} className="flex items-center gap-1 text-xs text-[#555]">
-                                        <span className="text-orange-500">🔧</span><span>{p}</span>
+                                        <span className="text-orange-500">🔧</span><span>{translateRepair(p, t)}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -381,7 +411,7 @@ export default function ModelDetailPage() {
                                   <div className="flex flex-col gap-0.5">
                                     {allParts.map((p) => (
                                       <div key={p} className="flex items-center gap-1 text-xs text-[#555]">
-                                        <span className="text-orange-500">🔧</span><span>{p}</span>
+                                        <span className="text-orange-500">🔧</span><span>{translateRepair(p, t)}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -443,7 +473,7 @@ export default function ModelDetailPage() {
                             </span>
                             {phone.grade && (
                               <span className={`px-2.5 py-0.5 rounded border text-xs font-bold w-fit ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                                {phone.grade}
+                                {translateGrade(phone.grade, t)}
                               </span>
                             )}
                             {isBest && (
@@ -471,7 +501,7 @@ export default function ModelDetailPage() {
                               <div className="flex flex-col gap-0.5">
                                 {allParts.map((p) => (
                                   <div key={p} className="flex items-center gap-1">
-                                    <span className="text-orange-500">🔧</span><span>{p}</span>
+                                    <span className="text-orange-500">🔧</span><span>{translateRepair(p, t)}</span>
                                   </div>
                                 ))}
                               </div>
@@ -483,7 +513,7 @@ export default function ModelDetailPage() {
                               <div className="flex flex-col gap-0.5">
                                 {allParts.map((p) => (
                                   <div key={p} className="flex items-center gap-1">
-                                    <span className="text-orange-500">🔧</span><span>{p}</span>
+                                    <span className="text-orange-500">🔧</span><span>{translateRepair(p, t)}</span>
                                   </div>
                                 ))}
                               </div>

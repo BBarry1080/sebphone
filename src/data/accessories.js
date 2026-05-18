@@ -18,6 +18,7 @@ export const ACCESSORY_PACKS = [
   {
     id: 'confort',
     label: 'Pack Confort',
+    labelKey: 'pack_confort',
     price: 30,
     originalPrice: 60,
     items: ['Coque de protection', 'Verre trempé', 'Câble'],
@@ -26,6 +27,7 @@ export const ACCESSORY_PACKS = [
   {
     id: 'recommande',
     label: 'Pack Recommandé',
+    labelKey: 'pack_recommande',
     price: 35,
     originalPrice: 70,
     items: ['Coque de protection', 'Verre trempé', 'Câble', 'Chargeur 20W', 'Écouteurs filaires'],

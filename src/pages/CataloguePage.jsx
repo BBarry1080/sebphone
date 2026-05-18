@@ -4,43 +4,43 @@ import { supabase } from '../lib/supabase'
 import { getPhoneImage } from '../utils/phoneImage'
 import { useLanguage } from '../contexts/LanguageContext'
 
-const CATEGORIE_CONFIG = {
+const getCategorieConfig = (t) => ({
   tablette: {
-    titre: 'Tablettes',
-    description: 'iPad, Galaxy Tab et plus — neufs, reconditionnés et occasions',
+    titre: t('cat_tablette_title'),
+    description: t('cat_tablette_desc'),
     icon: '📟',
     emoji: '📟',
   },
   montre: {
-    titre: 'Montres connectées',
-    description: 'Apple Watch, Galaxy Watch — autonomie et fonctions vérifiées',
+    titre: t('cat_montre_title'),
+    description: t('cat_montre_desc'),
     icon: '⌚',
     emoji: '⌚',
   },
   ecouteur: {
-    titre: 'Écouteurs & AirPods',
-    description: 'AirPods, Galaxy Buds, Sony — qualité audio testée et garantie',
+    titre: t('cat_ecouteur_title'),
+    description: t('cat_ecouteur_desc'),
     icon: '🎧',
     emoji: '🎧',
   },
   ordinateur: {
-    titre: 'Ordinateurs',
-    description: 'MacBook, Dell, HP — reconditionnés testés avec garantie',
+    titre: t('cat_ordinateur_title'),
+    description: t('cat_ordinateur_desc'),
     icon: '💻',
     emoji: '💻',
   },
   accessoire: {
-    titre: 'Accessoires',
-    description: 'Coques, chargeurs, câbles — compatibles iPhone et Samsung',
+    titre: t('cat_accessoire_title'),
+    description: t('cat_accessoire_desc'),
     icon: '🛍️',
     emoji: '🛍️',
   },
-}
+})
 
 export default function CataloguePage() {
   const { categorie } = useParams()
   const { t } = useLanguage()
-  const config = CATEGORIE_CONFIG[categorie] || {}
+  const config = getCategorieConfig(t)[categorie] || {}
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
