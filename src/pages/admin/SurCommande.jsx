@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useCurrentUser } from '../../hooks/usePermissions'
 import { IPHONE_ORDER } from '../../utils/phoneImage'
+import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
 import { Plus, X, Check, Package, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
 
 const MODELS_BY_BRAND = {
@@ -146,12 +147,6 @@ const COLORS_BY_MODEL = {
   'default': ['Noir', 'Blanc', 'Gris', 'Bleu', 'Rouge', 'Or', 'Argent', 'Rose', 'Vert', 'Violet'],
 }
 
-const FOURNISSEURS_LIST = [
-  'SebPhone', 'Louise', 'Anderlecht', 'Molenbeek',
-  'Rue Neuve', 'Marrakech', 'Zainab Debboun',
-  'Fournisseur externe 1', 'Fournisseur externe 2', 'Autre',
-]
-
 const DELAIS = [
   '24-48h', '2-3 jours', '3-5 jours', '1 semaine',
   '1-2 semaines', 'Sur devis', 'En attente stock',
@@ -242,9 +237,9 @@ export default function AdminSurCommande() {
       return
     }
     setSaving(true)
-    const fournisseur = FOURNISSEURS_LIST.includes(form.fournisseur)
-      ? form.fournisseur === 'Autre' ? form.fournisseur_custom : form.fournisseur
-      : form.fournisseur_custom
+    const fournisseur = form.fournisseur === '__custom__'
+      ? form.fournisseur_custom
+      : form.fournisseur
 
     const payload = {
       name: form.model,
@@ -291,8 +286,8 @@ export default function AdminSurCommande() {
       grade: phone.grade || 'A',
       price: phone.price || '',
       fournisseur: FOURNISSEURS_LIST.includes(phone.fournisseur)
-        ? phone.fournisseur : 'Autre',
-      fournisseur_custom: phone.fournisseur || '',
+        ? phone.fournisseur : (phone.fournisseur ? '__custom__' : 'SebPhone'),
+      fournisseur_custom: FOURNISSEURS_LIST.includes(phone.fournisseur) ? '' : (phone.fournisseur || ''),
       delai: phone.delai_commande || '2-3 jours',
       visible_on_site: phone.visible_on_site || false,
       notes: phone.notes || '',
@@ -565,14 +560,16 @@ export default function AdminSurCommande() {
                 {FOURNISSEURS_LIST.map(f => (
                   <option key={f} value={f}>{f}</option>
                 ))}
+                <option value="__custom__">+ Ajouter un fournisseur</option>
               </select>
-              {form.fournisseur === 'Autre' && (
+              {form.fournisseur === '__custom__' && (
                 <input
                   value={form.fournisseur_custom}
                   onChange={e => setForm(f => ({ ...f, fournisseur_custom: e.target.value }))}
-                  placeholder="Nom du fournisseur"
-                  className="w-full mt-2 px-3 py-2 border border-gray-200
+                  placeholder="Nom du nouveau fournisseur"
+                  className="w-full mt-2 px-3 py-2 border border-[#00B4CC]
                              rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  autoFocus
                 />
               )}
             </div>

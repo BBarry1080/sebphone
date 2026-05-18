@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MAGASINS, MAGASINS_PHYSIQUES, MAGASINS_ADMIN } from '../../utils/magasins'
+import { MAGASINS, MAGASINS_ADMIN } from '../../utils/magasins'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
 import { CheckCircle, Clock, X, Wrench, Plus } from 'lucide-react'
 import { useCurrentUser, useRequirePermission } from '../../hooks/usePermissions'
+import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
 
 const PARTS_LIST = [
   'Écran', 'Batterie', 'Vitre arrière',
@@ -53,6 +54,7 @@ export default function StockReconditionnement() {
     imei: '',
     purchase_price: '',
     fournisseur: 'SebPhone',
+    fournisseur_custom: '',
     magasin_id: 'anderlecht',
     notes: '',
     phone_grade: 'Bon état',
@@ -174,10 +176,13 @@ export default function StockReconditionnement() {
       alert('Modèle et prix obligatoires')
       return
     }
+    const fournisseurFinal = addForm.fournisseur === '__custom__'
+      ? addForm.fournisseur_custom
+      : addForm.fournisseur
     const { error } = await supabase
       .from('purchase_registry')
       .insert([{
-        seller_first_name:     addForm.fournisseur,
+        seller_first_name:     fournisseurFinal,
         seller_last_name:      '',
         seller_address:        'Fournisseur professionnel',
         seller_id_number:      'PRO',
@@ -190,7 +195,7 @@ export default function StockReconditionnement() {
         purchase_price:        parseFloat(addForm.purchase_price),
         payment_method:        'Cash',
         magasin_id:            addForm.magasin_id,
-        fournisseur:           addForm.fournisseur,
+        fournisseur:           fournisseurFinal,
         phone_condition:       'reconditionne',
         phone_grade:           addForm.phone_grade,
         reconditioning_status: 'en_attente',
@@ -623,12 +628,20 @@ export default function StockReconditionnement() {
                   onChange={(e) => setAddForm((f) => ({ ...f, fournisseur: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                 >
-                  <option value="SebPhone">💻 SebPhone</option>
-                  {MAGASINS_PHYSIQUES.map((m) => {
-                    const short = m.nom.replace('Seb Telecom — ', '')
-                    return <option key={m.id} value={short}>📍 {short}</option>
-                  })}
+                  {FOURNISSEURS_LIST.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                  <option value="__custom__">+ Ajouter un fournisseur</option>
                 </select>
+                {addForm.fournisseur === '__custom__' && (
+                  <input
+                    value={addForm.fournisseur_custom}
+                    onChange={(e) => setAddForm((f) => ({ ...f, fournisseur_custom: e.target.value }))}
+                    placeholder="Nom du nouveau fournisseur"
+                    className="w-full mt-2 px-3 py-2 border border-[#00B4CC] rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -1,0 +1,16 @@
+export const FOURNISSEURS_LIST = [
+  'GPC',
+  'Price MyPhone',
+  'DVK',
+  'Hichem',
+  'Phone X',
+  'Phone Tech',
+  'Jamil',
+  'DBC',
+  'SebPhone',
+  'Louise',
+  'Anderlecht',
+  'Molenbeek',
+  'Rue Neuve',
+  'Marrakech',
+]

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MAGASINS, MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS_PHYSIQUES } from '../../utils/magasins'
+import { MAGASINS, MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useCurrentUser, useIsAdmin } from '../../hooks/usePermissions'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
+import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
 
 export default function Registre() {
   const currentUser = useCurrentUser()
@@ -76,6 +77,7 @@ export default function Registre() {
     phone_condition: 'occasion',
     phone_grade: 'Bon état',
     fournisseur: 'SebPhone',
+    fournisseur_custom: '',
     purchase_price: '',
     payment_method: 'Cash',
     cash_amount: '',
@@ -281,7 +283,7 @@ export default function Registre() {
         seller_id_front_url: form.seller_id_front_url,
         seller_id_back_url:  form.seller_id_back_url,
         magasin_id:          form.magasin_id,
-        fournisseur:         form.fournisseur,
+        fournisseur:         form.fournisseur === '__custom__' ? form.fournisseur_custom : form.fournisseur,
         transaction_date:    new Date(form.transaction_date).toISOString(),
       }
 
@@ -355,7 +357,7 @@ export default function Registre() {
             imei:             p.imei || null,
             battery_health:   p.battery_health ? parseInt(p.battery_health) : null,
             status:           'disponible',
-            fournisseur:      form.fournisseur || 'SebPhone',
+            fournisseur:      (form.fournisseur === '__custom__' ? form.fournisseur_custom : form.fournisseur) || 'SebPhone',
             magasins:         [form.magasin_id],
             stock_location:   form.magasin_id,
             added_by_magasin: form.magasin_id,
@@ -420,7 +422,8 @@ export default function Registre() {
       seller_id_front_url: entry.seller_id_front_url || '',
       seller_id_back_url:  entry.seller_id_back_url || '',
       magasin_id:          entry.magasin_id || 'anderlecht',
-      fournisseur:         entry.fournisseur || 'SebPhone',
+      fournisseur:         FOURNISSEURS_LIST.includes(entry.fournisseur) ? entry.fournisseur : (entry.fournisseur ? '__custom__' : 'SebPhone'),
+      fournisseur_custom:  FOURNISSEURS_LIST.includes(entry.fournisseur) ? '' : (entry.fournisseur || ''),
       transaction_date:    new Date().toISOString().split('T')[0],
       notes:               '',
     })
@@ -755,7 +758,8 @@ export default function Registre() {
                                 storage:           entry.storage || '',
                                 phone_condition:   entry.phone_condition || 'occasion',
                                 phone_grade:       entry.phone_grade || 'Bon état',
-                                fournisseur:       entry.fournisseur || 'SebPhone',
+                                fournisseur:       FOURNISSEURS_LIST.includes(entry.fournisseur) ? entry.fournisseur : (entry.fournisseur ? '__custom__' : 'SebPhone'),
+                                fournisseur_custom: FOURNISSEURS_LIST.includes(entry.fournisseur) ? '' : (entry.fournisseur || ''),
                                 purchase_price:    entry.purchase_price || '',
                                 payment_method:    entry.payment_method || 'Cash',
                                 cash_amount:       '',
@@ -1275,12 +1279,20 @@ export default function Registre() {
                       onChange={(e) => setForm((f) => ({ ...f, fournisseur: e.target.value }))}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                     >
-                      <option value="SebPhone">💻 SebPhone</option>
-                      {MAGASINS_PHYSIQUES.map((m) => {
-                        const short = m.nom.replace('Seb Telecom — ', '')
-                        return <option key={m.id} value={short}>📍 {short}</option>
-                      })}
+                      {FOURNISSEURS_LIST.map((f) => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                      <option value="__custom__">+ Ajouter un fournisseur</option>
                     </select>
+                    {form.fournisseur === '__custom__' && (
+                      <input
+                        value={form.fournisseur_custom}
+                        onChange={(e) => setForm((f) => ({ ...f, fournisseur_custom: e.target.value }))}
+                        placeholder="Nom du nouveau fournisseur"
+                        className="w-full mt-2 px-3 py-2 border border-[#00B4CC] rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                        autoFocus
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="text-xs font-medium text-gray-600 mb-1 block">Date de transaction *</label>

@@ -24,25 +24,13 @@ const INVOICE_TEMPLATE_ID  = 'template_pzv7w8d'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 import { GOOGLE_REVIEW_LINKS } from '../../data/googleReviews'
+import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
 import Etiquette from '../../components/admin/Etiquette'
 
 
 const CONDITIONS = ['neuf', 'reconditionne', 'occasion']
 const CONDITION_LABELS = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
 const GRADES = ['Bon état', 'Très bon état', 'Comme neuf', 'Neuf']
-const FOURNISSEURS = ['SebPhone', 'Marrakech', 'Molenbeek', 'Louise', 'Anderlecht']
-const FOURNISSEURS_LIST = [
-  'SebPhone',
-  'Louise',
-  'Anderlecht',
-  'Molenbeek',
-  'Rue Neuve',
-  'Marrakech',
-  'Zainab Debboun',
-  'Fournisseur externe 1',
-  'Fournisseur externe 2',
-  'Autre',
-]
 const CATEGORIES = [
   { value: 'telephone', label: '📱 Téléphone', icon: '📱' },
   { value: 'tablette', label: '📟 Tablette', icon: '📟' },
@@ -522,7 +510,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
         notes:          notes || null,
         battery_health: batteryHealth !== '' ? parseInt(batteryHealth) : null,
         imei:           imei.trim() || null,
-        fournisseur:    fournisseur || null,
+        fournisseur:    (fournisseur && fournisseur !== '__custom__') ? fournisseur : null,
         stock_location: stockLocation || null,
         parts_replaced: condition === 'reconditionne' ? (partsReplaced || []) : [],
         face_id_status: partsReplaced.includes('Face ID / Touch ID') ? faceIdStatus : null,
@@ -1122,10 +1110,10 @@ function PhoneModal({ phone, onClose, onSaved }) {
               <div>
                 <label className="text-xs text-[#555] mb-1 block">Fournisseur</label>
                 <select
-                  value={FOURNISSEURS_LIST.includes(fournisseur) ? fournisseur : (fournisseur ? 'Autre' : '')}
+                  value={FOURNISSEURS_LIST.includes(fournisseur) ? fournisseur : (fournisseur ? '__custom__' : '')}
                   onChange={(e) => {
-                    if (e.target.value === 'Autre') {
-                      setFournisseur(fournisseurCustom)
+                    if (e.target.value === '__custom__') {
+                      setFournisseur('__custom__')
                     } else {
                       setFournisseur(e.target.value)
                     }
@@ -1133,17 +1121,21 @@ function PhoneModal({ phone, onClose, onSaved }) {
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none mb-2"
                 >
                   <option value="">— Choisir —</option>
-                  {FOURNISSEURS_LIST.map((f) => <option key={f} value={f}>{f}</option>)}
+                  {FOURNISSEURS_LIST.map((f) => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                  <option value="__custom__">+ Ajouter un fournisseur</option>
                 </select>
-                {(!FOURNISSEURS_LIST.includes(fournisseur)) && (
+                {(fournisseur === '__custom__' || (fournisseur && !FOURNISSEURS_LIST.includes(fournisseur))) && (
                   <input
-                    value={fournisseurCustom}
+                    value={fournisseur === '__custom__' ? fournisseurCustom : fournisseur}
                     onChange={(e) => {
                       setFournisseurCustom(e.target.value)
                       setFournisseur(e.target.value)
                     }}
-                    placeholder="Nom du fournisseur"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                    placeholder="Nom du nouveau fournisseur"
+                    className="w-full mt-2 px-3 py-2 border border-[#00B4CC] rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                    autoFocus
                   />
                 )}
               </div>
