@@ -169,7 +169,7 @@ export default function ProLogin() {
       <div className="bg-white rounded-2xl shadow-md p-8">
         <div className="text-center mb-6">
           <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">{t('pro_title')}</h1>
-          <p className="text-sm text-[#555] mt-1">Accédez à nos tarifs et stocks B2B</p>
+          <p className="text-sm text-[#555] mt-1">{t('pro_subtitle')}</p>
         </div>
 
         <div className="flex bg-gray-100 rounded-xl p-1 mb-6">

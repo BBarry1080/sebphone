@@ -44,6 +44,7 @@ const CONDITION_LABEL = {
 
 import { MAGASINS } from '../utils/magasins'
 import { useLanguage } from '../contexts/LanguageContext'
+import { translateColor } from '../utils/translateColor'
 
 const translateRepair = (name, t) => {
   const map = {
@@ -250,7 +251,7 @@ export default function ModelDetailPage() {
                         onClick={() => setFilterColor(filterColor === c ? null : c)}
                         className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all ${filterColor === c ? 'border-[#1B2A4A] scale-110' : 'border-gray-300 hover:border-gray-400'}`}
                         style={{ background: colorToHex(c) }}
-                        title={c}
+                        title={translateColor(c, t)}
                       />
                     ))}
                   </div>
@@ -419,7 +420,7 @@ export default function ModelDetailPage() {
                               ) : null}
                               {(phone.storage || phone.color) && (
                                 <p className="text-[11px] text-[#888] mt-1">
-                                  {[phone.storage, phone.color].filter(Boolean).join(' · ')}
+                                  {[phone.storage, translateColor(phone.color, t)].filter(Boolean).join(' · ')}
                                 </p>
                               )}
                               {phone.has_esim && (
@@ -487,7 +488,7 @@ export default function ModelDetailPage() {
 
                         <div className="space-y-1.5 mb-3 text-xs text-[#555]">
                           {(phone.storage || phone.color) && (
-                            <p>{[phone.storage, phone.color].filter(Boolean).join(' · ')}</p>
+                            <p>{[phone.storage, translateColor(phone.color, t)].filter(Boolean).join(' · ')}</p>
                           )}
                           {phone.has_esim && (
                             <span className="inline-flex items-center gap-1 text-xs font-bold bg-[#1B2A4A] text-white px-2 py-0.5 rounded-lg">

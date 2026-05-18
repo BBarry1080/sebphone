@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import StatusBadge from '../ui/StatusBadge';
 import GradeTag from '../ui/GradeTag';
 import Button from '../ui/Button';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const conditionLabel = {
   neuf: 'Neuf',
@@ -14,6 +15,7 @@ const conditionLabel = {
 
 export default function PhoneDetail({ phone, onClose }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [delivery, setDelivery] = useState('collect');
 
   if (!phone) return null;
@@ -70,7 +72,7 @@ export default function PhoneDetail({ phone, onClose }) {
                   </span>
                 </div>
                 <p className="text-3xl font-bold text-[#00B4CC]">{phone.price}€</p>
-                <p className="text-sm text-[#555555] mt-0.5">Acompte à la réservation : <strong>50€</strong></p>
+                <p className="text-sm text-[#555555] mt-0.5">{t('confirm_deposit_label')} <strong>50€</strong></p>
               </div>
               <StatusBadge status={phone.status} />
             </div>

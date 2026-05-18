@@ -2,6 +2,7 @@ export const ACCESSORY_PACKS = [
   {
     id: 'none',
     label: 'Sans pack',
+    labelKey: 'form_no_pack',
     price: 0,
     originalPrice: null,
     items: [],
@@ -10,6 +11,7 @@ export const ACCESSORY_PACKS = [
   {
     id: 'essentiel',
     label: 'Pack Essentiel',
+    labelKey: 'form_pack_essentiel',
     price: 15,
     originalPrice: 30,
     items: ['Coque de protection', 'Verre trempé'],

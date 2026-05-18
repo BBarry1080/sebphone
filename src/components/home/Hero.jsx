@@ -79,7 +79,7 @@ export default function Hero() {
               className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2 mb-6"
             >
               <Star size={14} className="text-yellow-300 fill-yellow-300" />
-              <span className="text-white text-sm font-medium">Boutique certifiée Belgique</span>
+              <span className="text-white text-sm font-medium">{t('hero_badge_certified')}</span>
             </motion.div>
 
             <motion.h1

@@ -10,6 +10,7 @@ import { charmPrice } from '../utils/charmPrice';
 import { useCart } from '../context/CartContext';
 import Spinner from '../components/ui/Spinner';
 import { useLanguage } from '../contexts/LanguageContext';
+import { translateColor } from '../utils/translateColor';
 
 const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' };
 
@@ -228,7 +229,7 @@ export default function PhoneDetailPage() {
           {/* Color selection */}
           <div>
             <p className="font-semibold text-[#1B2A4A] text-sm mb-3">
-              {t('phone_color_label')} <span className="font-normal text-[#555555]">{colors[activeColor].name}</span>
+              {t('phone_color_label')} <span className="font-normal text-[#555555]">{translateColor(colors[activeColor].name, t)}</span>
             </p>
             <div className="flex gap-2 flex-wrap">
               {colors.map((c, i) => (
@@ -240,7 +241,7 @@ export default function PhoneDetailPage() {
                   }`}
                 >
                   <span className="w-4 h-4 rounded-full border border-gray-300" style={{ backgroundColor: c.hex }} />
-                  <span className="text-xs font-medium text-[#1B2A4A]">{c.name}</span>
+                  <span className="text-xs font-medium text-[#1B2A4A]">{translateColor(c.name, t)}</span>
                 </button>
               ))}
             </div>
@@ -332,7 +333,7 @@ export default function PhoneDetailPage() {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#1B2A4A] text-sm leading-tight">{phone.name}</p>
                 <p className="text-xs text-[#555555]">
-                  {colors[activeColor].name} · {GRADES_CONFIG[activeGrade].label} · {storages[activeStorage].label}
+                  {translateColor(colors[activeColor].name, t)} · {GRADES_CONFIG[activeGrade].label} · {storages[activeStorage].label}
                 </p>
               </div>
               <div className="text-right flex-shrink-0">

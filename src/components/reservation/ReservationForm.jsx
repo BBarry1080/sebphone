@@ -433,7 +433,7 @@ export default function ReservationForm({ phone }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[10px] text-green-600 font-medium mb-1.5">✓ Aucune réparation — État original</p>
+                  <p className="text-[10px] text-green-600 font-medium mb-1.5">✓ {t('confirm_no_repair')}</p>
                 )
               ) : phone?.condition === 'reconditionne' && allParts.length > 0 ? (
                 <div className="flex flex-col gap-0.5 mb-1.5">
@@ -463,7 +463,7 @@ export default function ReservationForm({ phone }) {
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-[#555555]">Acompte à la réservation : <strong>50€</strong></p>
+              <p className="text-[10px] text-[#555555]">{t('confirm_deposit_label')} <strong>50€</strong></p>
             </div>
           </div>
         )
@@ -549,7 +549,7 @@ export default function ReservationForm({ phone }) {
                       {MAGASINS[availableMagasins[0].id]?.adresse}
                     </p>
                     <p className="text-xs text-[#00B4CC] mt-1 font-medium">
-                      ✓ Ce téléphone est uniquement disponible ici
+                      {t('form_only_here')}
                     </p>
                   </div>
                 </div>
@@ -579,7 +579,7 @@ export default function ReservationForm({ phone }) {
             )}
             <div>
               <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
-                <span className="flex items-center gap-1"><Calendar size={13} /> Date de passage souhaitée</span>
+                <span className="flex items-center gap-1"><Calendar size={13} /> {t('form_date')}</span>
               </label>
               <input
                 type="date"
@@ -646,7 +646,7 @@ export default function ReservationForm({ phone }) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-xs text-[#888]">Aucun accessoire</p>
+                  <p className="text-xs text-[#888]">{t('form_no_accessory')}</p>
                 )}
               </button>
             </div>
@@ -675,11 +675,11 @@ export default function ReservationForm({ phone }) {
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="font-semibold text-sm text-[#1B2A4A]">Remplacer par une batterie neuve à 100%</p>
+                <p className="font-semibold text-sm text-[#1B2A4A]">{t('form_battery_replace')}</p>
                 <span className="text-lg font-bold text-[#00B4CC]">+20€</span>
               </div>
               <p className="text-xs text-[#555]">
-                La batterie actuelle est à <strong>{phone.battery_health}%</strong>. Pour 20€, on la remplace par une batterie neuve à 100% avant la remise du téléphone.
+                {t('form_battery_desc').replace('{percent}', phone.battery_health)}
               </p>
             </div>
           </button>
@@ -713,7 +713,7 @@ export default function ReservationForm({ phone }) {
               value={promoInput}
               onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyPromo())}
-              placeholder="Entrez votre code promo"
+              placeholder={t('form_promo_placeholder')}
               className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all font-mono uppercase"
             />
             <button

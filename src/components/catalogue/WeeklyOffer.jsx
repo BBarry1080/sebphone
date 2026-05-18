@@ -6,6 +6,7 @@ import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 import { getStartingPrice } from '../../data/startingPrices';
 import { charmPrice } from '../../utils/charmPrice';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { translateColor } from '../../utils/translateColor';
 
 const COLOR_HEX = {
   'noir': '#1C1C1E', 'minuit': '#1C1C1E', 'black': '#1C1C1E', 'midnight': '#1C1C1E',
@@ -141,7 +142,7 @@ export default function WeeklyOffer() {
     { Icon: CheckCircle, text: t('weekly_badge_guarantee') },
     { Icon: Truck,       text: t('weekly_badge_delivery') },
     { Icon: RotateCcw,   text: t('weekly_badge_return') },
-    { Icon: Package,     text: stockCount === null ? '...' : `${stockCount} disponibles` },
+    { Icon: Package,     text: stockCount === null ? '...' : `${stockCount} ${t('weekly_available')}` },
   ];
 
   return (
@@ -161,7 +162,7 @@ export default function WeeklyOffer() {
                 {modelName}
               </h2>
               <p className="text-gray-400 text-sm md:text-base leading-relaxed">
-                Testés, certifiés, garantis. Jusqu'à −60 % par rapport au neuf.
+                {t('weekly_desc')}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -231,7 +232,7 @@ export default function WeeklyOffer() {
               {colorNames.length > 1 && (
                 <div className={outOfStock ? 'pointer-events-none' : ''}>
                   <p className="text-xs text-[#555555] mb-2">
-                    {t('weekly_color')} <span className="font-medium text-[#1B2A4A]">{currentColor}</span>
+                    {t('weekly_color')} <span className="font-medium text-[#1B2A4A]">{translateColor(currentColor, t)}</span>
                   </p>
                   <div className="flex gap-2">
                     {colorNames.map((c, i) => (
@@ -268,7 +269,7 @@ export default function WeeklyOffer() {
                   onClick={() => navigate(`/modele/${modelName.toLowerCase().replace(/\s+/g, '-')}`)}
                   className="w-full flex items-center justify-center gap-2 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold py-3 rounded-full transition-colors cursor-pointer text-sm"
                 >
-                  Voir l'offre →
+                  {t('weekly_see_offer')}
                 </button>
               )}
             </div>

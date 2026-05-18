@@ -6,6 +6,7 @@ import { getPhoneImage } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 import { charmPrice } from '../../utils/charmPrice'
 import { useLanguage } from '../../contexts/LanguageContext';
+import { translateColor } from '../../utils/translateColor';
 
 function displayPrice(phone) {
   if (phone.condition === 'reconditionne') {
@@ -52,7 +53,7 @@ function PhoneCard({ phone }) {
         </span>
       )}
       <p className="font-semibold text-[#1B2A4A] text-sm mt-2 mb-1 leading-tight">{phone.model}</p>
-      <p className="text-xs text-gray-400 mb-2">{phone.storage} · {phone.color}</p>
+      <p className="text-xs text-gray-400 mb-2">{phone.storage} · {translateColor(phone.color, t)}</p>
       <p className="text-sm mt-2">
         <span className="text-gray-400 text-xs">{t('featured_from')} </span>
         <span className="font-bold text-[#1B2A4A] text-lg">{displayPrice(phone)}€</span>

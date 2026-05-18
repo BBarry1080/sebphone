@@ -5,6 +5,7 @@ import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 import { charmPrice } from '../../utils/charmPrice'
 import { useLanguage } from '../../contexts/LanguageContext'
+import { translateColor } from '../../utils/translateColor'
 
 export const colorToHex = (colorName) => {
   const map = {
@@ -79,7 +80,7 @@ function GroupCard({ group }) {
             {group.colors.slice(0, 6).map((c) => (
               <button key={c} onClick={(e) => { e.stopPropagation(); setSelectedColor(c) }}
                 className={`rounded-full border-2 flex-shrink-0 transition-transform cursor-pointer ${selectedColor === c ? 'w-5 h-5 border-[#1B2A4A] scale-110' : 'w-3.5 h-3.5 border-gray-300 hover:border-gray-500'}`}
-                style={{ background: colorToHex(c) }} title={c} />
+                style={{ background: colorToHex(c) }} title={translateColor(c, t)} />
             ))}
             {group.colors.length > 6 && <span className="text-[10px] text-gray-400">+{group.colors.length - 6}</span>}
           </div>
@@ -135,7 +136,7 @@ function GroupCardGrid({ group }) {
             {group.colors.slice(0, 5).map((c) => (
               <button key={c} onClick={(e) => { e.stopPropagation(); setSelectedColor(c) }}
                 className={`rounded-full border-2 flex-shrink-0 transition-transform cursor-pointer ${selectedColor === c ? 'w-4 h-4 border-[#1B2A4A] scale-110' : 'w-3 h-3 border-gray-300'}`}
-                style={{ background: colorToHex(c) }} title={c} />
+                style={{ background: colorToHex(c) }} title={translateColor(c, t)} />
             ))}
             {group.colors.length > 5 && <span className="text-[10px] text-gray-400">+{group.colors.length - 5}</span>}
           </div>
@@ -202,7 +203,7 @@ function PhoneCard({ phone, onClick }) {
         {colors.length > 0 && (
           <div className="flex gap-1.5 mb-2">
             {colors.map((c) => (
-              <span key={c} className="w-4 h-4 rounded-full border border-gray-300" style={{ background: colorToHex(c) }} title={c} />
+              <span key={c} className="w-4 h-4 rounded-full border border-gray-300" style={{ background: colorToHex(c) }} title={translateColor(c, t)} />
             ))}
           </div>
         )}

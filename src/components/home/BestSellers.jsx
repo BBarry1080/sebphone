@@ -7,6 +7,7 @@ import { getColorHex } from '../../utils/colors'
 import { getStartingPrice } from '../../data/startingPrices'
 import { charmPrice } from '../../utils/charmPrice'
 import { useLanguage } from '../../contexts/LanguageContext';
+import { translateColor } from '../../utils/translateColor';
 
 function displayPrice(phone) {
   if (phone.condition === 'reconditionne') {
@@ -18,6 +19,7 @@ function displayPrice(phone) {
 
 function BestSellerCard({ phone }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const slug = (phone.model || '').toLowerCase().replace(/\s+/g, '-');
   const imgSrc = getPhoneImage(phone.model, phone.color);
 
@@ -56,7 +58,7 @@ function BestSellerCard({ phone }) {
           className="w-4 h-4 rounded-full flex-shrink-0"
           style={{ backgroundColor: getColorHex(phone.color), boxShadow: '0 0 0 1px rgba(0,0,0,0.2)' }}
         />
-        <span className="text-xs text-gray-500">{phone.color}</span>
+        <span className="text-xs text-gray-500">{translateColor(phone.color, t)}</span>
       </div>
 
       <span className={`text-xs font-medium px-2 py-0.5 rounded-full mb-2 inline-block ${conditionClass}`}>
