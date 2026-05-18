@@ -43,12 +43,17 @@ export default function ProAdmin() {
   const fetchAll = async () => {
     setLoading(true)
     if (!isSupabaseReady) { setLoading(false); return }
-    const [{ data: ph }, { data: ps }] = await Promise.all([
-      supabase.from('phones').select('*').eq('status', 'disponible').order('created_at', { ascending: false }),
+    const [{ data: phonesData }, { data: ps }] = await Promise.all([
+      supabase
+        .from('phones')
+        .select('*')
+        .or('fournisseur.eq.Price MyPhone,added_by_magasin.eq.sebphone')
+        .eq('status', 'disponible')
+        .order('created_at', { ascending: false }),
       supabase.from('pro_stock').select('*'),
     ])
     await fetchAccounts()
-    setPhones(ph || [])
+    setPhones(phonesData || [])
     setProStock(ps || [])
     setLoading(false)
   }
