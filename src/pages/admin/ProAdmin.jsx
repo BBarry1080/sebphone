@@ -19,7 +19,6 @@ export default function ProAdmin() {
   const [showImportCSV, setShowImportCSV] = useState(false)
   const [csvData, setCsvData] = useState([])
   const [importing, setImporting] = useState(false)
-  const [marge, setMarge] = useState(20) // % de marge par défaut
 
   const fetchAccounts = async () => {
     if (!isSupabaseReady) return
@@ -266,8 +265,7 @@ export default function ProAdmin() {
 
     const color = convertColor(colorPart.trim())
 
-    // Prix de vente avec marge
-    const prixVente = Math.ceil(parseFloat(prixAchat) * (1 + marge / 100))
+    const prixVente = parseFloat(prixAchat) // prix achat = prix vente par défaut
 
     return {
       name: model,
@@ -577,24 +575,30 @@ export default function ProAdmin() {
               </button>
             </div>
 
-            {/* Marge */}
-            <div className="mb-4 p-4 bg-blue-50 rounded-xl">
+            {/* Coller le CSV directement */}
+            <div className="mb-4">
               <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
-                Marge bénéficiaire (%)
+                Coller le contenu CSV directement
               </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  value={marge}
-                  onChange={(e) => setMarge(Number(e.target.value))}
-                  className="w-24 px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-center"
-                  min="0" max="200"
-                />
-                <span className="text-sm text-gray-600">
-                  Ex: achat 100€ → vente {Math.ceil(100 * (1 + marge / 100))}€
-                </span>
-              </div>
+              <textarea
+                rows={6}
+                placeholder={`Collez ici le contenu CSV Price MyPhone :\n"Apple iPhone 13 128GB Eco Repair Black",100\n"Apple iPhone 14 256GB Excellent Blue",200`}
+                onChange={(e) => {
+                  if (!e.target.value.trim()) return
+                  // Parse le texte collé directement
+                  const lines = e.target.value.split('\n').filter((l) => l.trim())
+                  const parsed = lines.map((line) => {
+                    const match = line.match(/"([^"]+)",(\d+)/)
+                    if (!match) return null
+                    return parseCSVLine(match[1], match[2])
+                  }).filter(Boolean)
+                  if (parsed.length > 0) setCsvData(parsed)
+                }}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-mono focus:border-[#00B4CC] outline-none"
+              />
             </div>
+
+            <div className="text-center text-xs text-gray-400 my-2">— ou —</div>
 
             {/* Upload */}
             <div className="mb-4">
@@ -643,7 +647,16 @@ export default function ProAdmin() {
                             </span>
                           </td>
                           <td className="px-2 py-1.5 text-gray-500">{p.purchase_price}€</td>
-                          <td className="px-2 py-1.5 font-bold text-green-600">{p.price}€</td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="number"
+                              value={p.price}
+                              onChange={(e) => setCsvData((prev) => prev.map((item, idx) =>
+                                idx === i ? { ...item, price: parseFloat(e.target.value) || 0 } : item
+                              ))}
+                              className="w-20 px-1.5 py-1 border border-gray-200 rounded-lg text-xs font-bold text-center text-green-700"
+                            />
+                          </td>
                         </tr>
                       ))}
                       {csvData.length > 10 && (
