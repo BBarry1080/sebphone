@@ -284,7 +284,7 @@ export default function SurCommande() {
               </div>
 
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-5 text-sm text-orange-700">
-                ⏱️ Délai de commande : <strong>2 à 5 jours ouvrables</strong><br />
+                ⏱️ Délai de commande : <strong>1h à 72h</strong><br />
                 📦 Neuf sous scellé · Garantie 1 an Apple · 2 ans SebPhone
               </div>
 

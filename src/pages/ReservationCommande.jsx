@@ -54,7 +54,7 @@ export default function ReservationCommande() {
           Réserver <span className="text-[#00B4CC]">{model}</span>
         </h1>
         <p className="text-[#555555] text-sm">
-          {color} · {storage} · Neuf sous scellé · Délai 2 à 5 jours
+          {color} · {storage} · Neuf sous scellé · Délai 1h à 72h
         </p>
       </div>
 
