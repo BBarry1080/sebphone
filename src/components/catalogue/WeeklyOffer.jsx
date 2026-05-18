@@ -5,6 +5,7 @@ import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
 import { getStartingPrice } from '../../data/startingPrices';
 import { charmPrice } from '../../utils/charmPrice';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const COLOR_HEX = {
   'noir': '#1C1C1E', 'minuit': '#1C1C1E', 'black': '#1C1C1E', 'midnight': '#1C1C1E',
@@ -23,6 +24,7 @@ function getHex(colorName) {
 
 export default function WeeklyOffer() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [offerPhone, setOfferPhone]       = useState(null);
   const [relatedPhones, setRelatedPhones] = useState([]);
   const [activeStorage, setActiveStorage] = useState(0);
@@ -136,9 +138,9 @@ export default function WeeklyOffer() {
     : rawPrice;
 
   const badges = [
-    { Icon: CheckCircle, text: 'Garantie 24 mois' },
-    { Icon: Truck,       text: 'Livraison 1h - 24h max' },
-    { Icon: RotateCcw,   text: 'Retour 30 jours' },
+    { Icon: CheckCircle, text: t('weekly_badge_guarantee') },
+    { Icon: Truck,       text: t('weekly_badge_delivery') },
+    { Icon: RotateCcw,   text: t('weekly_badge_return') },
     { Icon: Package,     text: stockCount === null ? '...' : `${stockCount} disponibles` },
   ];
 
@@ -153,7 +155,7 @@ export default function WeeklyOffer() {
           <div className="md:col-span-3 p-7 md:p-10 flex flex-col justify-between gap-6">
             <div>
               <p className="text-xs font-bold uppercase tracking-widest text-[#00B4CC] mb-3">
-                Offre de la semaine
+                {t('weekly_title')}
               </p>
               <h2 className="font-poppins font-bold text-white text-2xl md:text-3xl xl:text-4xl leading-tight mb-3">
                 {modelName}
@@ -181,14 +183,14 @@ export default function WeeklyOffer() {
               {outOfStock && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 rounded-2xl bg-white/60 backdrop-blur-[1px]">
                   <p className="text-center text-sm font-bold text-gray-600 px-4">
-                    Fin de stock<br />
+                    {t('weekly_end_of_stock')}<br />
                     <span className="font-normal text-xs text-gray-400">Revenez la semaine prochaine</span>
                   </p>
                 </div>
               )}
 
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#00B4CC]">
-                Offre de la semaine
+                {t('weekly_title')}
               </p>
 
               <div className="h-32 flex items-center justify-center overflow-hidden">
@@ -207,7 +209,7 @@ export default function WeeklyOffer() {
 
               {storages.length > 1 && (
                 <div className={outOfStock ? 'pointer-events-none' : ''}>
-                  <p className="text-xs text-[#555555] mb-2">Capacité</p>
+                  <p className="text-xs text-[#555555] mb-2">{t('weekly_capacity')}</p>
                   <div className="flex gap-2 flex-wrap">
                     {storages.map((s, i) => (
                       <button
@@ -229,7 +231,7 @@ export default function WeeklyOffer() {
               {colorNames.length > 1 && (
                 <div className={outOfStock ? 'pointer-events-none' : ''}>
                   <p className="text-xs text-[#555555] mb-2">
-                    Couleur : <span className="font-medium text-[#1B2A4A]">{currentColor}</span>
+                    {t('weekly_color')} <span className="font-medium text-[#1B2A4A]">{currentColor}</span>
                   </p>
                   <div className="flex gap-2">
                     {colorNames.map((c, i) => (
@@ -250,7 +252,7 @@ export default function WeeklyOffer() {
               )}
 
               <div>
-                <p className="text-xs text-[#555555]">À partir de</p>
+                <p className="text-xs text-[#555555]">{t('weekly_from')}</p>
                 <p className="font-poppins font-bold text-[#1B2A4A] text-2xl">{charmPrice(displayPrice)}€</p>
               </div>
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Shield, Star, MapPin, ExternalLink, X } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const STORES = [
   { name: "Anderlecht", address: "Chaussée de Mons 711, 1070 Anderlecht", maps: "https://maps.google.com/?q=Chaussée+de+Mons+711+Anderlecht" },
@@ -13,12 +14,13 @@ const STORES = [
 ]
 
 function StoresModal({ onClose }) {
+  const { t } = useLanguage();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-poppins font-bold text-[#1B2A4A] text-lg">Nos points de vente</h2>
+          <h2 className="font-poppins font-bold text-[#1B2A4A] text-lg">{t('hero_cta_stores')}</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
             <X size={18} />
           </button>
@@ -48,6 +50,7 @@ function StoresModal({ onClose }) {
 
 export default function Hero() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [showStores, setShowStores] = useState(false);
 
   return (
@@ -85,11 +88,11 @@ export default function Hero() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-white font-poppins font-extrabold text-4xl md:text-5xl xl:text-6xl leading-tight mb-4"
             >
-              DÉCOUVREZ
+              {t('hero_discover')}
               <br />
-              <span className="text-[#00B4CC]" style={{ textShadow: '0 0 40px rgba(0,180,204,0.4)' }}>VOTRE PROCHAIN</span>
+              <span className="text-[#00B4CC]" style={{ textShadow: '0 0 40px rgba(0,180,204,0.4)' }}>{t('hero_your_next')}</span>
               <br />
-              TÉLÉPHONE.
+              {t('hero_phone')}
             </motion.h1>
 
             <motion.p
@@ -98,8 +101,7 @@ export default function Hero() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-white/80 text-lg md:text-xl mb-8 leading-relaxed"
             >
-              Neufs, Occasions &amp; Reconditionnés au meilleur prix.<br />
-              Livraison partout en Belgique.
+              {t('hero_subtitle')}
             </motion.p>
 
             <motion.div
@@ -112,21 +114,21 @@ export default function Hero() {
                 onClick={() => navigate('/boutique')}
                 className="flex items-center justify-center gap-2 bg-[#00B4CC] hover:bg-[#009ab0] text-white font-bold px-8 py-4 rounded-xl text-base transition-all duration-200 hover:scale-105 active:scale-95 min-h-[56px]"
               >
-                Voir la boutique
+                {t('hero_cta_shop')}
                 <ArrowRight size={20} />
               </button>
               <button
                 onClick={() => navigate('/rachat')}
                 className="flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-medium px-8 py-4 rounded-xl text-base transition-all duration-200 border border-white/30 min-h-[56px]"
               >
-                Revendre mon téléphone
+                {t('hero_cta_sell')}
               </button>
               <button
                 onClick={() => setShowStores(true)}
                 className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white font-medium px-8 py-4 rounded-xl text-base transition-all duration-200 border border-white/20 min-h-[56px]"
               >
                 <MapPin size={18} />
-                Nos points de vente
+                {t('hero_cta_stores')}
               </button>
             </motion.div>
 
@@ -138,8 +140,8 @@ export default function Hero() {
               className="flex items-center gap-8 mt-10"
             >
               {[
-                { value: '5000+', label: 'Téléphones vendus' },
-                { value: '24 mois', label: 'Garantie' },
+                { value: '5000+', label: t('hero_stat_phones') },
+                { value: '24 mois', label: t('hero_stat_guarantee') },
                 { value: '1h-24h max', label: 'Livraison' },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
@@ -226,8 +228,8 @@ export default function Hero() {
             >
               <Shield size={20} className="text-[#22C55E]" />
               <div>
-                <p className="text-[#1B2A4A] font-bold text-xs">Certifié</p>
-                <p className="text-[#555555] text-[10px]">Garantie 24 mois</p>
+                <p className="text-[#1B2A4A] font-bold text-xs">{t('hero_certified')}</p>
+                <p className="text-[#555555] text-[10px]">{t('hero_guarantee_24')}</p>
               </div>
             </motion.div>
           </motion.div>

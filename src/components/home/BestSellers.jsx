@@ -6,6 +6,7 @@ import { getPhoneImage } from '../../utils/phoneImage';
 import { getColorHex } from '../../utils/colors'
 import { getStartingPrice } from '../../data/startingPrices'
 import { charmPrice } from '../../utils/charmPrice'
+import { useLanguage } from '../../contexts/LanguageContext';
 
 function displayPrice(phone) {
   if (phone.condition === 'reconditionne') {
@@ -68,6 +69,7 @@ function BestSellerCard({ phone }) {
 }
 
 export default function BestSellers() {
+  const { t } = useLanguage();
   const scrollRef = useRef(null);
   const [phones, setPhones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,8 +106,8 @@ export default function BestSellers() {
         <div className="flex items-end justify-between mb-8">
           <div>
             <h2 className="font-poppins font-bold text-2xl md:text-3xl text-[#1B2A4A]">
-              Les best-sellers.
-              <span className="text-[#888888] font-normal"> Ceux que tout le monde s'arrache.</span>
+              {t('bestsellers_title')}
+              <span className="text-[#888888] font-normal"> {t('bestsellers_subtitle')}</span>
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -125,7 +127,7 @@ export default function BestSellers() {
               to="/boutique"
               className="flex items-center gap-1 text-sm font-medium text-[#00B4CC] hover:underline whitespace-nowrap"
             >
-              Voir tout
+              {t('bestsellers_see_all')}
               <ArrowRight size={16} />
             </Link>
           </div>
@@ -144,7 +146,7 @@ export default function BestSellers() {
             ? (
                 <div className="flex flex-col items-center gap-2 text-gray-300 py-10 w-full justify-center">
                   <Smartphone size={48} strokeWidth={1} />
-                  <p className="text-sm">Aucun téléphone disponible</p>
+                  <p className="text-sm">{t('bestsellers_empty')}</p>
                 </div>
               )
             : phones.map((phone) => (

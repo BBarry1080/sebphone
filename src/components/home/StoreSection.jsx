@@ -1,4 +1,5 @@
 import { MapPin } from 'lucide-react'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 const STORES = [
   { name: "Seb Telecom — Anderlecht", address: "Chaussée de Mons 711, 1070 Anderlecht", active: true },
@@ -11,14 +12,14 @@ const STORES = [
 ]
 
 export default function StoreSection() {
-  const activeCount = STORES.filter((s) => s.active).length
+  const { t } = useLanguage()
 
   return (
     <section className="bg-[#F8F9FA] py-12 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
-          <h2 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Nos points de vente</h2>
-          <p className="text-[#555555] text-sm mt-1">Retrouvez-nous dans {activeCount} magasins en Belgique</p>
+          <h2 className="font-poppins font-bold text-2xl text-[#1B2A4A]">{t('stores_title')}</h2>
+          <p className="text-[#555555] text-sm mt-1">{t('stores_subtitle')}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -33,7 +34,7 @@ export default function StoreSection() {
             >
               {!store.active && (
                 <span className="absolute top-3 right-3 bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  {store.label}
+                  {t('stores_coming_soon')}
                 </span>
               )}
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${

@@ -1,5 +1,6 @@
 import { Smartphone, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { grades } from '../../data/grades';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 function FeatureIcon({ type, icon }) {
   const iconMap = {
@@ -19,6 +20,7 @@ function FeatureIcon({ type, icon }) {
 }
 
 function GradeCard({ grade }) {
+  const { t } = useLanguage();
   const hasSeparator = grade.features.some((f) => f.separator);
 
   const renderFeature = (f, i) => {
@@ -26,7 +28,7 @@ function GradeCard({ grade }) {
       return (
         <div key={i} className="flex items-center gap-2 my-1">
           <div className="flex-1 h-px bg-gray-100" />
-          <span className="text-xs text-gray-400 italic">— ou —</span>
+          <span className="text-xs text-gray-400 italic">{t('grade_or')}</span>
           <div className="flex-1 h-px bg-gray-100" />
         </div>
       );
@@ -76,13 +78,14 @@ function GradeCard({ grade }) {
 }
 
 export default function GradeSystem() {
+  const { t } = useLanguage();
   return (
     <section className="py-14 md:py-20 bg-[#F5F5F5]">
       <div className="max-w-7xl mx-auto px-6">
         <div className="mb-10">
           <h2 className="font-poppins font-bold text-2xl md:text-3xl text-[#1B2A4A]">
-            Nos grades expliqués.
-            <span className="text-[#888888] font-normal"> Trouvez celui qui vous correspond.</span>
+            {t('grade_title')}
+            <span className="text-[#888888] font-normal"> {t('grade_subtitle')}</span>
           </h2>
         </div>
 

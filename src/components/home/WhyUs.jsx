@@ -1,25 +1,15 @@
 import { motion } from 'framer-motion';
 import { ShieldCheck, Star, Truck } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const reasons = [
-  {
-    Icon: ShieldCheck,
-    title: 'Stock certifié',
-    desc: 'Chaque téléphone est testé et vérifié par nos techniciens avant mise en vente. Qualité garantie 24 Mois.',
-  },
-  {
-    Icon: Star,
-    title: 'Qualité originale',
-    desc: 'Nous utilisons uniquement des pièces de qualité originales ou originales certifiées pour nos appareils. Durabilité assurée.',
-  },
-  {
-    Icon: Truck,
-    title: 'Livraison rapide',
-    desc: 'Entre 1h et 24h partout en Belgique. Livraison en Europe sous 24 à 72h. Click & Collect disponible en magasin.',
-  },
+  { Icon: ShieldCheck, titleKey: 'whyus_quality_title', descKey: 'whyus_quality_desc' },
+  { Icon: Star,        titleKey: 'whyus_price_title',   descKey: 'whyus_price_desc' },
+  { Icon: Truck,       titleKey: 'whyus_service_title', descKey: 'whyus_service_desc' },
 ];
 
 export default function WhyUs() {
+  const { t } = useLanguage();
   return (
     <section className="py-16 md:py-20 bg-white">
       <div className="max-w-7xl mx-auto px-6">
@@ -31,17 +21,17 @@ export default function WhyUs() {
           className="text-center mb-12"
         >
           <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#1B2A4A] mb-3">
-            POURQUOI NOUS <span className="text-[#00B4CC]">CHOISIR ?</span>
+            {t('whyus_title')}
           </h2>
           <p className="text-[#555555] text-base max-w-lg mx-auto">
-            SEBPHONE, c'est la confiance, la qualité et le service — depuis votre canapé jusqu'à votre porte.
+            {t('whyus_subtitle')}
           </p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-          {reasons.map(({ Icon, title, desc }, i) => (
+          {reasons.map(({ Icon, titleKey, descKey }, i) => (
             <motion.div
-              key={title}
+              key={titleKey}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -51,8 +41,8 @@ export default function WhyUs() {
               <div className="w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mb-5">
                 <Icon size={32} className="text-[#00B4CC]" />
               </div>
-              <h3 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-3">{title}</h3>
-              <p className="text-[#555555] text-sm leading-relaxed">{desc}</p>
+              <h3 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-3">{t(titleKey)}</h3>
+              <p className="text-[#555555] text-sm leading-relaxed">{t(descKey)}</p>
             </motion.div>
           ))}
         </div>

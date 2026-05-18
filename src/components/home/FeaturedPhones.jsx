@@ -5,13 +5,14 @@ import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { getPhoneImage } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 import { charmPrice } from '../../utils/charmPrice'
+import { useLanguage } from '../../contexts/LanguageContext';
 
 function displayPrice(phone) {
   if (phone.condition === 'reconditionne') {
     const ref = getStartingPrice(phone.model)
-    if (ref) return { label: 'À partir de', price: charmPrice(ref) }
+    if (ref) return charmPrice(ref)
   }
-  return { label: 'À partir de', price: charmPrice(phone.price) }
+  return charmPrice(phone.price)
 };
 
 function toSlug(model) {
@@ -19,13 +20,14 @@ function toSlug(model) {
 }
 
 const conditionBadge = {
-  neuf:          { label: 'Neuf',          cls: 'bg-green-100 text-green-700' },
-  reconditionne: { label: 'Reconditionné', cls: 'bg-cyan-100 text-cyan-700' },
-  occasion:      { label: 'Occasion',      cls: 'bg-blue-100 text-blue-700' },
+  neuf:          { labelKey: 'condition_new',          cls: 'bg-green-100 text-green-700' },
+  reconditionne: { labelKey: 'condition_refurbished',  cls: 'bg-cyan-100 text-cyan-700' },
+  occasion:      { labelKey: 'condition_used',         cls: 'bg-blue-100 text-blue-700' },
 };
 
 function PhoneCard({ phone }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const badge = conditionBadge[phone.condition];
 
   return (
@@ -46,23 +48,22 @@ function PhoneCard({ phone }) {
       </div>
       {badge && (
         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
-          {badge.label}
+          {t(badge.labelKey)}
         </span>
       )}
       <p className="font-semibold text-[#1B2A4A] text-sm mt-2 mb-1 leading-tight">{phone.model}</p>
       <p className="text-xs text-gray-400 mb-2">{phone.storage} · {phone.color}</p>
-      {(() => { const { label, price } = displayPrice(phone); return (
-        <p className="text-sm mt-2">
-          <span className="text-gray-400 text-xs">{label} </span>
-          <span className="font-bold text-[#1B2A4A] text-lg">{price}€</span>
-        </p>
-      ); })()}
+      <p className="text-sm mt-2">
+        <span className="text-gray-400 text-xs">{t('featured_from')} </span>
+        <span className="font-bold text-[#1B2A4A] text-lg">{displayPrice(phone)}€</span>
+      </p>
     </div>
   );
 }
 
 export default function FeaturedPhones() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [phones, setPhones]           = useState([]);
   const [loading, setLoading]         = useState(true);
   const [activeFilter, setActiveFilter] = useState('tous');
@@ -106,7 +107,7 @@ export default function FeaturedPhones() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-8">
           <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#00B4CC] mb-3">
-            NOTRE SÉLECTION ACTUELLE
+            {t('featured_title')}
           </h2>
           <p className="text-[#555555] text-base">Découvrez nos téléphones disponibles dès maintenant</p>
         </div>
@@ -120,7 +121,7 @@ export default function FeaturedPhones() {
                 activeFilter === 'tous' ? 'bg-[#1B2A4A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Tous
+              {t('featured_filter_all')}
             </button>
             {hasNeuf && (
               <button
@@ -129,7 +130,7 @@ export default function FeaturedPhones() {
                   activeFilter === 'neuf' ? 'bg-[#1B2A4A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Neuf
+                {t('featured_filter_new')}
               </button>
             )}
             {hasReconditionne && (
@@ -139,7 +140,7 @@ export default function FeaturedPhones() {
                   activeFilter === 'reconditionne' ? 'bg-[#1B2A4A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Reconditionné
+                {t('featured_filter_refurbished')}
               </button>
             )}
             {hasOccasion && (
@@ -149,7 +150,7 @@ export default function FeaturedPhones() {
                   activeFilter === 'occasion' ? 'bg-[#1B2A4A] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Occasion
+                {t('featured_filter_used')}
               </button>
             )}
           </div>
@@ -164,7 +165,7 @@ export default function FeaturedPhones() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400 text-sm">
-            Aucun téléphone disponible dans cette catégorie.
+            {t('featured_empty')}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -181,7 +182,7 @@ export default function FeaturedPhones() {
               onClick={() => navigate('/boutique')}
               className="flex items-center gap-2 bg-[#1B2A4A] hover:bg-[#243660] text-white font-bold px-8 py-4 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95"
             >
-              Voir tout le catalogue
+              {t('featured_see_all')}
               <ArrowRight size={18} />
             </button>
           </div>
