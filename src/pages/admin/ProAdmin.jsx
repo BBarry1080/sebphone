@@ -13,7 +13,6 @@ export default function ProAdmin() {
   const [pending, setPending]   = useState([])
   const [processedAccounts, setProcessedAccounts] = useState([])
   const [phones, setPhones]     = useState([])
-  const [proStock, setProStock] = useState([])
   const [loading, setLoading]   = useState(true)
   const [processing, setProcessing] = useState(null) // stocke l'id en cours
   const [showImportCSV, setShowImportCSV] = useState(false)
@@ -42,18 +41,14 @@ export default function ProAdmin() {
   const fetchAll = async () => {
     setLoading(true)
     if (!isSupabaseReady) { setLoading(false); return }
-    const [{ data: phonesData }, { data: ps }] = await Promise.all([
-      supabase
-        .from('phones')
-        .select('*')
-        .or('fournisseur.eq.Price MyPhone,added_by_magasin.eq.sebphone')
-        .eq('status', 'disponible')
-        .order('created_at', { ascending: false }),
-      supabase.from('pro_stock').select('*'),
-    ])
+    const { data: phonesData } = await supabase
+      .from('phones')
+      .select('*')
+      .or('fournisseur.eq.Price MyPhone,added_by_magasin.eq.sebphone')
+      .eq('status', 'disponible')
+      .order('created_at', { ascending: false })
     await fetchAccounts()
     setPhones(phonesData || [])
-    setProStock(ps || [])
     setLoading(false)
   }
 
@@ -129,21 +124,6 @@ export default function ProAdmin() {
     } finally {
       setProcessing(null)
     }
-  }
-
-  const proStockFor = (phoneId) => proStock.find((s) => s.phone_id === phoneId)
-
-
-  const updateProField = async (phoneId, field, value) => {
-    const existing = proStockFor(phoneId)
-    if (!existing) return
-    const { error } = await supabase
-      .from('pro_stock')
-      .update({ [field]: value === '' ? null : Number(value) })
-      .eq('id', existing.id)
-    if (error) { alert('Erreur: ' + error.message); return }
-    setProStock((prev) => prev.map((s) =>
-      s.id === existing.id ? { ...s, [field]: value === '' ? null : Number(value) } : s))
   }
 
   // ── Import CSV Price My Phone ────────────────────────────────────
@@ -469,22 +449,17 @@ export default function ProAdmin() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Modèle', 'Couleur', 'Grade', 'Stockage', 'Prix vente (€)', 'Visible acheteurs', 'Prix pro (€)', 'Prix lot (€)', 'Taille lot'].map((h) => (
+                  {['Modèle', 'Couleur', 'Grade', 'Stockage', 'Prix vente (€)', 'Visible acheteurs'].map((h) => (
                     <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {phones.map((phone) => {
-                  const ps = proStockFor(phone.id)
-                  const isPro = ps && ps.visible
                   return (
                     <tr key={phone.id} className="border-t border-gray-100">
                       <td className="px-3 py-2 font-medium">
                         {phone.name || phone.model}
-                        {isPro && (
-                          <span className="ml-2 text-[10px] font-bold bg-[#00B4CC] text-white px-1.5 py-0.5 rounded">PRO</span>
-                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -557,33 +532,6 @@ export default function ProAdmin() {
                               : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
                           {phone.visible_on_site ? '✅ Visible' : 'Masqué'}
                         </button>
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          disabled={!ps}
-                          defaultValue={ps?.pro_price ?? ''}
-                          onBlur={(e) => updateProField(phone.id, 'pro_price', e.target.value)}
-                          className="w-24 px-2 py-1 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          disabled={!ps}
-                          defaultValue={ps?.lot_price ?? ''}
-                          onBlur={(e) => updateProField(phone.id, 'lot_price', e.target.value)}
-                          className="w-24 px-2 py-1 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          disabled={!ps}
-                          defaultValue={ps?.lot_size ?? ''}
-                          onBlur={(e) => updateProField(phone.id, 'lot_size', e.target.value)}
-                          className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-sm disabled:bg-gray-50"
-                        />
                       </td>
                     </tr>
                   )
