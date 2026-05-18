@@ -115,6 +115,13 @@ export default function ModelDetailPage() {
     return scoreP > scoreBest ? p : best
   }, null)
 
+  // Tous les magasins où ce modèle est disponible
+  const availableMagasins = [...new Set(
+    phones
+      .filter((p) => p.status === 'disponible')
+      .flatMap((p) => p.magasins || [])
+  )]
+
   const modelName = phones[0]
     ? (typeof phones[0].model === 'string' ? phones[0].model : phones[0].model?.name) || phones[0].name
     : modelSlug.replace(/-/g, ' ')
@@ -239,21 +246,25 @@ export default function ModelDetailPage() {
             <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2 flex items-center gap-1.5">
               <MapPin size={12} className="text-[#00B4CC]" /> {t('phone_click_collect')}
             </p>
-            {bestPhone?.magasins?.length > 0 ? (
+            {availableMagasins.length > 0 ? (
               <div>
                 <p className="text-xs text-[#555] mb-2">
                   {t('phone_click_collect_desc')}
                 </p>
-                <div className="space-y-1.5">
-                  {bestPhone.magasins.map((id) => {
-                    const mag = MAGASINS[id];
+                <div className="mt-3 space-y-2">
+                  {availableMagasins.map((magasinId) => {
+                    const mag = MAGASINS[magasinId];
                     if (!mag) return null;
                     return (
-                      <div key={id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
-                        <MapPin size={14} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
+                      <div key={magasinId} className="flex items-start gap-2">
+                        <span className="text-[#00B4CC] mt-0.5">📍</span>
                         <div>
-                          <p className="text-sm font-medium text-[#1B2A4A]">{mag.nom}</p>
-                          <p className="text-xs text-gray-400">{mag.adresse}</p>
+                          <p className="text-sm font-semibold text-[#1B2A4A]">
+                            {mag.nom}
+                          </p>
+                          {mag.adresse && (
+                            <p className="text-xs text-gray-500">{mag.adresse}</p>
+                          )}
                         </div>
                       </div>
                     );
@@ -322,7 +333,33 @@ export default function ModelDetailPage() {
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <span className="text-xs text-gray-600 italic">{t('battery_range')}</span>
+                              {phone.status === 'sur_commande' ? (
+                                <span className="text-sm italic text-gray-400">
+                                  Batterie 85-99% selon stock
+                                </span>
+                              ) : phone.battery_health ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 bg-gray-100 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="h-2 rounded-full transition-all"
+                                      style={{
+                                        width: `${phone.battery_health}%`,
+                                        backgroundColor: phone.battery_health >= 85
+                                          ? '#22c55e' : phone.battery_health >= 75
+                                          ? '#f59e0b' : '#ef4444'
+                                      }}
+                                    />
+                                  </div>
+                                  <span className={`text-sm font-bold ${
+                                    phone.battery_health >= 85 ? 'text-green-600'
+                                    : phone.battery_health >= 75 ? 'text-orange-500'
+                                    : 'text-red-500'}`}>
+                                    {phone.battery_health}%
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-300 text-sm">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-3 max-w-[220px]">
                               {phone.condition === 'neuf' ? (
@@ -452,7 +489,33 @@ export default function ModelDetailPage() {
                               </div>
                             ) : null
                           ) : null}
-                          <span className="text-xs text-gray-600 italic">{t('battery_range')}</span>
+                          {phone.status === 'sur_commande' ? (
+                            <span className="text-xs italic text-gray-400">
+                              Batterie 85-99% selon stock
+                            </span>
+                          ) : phone.battery_health ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-20 bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-2 rounded-full transition-all"
+                                  style={{
+                                    width: `${phone.battery_health}%`,
+                                    backgroundColor: phone.battery_health >= 85
+                                      ? '#22c55e' : phone.battery_health >= 75
+                                      ? '#f59e0b' : '#ef4444'
+                                  }}
+                                />
+                              </div>
+                              <span className={`text-sm font-bold ${
+                                phone.battery_health >= 85 ? 'text-green-600'
+                                : phone.battery_health >= 75 ? 'text-orange-500'
+                                : 'text-red-500'}`}>
+                                {phone.battery_health}%
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-sm">—</span>
+                          )}
                         </div>
 
                         <button
