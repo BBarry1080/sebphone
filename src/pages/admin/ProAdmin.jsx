@@ -171,15 +171,23 @@ export default function ProAdmin() {
   // ── Import CSV Price My Phone ────────────────────────────────────
   const convertGrade = (productName) => {
     const name = productName.toLowerCase()
-    if (name.includes('eco repair +')) return 'D'
-    if (name.includes('eco repair')) return 'D'
-    if (name.includes('éco rayure') || name.includes('eco rayure')) return 'C'
-    if (name.includes('éco bat') || name.includes('eco bat')) return 'C'
-    if (name.includes('éco') || name.includes('eco')) return 'C'
-    if (name.includes('bc correct') || name.includes('correct')) return 'B'
-    if (name.includes('très bon') || name.includes('tres bon') || name.includes('b ')) return 'A'
-    if (name.includes('excellent') || name.includes('ab')) return 'A+'
-    return 'B' // défaut
+    if (name.includes('eco repair +') || name.includes('eco repair+'))
+      return 'LCD'
+    if (name.includes('eco repair'))
+      return 'PEACE'
+    if (name.includes('éco bat') || name.includes('eco bat'))
+      return 'C-BAT'
+    if (name.includes('éco rayure') || name.includes('eco rayure'))
+      return 'C-REF'
+    if (name.includes('éco') || name.includes('eco'))
+      return 'C'
+    if (name.includes('bc correct') || name.includes('correct'))
+      return 'C'
+    if (name.includes('très bon') || name.includes('tres bon'))
+      return 'B'
+    if (name.includes('excellent') || name.includes('ab ') || name.includes('ab\n'))
+      return 'A+'
+    return 'B'
   }
 
   const convertColor = (color) => {
@@ -639,10 +647,13 @@ export default function ProAdmin() {
                           <td className="px-2 py-1.5">
                             <span className={`px-1.5 py-0.5 rounded font-bold text-white text-[10px]
                               ${p.grade === 'A+' ? 'bg-green-500'
-                                : p.grade === 'A' ? 'bg-blue-500'
-                                : p.grade === 'B' ? 'bg-yellow-500'
-                                : p.grade === 'C' ? 'bg-orange-500'
-                                : 'bg-red-500'}`}>
+                                : p.grade === 'B' ? 'bg-blue-500'
+                                : p.grade === 'C' ? 'bg-yellow-500'
+                                : p.grade === 'C-BAT' ? 'bg-orange-400'
+                                : p.grade === 'C-REF' ? 'bg-orange-600'
+                                : p.grade === 'PEACE' ? 'bg-purple-500'
+                                : p.grade === 'LCD' ? 'bg-red-400'
+                                : 'bg-gray-400'}`}>
                               {p.grade}
                             </span>
                           </td>
