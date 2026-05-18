@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useCurrentUser } from '../../hooks/usePermissions'
 import { IPHONE_ORDER } from '../../utils/phoneImage'
 import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
+import { isEsimModel } from '../../utils/esimModels'
 import { Plus, X, Check, Package, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
 
 const MODELS_BY_BRAND = {
@@ -183,6 +184,7 @@ const emptyForm = {
   fournisseur_custom: '',
   delai: '2-3 jours',
   visible_on_site: false,
+  has_esim: false,
   notes: '',
 }
 
@@ -254,6 +256,7 @@ export default function AdminSurCommande() {
       fournisseur,
       status: 'sur_commande',
       visible_on_site: form.visible_on_site,
+      has_esim: form.has_esim,
       magasins: [],
       tva_regime: 'marge',
       parts_replaced: [],
@@ -290,6 +293,7 @@ export default function AdminSurCommande() {
       fournisseur_custom: FOURNISSEURS_LIST.includes(phone.fournisseur) ? '' : (phone.fournisseur || ''),
       delai: phone.delai_commande || '2-3 jours',
       visible_on_site: phone.visible_on_site || false,
+      has_esim: phone.has_esim ?? isEsimModel(phone.name || phone.model),
       notes: phone.notes || '',
     })
     setModelSearch(phone.name || phone.model || '')
@@ -421,7 +425,7 @@ export default function AdminSurCommande() {
                       type="button"
                       onMouseDown={() => {
                         setModelSearch(model)
-                        setForm(f => ({ ...f, model, color: '' }))
+                        setForm(f => ({ ...f, model, color: '', has_esim: isEsimModel(model) }))
                         setShowSuggestions(false)
                       }}
                       className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50
@@ -622,6 +626,26 @@ export default function AdminSurCommande() {
               <span className="text-sm font-medium text-gray-700">
                 Visible sur le site public
               </span>
+            </div>
+
+            {/* Compatible eSIM */}
+            <div className="md:col-span-2 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <input
+                type="checkbox"
+                id="esim-surcommande"
+                checked={form.has_esim}
+                onChange={e => setForm(f => ({ ...f, has_esim: e.target.checked }))}
+                className="w-4 h-4 rounded accent-[#1B2A4A]"
+              />
+              <label htmlFor="esim-surcommande" className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm font-bold text-[#1B2A4A]">Compatible eSIM</span>
+                <span className="text-xs bg-[#1B2A4A] text-white px-2 py-0.5 rounded-lg font-bold">
+                  eSIM
+                </span>
+                <span className="text-xs text-blue-600">
+                  {isEsimModel(form.model) ? '✓ Détecté automatiquement' : ''}
+                </span>
+              </label>
             </div>
           </div>
 

@@ -355,6 +355,11 @@ export default function ModelDetailPage() {
                                   {[phone.storage, phone.color].filter(Boolean).join(' · ')}
                                 </p>
                               )}
+                              {phone.has_esim && (
+                                <span className="inline-flex items-center gap-1 mt-1 text-xs font-bold bg-[#1B2A4A] text-white px-2 py-0.5 rounded-lg">
+                                  eSIM
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3">
                               <span className="font-bold text-[#1B2A4A] text-base">{charmPrice(phone.price)}€</span>
@@ -416,6 +421,11 @@ export default function ModelDetailPage() {
                         <div className="space-y-1.5 mb-3 text-xs text-[#555]">
                           {(phone.storage || phone.color) && (
                             <p>{[phone.storage, phone.color].filter(Boolean).join(' · ')}</p>
+                          )}
+                          {phone.has_esim && (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold bg-[#1B2A4A] text-white px-2 py-0.5 rounded-lg">
+                              eSIM
+                            </span>
                           )}
                           {phone.condition === 'neuf' ? (
                             <p className="text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>

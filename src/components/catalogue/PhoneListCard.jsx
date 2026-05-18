@@ -178,10 +178,15 @@ function PhoneCard({ phone, onClick }) {
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="mb-1.5">
+        <div className="mb-1.5 flex items-center gap-1.5">
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${conditionColor[phone.condition] || 'bg-gray-100 text-gray-600'}`}>
             {conditionLabel[phone.condition] || phone.condition}
           </span>
+          {phone.has_esim && (
+            <span className="text-xs font-bold bg-[#1B2A4A] text-white px-2 py-0.5 rounded-lg">
+              eSIM
+            </span>
+          )}
         </div>
         <h3 className="font-bold text-[#1B2A4A] text-[15px] leading-tight mb-2 truncate">
           {phone.name || phone.model}

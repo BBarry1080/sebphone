@@ -25,6 +25,7 @@ import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getStartingPrice } from '../../data/startingPrices'
 import { GOOGLE_REVIEW_LINKS } from '../../data/googleReviews'
 import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
+import { isEsimModel } from '../../utils/esimModels'
 import Etiquette from '../../components/admin/Etiquette'
 
 
@@ -353,6 +354,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [grade, setGrade]             = useState(phone?.grade || 'Comme neuf')
   const [batteryHealth, setBatteryHealth] = useState(phone?.battery_health ?? '')
   const [imei, setImei]               = useState(phone?.imei || '')
+  const [hasEsim, setHasEsim]         = useState(phone?.has_esim ?? isEsimModel(phone?.name || phone?.model))
   const [price, setPrice]             = useState(phone?.price || '')
   const [purchasePrice, setPurchasePrice] = useState(phone?.purchase_price ?? '')
   const [tvaRegime, setTvaRegime]     = useState(phone?.tva_regime || (phone?.condition === 'neuf' ? 'normale' : 'marge'))
@@ -470,6 +472,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
     setShowModelSugg(false)
     setStorage(m.storages?.[0] || '')
     setColorSearch(m.colors?.[0] || '')
+    setHasEsim(isEsimModel(modelName))
   }
 
   const handleMagasinToggle = (id) => {
@@ -516,6 +519,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
         face_id_status: partsReplaced.includes('Face ID / Touch ID') ? faceIdStatus : null,
         status:         phoneStatus,
         categorie:      categorie || 'telephone',
+        has_esim:       hasEsim,
         added_by:         currentUser.name || 'Admin',
         added_by_magasin: currentUser.magasin_id || magasins?.[0] || null,
       }
@@ -1106,6 +1110,24 @@ function PhoneModal({ phone, onClose, onSaved }) {
                   placeholder="ex: 356761086758197"
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
                 />
+              </div>
+              <div className="col-span-2 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="esim"
+                  checked={hasEsim}
+                  onChange={(e) => setHasEsim(e.target.checked)}
+                  className="w-4 h-4 rounded accent-[#1B2A4A]"
+                />
+                <label htmlFor="esim" className="flex items-center gap-2 cursor-pointer">
+                  <span className="text-sm font-bold text-[#1B2A4A]">Compatible eSIM</span>
+                  <span className="text-xs bg-[#1B2A4A] text-white px-2 py-0.5 rounded-lg font-bold">
+                    eSIM
+                  </span>
+                  <span className="text-xs text-blue-600">
+                    {isEsimModel(modelSearch) ? '✓ Détecté automatiquement' : ''}
+                  </span>
+                </label>
               </div>
               <div>
                 <label className="text-xs text-[#555] mb-1 block">Fournisseur</label>
@@ -1988,6 +2010,11 @@ export default function Stock() {
                           IMEI : {phone.imei}
                         </p>
                       )}
+                      {phone.has_esim && (
+                        <span className="inline-block mt-0.5 text-[9px] font-bold bg-[#1B2A4A] text-white px-1.5 py-0.5 rounded-md">
+                          eSIM
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span className="font-bold text-[#00B4CC] text-sm flex-shrink-0">{phone.price}€</span>
@@ -2130,6 +2157,11 @@ export default function Stock() {
                           <p className="text-xs text-[#888]">{phone.storage}{phone.color ? ` · ${phone.color}` : ''}</p>
                           {phone.imei && (
                             <p className="text-[10px] text-gray-400 font-mono">IMEI : {phone.imei}</p>
+                          )}
+                          {phone.has_esim && (
+                            <span className="inline-block mt-0.5 text-[9px] font-bold bg-[#1B2A4A] text-white px-1.5 py-0.5 rounded-md">
+                              eSIM
+                            </span>
                           )}
                           {phone.added_by && (
                             <p className="text-[10px] text-gray-400">
