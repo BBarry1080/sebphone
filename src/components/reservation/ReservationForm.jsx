@@ -7,6 +7,10 @@ import { ACCESSORY_PACKS } from '../../data/accessories';
 import { MAGASINS, MAGASINS_PHYSIQUES } from '../../utils/magasins';
 
 const MAGASINS_LIST = MAGASINS_PHYSIQUES.filter((m) => m.id !== 'marrakech');
+
+const ALL_MAGASINS_PHYSIQUES = Object.entries(MAGASINS)
+  .filter(([id]) => !['sebphone'].includes(id))
+  .map(([id, mag]) => ({ id, ...mag }));
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { sendConfirmationEmail } from '../../utils/sendEmail';
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage';
@@ -45,7 +49,7 @@ export default function ReservationForm({ phone }) {
 
   const isSurCommande = phone?.status === 'sur_commande'
   const availableMagasins = isSurCommande
-    ? MAGASINS_LIST
+    ? ALL_MAGASINS_PHYSIQUES
     : phoneShops.length > 0
       ? MAGASINS_LIST.filter((m) => phoneShops.includes(m.id))
       : MAGASINS_LIST
@@ -565,7 +569,7 @@ export default function ReservationForm({ phone }) {
                             <p className="text-xs text-gray-500">{mag.adresse}</p>
                           )}
                           <p className="text-xs text-orange-600 mt-0.5">
-                            ⏱ Retrait disponible sous {phone?.delai_commande || '1h à 72h'}
+                            ⏱ Disponible sous {phone?.delai_commande || '1h à 72h'}
                           </p>
                         </div>
                       </label>

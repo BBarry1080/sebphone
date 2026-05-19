@@ -102,7 +102,7 @@ export default function ModelDetailPage() {
   const [filterStorage, setFilterStorage] = useState(null)
   const [filterColor, setFilterColor]   = useState(null)
   const [selectedSurCommandeColor, setSelectedSurCommandeColor] = useState('')
-  const [selectedSurCommandeStorage, setSelectedSurCommandeStorage] = useState('')
+  const [selectedSurCommandeStorage, setSelectedSurCommandeStorage] = useState('128Go')
 
   useEffect(() => {
     async function fetchPhones() {
@@ -658,7 +658,7 @@ export default function ModelDetailPage() {
                       selectedStorage: selectedSurCommandeStorage,
                     },
                   })}
-                  disabled={!selectedSurCommandeColor || !selectedSurCommandeStorage}
+                  disabled={!selectedSurCommandeColor}
                   className="bg-[#1B2A4A] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#00B4CC] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {t('model_choose_btn')}

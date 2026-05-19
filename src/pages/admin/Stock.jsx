@@ -1495,6 +1495,19 @@ export default function Stock() {
       alert('⚠️ Veuillez saisir l\'IMEI du téléphone avant de valider la vente')
       return
     }
+    const wasSurCommande = salePhone?.status === 'sur_commande'
+    if (wasSurCommande) {
+      const confirmed = window.confirm(
+        '⚠️ TÉLÉPHONE SUR COMMANDE\n\n' +
+        'Ce téléphone appartient au fournisseur.\n' +
+        'En clôturant cette vente vous confirmez que :\n\n' +
+        '✓ Vous avez commandé ce téléphone au fournisseur\n' +
+        '✓ Le téléphone a été reçu en magasin\n' +
+        '✓ Le prix d\'achat sera mis à jour en comptabilité\n\n' +
+        'Confirmer la vente ?'
+      )
+      if (!confirmed) return
+    }
     setSaleLoading(true)
     try {
       // Met à jour l'IMEI si nouveau
@@ -1746,6 +1759,10 @@ export default function Stock() {
         } catch (err) {
           console.warn('Email société non envoyé:', err)
         }
+      }
+
+      if (wasSurCommande) {
+        console.info('Vente sur commande clôturée - penser à mettre à jour prix achat')
       }
 
       setShowSaleModal(false)
@@ -2080,10 +2097,10 @@ export default function Stock() {
                       <p className="font-semibold text-[#1B2A4A] text-sm leading-tight truncate">
                         {phone.name || phone.model?.name}
                       </p>
-                      {phone.color === 'Toutes' || phone.storage === 'Selon choix' ? (
-                        <span className="inline-block mt-0.5 text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-lg font-medium">
-                          📦 Sur commande — toutes couleurs
-                        </span>
+                      {phone.status === 'sur_commande' ? (
+                        <p className="text-xs text-orange-500 font-medium mt-0.5">
+                          📦 Toutes couleurs — Client choisit
+                        </p>
                       ) : (
                         <p className="text-[#888] text-xs mt-0.5">
                           {phone.storage}{phone.color ? ` · ${phone.color}` : ''}
@@ -2238,10 +2255,10 @@ export default function Stock() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-[#1B2A4A] leading-tight">{phone.name || phone.model?.name}</p>
-                          {phone.color === 'Toutes' || phone.storage === 'Selon choix' ? (
-                            <span className="inline-block text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-lg font-medium">
-                              📦 Sur commande — toutes couleurs
-                            </span>
+                          {phone.status === 'sur_commande' ? (
+                            <p className="text-xs text-orange-500 font-medium">
+                              📦 Toutes couleurs — Client choisit
+                            </p>
                           ) : (
                             <p className="text-xs text-[#888]">{phone.storage}{phone.color ? ` · ${phone.color}` : ''}</p>
                           )}

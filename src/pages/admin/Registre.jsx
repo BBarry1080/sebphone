@@ -212,7 +212,22 @@ export default function Registre() {
       .select('*')
       .order('transaction_date', { ascending: false })
     if (error) console.error('Fetch error:', error)
-    setEntries(data || [])
+
+    // Le registre d'achat ne contient que des téléphones réellement achetés
+    // par SebPhone — on exclut les entrées liées à un téléphone "sur commande"
+    // (stock fournisseur, pas un achat réel). Le lien se fait via l'IMEI.
+    let registryEntries = data || []
+    const { data: surCmdPhones } = await supabase
+      .from('phones')
+      .select('imei')
+      .eq('status', 'sur_commande')
+      .not('imei', 'is', null)
+    if (surCmdPhones?.length) {
+      const surCmdImeis = new Set(surCmdPhones.map((p) => p.imei))
+      registryEntries = registryEntries.filter((e) => !surCmdImeis.has(e.imei))
+    }
+
+    setEntries(registryEntries)
     setLoading(false)
   }
 
