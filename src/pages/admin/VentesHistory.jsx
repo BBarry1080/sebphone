@@ -91,6 +91,7 @@ export default function VentesHistory() {
       phone_color:    sale.phone_color || '',
       phone_storage:  sale.phone_storage || '',
       phone_grade:    sale.phone_grade || '',
+      imei:           sale.phone?.imei || '',
       total_amount:   sale.total_amount || '',
       magasin_id:     sale.magasin_id || '',
       encaisse_at:    sale.encaisse_at ? new Date(sale.encaisse_at).toISOString().split('T')[0] : '',
@@ -140,6 +141,7 @@ export default function VentesHistory() {
           storage: editForm.phone_storage,
           grade:   editForm.phone_grade,
           price:   parseFloat(editForm.total_amount) || 0,
+          ...(editForm.imei ? { imei: editForm.imei } : {}),
         }).eq('id', editingSale.phone_id)
 
         // Supprime les anciens payments
@@ -603,6 +605,20 @@ export default function VentesHistory() {
                     value={editForm.total_amount}
                     onChange={(e) => setEditForm((f) => ({ ...f, total_amount: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-bold"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                    IMEI
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.imei || ''}
+                    onChange={e => setEditForm(f => ({ ...f, imei: e.target.value }))}
+                    placeholder="Ex: 352999823425561"
+                    maxLength={15}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl
+                               text-sm font-mono focus:border-[#00B4CC] outline-none"
                   />
                 </div>
                 <div>

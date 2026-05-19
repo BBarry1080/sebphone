@@ -26,6 +26,7 @@ export default function StockReconditionnement() {
   const [repairForm, setRepairForm]         = useState({
     parts_replaced: [],
     parts_prices: {},
+    parts_quality: {},
     final_grade: 'Très bon état',
     sale_price_estimated: '',
     magasin_id: 'anderlecht',
@@ -58,6 +59,7 @@ export default function StockReconditionnement() {
     magasin_id: 'anderlecht',
     notes: '',
     phone_grade: 'Bon état',
+    battery_health: '',
   }
   const [addForm, setAddForm] = useState(initialAddForm)
   const [modelSearch, setModelSearch]                   = useState('')
@@ -101,6 +103,7 @@ export default function StockReconditionnement() {
     setRepairForm({
       parts_replaced: entry.parts_replaced || [],
       parts_prices: entry.parts_prices || {},
+      parts_quality: entry.parts_quality || {},
       final_grade: entry.final_grade || 'Très bon état',
       sale_price_estimated: entry.sale_price_estimated || '',
       magasin_id: entry.magasin_id || 'anderlecht',
@@ -135,6 +138,14 @@ export default function StockReconditionnement() {
         .eq('id', selectedEntry.id)
       if (regError) throw regError
 
+      const partsWithQuality = (repairForm.parts_replaced || []).map((p) => {
+        const q = repairForm.parts_quality?.[p]
+        const qLabel = q === 'compatible' ? ' (Compatible)'
+          : q === 'qualite_originale' ? ' (Qualité originale)'
+          : ' (Originale)'
+        return p + qLabel
+      })
+
       const { error: stockError } = await supabase
         .from('phones')
         .insert([{
@@ -153,7 +164,7 @@ export default function StockReconditionnement() {
           battery_health:   repairForm.battery_health ? parseInt(repairForm.battery_health) : null,
           magasins:         [repairForm.magasin_id],
           fournisseur:      `${selectedEntry.seller_first_name} ${selectedEntry.seller_last_name}`,
-          parts_replaced:   repairForm.parts_replaced,
+          parts_replaced:   partsWithQuality,
           face_id_status:   repairForm.face_id_status,
           notes:            repairForm.reconditioning_notes || null,
           added_by:         currentUser?.name || 'Admin',
@@ -198,6 +209,7 @@ export default function StockReconditionnement() {
         fournisseur:           fournisseurFinal,
         phone_condition:       'reconditionne',
         phone_grade:           addForm.phone_grade,
+        battery_health:        addForm.battery_health ? parseInt(addForm.battery_health) : null,
         reconditioning_status: 'en_attente',
         added_to_stock:        false,
         notes:                 addForm.notes || null,
@@ -456,6 +468,32 @@ export default function StockReconditionnement() {
                             </div>
                           )}
                         </div>
+                        {isChecked && (
+                          <div className="ml-6 mt-1 flex gap-2 flex-wrap">
+                            {[
+                              { value: 'compatible', label: 'Compatible' },
+                              { value: 'qualite_originale', label: 'Qualité originale' },
+                              { value: 'originale', label: 'Originale' },
+                            ].map((q) => (
+                              <button
+                                key={q.value}
+                                type="button"
+                                onClick={() => setRepairForm((f) => ({
+                                  ...f,
+                                  parts_quality: {
+                                    ...(f.parts_quality || {}),
+                                    [part]: q.value,
+                                  },
+                                }))}
+                                className={`px-2 py-1 rounded-lg text-xs font-medium border
+                                  ${(repairForm.parts_quality?.[part] || 'originale') === q.value
+                                    ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                                    : 'bg-white text-gray-600 border-gray-200'}`}>
+                                {q.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         {part === 'Face ID / Touch ID' && isChecked && (
                           <div className="mt-2 ml-6 flex gap-2">
                             <button
@@ -780,6 +818,24 @@ export default function StockReconditionnement() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Batterie (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={addForm.battery_health || ''}
+                  onChange={e => setAddForm(f => ({
+                    ...f, battery_health: e.target.value
+                  }))}
+                  placeholder="ex: 87"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl
+                             text-sm focus:border-[#00B4CC] outline-none"
+                />
               </div>
 
               <div>
