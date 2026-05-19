@@ -44,7 +44,7 @@ function SidebarContent({ onClose }) {
     { to: '/admin/promoCodes',    label: 'Codes promo',   Icon: Tag,             show: has('codes_promo') },
     { to: '/admin/verifier-code', label: 'Vérifier code', Icon: QrCode,          show: has('verifier_code') },
     { to: '/admin/comptabilite',  label: 'Comptabilité',  Icon: Calculator,      show: has('voir_comptabilite') },
-    { to: '/admin/registre',          label: 'Registre',              Icon: BookOpen, show: has('registre_achats') },
+    { to: '/admin/registre',          label: "Registre d'achat",      Icon: BookOpen, show: has('registre_achats') },
     { to: '/admin/reconditionnement', label: 'Stock Reconditionnement', Icon: Wrench,  show: has('stock_reconditionnement') },
     { to: '/admin/pro',           label: '👔 Espace Pro', Icon: Briefcase,       show: isAdmin },
     { to: '/admin/parametres',    label: 'Paramètres',    Icon: Settings,        show: isAdmin },

@@ -1,22 +1,28 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import ReservationForm from '../components/reservation/ReservationForm'
 import { MAGASINS_PHYSIQUES } from '../utils/magasins'
+import { getSurCommandeColors } from '../utils/surCommandeColors'
 
 const MAGASINS_CLIENT = MAGASINS_PHYSIQUES.filter((m) => m.id !== 'marrakech')
+const STORAGE_OPTIONS = ['64Go', '128Go', '256Go', '512Go', '1To']
 
 export default function ReservationCommande() {
   const { state } = useLocation()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!state) navigate('/sur-commande', { replace: true })
+    if (!state) navigate('/boutique', { replace: true })
   }, [state, navigate])
+
+  const surCommandeColors = getSurCommandeColors(state?.model || '')
+  const [selectedColor, setSelectedColor] = useState(state?.color || surCommandeColors[0])
+  const [selectedStorage, setSelectedStorage] = useState(state?.storage || STORAGE_OPTIONS[1])
 
   if (!state) return null
 
-  const { model, color, storage, price } = state
+  const { model, price } = state
 
   // Phone "virtuel" — pas de phone_id en DB, c'est une commande
   const virtualPhone = {
@@ -24,8 +30,8 @@ export default function ReservationCommande() {
     name:           model,
     model:          model,
     brand:          model.toLowerCase().includes('samsung') ? 'Samsung' : 'Apple',
-    color:          color,
-    storage:        storage,
+    color:          selectedColor,
+    storage:        selectedStorage,
     price:          price,
     condition:      'neuf',
     grade:          null,
@@ -54,11 +60,53 @@ export default function ReservationCommande() {
           Réserver <span className="text-[#00B4CC]">{model}</span>
         </h1>
         <p className="text-[#555555] text-sm">
-          {color} · {storage} · Neuf sous scellé · Délai 1h à 72h
+          {selectedColor} · {selectedStorage} · Neuf sous scellé · Délai 1h à 72h
         </p>
       </div>
 
-      <ReservationForm phone={virtualPhone} />
+      <div className="mb-6 space-y-4">
+        <div>
+          <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+            Couleur souhaitée
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {surCommandeColors.map((color) => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => setSelectedColor(color)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all
+                  ${selectedColor === color
+                    ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                {color}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+            Stockage souhaité
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {STORAGE_OPTIONS.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSelectedStorage(s)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all
+                  ${selectedStorage === s
+                    ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <ReservationForm key={`${selectedColor}-${selectedStorage}`} phone={virtualPhone} />
     </main>
   )
 }

@@ -349,8 +349,6 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [visibleOnSite, setVisibleOnSite]         = useState(phone?.visible_on_site ?? true)
   const [phoneStatus, setPhoneStatus]             = useState(phone?.status || 'disponible')
   const [isSurCommande, setIsSurCommande]         = useState(phone?.status === 'sur_commande')
-  const [delai, setDelai]                         = useState(phone?.delai_commande || '2-3 jours')
-  const [surBattery, setSurBattery]               = useState('80-99%')
 
   // ── Model autocomplete ───────────────────────────────────────────
   const [modelSearch, setModelSearch]             = useState(phone?.name || phone?.model || '')
@@ -540,8 +538,16 @@ function PhoneModal({ phone, onClose, onSaved }) {
       if (isSurCommande) {
         phoneData.status = 'sur_commande'
         phoneData.visible_on_site = true
-        phoneData.delai_commande = delai || '2-3 jours'
+        phoneData.condition = 'neuf'
+        phoneData.grade = ''
+        phoneData.color = 'Toutes'
+        phoneData.storage = 'Selon choix'
+        phoneData.purchase_price = 0
+        phoneData.delai_commande = '1h à 72h'
         phoneData.battery_health = null
+        phoneData.magasins = []
+        phoneData.tva_regime = 'marge'
+        phoneData.parts_replaced = []
       }
 
       if (isEdit) {
@@ -636,6 +642,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
                 const next = !isSurCommande
                 setIsSurCommande(next)
                 setPhoneStatus(next ? 'sur_commande' : 'disponible')
+                if (next) setCondition('neuf')
               }}
               className={`relative w-12 h-6 rounded-full transition-all flex-shrink-0
                 ${isSurCommande ? 'bg-orange-500' : 'bg-gray-300'}`}>
@@ -654,79 +661,16 @@ function PhoneModal({ phone, onClose, onSaved }) {
           </div>
 
           {isSurCommande && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-[#555] mb-1 block">Batterie</label>
-                <select
-                  value={surBattery}
-                  onChange={(e) => setSurBattery(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none bg-white"
-                >
-                  {['80-99%', '85-99%', '90-100%', '100%'].map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-[#555] mb-1 block">Délai de commande</label>
-                <select
-                  value={delai}
-                  onChange={(e) => setDelai(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none bg-white"
-                >
-                  {['24-48h', '2-3 jours', '3-5 jours', '1 semaine'].map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {isSurCommande && modelSearch.trim() && availableColors.length > 0 && (
-            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-              <p className="text-xs font-bold text-blue-700 mb-2">
-                Auto-ajout par couleur
+            <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
+              <p className="text-xs text-orange-700 font-medium">
+                📦 Mode Sur Commande
               </p>
-              <button
-                type="button"
-                onClick={async () => {
-                  const inserts = availableColors.map((color) => ({
-                    name: modelSearch.trim(),
-                    model: modelSearch.trim(),
-                    brand: brand || 'Apple',
-                    color,
-                    storage: storage || null,
-                    condition: condition || 'neuf',
-                    price: parseFloat(price) || 0,
-                    purchase_price: 0,
-                    status: 'sur_commande',
-                    visible_on_site: true,
-                    fournisseur: (fournisseur && fournisseur !== '__custom__') ? fournisseur : null,
-                    delai_commande: delai || '2-3 jours',
-                    battery_health: null,
-                    magasins: [],
-                    tva_regime: 'marge',
-                    parts_replaced: [],
-                    categorie: 'telephone',
-                    added_by: currentUser?.name || 'Admin',
-                  }))
-                  const { error } = await supabase.from('phones').insert(inserts)
-                  if (error) {
-                    alert('Erreur: ' + error.message)
-                  } else {
-                    alert(`✅ ${availableColors.length} téléphones ajoutés !`)
-                    onSaved()
-                    onClose()
-                  }
-                }}
-                className="w-full py-2 bg-blue-600 text-white rounded-xl
-                           text-sm font-bold hover:bg-blue-700 transition-all"
-              >
-                ➕ Ajouter {availableColors.length} couleurs automatiquement
-              </button>
-              <p className="text-xs text-gray-500 mt-1 text-center">
-                Ou remplis la couleur manuellement pour une seule couleur
-              </p>
+              <ul className="text-xs text-orange-600 mt-1 space-y-0.5">
+                <li>✓ Batterie affichée : 80-99% selon stock</li>
+                <li>✓ Délai : 1h à 72h</li>
+                <li>✓ Toutes les couleurs disponibles pour le client</li>
+                <li>✓ Le client choisit sa couleur et son magasin</li>
+              </ul>
             </div>
           )}
 
@@ -794,19 +738,21 @@ function PhoneModal({ phone, onClose, onSaved }) {
             <div className="grid grid-cols-2 gap-3">
 
               {/* État */}
-              <div>
-                <label className="text-xs text-[#555] mb-1 block">État</label>
-                <select
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
-                >
-                  {CONDITIONS.map((c) => <option key={c} value={c}>{CONDITION_LABELS[c]}</option>)}
-                </select>
-              </div>
+              {!isSurCommande && (
+                <div>
+                  <label className="text-xs text-[#555] mb-1 block">État</label>
+                  <select
+                    value={condition}
+                    onChange={(e) => setCondition(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                  >
+                    {CONDITIONS.map((c) => <option key={c} value={c}>{CONDITION_LABELS[c]}</option>)}
+                  </select>
+                </div>
+              )}
 
               {/* Grade (sauf accessoire, si pas neuf) */}
-              {categorie !== 'accessoire' && condition !== 'neuf' && (
+              {categorie !== 'accessoire' && condition !== 'neuf' && !isSurCommande && (
                 <div>
                   <label className="text-xs text-[#555] mb-1 block">Grade</label>
                   <select
@@ -837,7 +783,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
               )}
 
               {/* Stockage dynamique — téléphone/tablette */}
-              {(categorie === 'telephone' || categorie === 'tablette') && (
+              {(categorie === 'telephone' || categorie === 'tablette') && !isSurCommande && (
                 <div>
                   <label className="text-xs text-[#555] mb-1 block">Stockage</label>
                   {availableStorages.length > 0 ? (
@@ -873,7 +819,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
               )}
 
               {/* Couleur dynamique — téléphone/tablette */}
-              {(categorie === 'telephone' || categorie === 'tablette') && (
+              {(categorie === 'telephone' || categorie === 'tablette') && !isSurCommande && (
                 <div>
                   <label className="text-xs text-[#555] mb-1 block">Couleur</label>
                   {availableColors.length > 0 ? (
@@ -1305,32 +1251,34 @@ function PhoneModal({ phone, onClose, onSaved }) {
           </div>
 
           {/* ── Section 4 — Magasins ── */}
-          <div>
-            <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Disponible en magasin</h3>
-            <div className="space-y-2">
-              {MAGASINS.map((magasin) => (
-                <label
-                  key={magasin.id}
-                  className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${
-                    magasins.includes(magasin.id)
-                      ? 'border-[#00B4CC] bg-cyan-50'
-                      : 'border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={magasins.includes(magasin.id)}
-                    onChange={() => handleMagasinToggle(magasin.id)}
-                    className="w-4 h-4 accent-[#00B4CC]"
-                  />
-                  <span className="text-sm text-gray-700">{magasin.nom}</span>
-                </label>
-              ))}
+          {!isSurCommande && (
+            <div>
+              <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Disponible en magasin</h3>
+              <div className="space-y-2">
+                {MAGASINS.map((magasin) => (
+                  <label
+                    key={magasin.id}
+                    className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${
+                      magasins.includes(magasin.id)
+                        ? 'border-[#00B4CC] bg-cyan-50'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={magasins.includes(magasin.id)}
+                      onChange={() => handleMagasinToggle(magasin.id)}
+                      className="w-4 h-4 accent-[#00B4CC]"
+                    />
+                    <span className="text-sm text-gray-700">{magasin.nom}</span>
+                  </label>
+                ))}
+              </div>
+              {magasins.length === 0 && (
+                <p className="text-xs text-orange-500 mt-1.5">⚠️ Aucun magasin sélectionné</p>
+              )}
             </div>
-            {magasins.length === 0 && (
-              <p className="text-xs text-orange-500 mt-1.5">⚠️ Aucun magasin sélectionné</p>
-            )}
-          </div>
+          )}
 
           {/* ── Section 4.4 — Statut ── */}
           <div>

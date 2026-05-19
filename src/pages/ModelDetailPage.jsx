@@ -45,6 +45,7 @@ const CONDITION_LABEL = {
 import { MAGASINS } from '../utils/magasins'
 import { useLanguage } from '../contexts/LanguageContext'
 import { translateColor } from '../utils/translateColor'
+import { getSurCommandeColors } from '../utils/surCommandeColors'
 
 const translateRepair = (name, t) => {
   const map = {
@@ -100,6 +101,7 @@ export default function ModelDetailPage() {
   const [loading, setLoading]           = useState(true)
   const [filterStorage, setFilterStorage] = useState(null)
   const [filterColor, setFilterColor]   = useState(null)
+  const [selectedSurCommandeColor, setSelectedSurCommandeColor] = useState('')
 
   useEffect(() => {
     async function fetchPhones() {
@@ -120,7 +122,7 @@ export default function ModelDetailPage() {
         .from('phones')
         .select('*')
         .ilike('model', decodedModel)
-        .eq('status', 'disponible')
+        .in('status', ['disponible', 'sur_commande'])
         .or('visible_on_site.eq.true,visible_on_site.is.null')
         .order('price', { ascending: false })
 
@@ -160,7 +162,18 @@ export default function ModelDetailPage() {
   const minPrice = filtered.length > 0 ? Math.min(...filtered.map((p) => p.price)) : null
   const isAllReconditionne = filtered.length > 0 && filtered.every((p) => p.condition === 'reconditionne')
   const refPrice = isAllReconditionne ? getStartingPrice(modelName) : null
-  const imageUrl = getPhoneImage(modelName, filterColor || bestPhone?.color)
+
+  const isSurCommande = phones.length > 0 && phones.every((p) => p.status === 'sur_commande')
+  const surCommandePhone = isSurCommande ? phones[0] : null
+  const surCommandeColors = getSurCommandeColors(modelName)
+  const surCommandeImage = getPhoneImage(
+    modelName,
+    selectedSurCommandeColor || surCommandeColors[0]
+  )
+
+  const imageUrl = isSurCommande
+    ? surCommandeImage
+    : getPhoneImage(modelName, filterColor || bestPhone?.color)
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-6 pb-28 md:pb-12">
@@ -220,8 +233,57 @@ export default function ModelDetailPage() {
                 </p>
               )}
 
+              {/* Sur commande — sélecteur couleur + badges */}
+              {isSurCommande && (
+                <>
+                  <div className="mt-3">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                      {t('model_color')}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {surCommandeColors.map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => setSelectedSurCommandeColor(color)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all
+                            ${selectedSurCommandeColor === color
+                              ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                          {color}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-lg font-medium">
+                      ⏱ {surCommandePhone?.delai_commande || '1h à 72h'}
+                    </span>
+                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-lg font-medium">
+                      🔋 80-99% selon stock
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => navigate('/reservation-commande', {
+                      state: {
+                        model: modelName,
+                        color: selectedSurCommandeColor || surCommandeColors[0],
+                        storage: '',
+                        price: surCommandePhone?.price || minPrice || 0,
+                        condition: 'neuf',
+                        surCommande: true,
+                        phoneId: surCommandePhone?.id,
+                        delai: surCommandePhone?.delai_commande || '1h à 72h',
+                      },
+                    })}
+                    className="mt-4 w-full sm:w-auto px-6 py-3 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
+                  >
+                    {t('model_choose_btn')}
+                  </button>
+                </>
+              )}
+
               {/* Filtre stockage */}
-              {storages.length > 1 && (
+              {!isSurCommande && storages.length > 1 && (
                 <div className="mb-3">
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_capacity')}</p>
                   <div className="flex flex-wrap gap-2">
@@ -261,7 +323,7 @@ export default function ModelDetailPage() {
           </div>
 
           {/* Neuf badges */}
-          {bestPhone?.condition === 'neuf' && (
+          {!isSurCommande && bestPhone?.condition === 'neuf' && (
             <div className="flex flex-wrap gap-2 mb-4">
               {[t('model_sealed'), t('model_guarantee_apple'), t('model_guarantee_seb')].map((label) => (
                 <span key={label} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-full font-medium">
@@ -273,6 +335,7 @@ export default function ModelDetailPage() {
           )}
 
           {/* Magasins Click & Collect */}
+          {!isSurCommande && (
           <div className="mb-4">
             <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2 flex items-center gap-1.5">
               <MapPin size={12} className="text-[#00B4CC]" /> {t('phone_click_collect')}
@@ -307,7 +370,10 @@ export default function ModelDetailPage() {
             )}
           </div>
 
+          )}
+
           {/* ── SECTION BASSE — Tableau de sélection ── */}
+          {!isSurCommande && (
           <div>
             <div className="mb-4">
               <h2 className="font-poppins font-bold text-xl text-[#1B2A4A]">{t('phone_choose')}</h2>
@@ -565,6 +631,7 @@ export default function ModelDetailPage() {
               </>
             )}
           </div>
+          )}
         </>
       )}
     </main>
