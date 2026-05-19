@@ -2080,9 +2080,15 @@ export default function Stock() {
                       <p className="font-semibold text-[#1B2A4A] text-sm leading-tight truncate">
                         {phone.name || phone.model?.name}
                       </p>
-                      <p className="text-[#888] text-xs mt-0.5">
-                        {phone.storage}{phone.color ? ` · ${phone.color}` : ''}
-                      </p>
+                      {phone.color === 'Toutes' || phone.storage === 'Selon choix' ? (
+                        <span className="inline-block mt-0.5 text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-lg font-medium">
+                          📦 Sur commande — toutes couleurs
+                        </span>
+                      ) : (
+                        <p className="text-[#888] text-xs mt-0.5">
+                          {phone.storage}{phone.color ? ` · ${phone.color}` : ''}
+                        </p>
+                      )}
                       {phone.imei && (
                         <p className="text-[10px] text-gray-400 font-mono mt-0.5">
                           IMEI : {phone.imei}
@@ -2232,7 +2238,13 @@ export default function Stock() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-[#1B2A4A] leading-tight">{phone.name || phone.model?.name}</p>
-                          <p className="text-xs text-[#888]">{phone.storage}{phone.color ? ` · ${phone.color}` : ''}</p>
+                          {phone.color === 'Toutes' || phone.storage === 'Selon choix' ? (
+                            <span className="inline-block text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-lg font-medium">
+                              📦 Sur commande — toutes couleurs
+                            </span>
+                          ) : (
+                            <p className="text-xs text-[#888]">{phone.storage}{phone.color ? ` · ${phone.color}` : ''}</p>
+                          )}
                           {phone.imei && (
                             <p className="text-[10px] text-gray-400 font-mono">IMEI : {phone.imei}</p>
                           )}

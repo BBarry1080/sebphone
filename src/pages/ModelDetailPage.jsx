@@ -102,6 +102,7 @@ export default function ModelDetailPage() {
   const [filterStorage, setFilterStorage] = useState(null)
   const [filterColor, setFilterColor]   = useState(null)
   const [selectedSurCommandeColor, setSelectedSurCommandeColor] = useState('')
+  const [selectedSurCommandeStorage, setSelectedSurCommandeStorage] = useState('')
 
   useEffect(() => {
     async function fetchPhones() {
@@ -164,7 +165,6 @@ export default function ModelDetailPage() {
   const refPrice = isAllReconditionne ? getStartingPrice(modelName) : null
 
   const isSurCommande = phones.length > 0 && phones.every((p) => p.status === 'sur_commande')
-  const surCommandePhone = isSurCommande ? phones[0] : null
   const surCommandeColors = getSurCommandeColors(modelName)
   const surCommandeImage = getPhoneImage(
     modelName,
@@ -231,55 +231,6 @@ export default function ModelDetailPage() {
                     {charmPrice(refPrice ?? minPrice)}€
                   </span>
                 </p>
-              )}
-
-              {/* Sur commande — sélecteur couleur + badges */}
-              {isSurCommande && (
-                <>
-                  <div className="mt-3">
-                    <p className="text-xs font-bold text-gray-500 uppercase mb-2">
-                      {t('model_color')}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {surCommandeColors.map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => setSelectedSurCommandeColor(color)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all
-                            ${selectedSurCommandeColor === color
-                              ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                              : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
-                          {color}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-3 flex-wrap">
-                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-lg font-medium">
-                      ⏱ {surCommandePhone?.delai_commande || '1h à 72h'}
-                    </span>
-                    <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-lg font-medium">
-                      🔋 80-99% selon stock
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => navigate('/reservation-commande', {
-                      state: {
-                        model: modelName,
-                        color: selectedSurCommandeColor || surCommandeColors[0],
-                        storage: '',
-                        price: surCommandePhone?.price || minPrice || 0,
-                        condition: 'neuf',
-                        surCommande: true,
-                        phoneId: surCommandePhone?.id,
-                        delai: surCommandePhone?.delai_commande || '1h à 72h',
-                      },
-                    })}
-                    className="mt-4 w-full sm:w-auto px-6 py-3 bg-[#00B4CC] hover:bg-[#0099b3] text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
-                  >
-                    {t('model_choose_btn')}
-                  </button>
-                </>
               )}
 
               {/* Filtre stockage */}
@@ -631,6 +582,94 @@ export default function ModelDetailPage() {
               </>
             )}
           </div>
+          )}
+
+          {isSurCommande && (
+            <div className="space-y-4 mt-6">
+
+              {/* Badge Neuf */}
+              <div className="flex gap-2 flex-wrap">
+                <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-xl font-bold">
+                  ✨ Neuf
+                </span>
+                <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-xl font-bold">
+                  ⏱ Délai : {phones[0]?.delai_commande || '1h à 72h'}
+                </span>
+                <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-xl font-bold">
+                  🔋 80-99% selon stock
+                </span>
+              </div>
+
+              {/* Sélecteur couleur */}
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                  {t('model_color')}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {getSurCommandeColors(phones[0]?.name || phones[0]?.model).map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => setSelectedSurCommandeColor(color)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all
+                        ${selectedSurCommandeColor === color
+                          ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                      {translateColor(color, t)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sélecteur stockage */}
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                  {t('model_capacity')}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['64Go', '128Go', '256Go', '512Go', '1To'].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSelectedSurCommandeStorage(s)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all
+                        ${selectedSurCommandeStorage === s
+                          ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Prix + Bouton */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+                <div>
+                  <p className="text-2xl font-black text-[#1B2A4A]">
+                    {phones[0]?.price}€
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Acompte 50€ à la réservation
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate('/reservation-commande', {
+                    state: {
+                      phone: phones[0],
+                      selectedColor: selectedSurCommandeColor,
+                      selectedStorage: selectedSurCommandeStorage,
+                    },
+                  })}
+                  disabled={!selectedSurCommandeColor || !selectedSurCommandeStorage}
+                  className="bg-[#1B2A4A] text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-[#00B4CC] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {t('model_choose_btn')}
+                </button>
+              </div>
+
+              {/* Note */}
+              <p className="text-xs text-gray-400 text-center">
+                📦 Disponible chez notre fournisseur — livraison sous {phones[0]?.delai_commande || '1h à 72h'}
+              </p>
+            </div>
           )}
         </>
       )}

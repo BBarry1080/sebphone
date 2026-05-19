@@ -43,9 +43,12 @@ export default function ReservationForm({ phone }) {
     return []
   })()
 
-  const availableMagasins = phoneShops.length > 0
-    ? MAGASINS_LIST.filter((m) => phoneShops.includes(m.id))
-    : MAGASINS_LIST
+  const isSurCommande = phone?.status === 'sur_commande'
+  const availableMagasins = isSurCommande
+    ? MAGASINS_LIST
+    : phoneShops.length > 0
+      ? MAGASINS_LIST.filter((m) => phoneShops.includes(m.id))
+      : MAGASINS_LIST
 
   console.log('phone.magasins reçu:', phone?.magasins)
   console.log('phoneShops parsé:', phoneShops)
@@ -534,7 +537,43 @@ export default function ReservationForm({ phone }) {
 
         {form.delivery === 'collect' && (
           <div className="flex flex-col gap-3 mt-1">
-            {availableMagasins.length === 1 ? (
+            {isSurCommande ? (
+              <div>
+                <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
+                  <span className="flex items-center gap-1"><Store size={13} /> Choisissez le magasin de retrait *</span>
+                </label>
+                <div className="flex flex-col gap-2">
+                  {availableMagasins.map((m) => {
+                    const mag = { id: m.id, ...(MAGASINS[m.id] || { nom: m.nom || m.id }) }
+                    return (
+                      <label key={mag.id}
+                        className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all
+                          ${form.magasin === mag.id
+                            ? 'border-[#00B4CC] bg-[#f0feff]'
+                            : 'border-gray-100 hover:border-gray-200'}`}>
+                        <input
+                          type="radio"
+                          name="magasin"
+                          value={mag.id}
+                          checked={form.magasin === mag.id}
+                          onChange={() => setForm((f) => ({ ...f, magasin: mag.id }))}
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-[#1B2A4A]">{mag.nom}</p>
+                          {mag.adresse && (
+                            <p className="text-xs text-gray-500">{mag.adresse}</p>
+                          )}
+                          <p className="text-xs text-orange-600 mt-0.5">
+                            ⏱ Retrait disponible sous {phone?.delai_commande || '1h à 72h'}
+                          </p>
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : availableMagasins.length === 1 ? (
               <div>
                 <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
                   {t('reservation_store')}

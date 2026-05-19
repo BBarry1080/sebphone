@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import ReservationForm from '../components/reservation/ReservationForm'
-import { MAGASINS_PHYSIQUES } from '../utils/magasins'
 import { getSurCommandeColors } from '../utils/surCommandeColors'
 
-const MAGASINS_CLIENT = MAGASINS_PHYSIQUES.filter((m) => m.id !== 'marrakech')
 const STORAGE_OPTIONS = ['64Go', '128Go', '256Go', '512Go', '1To']
 
 export default function ReservationCommande() {
@@ -16,20 +14,28 @@ export default function ReservationCommande() {
     if (!state) navigate('/boutique', { replace: true })
   }, [state, navigate])
 
-  const surCommandeColors = getSurCommandeColors(state?.model || '')
-  const [selectedColor, setSelectedColor] = useState(state?.color || surCommandeColors[0])
-  const [selectedStorage, setSelectedStorage] = useState(state?.storage || STORAGE_OPTIONS[1])
+  const srcPhone = state?.phone || null
+  const model = srcPhone?.name || srcPhone?.model || state?.model || ''
+  const surCommandeColors = getSurCommandeColors(model)
+
+  const [selectedColor, setSelectedColor] = useState(
+    state?.selectedColor || state?.color || surCommandeColors[0]
+  )
+  const [selectedStorage, setSelectedStorage] = useState(
+    state?.selectedStorage || state?.storage || STORAGE_OPTIONS[1]
+  )
 
   if (!state) return null
 
-  const { model, price } = state
+  const price = srcPhone?.price ?? state?.price ?? 0
+  const delai = srcPhone?.delai_commande || state?.delai || '1h à 72h'
 
-  // Phone "virtuel" — pas de phone_id en DB, c'est une commande
+  // Phone "sur commande" — le client choisit couleur, stockage et magasin
   const virtualPhone = {
-    id:             null,
+    id:             srcPhone?.id ?? null,
     name:           model,
     model:          model,
-    brand:          model.toLowerCase().includes('samsung') ? 'Samsung' : 'Apple',
+    brand:          srcPhone?.brand || (model.toLowerCase().includes('samsung') ? 'Samsung' : 'Apple'),
     color:          selectedColor,
     storage:        selectedStorage,
     price:          price,
@@ -37,8 +43,9 @@ export default function ReservationCommande() {
     grade:          null,
     battery_health: null,
     parts_replaced: [],
-    magasins:       MAGASINS_CLIENT.map((m) => m.id),
-    status:         'disponible',
+    magasins:       [],
+    status:         'sur_commande',
+    delai_commande: delai,
     surCommande:    true,
   }
 
@@ -60,7 +67,7 @@ export default function ReservationCommande() {
           Réserver <span className="text-[#00B4CC]">{model}</span>
         </h1>
         <p className="text-[#555555] text-sm">
-          {selectedColor} · {selectedStorage} · Neuf sous scellé · Délai 1h à 72h
+          {selectedColor} · {selectedStorage} · Neuf sous scellé · Délai {delai}
         </p>
       </div>
 
