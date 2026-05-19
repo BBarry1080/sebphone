@@ -27,3 +27,49 @@ export const getSurCommandeColors = (modelName) => {
   }
   return modelColors[modelName] || ['Noir', 'Blanc', 'Argent']
 }
+
+export const getSurCommandeStorages = (modelName) => {
+  if (!modelName) return ['128Go', '256Go']
+  const name = modelName.toLowerCase()
+
+  // iPhone 17 série
+  if (name.includes('iphone 17 pro max') || name.includes('iphone 17 pro'))
+    return ['256Go', '512Go', '1To']
+  if (name.includes('iphone 17 air'))
+    return ['128Go', '256Go']
+  if (name.includes('iphone 17'))
+    return ['128Go', '256Go', '512Go']
+
+  // iPhone 16 série
+  if (name.includes('iphone 16 pro max') || name.includes('iphone 16 pro'))
+    return ['256Go', '512Go', '1To']
+  if (name.includes('iphone 16 plus') || name.includes('iphone 16e'))
+    return ['128Go', '256Go', '512Go']
+  if (name.includes('iphone 16'))
+    return ['128Go', '256Go', '512Go']
+
+  // iPhone 15 série
+  if (name.includes('iphone 15 pro max') || name.includes('iphone 15 pro'))
+    return ['256Go', '512Go', '1To']
+  if (name.includes('iphone 15 plus') || name.includes('iphone 15'))
+    return ['128Go', '256Go', '512Go']
+
+  // iPhone 14 série
+  if (name.includes('iphone 14 pro max') || name.includes('iphone 14 pro'))
+    return ['128Go', '256Go', '512Go', '1To']
+  if (name.includes('iphone 14'))
+    return ['128Go', '256Go', '512Go']
+
+  // iPhone 13 et moins
+  if (name.includes('iphone 13') || name.includes('iphone 12'))
+    return ['128Go', '256Go', '512Go']
+
+  // Samsung
+  if (name.includes('samsung galaxy s2'))
+    return ['128Go', '256Go', '512Go', '1To']
+  if (name.includes('samsung'))
+    return ['128Go', '256Go', '512Go']
+
+  // Défaut
+  return ['64Go', '128Go', '256Go', '512Go']
+}
