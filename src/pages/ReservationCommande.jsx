@@ -23,7 +23,7 @@ export default function ReservationCommande() {
   const [selectedStorage, setSelectedStorage] = useState(
     availableStorages.includes(state?.selectedStorage)
       ? state?.selectedStorage
-      : availableStorages[0]
+      : (availableStorages[0] || '')
   )
 
   if (!state) return null
