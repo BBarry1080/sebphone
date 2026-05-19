@@ -80,11 +80,17 @@ export default function Comptabilite() {
 
   const sebphonePhoneIds = phones.filter((p) => p.fournisseur === 'SebPhone').map((p) => p.id)
 
+  // Exclut les téléphones "sur commande" (pas de stock physique, achat 0€, neuf, sans IMEI)
+  const isSurCommandeSale = (p) =>
+    p.purchase_price === 0 && p.status === 'vendu' && p.condition === 'neuf' && !p.imei
+
+  const accountingPhones = phones.filter((p) => !isSurCommandeSale(p))
+
   const filteredPhones = selectedMagasin === 'tous'
-    ? phones
+    ? accountingPhones
     : selectedMagasin === 'sebphone'
-      ? phones.filter((p) => p.fournisseur === 'SebPhone')
-      : phones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(selectedMagasin))
+      ? accountingPhones.filter((p) => p.fournisseur === 'SebPhone')
+      : accountingPhones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(selectedMagasin))
 
   const stockDisponible = filteredPhones.filter((p) => p.status === 'disponible')
   const stockVendu      = filteredPhones.filter((p) => p.status === 'vendu')
@@ -107,11 +113,11 @@ export default function Comptabilite() {
     return { ht: ht.toFixed(2), tva: tva.toFixed(2) }
   }
 
-  const soldPhonesDetail = phones
+  const soldPhonesDetail = accountingPhones
     .filter((p) => p.status === 'vendu')
     .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
 
-  const totalTVA = phones
+  const totalTVA = accountingPhones
     .filter((p) => p.status === 'vendu' && (
       selectedMagasin === 'tous' ||
       (selectedMagasin === 'sebphone'
@@ -163,9 +169,9 @@ export default function Comptabilite() {
   }
 
   const statsByMagasin = allowedMagasins.map((mag) => {
-    const magPhones   = phones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(mag.id))
+    const magPhones   = accountingPhones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(mag.id))
     const dispo       = magPhones.filter((p) => p.status === 'disponible')
-    const vendu       = phones.filter((p) => p.status === 'vendu' && soldMagasinMap[p.id] === mag.id)
+    const vendu       = accountingPhones.filter((p) => p.status === 'vendu' && soldMagasinMap[p.id] === mag.id)
     const magPayments = payments.filter((p) => p.magasin_id === mag.id)
     return {
       ...mag,
@@ -184,7 +190,7 @@ export default function Comptabilite() {
     }
   })
 
-  const sebphonePhones   = phones.filter((p) => p.fournisseur === 'SebPhone')
+  const sebphonePhones   = accountingPhones.filter((p) => p.fournisseur === 'SebPhone')
   const sebphoneDispo    = sebphonePhones.filter((p) => p.status === 'disponible')
   const sebphoneVendu    = sebphonePhones.filter((p) => p.status === 'vendu')
   const sebphonePayments = payments.filter((p) => sebphonePhoneIds.includes(p.phone_id))

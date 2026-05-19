@@ -348,6 +348,9 @@ function PhoneModal({ phone, onClose, onSaved }) {
   const [brand, setBrand]                         = useState(phone?.brand || 'Apple')
   const [visibleOnSite, setVisibleOnSite]         = useState(phone?.visible_on_site ?? true)
   const [phoneStatus, setPhoneStatus]             = useState(phone?.status || 'disponible')
+  const [isSurCommande, setIsSurCommande]         = useState(phone?.status === 'sur_commande')
+  const [delai, setDelai]                         = useState(phone?.delai_commande || '2-3 jours')
+  const [surBattery, setSurBattery]               = useState('80-99%')
 
   // ── Model autocomplete ───────────────────────────────────────────
   const [modelSearch, setModelSearch]             = useState(phone?.name || phone?.model || '')
@@ -534,6 +537,13 @@ function PhoneModal({ phone, onClose, onSaved }) {
         added_by_magasin: currentUser.magasin_id || magasins?.[0] || null,
       }
 
+      if (isSurCommande) {
+        phoneData.status = 'sur_commande'
+        phoneData.visible_on_site = true
+        phoneData.delai_commande = delai || '2-3 jours'
+        phoneData.battery_health = null
+      }
+
       if (isEdit) {
         await updatePhone(phone.id, phoneData)
         onSaved()
@@ -614,6 +624,111 @@ function PhoneModal({ phone, onClose, onSaved }) {
               ))}
             </div>
           </div>
+
+          {/* ── Sur commande toggle ── */}
+          <div className={`flex items-center gap-3 p-3 rounded-xl border-2 ${
+            isSurCommande
+              ? 'bg-orange-50 border-orange-300'
+              : 'bg-gray-50 border-gray-200'}`}>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isSurCommande
+                setIsSurCommande(next)
+                setPhoneStatus(next ? 'sur_commande' : 'disponible')
+              }}
+              className={`relative w-12 h-6 rounded-full transition-all flex-shrink-0
+                ${isSurCommande ? 'bg-orange-500' : 'bg-gray-300'}`}>
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full
+                                transition-all shadow
+                ${isSurCommande ? 'left-7' : 'left-1'}`}/>
+            </button>
+            <div>
+              <p className="text-sm font-bold text-[#1B2A4A]">
+                📦 Sur commande
+              </p>
+              <p className="text-xs text-gray-500">
+                Disponible chez le fournisseur — pas en stock physique
+              </p>
+            </div>
+          </div>
+
+          {isSurCommande && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-[#555] mb-1 block">Batterie</label>
+                <select
+                  value={surBattery}
+                  onChange={(e) => setSurBattery(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none bg-white"
+                >
+                  {['80-99%', '85-99%', '90-100%', '100%'].map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-[#555] mb-1 block">Délai de commande</label>
+                <select
+                  value={delai}
+                  onChange={(e) => setDelai(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none bg-white"
+                >
+                  {['24-48h', '2-3 jours', '3-5 jours', '1 semaine'].map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {isSurCommande && modelSearch.trim() && availableColors.length > 0 && (
+            <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
+              <p className="text-xs font-bold text-blue-700 mb-2">
+                Auto-ajout par couleur
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  const inserts = availableColors.map((color) => ({
+                    name: modelSearch.trim(),
+                    model: modelSearch.trim(),
+                    brand: brand || 'Apple',
+                    color,
+                    storage: storage || null,
+                    condition: condition || 'neuf',
+                    price: parseFloat(price) || 0,
+                    purchase_price: 0,
+                    status: 'sur_commande',
+                    visible_on_site: true,
+                    fournisseur: (fournisseur && fournisseur !== '__custom__') ? fournisseur : null,
+                    delai_commande: delai || '2-3 jours',
+                    battery_health: null,
+                    magasins: [],
+                    tva_regime: 'marge',
+                    parts_replaced: [],
+                    categorie: 'telephone',
+                    added_by: currentUser?.name || 'Admin',
+                  }))
+                  const { error } = await supabase.from('phones').insert(inserts)
+                  if (error) {
+                    alert('Erreur: ' + error.message)
+                  } else {
+                    alert(`✅ ${availableColors.length} téléphones ajoutés !`)
+                    onSaved()
+                    onClose()
+                  }
+                }}
+                className="w-full py-2 bg-blue-600 text-white rounded-xl
+                           text-sm font-bold hover:bg-blue-700 transition-all"
+              >
+                ➕ Ajouter {availableColors.length} couleurs automatiquement
+              </button>
+              <p className="text-xs text-gray-500 mt-1 text-center">
+                Ou remplis la couleur manuellement pour une seule couleur
+              </p>
+            </div>
+          )}
 
           {/* ── Section 0 — Marque ── */}
           <div>
@@ -705,7 +820,7 @@ function PhoneModal({ phone, onClose, onSaved }) {
               )}
 
               {/* Santé batterie — téléphone/tablette uniquement */}
-              {(categorie === 'telephone' || categorie === 'tablette') && condition !== 'neuf' && (
+              {(categorie === 'telephone' || categorie === 'tablette') && condition !== 'neuf' && !isSurCommande && (
                 <div>
                   <label className="text-xs text-[#555] mb-1 block">Santé batterie (%)</label>
                   <input
@@ -1111,16 +1226,18 @@ function PhoneModal({ phone, onClose, onSaved }) {
           <div>
             <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Provenance & localisation</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-[#555] mb-1 block">IMEI</label>
-                <input
-                  type="text"
-                  value={imei}
-                  onChange={(e) => setImei(e.target.value)}
-                  placeholder="ex: 356761086758197"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
-                />
-              </div>
+              {!isSurCommande && (
+                <div>
+                  <label className="text-xs text-[#555] mb-1 block">IMEI</label>
+                  <input
+                    type="text"
+                    value={imei}
+                    onChange={(e) => setImei(e.target.value)}
+                    placeholder="ex: 356761086758197"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                </div>
+              )}
               <div className="col-span-2 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
                 <input
                   type="checkbox"
@@ -1171,17 +1288,19 @@ function PhoneModal({ phone, onClose, onSaved }) {
                   />
                 )}
               </div>
-              <div>
-                <label className="text-xs text-[#555] mb-1 block">Localisation</label>
-                <select
-                  value={stockLocation}
-                  onChange={(e) => setStockLocation(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
-                >
-                  <option value="">— Choisir —</option>
-                  {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
+              {!isSurCommande && (
+                <div>
+                  <label className="text-xs text-[#555] mb-1 block">Localisation</label>
+                  <select
+                    value={stockLocation}
+                    onChange={(e) => setStockLocation(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
+                  >
+                    <option value="">— Choisir —</option>
+                    {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 

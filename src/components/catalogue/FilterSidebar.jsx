@@ -136,6 +136,12 @@ function SidebarContent({
               onChange={() => setFilterStatus(filterStatus === s.value ? null : s.value)}
             />
           ))}
+          <CheckRow
+            label={`📦 ${t('filter_on_order')}`}
+            count={count((p) => p.status === 'sur_commande') || undefined}
+            checked={filterStatus === 'sur_commande'}
+            onChange={() => setFilterStatus(filterStatus === 'sur_commande' ? null : 'sur_commande')}
+          />
         </div>
       </Section>
 

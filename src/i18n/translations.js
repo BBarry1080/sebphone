@@ -596,6 +596,7 @@ export const translations = {
     color_titane_noir: "Titane noir",
     color_orange_cosmique: "Orange cosmique",
     color_rose_gold: "Rose Gold",
+    filter_on_order: "Sur commande",
   },
 
   nl: {
@@ -1195,6 +1196,7 @@ export const translations = {
     color_titane_noir: "Zwart Titanium",
     color_orange_cosmique: "Kosmisch Oranje",
     color_rose_gold: "Rosé Goud",
+    filter_on_order: "Op bestelling",
   },
 
   en: {
@@ -1794,6 +1796,7 @@ export const translations = {
     color_titane_noir: "Black Titanium",
     color_orange_cosmique: "Cosmic Orange",
     color_rose_gold: "Rose Gold",
+    filter_on_order: "On order",
   },
 
   de: {
@@ -2393,6 +2396,7 @@ export const translations = {
     color_titane_noir: "Schwarzes Titan",
     color_orange_cosmique: "Kosmisches Orange",
     color_rose_gold: "Roségold",
+    filter_on_order: "Auf Bestellung",
   },
 }
 

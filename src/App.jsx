@@ -18,7 +18,6 @@ import Boutique from './pages/Boutique';
 import Occasions from './pages/Occasions';
 import Reconditiones from './pages/Reconditiones';
 import Rachat from './pages/Rachat';
-import SurCommande from './pages/SurCommande';
 import ReservationCommande from './pages/ReservationCommande';
 import PhoneDetailPage from './pages/PhoneDetailPage'
 import ModelDetailPage from './pages/ModelDetailPage';
@@ -44,7 +43,6 @@ import Facture from './pages/Facture';
 import ProLogin from './pages/ProLogin';
 import ProCatalogue from './pages/ProCatalogue';
 import ProAdmin from './pages/admin/ProAdmin';
-import AdminSurCommande from './pages/admin/SurCommande';
 import CataloguePage from './pages/CataloguePage';
 import Avis from './pages/Avis';
 
@@ -92,9 +90,6 @@ export default function App() {
           } />
           <Route path="/rachat" element={
             <Layout><Rachat /></Layout>
-          } />
-          <Route path="/sur-commande" element={
-            <Layout><SurCommande /></Layout>
           } />
           <Route path="/reservation-commande" element={
             <Layout><ReservationCommande /></Layout>
@@ -153,7 +148,6 @@ export default function App() {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="stock" element={<Stock />} />
-            <Route path="sur-commande" element={<AdminSurCommande />} />
             <Route path="vendus" element={<VentesHistory />} />
             <Route path="reconditionnement" element={<StockReconditionnement />} />
             <Route path="commandes" element={<Commandes />} />
