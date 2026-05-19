@@ -38,7 +38,7 @@ export const getSurCommandeStorages = (modelName) => {
   if (name.includes('iphone 17 air'))
     return ['128Go', '256Go']
   if (name.includes('iphone 17'))
-    return ['128Go', '256Go', '512Go']
+    return ['256Go', '512Go']
 
   // iPhone 16 série
   if (name.includes('iphone 16 pro max') || name.includes('iphone 16 pro'))

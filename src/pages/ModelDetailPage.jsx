@@ -130,7 +130,8 @@ export default function ModelDetailPage() {
   const [filterStorage, setFilterStorage] = useState(null)
   const [filterColor, setFilterColor]   = useState(null)
   const [selectedSurCommandeColor, setSelectedSurCommandeColor] = useState('')
-  const [selectedSurCommandeStorage, setSelectedSurCommandeStorage] = useState('128Go')
+  const [selectedSurCommandeStorage, setSelectedSurCommandeStorage] = useState('256Go')
+  const [surCommandeImageUrl, setSurCommandeImageUrl] = useState('')
 
   useEffect(() => {
     async function fetchPhones() {
@@ -160,6 +161,15 @@ export default function ModelDetailPage() {
     }
     fetchPhones()
   }, [modelSlug])
+
+  // Initialise le stockage sur commande selon le modèle chargé
+  useEffect(() => {
+    const sc = phones.filter((p) => p.status === 'sur_commande')
+    if (sc.length > 0) {
+      const storages = getSurCommandeStorages(sc[0]?.name || sc[0]?.model)
+      setSelectedSurCommandeStorage(storages[0])
+    }
+  }, [phones])
 
   // Sépare le stock physique des téléphones sur commande
   const stockPhones       = phones.filter((p) => p.status !== 'sur_commande')
@@ -209,6 +219,15 @@ export default function ModelDetailPage() {
     ? surCommandeDisplayImage
     : getPhoneImage(modelName, filterColor || bestPhone?.color)
 
+  const handleSurCommandeColorClick = (color) => {
+    setSelectedSurCommandeColor(color)
+    const img = getPhoneImage(
+      surCommandePhones[0]?.name || surCommandePhones[0]?.model,
+      color
+    )
+    setSurCommandeImageUrl(img)
+  }
+
   return (
     <main className="max-w-4xl mx-auto px-4 py-6 pb-28 md:pb-12">
 
@@ -243,7 +262,7 @@ export default function ModelDetailPage() {
             <div className="w-full sm:w-48 h-48 bg-gray-50 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden">
               {imageUrl !== PLACEHOLDER ? (
                 <img
-                  src={imageUrl}
+                  src={isSurCommandeOnly && surCommandeImageUrl ? surCommandeImageUrl : imageUrl}
                   alt={modelName}
                   className="w-full h-full object-contain p-4"
                   onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
@@ -654,7 +673,7 @@ export default function ModelDetailPage() {
                   {surCommandeColors.map((color) => (
                     <button
                       key={color}
-                      onClick={() => setSelectedSurCommandeColor(color)}
+                      onClick={() => handleSurCommandeColorClick(color)}
                       title={translateColor(color, t)}
                       className={`relative w-9 h-9 rounded-full border-2 transition-all
                         ${selectedSurCommandeColor === color

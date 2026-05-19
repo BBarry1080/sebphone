@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import ReservationForm from '../components/reservation/ReservationForm'
-import { getSurCommandeColors } from '../utils/surCommandeColors'
-
-const STORAGE_OPTIONS = ['64Go', '128Go', '256Go', '512Go', '1To']
+import { getSurCommandeColors, getSurCommandeStorages } from '../utils/surCommandeColors'
 
 export default function ReservationCommande() {
   const { state } = useLocation()
@@ -16,13 +14,16 @@ export default function ReservationCommande() {
 
   const srcPhone = state?.phone || null
   const model = srcPhone?.name || srcPhone?.model || state?.model || ''
-  const surCommandeColors = getSurCommandeColors(model)
+  const availableColors = getSurCommandeColors(model)
+  const availableStorages = getSurCommandeStorages(model)
 
   const [selectedColor, setSelectedColor] = useState(
-    state?.selectedColor || state?.color || surCommandeColors[0]
+    state?.selectedColor || state?.color || availableColors[0] || ''
   )
   const [selectedStorage, setSelectedStorage] = useState(
-    state?.selectedStorage || state?.storage || STORAGE_OPTIONS[1]
+    availableStorages.includes(state?.selectedStorage)
+      ? state?.selectedStorage
+      : availableStorages[0]
   )
 
   if (!state) return null
@@ -77,7 +78,7 @@ export default function ReservationCommande() {
             Couleur souhaitée
           </label>
           <div className="flex flex-wrap gap-2">
-            {surCommandeColors.map((color) => (
+            {availableColors.map((color) => (
               <button
                 key={color}
                 type="button"
@@ -97,7 +98,7 @@ export default function ReservationCommande() {
             Stockage souhaité
           </label>
           <div className="flex flex-wrap gap-2">
-            {STORAGE_OPTIONS.map((s) => (
+            {availableStorages.map((s) => (
               <button
                 key={s}
                 type="button"
