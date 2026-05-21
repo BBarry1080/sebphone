@@ -597,6 +597,11 @@ export const translations = {
     color_orange_cosmique: "Orange cosmique",
     color_rose_gold: "Rose Gold",
     filter_on_order: "Sur commande",
+    nav_smartphones: "Smartphones",
+    nav_tablettes: "Tablettes",
+    nav_ordinateurs: "Ordinateurs",
+    nav_montres: "Montres",
+    nav_ecouteurs: "Écouteurs",
   },
 
   nl: {
@@ -1197,6 +1202,11 @@ export const translations = {
     color_orange_cosmique: "Kosmisch Oranje",
     color_rose_gold: "Rosé Goud",
     filter_on_order: "Op bestelling",
+    nav_smartphones: "Smartphones",
+    nav_tablettes: "Tablets",
+    nav_ordinateurs: "Computers",
+    nav_montres: "Smartwatches",
+    nav_ecouteurs: "Oordopjes",
   },
 
   en: {
@@ -1797,6 +1807,11 @@ export const translations = {
     color_orange_cosmique: "Cosmic Orange",
     color_rose_gold: "Rose Gold",
     filter_on_order: "On order",
+    nav_smartphones: "Smartphones",
+    nav_tablettes: "Tablets",
+    nav_ordinateurs: "Computers",
+    nav_montres: "Watches",
+    nav_ecouteurs: "Earphones",
   },
 
   de: {
@@ -2397,6 +2412,11 @@ export const translations = {
     color_orange_cosmique: "Kosmisches Orange",
     color_rose_gold: "Roségold",
     filter_on_order: "Auf Bestellung",
+    nav_smartphones: "Smartphones",
+    nav_tablettes: "Tablets",
+    nav_ordinateurs: "Computer",
+    nav_montres: "Smartwatches",
+    nav_ecouteurs: "Kopfhörer",
   },
 }
 

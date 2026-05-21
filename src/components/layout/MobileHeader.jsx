@@ -1,20 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Search, Phone, Mail, ShoppingCart } from 'lucide-react';
+import { Menu, X, Search, Phone, Mail, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import LanguageSelector from '../ui/LanguageSelector';
-
-const navLinks = [
-  { to: '/',              labelKey: 'nav_home' },
-  { to: '/iphone',        labelKey: 'nav_iphone' },
-  { to: '/samsung',       labelKey: 'nav_samsung' },
-  { to: '/occasions',     labelKey: 'nav_occasions' },
-  { to: '/reconditiones', labelKey: 'nav_reconditionnes' },
-  { to: '/rachat',        labelKey: 'nav_revendre' },
-  { to: '/pro',           labelKey: 'nav_pro' },
-];
 
 function SebLogo() {
   return (
@@ -27,6 +17,35 @@ function SebLogo() {
       />
     </Link>
   );
+}
+
+function MobileNavSection({ label, items, onLinkClick }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-b border-gray-50">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full px-6 py-4 text-[#1B2A4A] font-medium text-base"
+      >
+        {label}
+        <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="pl-10 pr-6 pb-3 space-y-1">
+          {items.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              onClick={onLinkClick}
+              className="block py-2 text-sm text-gray-600 hover:text-[#00B4CC]"
+            >
+              {item.icon ? `${item.icon} ` : ''}{item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function MobileHeader() {
@@ -45,6 +64,39 @@ export default function MobileHeader() {
       setQuery('');
     }
   };
+
+  const closeMenu = () => setOpen(false)
+
+  const smartphonesItems = [
+    { href: '/boutique', label: 'Tous les smartphones', icon: '📱' },
+    { href: '/iphone', label: 'Apple iPhone', icon: '🍎' },
+    { href: '/samsung', label: 'Samsung', icon: '📱' },
+    { href: '/occasions', label: 'Occasions', icon: '✅' },
+    { href: '/reconditiones', label: 'Reconditionnés', icon: '🔧' },
+  ]
+  const tabletteItems = [
+    { href: '/catalogue/tablette', label: 'Toutes les tablettes', icon: '📟' },
+    { href: '/catalogue/tablette?brand=Apple', label: 'Apple iPad', icon: '🍎' },
+    { href: '/catalogue/tablette?brand=Samsung', label: 'Samsung Galaxy Tab', icon: '📱' },
+  ]
+  const ordinateurItems = [
+    { href: '/catalogue/ordinateur', label: 'Tous les ordinateurs', icon: '💻' },
+    { href: '/catalogue/ordinateur?brand=Apple', label: 'Apple MacBook', icon: '🍎' },
+    { href: '/catalogue/ordinateur?brand=Dell', label: 'Dell', icon: '💻' },
+    { href: '/catalogue/ordinateur?brand=HP', label: 'HP', icon: '💻' },
+    { href: '/catalogue/ordinateur?brand=Lenovo', label: 'Lenovo', icon: '💻' },
+  ]
+  const montreItems = [
+    { href: '/catalogue/montre', label: 'Toutes les montres', icon: '⌚' },
+    { href: '/catalogue/montre?brand=Apple', label: 'Apple Watch', icon: '🍎' },
+    { href: '/catalogue/montre?brand=Samsung', label: 'Samsung Galaxy Watch', icon: '⌚' },
+  ]
+  const ecouteurItems = [
+    { href: '/catalogue/ecouteur', label: 'Tous les écouteurs', icon: '🎧' },
+    { href: '/catalogue/ecouteur?brand=Apple', label: 'Apple AirPods', icon: '🍎' },
+    { href: '/catalogue/ecouteur?brand=Samsung', label: 'Samsung Galaxy Buds', icon: '🎧' },
+    { href: '/catalogue/ecouteur?brand=Sony', label: 'Sony', icon: '🎧' },
+  ]
 
   return (
     <header className="md:hidden sticky top-0 z-40 bg-white shadow-sm">
@@ -120,23 +172,37 @@ export default function MobileHeader() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
-              className="fixed right-0 top-14 bottom-0 w-72 bg-white z-40 shadow-2xl flex flex-col"
+              className="fixed right-0 top-14 bottom-0 w-72 bg-white z-40 shadow-2xl flex flex-col overflow-y-auto"
             >
-              <div className="flex flex-col py-4 flex-1">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.to + link.labelKey}
-                    to={link.to}
-                    onClick={() => setOpen(false)}
-                    className={`px-6 py-4 font-medium text-base border-b border-gray-50 transition-colors ${
-                      link.highlight
-                        ? 'text-orange-500 hover:bg-orange-50'
-                        : 'text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC]'
-                    }`}
-                  >
-                    {link.icon || ''}{t(link.labelKey)}
-                  </Link>
-                ))}
+              <div className="flex flex-col py-2 flex-1">
+                <Link
+                  to="/"
+                  onClick={closeMenu}
+                  className="px-6 py-4 font-medium text-base border-b border-gray-50 text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC]"
+                >
+                  {t('nav_home')}
+                </Link>
+
+                <MobileNavSection label={t('nav_smartphones')} items={smartphonesItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_tablettes')} items={tabletteItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_ordinateurs')} items={ordinateurItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_montres')} items={montreItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_ecouteurs')} items={ecouteurItems} onLinkClick={closeMenu} />
+
+                <Link
+                  to="/rachat"
+                  onClick={closeMenu}
+                  className="px-6 py-4 font-medium text-base border-b border-gray-50 text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC]"
+                >
+                  {t('nav_revendre')}
+                </Link>
+                <Link
+                  to="/pro"
+                  onClick={closeMenu}
+                  className="px-6 py-4 font-medium text-base border-b border-gray-50 text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC]"
+                >
+                  {t('nav_pro')}
+                </Link>
               </div>
               <div className="px-6 py-6 bg-[#F5F5F5] border-t border-gray-100">
                 <p className="text-xs text-[#555555] font-semibold uppercase tracking-wide mb-3">{t('mobilenav_contact')}</p>

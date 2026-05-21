@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, User, Phone, Mail, ShoppingCart, ClipboardList } from 'lucide-react';
+import { Search, User, Phone, Mail, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -18,15 +18,54 @@ function SebLogo() {
   );
 }
 
-const navLinks = [
-  { to: '/',              labelKey: 'nav_home',         end: true },
-  { to: '/iphone',        labelKey: 'nav_iphone',       end: false },
-  { to: '/samsung',       labelKey: 'nav_samsung',      end: false },
-  { to: '/occasions',     labelKey: 'nav_occasions',    end: false },
-  { to: '/reconditiones', labelKey: 'nav_reconditionnes', end: false },
-  { to: '/rachat',        labelKey: 'nav_revendre',     end: false },
-  { to: '/pro',           labelKey: 'nav_pro',          end: false },
-];
+function NavDropdown({ label, items }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium
+                    transition-colors duration-150 hover:bg-gray-50
+                    ${open ? 'text-[#00B4CC] bg-cyan-50' : 'text-[#1B2A4A] hover:text-[#00B4CC]'}`}>
+        {label}
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute top-12 left-0 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 min-w-56 z-50">
+          {items.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-all group"
+            >
+              {item.icon && <span className="text-lg">{item.icon}</span>}
+              <div>
+                <p className="text-sm font-medium text-[#1B2A4A] group-hover:text-[#00B4CC]">
+                  {item.label}
+                </p>
+                {item.sub && (
+                  <p className="text-xs text-gray-400">{item.sub}</p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Header() {
   const [showSearch, setShowSearch] = useState(false);
@@ -43,6 +82,37 @@ export default function Header() {
       setQuery('');
     }
   };
+
+  const smartphonesItems = [
+    { href: '/boutique', label: 'Tous les smartphones', icon: '📱' },
+    { href: '/iphone', label: 'Apple iPhone', sub: 'iPhone 8 → 17 Pro Max', icon: '🍎' },
+    { href: '/samsung', label: 'Samsung', sub: 'Galaxy S, A, Z', icon: '📱' },
+    { href: '/occasions', label: 'Occasions', sub: 'Testés et garantis', icon: '✅' },
+    { href: '/reconditiones', label: 'Reconditionnés', sub: 'Remis à neuf', icon: '🔧' },
+  ]
+  const tabletteItems = [
+    { href: '/catalogue/tablette', label: 'Toutes les tablettes', icon: '📟' },
+    { href: '/catalogue/tablette?brand=Apple', label: 'Apple iPad', sub: 'iPad, iPad Pro, iPad Air', icon: '🍎' },
+    { href: '/catalogue/tablette?brand=Samsung', label: 'Samsung Galaxy Tab', icon: '📱' },
+  ]
+  const ordinateurItems = [
+    { href: '/catalogue/ordinateur', label: 'Tous les ordinateurs', icon: '💻' },
+    { href: '/catalogue/ordinateur?brand=Apple', label: 'Apple MacBook', icon: '🍎' },
+    { href: '/catalogue/ordinateur?brand=Dell', label: 'Dell', icon: '💻' },
+    { href: '/catalogue/ordinateur?brand=HP', label: 'HP', icon: '💻' },
+    { href: '/catalogue/ordinateur?brand=Lenovo', label: 'Lenovo', icon: '💻' },
+  ]
+  const montreItems = [
+    { href: '/catalogue/montre', label: 'Toutes les montres', icon: '⌚' },
+    { href: '/catalogue/montre?brand=Apple', label: 'Apple Watch', icon: '🍎' },
+    { href: '/catalogue/montre?brand=Samsung', label: 'Samsung Galaxy Watch', icon: '⌚' },
+  ]
+  const ecouteurItems = [
+    { href: '/catalogue/ecouteur', label: 'Tous les écouteurs', icon: '🎧' },
+    { href: '/catalogue/ecouteur?brand=Apple', label: 'Apple AirPods', icon: '🍎' },
+    { href: '/catalogue/ecouteur?brand=Samsung', label: 'Samsung Galaxy Buds', icon: '🎧' },
+    { href: '/catalogue/ecouteur?brand=Sony', label: 'Sony', icon: '🎧' },
+  ]
 
   return (
     <header className="hidden md:block sticky top-0 z-40 bg-white shadow-sm">
@@ -68,22 +138,44 @@ export default function Header() {
         <SebLogo />
 
         <nav className="flex items-center gap-1">
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.to + link.labelKey}
-              to={link.to}
-              end={link.end}
-              className={({ isActive }) =>
-                `px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
-                  link.highlight
-                    ? (isActive ? 'text-orange-700 bg-orange-50' : 'text-orange-500 hover:text-orange-700 hover:bg-orange-50')
-                    : (isActive ? 'text-[#00B4CC] bg-cyan-50' : 'text-[#1B2A4A] hover:text-[#00B4CC] hover:bg-gray-50')
-                }`
-              }
-            >
-              {link.icon || ''}{t(link.labelKey)}
-            </NavLink>
-          ))}
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                isActive ? 'text-[#00B4CC] bg-cyan-50' : 'text-[#1B2A4A] hover:text-[#00B4CC] hover:bg-gray-50'
+              }`
+            }
+          >
+            {t('nav_home')}
+          </NavLink>
+
+          <NavDropdown label={t('nav_smartphones')} items={smartphonesItems} />
+          <NavDropdown label={t('nav_tablettes')} items={tabletteItems} />
+          <NavDropdown label={t('nav_ordinateurs')} items={ordinateurItems} />
+          <NavDropdown label={t('nav_montres')} items={montreItems} />
+          <NavDropdown label={t('nav_ecouteurs')} items={ecouteurItems} />
+
+          <NavLink
+            to="/rachat"
+            className={({ isActive }) =>
+              `px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                isActive ? 'text-[#00B4CC] bg-cyan-50' : 'text-[#1B2A4A] hover:text-[#00B4CC] hover:bg-gray-50'
+              }`
+            }
+          >
+            {t('nav_revendre')}
+          </NavLink>
+          <NavLink
+            to="/pro"
+            className={({ isActive }) =>
+              `px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                isActive ? 'text-[#00B4CC] bg-cyan-50' : 'text-[#1B2A4A] hover:text-[#00B4CC] hover:bg-gray-50'
+              }`
+            }
+          >
+            {t('nav_pro')}
+          </NavLink>
         </nav>
 
         <div className="flex items-center gap-2">
