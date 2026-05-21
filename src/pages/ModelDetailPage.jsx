@@ -301,7 +301,7 @@ export default function ModelDetailPage() {
               )}
 
               {/* Filtre couleur */}
-              {colors.length > 1 && (
+              {!isSurCommandeOnly && colors.length > 1 && (
                 <div>
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_color')}</p>
                   <div className="flex flex-wrap gap-2 items-center">

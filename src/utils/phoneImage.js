@@ -375,6 +375,23 @@ const IMAGE_MAP = {
   },
 }
 
+// Variantes de couleurs (FR + EN) pour fallback intelligent quand
+// la couleur exacte n'est pas dans l'IMAGE_MAP d'un mod\u00e8le.
+const COLOR_VARIANTS = {
+  'noir':           ['black', 'noir', 'midnight', 'minuit', 'graphite', 'noir spatial', 'noir cosmos', 'noir de jais', 'gris sideral'],
+  'blanc':          ['white', 'blanc', 'starlight', 'lumiere stellaire', 'silver', 'argent', 'titane blanc', 'titane naturel'],
+  'bleu':           ['blue', 'bleu', 'pacific', 'alpine', 'alpin', 'azur', 'outremer', 'ciel', 'brume', 'titane bleu'],
+  'vert':           ['green', 'vert', 'jade', 'olive', 'cyprus', 'sarcelle', 'vert alpin', 'vert nuit'],
+  'rose':           ['pink', 'rose', 'coral', 'corail', 'lavande', 'or rose'],
+  'rouge':          ['red', 'rouge', 'product red'],
+  'violet':         ['purple', 'violet', 'ultraviolet', 'deep purple', 'violet intense'],
+  'or':             ['gold', 'or', 'yellow', 'jaune'],
+  'titane naturel': ['natural titanium', 'titane naturel'],
+  'titane blanc':   ['white titanium', 'titane blanc'],
+  'titane noir':    ['black titanium', 'titane noir'],
+  'titane desert':  ['desert titanium', 'titane desert', 'titane du desert'],
+}
+
 export function getPhoneImage(modelName, colorName = null) {
   if (!modelName || typeof modelName !== 'string') return PLACEHOLDER
 
@@ -400,8 +417,31 @@ export function getPhoneImage(modelName, colorName = null) {
 
   if (colorName && typeof colorName === 'string') {
     const colorKey = normalize(colorName)
+
+    // 1. match exact normalis\u00e9
     for (const [k, v] of Object.entries(map)) {
       if (normalize(k) === colorKey) return v
+    }
+
+    // 2. match par variantes (FR/EN aliases) : trouve la famille de couleur
+    // (ex. 'white' / 'blanc' / 'starlight' partagent la m\u00eame famille 'blanc')
+    let family = null
+    for (const [canonical, variants] of Object.entries(COLOR_VARIANTS)) {
+      if (variants.some((v) => colorKey.includes(v) || v.includes(colorKey))) {
+        family = { canonical, variants }
+        break
+      }
+    }
+    if (family) {
+      const candidates = [family.canonical, ...family.variants]
+      for (const candidate of candidates) {
+        for (const [k, v] of Object.entries(map)) {
+          const nk = normalize(k)
+          if (nk === candidate || nk.includes(candidate) || candidate.includes(nk)) {
+            return v
+          }
+        }
+      }
     }
   }
 

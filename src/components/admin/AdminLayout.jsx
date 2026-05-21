@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
+import { useAdminNotifications } from '../../hooks/useAdminNotifications'
 
 function SidebarContent({ onClose }) {
   const navigate = useNavigate()
@@ -116,7 +117,21 @@ function SidebarContent({ onClose }) {
 
 export default function AdminLayout() {
   useStaffCheck()
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { notifications, unreadCount, markAllRead } = useAdminNotifications()
+  const [showNotifs, setShowNotifs] = useState(false)
+  const notifRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifs(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8F9FA]">
@@ -150,9 +165,66 @@ export default function AdminLayout() {
           <div className="text-sm text-[#555555]">
             <span className="text-[#1B2A4A] font-semibold">Admin</span>
           </div>
-          <button className="relative p-2 text-[#555555] hover:text-[#1B2A4A] cursor-pointer">
-            <Bell size={18} />
-          </button>
+          <div ref={notifRef} className="relative">
+            <button
+              onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markAllRead() }}
+              className="relative p-2 rounded-xl hover:bg-gray-100 transition-all cursor-pointer text-[#555555] hover:text-[#1B2A4A]"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifs && (
+              <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="font-bold text-[#1B2A4A] text-sm">Notifications</h3>
+                  <span className="text-xs text-gray-400">{notifications.length} événements</span>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-gray-400 text-sm">Aucune notification</div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-all ${!notif.read ? 'bg-blue-50/50' : ''}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg">
+                            {notif.status === 'recupere' ? '✅'
+                              : notif.status === 'annule' ? '❌'
+                              : '🔔'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-[#1B2A4A] truncate">{notif.title}</p>
+                            <p className="text-xs text-gray-500 truncate">{notif.subtitle}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              {new Date(notif.time).toLocaleString('fr-BE', {
+                                day: '2-digit', month: '2-digit',
+                                hour: '2-digit', minute: '2-digit',
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="p-3 border-t border-gray-100">
+                  <button
+                    onClick={() => { setShowNotifs(false); navigate('/admin/commandes') }}
+                    className="w-full text-center text-xs text-[#00B4CC] font-semibold hover:underline cursor-pointer"
+                  >
+                    Voir toutes les commandes →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">

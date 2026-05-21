@@ -620,6 +620,14 @@ export default function ReservationForm({ phone }) {
                 )}
               </div>
             )}
+            {form.magasin && (
+              <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <span className="text-amber-600 text-sm">⏰</span>
+                <p className="text-xs text-amber-700 font-medium">
+                  Retrait en magasin disponible uniquement jusqu'à 20h
+                </p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
                 <span className="flex items-center gap-1"><Calendar size={13} /> {t('form_date')}</span>
