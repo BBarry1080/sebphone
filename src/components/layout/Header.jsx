@@ -84,8 +84,8 @@ export default function Header() {
 
   const smartphonesItems = [
     { href: '/boutique', label: 'Tous les smartphones' },
-    { href: '/iphone', label: 'Apple iPhone', sub: 'iPhone 8 → 17 Pro Max' },
-    { href: '/samsung', label: 'Samsung', sub: 'Galaxy S, A, Z' },
+    { href: '/iphone', label: 'Apple iPhone' },
+    { href: '/samsung', label: 'Samsung' },
     { href: '/occasions', label: 'Occasions', sub: 'Testés et garantis' },
     { href: '/reconditiones', label: 'Reconditionnés', sub: 'Remis à neuf' },
   ]
