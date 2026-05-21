@@ -39,6 +39,10 @@ import DetailCommande from './pages/DetailCommande';
 import CodeVerification from './pages/admin/CodeVerification';
 import VentesHistory from './pages/admin/VentesHistory';
 import StockReconditionnement from './pages/admin/StockReconditionnement';
+import Livraisons from './pages/admin/Livraisons';
+import InscriptionLivreur from './pages/livreur/InscriptionLivreur';
+import LoginLivreur from './pages/livreur/LoginLivreur';
+import DashboardLivreur from './pages/livreur/DashboardLivreur';
 import Facture from './pages/Facture';
 import ProLogin from './pages/ProLogin';
 import ProCatalogue from './pages/ProCatalogue';
@@ -138,6 +142,11 @@ export default function App() {
             </Layout>
           } />
 
+          {/* ── LIVREUR (hors layout principal) ── */}
+          <Route path="/livreur/inscription" element={<InscriptionLivreur />} />
+          <Route path="/livreur/login" element={<LoginLivreur />} />
+          <Route path="/livreur/dashboard" element={<DashboardLivreur />} />
+
           {/* ── ADMIN ── */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={
@@ -155,6 +164,7 @@ export default function App() {
             <Route path="verifier-code" element={<CodeVerification />} />
             <Route path="comptabilite" element={<Comptabilite />} />
             <Route path="registre" element={<Registre />} />
+            <Route path="livraisons" element={<Livraisons />} />
             <Route path="pro" element={<ProAdmin />} />
             <Route path="clients" element={
               <div className="text-center py-20 text-[#888]">Page Clients — à venir</div>

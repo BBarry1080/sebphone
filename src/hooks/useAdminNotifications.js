@@ -64,6 +64,24 @@ export function useAdminNotifications() {
           setUnreadCount((prev) => prev + 1)
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'deliveries' },
+        (payload) => {
+          const d = payload.new
+          const notif = {
+            id: d.id,
+            type: 'livraison',
+            title: '🚗 Nouvelle livraison express !',
+            subtitle: `${d.customer_name || 'Client'} · ${d.delivery_price ?? 0}€ · ${d.creneau || ''}`,
+            time: d.created_at || new Date().toISOString(),
+            status: d.status,
+            read: false,
+          }
+          setNotifications((prev) => [notif, ...prev.slice(0, 19)])
+          setUnreadCount((prev) => prev + 1)
+        }
+      )
       .subscribe()
 
     return () => {

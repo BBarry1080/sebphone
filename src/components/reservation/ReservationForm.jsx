@@ -69,6 +69,18 @@ export default function ReservationForm({ phone }) {
     pickupDate: '',
     notes:      '',
   });
+
+  // ── Livraison express (Bruxelles + alentours) ──
+  const [isExpress, setIsExpress] = useState(false)
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [deliveryCity, setDeliveryCity] = useState('')
+  const [deliveryZip, setDeliveryZip] = useState('')
+  const [creneau, setCreneau] = useState('')
+  const BRUSSELS_ZIPS = ['1000','1005','1006','1007','1008','1009',
+    '1020','1030','1040','1050','1060','1070','1080','1081','1082',
+    '1083','1090','1120','1130','1140','1150','1160','1170','1180',
+    '1190','1200','1210']
+  const deliveryPrice = BRUSSELS_ZIPS.includes(deliveryZip) ? 10 : 25
   const [selectedPack, setSelectedPack] = useState('none');
   const [paymentMode,  setPaymentMode]  = useState('acompte');
   const [batteryReplace, setBatteryReplace] = useState(false);
@@ -189,10 +201,32 @@ export default function ReservationForm({ phone }) {
           discount_amount:  discount || 0,
         }
 
-        const { error: insertError } = await supabase.from('orders').insert([orderData])
+        const { data: insertedOrder, error: insertError } = await supabase
+          .from('orders')
+          .insert([orderData])
+          .select()
+          .single()
         if (insertError) {
           console.error('Erreur insert order:', insertError)
           throw new Error('Impossible de créer la réservation : ' + insertError.message)
+        }
+
+        // Si livraison express : crée la course liée
+        if (isExpress && deliveryAddress && creneau) {
+          await supabase.from('deliveries').insert({
+            order_id:         insertedOrder?.id || null,
+            phone_id:         phone?.id || null,
+            customer_name:    clientName,
+            customer_phone:   form.phone,
+            customer_email:   form.email,
+            delivery_address: `${deliveryAddress}, ${deliveryZip} ${deliveryCity}`,
+            delivery_city:    deliveryCity,
+            delivery_zip:     deliveryZip,
+            creneau:          creneau,
+            delivery_date:    new Date().toISOString().split('T')[0],
+            delivery_price:   deliveryPrice,
+            status:           'en_attente',
+          })
         }
       }
 
@@ -651,6 +685,75 @@ export default function ReservationForm({ phone }) {
               required={form.delivery === 'delivery'}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
               placeholder="Rue, numéro, ville, code postal" />
+
+            <div className="space-y-3 mt-3">
+              <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                <input type="checkbox" id="express"
+                  checked={isExpress}
+                  onChange={(e) => setIsExpress(e.target.checked)}
+                  className="w-4 h-4" />
+                <label htmlFor="express" className="cursor-pointer">
+                  <p className="text-sm font-bold text-orange-800">🚗 Livraison express jour même</p>
+                  <p className="text-xs text-orange-600">Bruxelles 10€ · Hors Bruxelles 25€</p>
+                </label>
+              </div>
+
+              {isExpress && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Adresse de livraison</label>
+                    <input type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Rue et numéro"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Code postal</label>
+                      <input type="text"
+                        value={deliveryZip}
+                        onChange={(e) => setDeliveryZip(e.target.value)}
+                        placeholder="1000" maxLength={4}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Ville</label>
+                      <input type="text"
+                        value={deliveryCity}
+                        onChange={(e) => setDeliveryCity(e.target.value)}
+                        placeholder="Bruxelles"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Créneau de livraison</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { key: '8-16', label: '8h — 16h' },
+                        { key: '16-20', label: '16h — 20h' },
+                        { key: '20-00', label: '20h — 00h' },
+                      ].map((c) => (
+                        <button key={c.key} type="button"
+                          onClick={() => setCreneau(c.key)}
+                          className={`py-2 rounded-xl text-xs font-bold border
+                            ${creneau === c.key
+                              ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                              : 'bg-white text-gray-600 border-gray-200'}`}>
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <span className="text-sm text-green-700">Frais de livraison express</span>
+                    <span className="font-bold text-green-700">+{deliveryPrice}€</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
       </div>

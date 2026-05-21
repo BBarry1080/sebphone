@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, Wrench, Briefcase,
+  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, Wrench, Briefcase, Truck,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -47,6 +47,7 @@ function SidebarContent({ onClose }) {
     { to: '/admin/comptabilite',  label: 'Comptabilité',  Icon: Calculator,      show: has('voir_comptabilite') },
     { to: '/admin/registre',          label: "Registre d'achat",      Icon: BookOpen, show: has('registre_achats') },
     { to: '/admin/reconditionnement', label: 'Stock Reconditionnement', Icon: Wrench,  show: has('stock_reconditionnement') },
+    { to: '/admin/livraisons',    label: '🚗 Livraisons', Icon: Truck,           show: isAdmin },
     { to: '/admin/pro',           label: '👔 Espace Pro', Icon: Briefcase,       show: isAdmin },
     { to: '/admin/parametres',    label: 'Paramètres',    Icon: Settings,        show: isAdmin },
   ]
