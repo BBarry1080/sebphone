@@ -50,7 +50,6 @@ function NavDropdown({ label, items }) {
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-all group"
             >
-              {item.icon && <span className="text-lg">{item.icon}</span>}
               <div>
                 <p className="text-sm font-medium text-[#1B2A4A] group-hover:text-[#00B4CC]">
                   {item.label}
@@ -84,34 +83,34 @@ export default function Header() {
   };
 
   const smartphonesItems = [
-    { href: '/boutique', label: 'Tous les smartphones', icon: '📱' },
-    { href: '/iphone', label: 'Apple iPhone', sub: 'iPhone 8 → 17 Pro Max', icon: '🍎' },
-    { href: '/samsung', label: 'Samsung', sub: 'Galaxy S, A, Z', icon: '📱' },
-    { href: '/occasions', label: 'Occasions', sub: 'Testés et garantis', icon: '✅' },
-    { href: '/reconditiones', label: 'Reconditionnés', sub: 'Remis à neuf', icon: '🔧' },
+    { href: '/boutique', label: 'Tous les smartphones' },
+    { href: '/iphone', label: 'Apple iPhone', sub: 'iPhone 8 → 17 Pro Max' },
+    { href: '/samsung', label: 'Samsung', sub: 'Galaxy S, A, Z' },
+    { href: '/occasions', label: 'Occasions', sub: 'Testés et garantis' },
+    { href: '/reconditiones', label: 'Reconditionnés', sub: 'Remis à neuf' },
   ]
   const tabletteItems = [
-    { href: '/catalogue/tablette', label: 'Toutes les tablettes', icon: '📟' },
-    { href: '/catalogue/tablette?brand=Apple', label: 'Apple iPad', sub: 'iPad, iPad Pro, iPad Air', icon: '🍎' },
-    { href: '/catalogue/tablette?brand=Samsung', label: 'Samsung Galaxy Tab', icon: '📱' },
+    { href: '/catalogue/tablette', label: 'Toutes les tablettes' },
+    { href: '/catalogue/tablette?brand=Apple', label: 'Apple iPad', sub: 'iPad, iPad Pro, iPad Air' },
+    { href: '/catalogue/tablette?brand=Samsung', label: 'Samsung Galaxy Tab' },
   ]
   const ordinateurItems = [
-    { href: '/catalogue/ordinateur', label: 'Tous les ordinateurs', icon: '💻' },
-    { href: '/catalogue/ordinateur?brand=Apple', label: 'Apple MacBook', icon: '🍎' },
-    { href: '/catalogue/ordinateur?brand=Dell', label: 'Dell', icon: '💻' },
-    { href: '/catalogue/ordinateur?brand=HP', label: 'HP', icon: '💻' },
-    { href: '/catalogue/ordinateur?brand=Lenovo', label: 'Lenovo', icon: '💻' },
+    { href: '/catalogue/ordinateur', label: 'Tous les ordinateurs' },
+    { href: '/catalogue/ordinateur?brand=Apple', label: 'Apple MacBook' },
+    { href: '/catalogue/ordinateur?brand=Dell', label: 'Dell' },
+    { href: '/catalogue/ordinateur?brand=HP', label: 'HP' },
+    { href: '/catalogue/ordinateur?brand=Lenovo', label: 'Lenovo' },
   ]
   const montreItems = [
-    { href: '/catalogue/montre', label: 'Toutes les montres', icon: '⌚' },
-    { href: '/catalogue/montre?brand=Apple', label: 'Apple Watch', icon: '🍎' },
-    { href: '/catalogue/montre?brand=Samsung', label: 'Samsung Galaxy Watch', icon: '⌚' },
+    { href: '/catalogue/montre', label: 'Toutes les montres' },
+    { href: '/catalogue/montre?brand=Apple', label: 'Apple Watch' },
+    { href: '/catalogue/montre?brand=Samsung', label: 'Samsung Galaxy Watch' },
   ]
   const ecouteurItems = [
-    { href: '/catalogue/ecouteur', label: 'Tous les écouteurs', icon: '🎧' },
-    { href: '/catalogue/ecouteur?brand=Apple', label: 'Apple AirPods', icon: '🍎' },
-    { href: '/catalogue/ecouteur?brand=Samsung', label: 'Samsung Galaxy Buds', icon: '🎧' },
-    { href: '/catalogue/ecouteur?brand=Sony', label: 'Sony', icon: '🎧' },
+    { href: '/catalogue/ecouteur', label: 'Tous les écouteurs' },
+    { href: '/catalogue/ecouteur?brand=Apple', label: 'Apple AirPods' },
+    { href: '/catalogue/ecouteur?brand=Samsung', label: 'Samsung Galaxy Buds' },
+    { href: '/catalogue/ecouteur?brand=Sony', label: 'Sony' },
   ]
 
   return (
