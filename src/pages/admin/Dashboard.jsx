@@ -60,9 +60,12 @@ export default function Dashboard() {
 
       const addFilter = (q) => magasinFilter ? q.contains('magasins', [magasinFilter]) : q
 
-      const [{ count: disponible }, { count: reserve }, { count: vendu }, { data: ordersData }] = await Promise.all([
-        addFilter(supabase.from('phones').select('id', { count: 'exact', head: true })
-          .in('status', ['disponible', 'reserve'])),
+      const [{ data: stockData }, { count: reserve }, { count: vendu }, { data: ordersData }] = await Promise.all([
+        addFilter(supabase
+          .from('phones')
+          .select('id, purchase_price, price, status, fournisseur')
+          .in('status', ['disponible', 'reserve'])
+          .or('fournisseur.is.null,fournisseur.neq.Price MyPhone')),
         addFilter(supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'reserve')),
         addFilter(supabase.from('phones').select('id', { count: 'exact', head: true })
           .eq('status', 'vendu')
@@ -73,6 +76,8 @@ export default function Dashboard() {
           .limit(5),
       ])
 
+      const disponible = (stockData || []).length
+
       // CA: somme de tous les paiements (table payments)
       const { data: paymentsData } = await supabase
         .from('payments')
@@ -80,12 +85,7 @@ export default function Dashboard() {
 
       const ca = (paymentsData || []).reduce((sum, p) => sum + (p.amount || 0), 0)
 
-      const { data: beneficeData } = await addFilter(supabase
-        .from('phones')
-        .select('price, purchase_price')
-        .in('status', ['disponible', 'reserve']))
-
-      const benefice = (beneficeData || []).reduce(
+      const benefice = (stockData || []).reduce(
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
       )
 
