@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Search, Phone, Mail, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Menu, X, Search, Phone, Mail, ShoppingCart, ChevronDown, Smartphone, Tablet, Watch, Headphones, Monitor, Home } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../context/CartContext';
@@ -19,7 +19,7 @@ function SebLogo() {
   );
 }
 
-function MobileNavSection({ label, items, onLinkClick }) {
+function MobileNavSection({ label, icon, items, onLinkClick }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="border-b border-gray-50">
@@ -27,7 +27,10 @@ function MobileNavSection({ label, items, onLinkClick }) {
         onClick={() => setOpen(!open)}
         className="flex items-center justify-between w-full px-6 py-4 text-[#1B2A4A] font-medium text-base"
       >
-        {label}
+        <span className="flex items-center gap-2">
+          {icon}
+          {label}
+        </span>
         <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
@@ -178,16 +181,17 @@ export default function MobileHeader() {
                 <Link
                   to="/"
                   onClick={closeMenu}
-                  className="px-6 py-4 font-medium text-base border-b border-gray-50 text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC]"
+                  className="px-6 py-4 font-medium text-base border-b border-gray-50 text-[#1B2A4A] hover:bg-[#F5F5F5] hover:text-[#00B4CC] flex items-center gap-2"
                 >
+                  <Home size={16} />
                   {t('nav_home')}
                 </Link>
 
-                <MobileNavSection label={t('nav_smartphones')} items={smartphonesItems} onLinkClick={closeMenu} />
-                <MobileNavSection label={t('nav_tablettes')} items={tabletteItems} onLinkClick={closeMenu} />
-                <MobileNavSection label={t('nav_ordinateurs')} items={ordinateurItems} onLinkClick={closeMenu} />
-                <MobileNavSection label={t('nav_montres')} items={montreItems} onLinkClick={closeMenu} />
-                <MobileNavSection label={t('nav_ecouteurs')} items={ecouteurItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_smartphones')} icon={<Smartphone size={16} />} items={smartphonesItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_tablettes')} icon={<Tablet size={16} />} items={tabletteItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_ordinateurs')} icon={<Monitor size={16} />} items={ordinateurItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_montres')} icon={<Watch size={16} />} items={montreItems} onLinkClick={closeMenu} />
+                <MobileNavSection label={t('nav_ecouteurs')} icon={<Headphones size={16} />} items={ecouteurItems} onLinkClick={closeMenu} />
 
                 <Link
                   to="/rachat"

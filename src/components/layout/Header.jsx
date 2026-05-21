@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, User, Phone, Mail, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Search, User, Phone, Mail, ShoppingCart, ChevronDown, Smartphone, Tablet, Watch, Headphones, Monitor, Home } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -18,7 +18,7 @@ function SebLogo() {
   );
 }
 
-function NavDropdown({ label, items }) {
+function NavDropdown({ label, icon, items }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -34,9 +34,10 @@ function NavDropdown({ label, items }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium
+        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
                     transition-colors duration-150 hover:bg-gray-50
                     ${open ? 'text-[#00B4CC] bg-cyan-50' : 'text-[#1B2A4A] hover:text-[#00B4CC]'}`}>
+        {icon}
         {label}
         <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -146,14 +147,17 @@ export default function Header() {
               }`
             }
           >
-            {t('nav_home')}
+            <span className="flex items-center gap-1.5">
+              <Home size={15} />
+              {t('nav_home') || 'Accueil'}
+            </span>
           </NavLink>
 
-          <NavDropdown label={t('nav_smartphones')} items={smartphonesItems} />
-          <NavDropdown label={t('nav_tablettes')} items={tabletteItems} />
-          <NavDropdown label={t('nav_ordinateurs')} items={ordinateurItems} />
-          <NavDropdown label={t('nav_montres')} items={montreItems} />
-          <NavDropdown label={t('nav_ecouteurs')} items={ecouteurItems} />
+          <NavDropdown label={t('nav_smartphones')} icon={<Smartphone size={15} />} items={smartphonesItems} />
+          <NavDropdown label={t('nav_tablettes')} icon={<Tablet size={15} />} items={tabletteItems} />
+          <NavDropdown label={t('nav_ordinateurs')} icon={<Monitor size={15} />} items={ordinateurItems} />
+          <NavDropdown label={t('nav_montres')} icon={<Watch size={15} />} items={montreItems} />
+          <NavDropdown label={t('nav_ecouteurs')} icon={<Headphones size={15} />} items={ecouteurItems} />
 
           <NavLink
             to="/rachat"
