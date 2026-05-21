@@ -62,9 +62,7 @@ export default function Dashboard() {
 
       const [{ count: disponible }, { count: reserve }, { count: vendu }, { data: ordersData }] = await Promise.all([
         addFilter(supabase.from('phones').select('id', { count: 'exact', head: true })
-          .neq('status', 'sur_commande')
-          .neq('status', 'vendu')
-          .neq('status', 'annule')),
+          .in('status', ['disponible', 'reserve'])),
         addFilter(supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'reserve')),
         addFilter(supabase.from('phones').select('id', { count: 'exact', head: true })
           .eq('status', 'vendu')
@@ -85,9 +83,7 @@ export default function Dashboard() {
       const { data: beneficeData } = await addFilter(supabase
         .from('phones')
         .select('price, purchase_price')
-        .neq('status', 'sur_commande')
-        .neq('status', 'vendu')
-        .neq('status', 'annule'))
+        .in('status', ['disponible', 'reserve']))
 
       const benefice = (beneficeData || []).reduce(
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
