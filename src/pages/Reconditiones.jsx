@@ -95,7 +95,7 @@ export default function Reconditiones() {
             ) : (
               <div className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {groups.map((group) => (
-                  <PhoneListCard key={group.model} group={group} viewMode={viewMode} />
+                  <PhoneListCard key={group.model} group={group} viewMode={viewMode} filterStatus={filterStatus} />
                 ))}
               </div>
             )}

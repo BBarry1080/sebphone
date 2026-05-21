@@ -1,7 +1,7 @@
 // SQL à exécuter dans Supabase si la colonne manque :
 // ALTER TABLE phones ADD COLUMN IF NOT EXISTS battery_health INTEGER DEFAULT NULL;
 
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Smartphone, CheckCircle, MapPin } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../lib/supabase'
@@ -124,6 +124,8 @@ const COLOR_HEX = {
 export default function ModelDetailPage() {
   const { modelSlug } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const filterStatus = searchParams.get('status') // 'disponible' | 'sur_commande' | null
   const { t } = useLanguage()
   const [phones, setPhones]             = useState([])
   const [loading, setLoading]           = useState(true)
@@ -174,9 +176,13 @@ export default function ModelDetailPage() {
   // Sépare le stock physique des téléphones sur commande
   const stockPhones       = phones.filter((p) => p.status === 'disponible')
   const surCommandePhones = phones.filter((p) => p.status === 'sur_commande')
-  const isSurCommandeOnly = stockPhones.length === 0 && surCommandePhones.length > 0
   const hasSurCommande    = surCommandePhones.length > 0
   const hasStock          = stockPhones.length > 0
+
+  // Filtre status venant de l'URL : ?status=sur_commande masque le stock
+  // physique, ?status=disponible masque le bloc sur commande.
+  const showStock        = filterStatus !== 'sur_commande' && hasStock
+  const showSurCommande  = filterStatus !== 'disponible'   && hasSurCommande
 
   const storages = [...new Set(stockPhones.map((p) => p.storage).filter(Boolean))]
   const colors   = [...new Set(stockPhones.map((p) => p.color).filter(Boolean))]
@@ -216,7 +222,7 @@ export default function ModelDetailPage() {
     ? getPhoneImage(surCommandeModel, selectedSurCommandeColor)
     : getPhoneImage(surCommandeModel, surCommandeColors[0])
 
-  const imageUrl = isSurCommandeOnly
+  const imageUrl = !showStock && showSurCommande
     ? surCommandeDisplayImage
     : getPhoneImage(modelName, filterColor || bestPhone?.color)
 
@@ -263,7 +269,7 @@ export default function ModelDetailPage() {
             <div className="w-full sm:w-48 h-48 bg-gray-50 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden">
               {imageUrl !== PLACEHOLDER ? (
                 <img
-                  src={isSurCommandeOnly && surCommandeImageUrl ? surCommandeImageUrl : imageUrl}
+                  src={!showStock && showSurCommande && surCommandeImageUrl ? surCommandeImageUrl : imageUrl}
                   alt={modelName}
                   className="w-full h-full object-contain p-4"
                   onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
@@ -288,7 +294,7 @@ export default function ModelDetailPage() {
               )}
 
               {/* Filtre stockage */}
-              {hasStock && storages.length > 1 && (
+              {showStock && storages.length > 1 && (
                 <div className="mb-3">
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_capacity')}</p>
                   <div className="flex flex-wrap gap-2">
@@ -301,7 +307,7 @@ export default function ModelDetailPage() {
               )}
 
               {/* Filtre couleur */}
-              {!isSurCommandeOnly && colors.length > 1 && (
+              {showStock && colors.length > 1 && (
                 <div>
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_color')}</p>
                   <div className="flex flex-wrap gap-2 items-center">
@@ -328,7 +334,7 @@ export default function ModelDetailPage() {
           </div>
 
           {/* Neuf badges */}
-          {hasStock && bestPhone?.condition === 'neuf' && (
+          {showStock && bestPhone?.condition === 'neuf' && (
             <div className="flex flex-wrap gap-2 mb-4">
               {[t('model_sealed'), t('model_guarantee_apple'), t('model_guarantee_seb')].map((label) => (
                 <span key={label} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2.5 py-1 rounded-full font-medium">
@@ -340,7 +346,7 @@ export default function ModelDetailPage() {
           )}
 
           {/* Magasins Click & Collect */}
-          {hasStock && (
+          {showStock && (
           <div className="mb-4">
             <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2 flex items-center gap-1.5">
               <MapPin size={12} className="text-[#00B4CC]" /> {t('phone_click_collect')}
@@ -378,7 +384,7 @@ export default function ModelDetailPage() {
           )}
 
           {/* ── SECTION BASSE — Tableau de sélection ── */}
-          {hasStock && (
+          {showStock && (
           <div>
             <div className="mb-4">
               <h2 className="font-poppins font-bold text-xl text-[#1B2A4A]">{t('phone_choose')}</h2>
@@ -638,10 +644,10 @@ export default function ModelDetailPage() {
           </div>
           )}
 
-          {hasSurCommande && (
-            <div className={`space-y-4 ${hasStock ? 'border-t border-gray-100 pt-8 mt-8' : 'mt-6'}`}>
+          {showSurCommande && (
+            <div className={`space-y-4 ${showStock ? 'border-t border-gray-100 pt-8 mt-8' : 'mt-6'}`}>
 
-              {hasStock && (
+              {showStock && (
                 <h3 className="text-lg font-bold text-[#1B2A4A] mb-4">
                   📦 Aussi disponible sur commande
                 </h3>

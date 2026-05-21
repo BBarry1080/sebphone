@@ -45,7 +45,7 @@ const conditionColor = {
 }
 
 /* ── Grouped model card — vue LISTE ── */
-function GroupCard({ group }) {
+function GroupCard({ group, filterStatus }) {
   const navigate = useNavigate()
   const { t } = useLanguage()
   const [selectedColor, setSelectedColor] = useState(group.colors?.[0] || null)
@@ -55,9 +55,12 @@ function GroupCard({ group }) {
     || group.phones?.every((p) => p.condition === 'reconditionne')
   const refPrice = isReconditionne ? (group.referencePrice || getStartingPrice(group.model)) : null
 
+  const slug = modelToSlug(group.model)
+  const targetUrl = filterStatus ? `/modele/${slug}?status=${filterStatus}` : `/modele/${slug}`
+
   return (
     <div
-      onClick={() => navigate(`/modele/${modelToSlug(group.model)}`)}
+      onClick={() => navigate(targetUrl)}
       className="w-full bg-white border border-gray-100 rounded-2xl p-4 flex gap-4 items-center hover:border-[#00B4CC] hover:shadow-md transition-all duration-200 cursor-pointer"
     >
       <div className="w-[100px] h-[100px] flex-shrink-0 bg-gray-50 rounded-xl flex items-center justify-center overflow-hidden">
@@ -95,7 +98,7 @@ function GroupCard({ group }) {
 }
 
 /* ── Grouped model card — vue GRILLE ── */
-function GroupCardGrid({ group }) {
+function GroupCardGrid({ group, filterStatus }) {
   const navigate = useNavigate()
   const { t } = useLanguage()
   const [selectedColor, setSelectedColor] = useState(group.colors?.[0] || null)
@@ -105,9 +108,12 @@ function GroupCardGrid({ group }) {
     || group.phones?.every((p) => p.condition === 'reconditionne')
   const refPrice = isReconditionne ? (group.referencePrice || getStartingPrice(group.model)) : null
 
+  const slug = modelToSlug(group.model)
+  const targetUrl = filterStatus ? `/modele/${slug}?status=${filterStatus}` : `/modele/${slug}`
+
   return (
     <div
-      onClick={() => navigate(`/modele/${modelToSlug(group.model)}`)}
+      onClick={() => navigate(targetUrl)}
       className="bg-white border border-gray-100 rounded-2xl p-3 flex flex-col hover:border-[#00B4CC] hover:shadow-md transition-all duration-200 cursor-pointer"
     >
       {/* Image */}
@@ -216,7 +222,9 @@ function PhoneCard({ phone, onClick }) {
   )
 }
 
-export default function PhoneListCard({ group, phone, onClick, viewMode = 'list' }) {
-  if (group) return viewMode === 'grid' ? <GroupCardGrid group={group} /> : <GroupCard group={group} />
+export default function PhoneListCard({ group, phone, onClick, viewMode = 'list', filterStatus }) {
+  if (group) return viewMode === 'grid'
+    ? <GroupCardGrid group={group} filterStatus={filterStatus} />
+    : <GroupCard group={group} filterStatus={filterStatus} />
   return <PhoneCard phone={phone} onClick={onClick} />
 }
