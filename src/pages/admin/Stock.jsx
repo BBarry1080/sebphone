@@ -1962,7 +1962,7 @@ export default function Stock() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Gestion du stock</h1>
-          <p className="text-sm text-[#555555] mt-0.5">{phones.length} appareils</p>
+          <p className="text-sm text-[#555555] mt-0.5">{phones.filter((p) => p.status !== 'sur_commande').length} appareils</p>
         </div>
         {canAdd && (
           <button

@@ -61,7 +61,10 @@ export default function Dashboard() {
       const addFilter = (q) => magasinFilter ? q.contains('magasins', [magasinFilter]) : q
 
       const [{ count: disponible }, { count: reserve }, { count: vendu }, { data: ordersData }] = await Promise.all([
-        addFilter(supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'disponible')),
+        addFilter(supabase.from('phones').select('id', { count: 'exact', head: true })
+          .neq('status', 'sur_commande')
+          .neq('status', 'vendu')
+          .neq('status', 'annule')),
         addFilter(supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'reserve')),
         addFilter(supabase.from('phones').select('id', { count: 'exact', head: true })
           .eq('status', 'vendu')
@@ -82,7 +85,9 @@ export default function Dashboard() {
       const { data: beneficeData } = await addFilter(supabase
         .from('phones')
         .select('price, purchase_price')
-        .eq('status', 'disponible'))
+        .neq('status', 'sur_commande')
+        .neq('status', 'vendu')
+        .neq('status', 'annule'))
 
       const benefice = (beneficeData || []).reduce(
         (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
@@ -129,7 +134,7 @@ export default function Dashboard() {
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {canSeeStock && <MetricCard icon={Smartphone}    iconColor="bg-[#00B4CC]" label="Stock disponible"      value={metrics.disponible} unit="appareils" />}
+        {canSeeStock && <MetricCard icon={Smartphone}    iconColor="bg-[#00B4CC]" label="Stock réel"              value={metrics.disponible} unit="appareils" />}
         {canSeeCommandes && <MetricCard icon={ClipboardList} iconColor="bg-blue-500"  label="Réservations en cours" value={metrics.reserve} />}
         {canSeeCommandes && <MetricCard icon={CheckCircle}   iconColor="bg-green-500" label="Vendus ce mois"        value={metrics.vendu} />}
         {canSeeFinance && <MetricCard icon={Euro}          iconColor="bg-[#1B2A4A]" label="CA du mois"             value={metrics.ca} unit="€" />}
