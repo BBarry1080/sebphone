@@ -612,7 +612,7 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
         name:           modelSearch.trim(),
         model:          modelSearch.trim(),
         brand:          brand || 'Apple',
-        visible_on_site: phoneStatus === 'sur_commande' ? false : visibleOnSite,
+        visible_on_site: phoneStatus === 'sur_commande' ? true : visibleOnSite,
         tva_regime:     tvaRegime || 'marge',
         tva_amount:     parseFloat(tvaCalc.tva),
         price_ht:       parseFloat(tvaCalc.ht),
