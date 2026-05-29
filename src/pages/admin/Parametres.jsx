@@ -97,15 +97,17 @@ const AVATAR_COLORS = [
   'bg-purple-500', 'bg-orange-500', 'bg-rose-500',
 ]
 
-function ModelLimitRow({ model, limit, onSave }) {
-  const [min, setMin] = useState(limit?.price_min ?? '')
-  const [max, setMax] = useState(limit?.price_max ?? '')
+function ModelLimitRow({ model, limit, filterType, onSave }) {
+  const [minClient, setMinClient] = useState(limit?.price_min ?? '')
+  const [maxClient, setMaxClient] = useState(limit?.price_max ?? '')
+  const [minPro, setMinPro] = useState(limit?.price_min_pro ?? '')
+  const [maxPro, setMaxPro] = useState(limit?.price_max_pro ?? '')
   const [saved, setSaved] = useState(false)
 
   const handleSave = async () => {
-    await onSave(model.name, model.categorie, min, max)
+    await onSave(model.name, model.categorie, minClient, maxClient, minPro, maxPro)
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setTimeout(() => setSaved(false), 3000)
   }
 
   return (
@@ -114,20 +116,41 @@ function ModelLimitRow({ model, limit, onSave }) {
         <p className="text-sm font-medium text-[#1B2A4A]">{model.name}</p>
         <p className="text-xs text-gray-400">{model.categorie}</p>
       </div>
-      <input
-        type="number"
-        value={min}
-        onChange={(e) => setMin(e.target.value)}
-        placeholder="Min €"
-        className="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
-      />
-      <input
-        type="number"
-        value={max}
-        onChange={(e) => setMax(e.target.value)}
-        placeholder="Max €"
-        className="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
-      />
+      {filterType === 'client' ? (
+        <>
+          <input
+            type="number"
+            value={minClient}
+            onChange={(e) => setMinClient(e.target.value)}
+            placeholder="Min client €"
+            className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
+          />
+          <input
+            type="number"
+            value={maxClient}
+            onChange={(e) => setMaxClient(e.target.value)}
+            placeholder="Max client €"
+            className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
+          />
+        </>
+      ) : (
+        <>
+          <input
+            type="number"
+            value={minPro}
+            onChange={(e) => setMinPro(e.target.value)}
+            placeholder="Min pro €"
+            className="w-28 px-2 py-1.5 border border-blue-200 rounded-lg text-sm"
+          />
+          <input
+            type="number"
+            value={maxPro}
+            onChange={(e) => setMaxPro(e.target.value)}
+            placeholder="Max pro €"
+            className="w-28 px-2 py-1.5 border border-blue-200 rounded-lg text-sm"
+          />
+        </>
+      )}
       <button
         onClick={handleSave}
         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -136,6 +159,9 @@ function ModelLimitRow({ model, limit, onSave }) {
       >
         {saved ? '✓ Enregistré' : 'Enregistrer'}
       </button>
+      {saved && (
+        <span className="text-xs text-green-600 font-medium">✓ Sauvegardé en base</span>
+      )}
     </div>
   )
 }
@@ -327,10 +353,14 @@ export default function Parametres() {
 
   const [globalMin, setGlobalMin]   = useState(0)
   const [globalMax, setGlobalMax]   = useState(5000)
+  const [globalMinPro, setGlobalMinPro] = useState(0)
+  const [globalMaxPro, setGlobalMaxPro] = useState(5000)
   const [modelLimits, setModelLimits] = useState([])
   const [allModels, setAllModels]   = useState([])
   const [savingGlobal, setSavingGlobal] = useState(false)
   const [searchModel, setSearchModel] = useState('')
+  const [filterCategorie, setFilterCategorie] = useState('tous')
+  const [filterType, setFilterType] = useState('client')
 
   useEffect(() => {
     const fetchPriceSettings = async () => {
@@ -339,6 +369,8 @@ export default function Parametres() {
       if (settings) {
         setGlobalMin(settings.global_min)
         setGlobalMax(settings.global_max)
+        setGlobalMinPro(settings.global_min_pro || 0)
+        setGlobalMaxPro(settings.global_max_pro || 5000)
       }
 
       const { data: limits } = await supabase
@@ -367,6 +399,8 @@ export default function Parametres() {
       .update({
         global_min: parseFloat(globalMin) || 0,
         global_max: parseFloat(globalMax) || 5000,
+        global_min_pro: parseFloat(globalMinPro) || 0,
+        global_max_pro: parseFloat(globalMaxPro) || 5000,
         updated_at: new Date().toISOString(),
       })
       .eq('id', 1)
@@ -374,24 +408,23 @@ export default function Parametres() {
     alert('✅ Limites globales enregistrées')
   }
 
-  const saveModelLimit = async (modelName, categorie, min, max) => {
+  const saveModelLimit = async (modelName, categorie, minClient, maxClient, minPro, maxPro) => {
+    const toNum = (v) => (v !== '' && v != null ? parseFloat(v) : null)
     const existing = modelLimits.find((l) => l.model_name === modelName)
+    const payload = {
+      price_min:     toNum(minClient),
+      price_max:     toNum(maxClient),
+      price_min_pro: toNum(minPro),
+      price_max_pro: toNum(maxPro),
+      updated_at:    new Date().toISOString(),
+    }
     if (existing) {
       await supabase.from('model_price_limits')
-        .update({
-          price_min: min !== '' && min != null ? parseFloat(min) : null,
-          price_max: max !== '' && max != null ? parseFloat(max) : null,
-          updated_at: new Date().toISOString(),
-        })
+        .update(payload)
         .eq('model_name', modelName)
     } else {
       await supabase.from('model_price_limits')
-        .insert({
-          model_name: modelName,
-          categorie,
-          price_min: min !== '' && min != null ? parseFloat(min) : null,
-          price_max: max !== '' && max != null ? parseFloat(max) : null,
-        })
+        .insert({ model_name: modelName, categorie, ...payload })
     }
     const { data } = await supabase.from('model_price_limits').select('*')
     setModelLimits(data || [])
@@ -549,25 +582,67 @@ export default function Parametres() {
             <p className="text-xs font-bold text-gray-500 uppercase mb-3">
               Limites globales (tous appareils)
             </p>
+
+            <div className="flex gap-2 mb-4">
+              {['client', 'pro'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    filterType === type
+                      ? 'bg-[#1B2A4A] text-white'
+                      : 'bg-white text-gray-600 border border-gray-200'
+                  }`}
+                >
+                  {type === 'client' ? '👤 Client particulier' : '🏢 Revendeur Pro'}
+                </button>
+              ))}
+            </div>
+
             <div className="flex items-end gap-3 flex-wrap">
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Prix minimum (€)</label>
-                <input
-                  type="number"
-                  value={globalMin}
-                  onChange={(e) => setGlobalMin(e.target.value)}
-                  className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Prix maximum (€)</label>
-                <input
-                  type="number"
-                  value={globalMax}
-                  onChange={(e) => setGlobalMax(e.target.value)}
-                  className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm"
-                />
-              </div>
+              {filterType === 'client' ? (
+                <>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Prix minimum client (€)</label>
+                    <input
+                      type="number"
+                      value={globalMin}
+                      onChange={(e) => setGlobalMin(e.target.value)}
+                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Prix maximum client (€)</label>
+                    <input
+                      type="number"
+                      value={globalMax}
+                      onChange={(e) => setGlobalMax(e.target.value)}
+                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Prix minimum pro (€)</label>
+                    <input
+                      type="number"
+                      value={globalMinPro}
+                      onChange={(e) => setGlobalMinPro(e.target.value)}
+                      className="w-32 px-3 py-2 border border-blue-200 rounded-xl text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Prix maximum pro (€)</label>
+                    <input
+                      type="number"
+                      value={globalMaxPro}
+                      onChange={(e) => setGlobalMaxPro(e.target.value)}
+                      className="w-32 px-3 py-2 border border-blue-200 rounded-xl text-sm"
+                    />
+                  </div>
+                </>
+              )}
               <button
                 onClick={saveGlobalLimits}
                 disabled={savingGlobal}
@@ -590,9 +665,51 @@ export default function Parametres() {
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-3"
             />
 
+            <div className="flex gap-2 flex-wrap mb-3 items-center">
+              {['client', 'pro'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setFilterType(type)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    filterType === type
+                      ? 'bg-[#1B2A4A] text-white'
+                      : 'bg-white text-gray-600 border border-gray-200'
+                  }`}
+                >
+                  {type === 'client' ? '👤 Client' : '🏢 Pro'}
+                </button>
+              ))}
+
+              <div className="w-px h-6 bg-gray-200 mx-1" />
+
+              {['tous', 'telephone', 'tablette', 'montre', 'ecouteur', 'ordinateur', 'accessoire'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setFilterCategorie(cat)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                    filterCategorie === cat
+                      ? 'bg-[#00B4CC] text-white'
+                      : 'bg-white text-gray-600 border border-gray-200'
+                  }`}
+                >
+                  {cat === 'tous' ? 'Tous'
+                    : cat === 'telephone' ? '📱 Téléphones'
+                    : cat === 'tablette' ? '📟 Tablettes'
+                    : cat === 'montre' ? '⌚ Montres'
+                    : cat === 'ecouteur' ? '🎧 Écouteurs'
+                    : cat === 'ordinateur' ? '💻 Ordinateurs'
+                    : '🛍️ Accessoires'}
+                </button>
+              ))}
+            </div>
+
             <div className="max-h-96 overflow-y-auto space-y-2">
               {allModels
-                .filter((m) => m.name?.toLowerCase().includes(searchModel.toLowerCase()))
+                .filter((m) => {
+                  const matchSearch = m.name?.toLowerCase().includes(searchModel.toLowerCase())
+                  const matchCat = filterCategorie === 'tous' || m.categorie === filterCategorie
+                  return matchSearch && matchCat
+                })
                 .map((m) => {
                   const limit = modelLimits.find((l) => l.model_name === m.name)
                   return (
@@ -600,6 +717,7 @@ export default function Parametres() {
                       key={m.name}
                       model={m}
                       limit={limit}
+                      filterType={filterType}
                       onSave={saveModelLimit}
                     />
                   )
