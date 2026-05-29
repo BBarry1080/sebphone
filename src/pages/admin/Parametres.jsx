@@ -97,6 +97,49 @@ const AVATAR_COLORS = [
   'bg-purple-500', 'bg-orange-500', 'bg-rose-500',
 ]
 
+function ModelLimitRow({ model, limit, onSave }) {
+  const [min, setMin] = useState(limit?.price_min ?? '')
+  const [max, setMax] = useState(limit?.price_max ?? '')
+  const [saved, setSaved] = useState(false)
+
+  const handleSave = async () => {
+    await onSave(model.name, model.categorie, min, max)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl flex-wrap">
+      <div className="flex-1 min-w-32">
+        <p className="text-sm font-medium text-[#1B2A4A]">{model.name}</p>
+        <p className="text-xs text-gray-400">{model.categorie}</p>
+      </div>
+      <input
+        type="number"
+        value={min}
+        onChange={(e) => setMin(e.target.value)}
+        placeholder="Min €"
+        className="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
+      />
+      <input
+        type="number"
+        value={max}
+        onChange={(e) => setMax(e.target.value)}
+        placeholder="Max €"
+        className="w-24 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
+      />
+      <button
+        onClick={handleSave}
+        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+          saved ? 'bg-green-100 text-green-700' : 'bg-[#1B2A4A] text-white hover:bg-[#00B4CC]'
+        }`}
+      >
+        {saved ? '✓ Enregistré' : 'Enregistrer'}
+      </button>
+    </div>
+  )
+}
+
 function Toggle({ checked, onChange }) {
   return (
     <button
@@ -282,6 +325,78 @@ export default function Parametres() {
   const [showModal, setShowModal] = useState(false)
   const [editEmployee, setEditEmployee] = useState(null)
 
+  const [globalMin, setGlobalMin]   = useState(0)
+  const [globalMax, setGlobalMax]   = useState(5000)
+  const [modelLimits, setModelLimits] = useState([])
+  const [allModels, setAllModels]   = useState([])
+  const [savingGlobal, setSavingGlobal] = useState(false)
+  const [searchModel, setSearchModel] = useState('')
+
+  useEffect(() => {
+    const fetchPriceSettings = async () => {
+      const { data: settings } = await supabase
+        .from('price_settings').select('*').eq('id', 1).single()
+      if (settings) {
+        setGlobalMin(settings.global_min)
+        setGlobalMax(settings.global_max)
+      }
+
+      const { data: limits } = await supabase
+        .from('model_price_limits').select('*')
+      setModelLimits(limits || [])
+
+      const { data: phones } = await supabase
+        .from('phones')
+        .select('name, model, categorie')
+        .neq('status', 'vendu')
+
+      const uniqueModels = [...new Map(
+        (phones || []).map((p) => [
+          p.name || p.model,
+          { name: p.name || p.model, categorie: p.categorie || 'telephone' },
+        ])
+      ).values()].filter((m) => m.name)
+      setAllModels(uniqueModels)
+    }
+    fetchPriceSettings()
+  }, [])
+
+  const saveGlobalLimits = async () => {
+    setSavingGlobal(true)
+    await supabase.from('price_settings')
+      .update({
+        global_min: parseFloat(globalMin) || 0,
+        global_max: parseFloat(globalMax) || 5000,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', 1)
+    setSavingGlobal(false)
+    alert('✅ Limites globales enregistrées')
+  }
+
+  const saveModelLimit = async (modelName, categorie, min, max) => {
+    const existing = modelLimits.find((l) => l.model_name === modelName)
+    if (existing) {
+      await supabase.from('model_price_limits')
+        .update({
+          price_min: min !== '' && min != null ? parseFloat(min) : null,
+          price_max: max !== '' && max != null ? parseFloat(max) : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('model_name', modelName)
+    } else {
+      await supabase.from('model_price_limits')
+        .insert({
+          model_name: modelName,
+          categorie,
+          price_min: min !== '' && min != null ? parseFloat(min) : null,
+          price_max: max !== '' && max != null ? parseFloat(max) : null,
+        })
+    }
+    const { data } = await supabase.from('model_price_limits').select('*')
+    setModelLimits(data || [])
+  }
+
   const fetchStaff = async () => {
     setLoading(true)
     const { data } = await supabase.from('staff').select('*').order('created_at', { ascending: false })
@@ -422,8 +537,80 @@ export default function Parametres() {
       )}
 
       {tab === 'general' && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center text-gray-400">
-          <p className="text-sm">Paramètres généraux — à venir</p>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <h2 className="text-lg font-bold text-[#1B2A4A] mb-1">💰 Limites de prix</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Définissez les prix minimum et maximum autorisés.
+            Un appareil ne pourra jamais être vendu en dehors de ces limites,
+            même avec une remise.
+          </p>
+
+          <div className="bg-gray-50 rounded-xl p-4 mb-6">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-3">
+              Limites globales (tous appareils)
+            </p>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Prix minimum (€)</label>
+                <input
+                  type="number"
+                  value={globalMin}
+                  onChange={(e) => setGlobalMin(e.target.value)}
+                  className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Prix maximum (€)</label>
+                <input
+                  type="number"
+                  value={globalMax}
+                  onChange={(e) => setGlobalMax(e.target.value)}
+                  className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                />
+              </div>
+              <button
+                onClick={saveGlobalLimits}
+                disabled={savingGlobal}
+                className="px-4 py-2 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC] transition-all disabled:opacity-50"
+              >
+                {savingGlobal ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase mb-3">
+              Limites par modèle (remplace les limites globales)
+            </p>
+            <input
+              type="text"
+              value={searchModel}
+              onChange={(e) => setSearchModel(e.target.value)}
+              placeholder="Rechercher un modèle..."
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-3"
+            />
+
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {allModels
+                .filter((m) => m.name?.toLowerCase().includes(searchModel.toLowerCase()))
+                .map((m) => {
+                  const limit = modelLimits.find((l) => l.model_name === m.name)
+                  return (
+                    <ModelLimitRow
+                      key={m.name}
+                      model={m}
+                      limit={limit}
+                      onSave={saveModelLimit}
+                    />
+                  )
+                })}
+              {allModels.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-6">
+                  Aucun modèle en stock pour le moment
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

@@ -418,7 +418,7 @@ function InlinePrice({ id, value, onSave }) {
 
 /* ─── MODAL AJOUT / MODIFICATION ─── */
 
-function PhoneModal({ phone, onClose, onSaved }) {
+function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
   const currentUser = useCurrentUser()
   const isEdit = !!phone
 
@@ -581,8 +581,30 @@ function PhoneModal({ phone, onClose, onSaved }) {
     })
   }
 
+  const getPriceLimits = (modelName) => {
+    const modelLimit = (modelLimits || []).find((l) => l.model_name === modelName)
+    return {
+      min: modelLimit?.price_min ?? priceSettings?.min ?? 0,
+      max: modelLimit?.price_max ?? priceSettings?.max ?? 5000,
+    }
+  }
+
   const handleSave = async () => {
     if (!isEdit && !selectedModel && !modelSearch.trim()) return
+    if (!isSurCommande) {
+      const limits = getPriceLimits(modelSearch.trim() || selectedModel?.name)
+      const priceVal = parseFloat(price)
+      if (!isNaN(priceVal)) {
+        if (priceVal < limits.min) {
+          alert(`⚠️ Prix trop bas. Minimum autorisé : ${limits.min}€`)
+          return
+        }
+        if (priceVal > limits.max) {
+          alert(`⚠️ Prix trop élevé. Maximum autorisé : ${limits.max}€`)
+          return
+        }
+      }
+    }
     setSaving(true)
     try {
       const tvaCalc = calculateTVA(price, purchasePrice, tvaRegime)
@@ -1161,6 +1183,14 @@ function PhoneModal({ phone, onClose, onSaved }) {
                   }
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none"
                 />
+                {(() => {
+                  const limits = getPriceLimits(modelSearch.trim() || selectedModel?.name)
+                  return (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Limites autorisées : {limits.min}€ — {limits.max}€
+                    </p>
+                  )
+                })()}
               </div>
               <div>
                 <label className="text-xs text-[#555] mb-1 block">Prix d'achat (€)</label>
@@ -1505,6 +1535,8 @@ export default function Stock() {
 
   const [phones, setPhones]               = useState([])
   const [loading, setLoading]             = useState(true)
+  const [priceSettings, setPriceSettings] = useState({ min: 0, max: 5000 })
+  const [modelLimits, setModelLimits]     = useState([])
   const [search, setSearch]               = useState('')
   const [filterMagasin, setFilterMagasin] = useState(null)
   const [selectedFournisseur, setSelectedFournisseur] = useState('tous')
@@ -1606,6 +1638,18 @@ export default function Stock() {
         ? salePriceNum * (parseFloat(saleForm.discount_value) || 0) / 100
         : (parseFloat(saleForm.discount_value) || 0)
       const finalPrice = Math.max(salePriceNum - discountAmount, 0)
+
+      const saleLimits = getPriceLimits(salePhone?.name || salePhone?.model)
+      if (finalPrice < saleLimits.min) {
+        setSaleLoading(false)
+        alert(`⚠️ Le prix après remise (${finalPrice}€) est inférieur au minimum autorisé (${saleLimits.min}€). Remise refusée.`)
+        return
+      }
+      if (finalPrice > saleLimits.max) {
+        setSaleLoading(false)
+        alert(`⚠️ Le prix de vente (${finalPrice}€) dépasse le maximum autorisé (${saleLimits.max}€).`)
+        return
+      }
 
       const { error: phoneError } = await supabase
         .from('phones')
@@ -1866,6 +1910,27 @@ export default function Stock() {
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [])
+
+  useEffect(() => {
+    if (!isSupabaseReady) return
+    const fetchLimits = async () => {
+      const { data: s } = await supabase
+        .from('price_settings').select('*').eq('id', 1).single()
+      if (s) setPriceSettings({ min: s.global_min, max: s.global_max })
+      const { data: ml } = await supabase
+        .from('model_price_limits').select('*')
+      setModelLimits(ml || [])
+    }
+    fetchLimits()
+  }, [])
+
+  const getPriceLimits = (modelName) => {
+    const modelLimit = modelLimits.find((l) => l.model_name === modelName)
+    return {
+      min: modelLimit?.price_min ?? priceSettings.min,
+      max: modelLimit?.price_max ?? priceSettings.max,
+    }
+  }
 
   const handleStatusChange = async (id, status) => { await updatePhoneStatus(id, status) }
   const handlePriceChange  = async (id, price)  => { await updatePhonePrice(id, price) }
@@ -2488,6 +2553,8 @@ export default function Stock() {
           phone={editingPhone}
           onClose={() => setModalOpen(false)}
           onSaved={fetchPhones}
+          priceSettings={priceSettings}
+          modelLimits={modelLimits}
         />
       )}
 
