@@ -75,6 +75,7 @@ export default function CataloguePage() {
         .select('*')
         .eq('categorie', categorie)
         .in('status', ['disponible', 'sur_commande'])
+        .eq('visible_on_site', true)
         .order('created_at', { ascending: false })
       setProducts(data || [])
       setLoading(false)
