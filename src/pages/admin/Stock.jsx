@@ -1621,6 +1621,34 @@ export default function Stock() {
       )
       if (!confirmed) return
     }
+
+    // Validation limites de prix — AVANT setSaleLoading et tout fetch
+    const limits = getPriceLimits(salePhone?.name || salePhone?.model)
+    const basePrice = parseFloat(saleForm.sale_price ?? salePhone?.price) || 0
+    const discountValue = parseFloat(saleForm.discount_value) || 0
+    const discountType = saleForm.discount_type || 'fixed'
+    const computedFinalPrice = discountType === 'percent'
+      ? basePrice * (1 - discountValue / 100)
+      : basePrice - discountValue
+
+    if (limits.min > 0 && computedFinalPrice < limits.min) {
+      alert(
+        `⛔ REMISE REFUSÉE\n\n` +
+        `Prix après remise : ${computedFinalPrice.toFixed(2)}€\n` +
+        `Prix minimum autorisé : ${limits.min}€\n\n` +
+        `Réduisez la remise ou contactez l'admin.`
+      )
+      return
+    }
+    if (limits.max > 0 && computedFinalPrice > limits.max) {
+      alert(
+        `⛔ PRIX TROP ÉLEVÉ\n\n` +
+        `Prix : ${computedFinalPrice.toFixed(2)}€\n` +
+        `Prix maximum autorisé : ${limits.max}€`
+      )
+      return
+    }
+
     setSaleLoading(true)
     try {
       // Met à jour l'IMEI si nouveau
@@ -1638,18 +1666,6 @@ export default function Stock() {
         ? salePriceNum * (parseFloat(saleForm.discount_value) || 0) / 100
         : (parseFloat(saleForm.discount_value) || 0)
       const finalPrice = Math.max(salePriceNum - discountAmount, 0)
-
-      const saleLimits = getPriceLimits(salePhone?.name || salePhone?.model)
-      if (finalPrice < saleLimits.min) {
-        setSaleLoading(false)
-        alert(`⚠️ Le prix après remise (${finalPrice}€) est inférieur au minimum autorisé (${saleLimits.min}€). Remise refusée.`)
-        return
-      }
-      if (finalPrice > saleLimits.max) {
-        setSaleLoading(false)
-        alert(`⚠️ Le prix de vente (${finalPrice}€) dépasse le maximum autorisé (${saleLimits.max}€).`)
-        return
-      }
 
       const { error: phoneError } = await supabase
         .from('phones')
@@ -2850,6 +2866,17 @@ export default function Stock() {
                         <span className="text-xs text-gray-400 ml-1">(-{da.toFixed(2)}€)</span>
                       </span>
                     </div>
+                  )
+                })()}
+                {(() => {
+                  if (!salePhone) return null
+                  const lim = getPriceLimits(salePhone.name || salePhone.model)
+                  if (!lim.min && !lim.max) return null
+                  return (
+                    <p className="text-xs text-amber-600 font-medium mt-1">
+                      ⚠️ Prix min autorisé : {lim.min}€
+                      {lim.max < 5000 ? ` · Max : ${lim.max}€` : ''}
+                    </p>
                   )
                 })()}
               </div>

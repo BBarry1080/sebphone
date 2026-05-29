@@ -387,7 +387,12 @@ export default function Parametres() {
           p.name || p.model,
           { name: p.name || p.model, categorie: p.categorie || 'telephone' },
         ])
-      ).values()].filter((m) => m.name)
+      ).values()]
+        .filter((m) => m.name)
+        .sort((a, b) => {
+          if (a.categorie !== b.categorie) return a.categorie.localeCompare(b.categorie)
+          return (a.name || '').localeCompare(b.name || '')
+        })
       setAllModels(uniqueModels)
     }
     fetchPriceSettings()
