@@ -102,8 +102,10 @@ export default function ReservationForm({ phone }) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const packPrice    = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.price || 0;
-  const batteryEligible = phone?.battery_health != null && phone.battery_health <= 80;
+  const isTelephone = phone?.categorie === 'telephone' || !phone?.categorie;
+
+  const packPrice    = isTelephone ? (ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.price || 0) : 0;
+  const batteryEligible = isTelephone && phone?.battery_health != null && phone.battery_health <= 80;
   const batteryPrice = batteryReplace && batteryEligible ? 20 : 0;
   const basePrice    = (phone?.price || 0) + packPrice + batteryPrice;
   const discount   = promoCode
@@ -758,7 +760,8 @@ export default function ReservationForm({ phone }) {
         )}
       </div>
 
-      {/* Packs accessoires */}
+      {/* Packs accessoires — uniquement pour les téléphones */}
+      {isTelephone && (
       <div>
         <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-4 flex items-center gap-2">
           <Package size={18} className="text-[#00B4CC]" />
@@ -807,9 +810,10 @@ export default function ReservationForm({ phone }) {
           ))}
         </div>
       </div>
+      )}
 
-      {/* Option batterie neuve */}
-      {batteryEligible && (
+      {/* Option batterie neuve — uniquement pour les téléphones */}
+      {isTelephone && batteryEligible && (
         <div>
           <h3 className="font-poppins font-semibold text-[#1B2A4A] mb-3 flex items-center gap-2">
             <BatteryCharging size={18} className="text-[#00B4CC]" />
