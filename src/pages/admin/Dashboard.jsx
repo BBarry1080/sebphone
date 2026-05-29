@@ -58,55 +58,90 @@ export default function Dashboard() {
       startOfMonth.setDate(1)
       startOfMonth.setHours(0, 0, 0, 0)
 
-      const addFilter = (q) => magasinFilter ? q.contains('magasins', [magasinFilter]) : q
+      // Filtre stock — colonne scalaire phones.added_by_magasin
+      const addStockFilter = (q) => magasinFilter ? q.eq('added_by_magasin', magasinFilter) : q
+      // Filtre orders/payments — colonne scalaire magasin_id
+      const addOrderFilter = (q) => magasinFilter ? q.eq('magasin_id', magasinFilter) : q
 
-      const [{ data: stockData }, { count: reserve }, { count: vendu }, { data: ordersData }] = await Promise.all([
-        addFilter(supabase
-          .from('phones')
-          .select('id, purchase_price, price, status, fournisseur')
-          .in('status', ['disponible', 'reserve'])
-          .or('fournisseur.is.null,fournisseur.neq.Price MyPhone')),
-        addFilter(supabase.from('phones').select('id', { count: 'exact', head: true }).eq('status', 'reserve')),
-        addFilter(supabase.from('phones').select('id', { count: 'exact', head: true })
-          .eq('status', 'vendu')
-          .gte('updated_at', startOfMonth.toISOString())),
-        supabase.from('orders')
-          .select('*, phone:phones(name, brand), customer:customers(first_name, last_name)')
-          .order('created_at', { ascending: false })
-          .limit(5),
-      ])
+      const stockQuery = supabase
+        .from('phones')
+        .select('id, purchase_price, price, status, fournisseur, added_by_magasin')
+        .in('status', ['disponible', 'reserve'])
+        .or('fournisseur.is.null,fournisseur.neq.Price MyPhone')
+      const { data: stockData } = await addStockFilter(stockQuery)
 
-      const disponible = (stockData || []).length
+      const reserveQuery = supabase
+        .from('phones')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'reserve')
+      const { count: reserveCount } = await addStockFilter(reserveQuery)
 
-      // CA: somme de tous les paiements (table payments)
-      const { data: paymentsData } = await supabase
+      const venduQuery = supabase
+        .from('orders')
+        .select('id, final_price, phone_id', { count: 'exact' })
+        .eq('status', 'recupere')
+        .gte('created_at', startOfMonth.toISOString())
+      const { count: venduCount } = await addOrderFilter(venduQuery)
+
+      const ordersQuery = supabase
+        .from('orders')
+        .select('id, created_at, status, final_price, customer_name, reservation_code, deposit_paid, phone:phone_id(name, model, brand)')
+        .neq('status', 'annule')
+        .order('created_at', { ascending: false })
+        .limit(5)
+      const { data: ordersData } = await addOrderFilter(ordersQuery)
+
+      const paymentsQuery = supabase
         .from('payments')
         .select('amount')
+        .gte('payment_date', startOfMonth.toISOString())
+      const { data: paymentsData } = await addOrderFilter(paymentsQuery)
 
-      const ca = (paymentsData || []).reduce((sum, p) => sum + (p.amount || 0), 0)
+      const beneficeQuery = supabase
+        .from('orders')
+        .select('final_price, phone:phone_id(purchase_price)')
+        .eq('status', 'recupere')
+        .gte('created_at', startOfMonth.toISOString())
+      const { data: beneficeReelData } = await addOrderFilter(beneficeQuery)
 
+      const tvaQuery = supabase
+        .from('orders')
+        .select('final_price, phone:phone_id(purchase_price, tva_regime, price)')
+        .eq('status', 'recupere')
+        .gte('created_at', startOfMonth.toISOString())
+      const { data: tvaMonthData } = await addOrderFilter(tvaQuery)
+
+      const disponible = (stockData || []).length
+      const ca = (paymentsData || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
       const benefice = (stockData || []).reduce(
-        (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
+        (acc, p) => acc + ((Number(p.price) || 0) - (Number(p.purchase_price) || 0)), 0
       )
-
-      const { data: beneficeReelData } = await addFilter(supabase
-        .from('phones')
-        .select('price, purchase_price')
-        .eq('status', 'vendu'))
-
       const beneficeReel = (beneficeReelData || []).reduce(
-        (acc, p) => acc + ((p.price || 0) - (p.purchase_price || 0)), 0
+        (acc, o) => acc + ((Number(o.final_price) || 0) - (Number(o.phone?.purchase_price) || 0)), 0
       )
 
-      // TVA collectée — tous les téléphones vendus (toutes dates)
-      const { data: tvaMonthData } = await addFilter(supabase
-        .from('phones')
-        .select('tva_amount')
-        .eq('status', 'vendu'))
+      const calcTVAForOrder = (final_price, phone) => {
+        const p = Number(final_price) || 0
+        if (p <= 0) return 0
+        const regime = phone?.tva_regime || 'marge'
+        if (regime === 'normale') return p - p / 1.21
+        const marge = p - (Number(phone?.purchase_price) || 0)
+        if (marge <= 0) return 0
+        return marge - marge / 1.21
+      }
+      const tvaMonth = (tvaMonthData || []).reduce(
+        (acc, o) => acc + calcTVAForOrder(o.final_price, o.phone), 0
+      )
 
-      const tvaMonth = (tvaMonthData || []).reduce((acc, p) => acc + (p.tva_amount || 0), 0)
-
-      setMetrics({ disponible: disponible || 0, reserve: reserve || 0, vendu: vendu || 0, ca, benefice, beneficeReel, tvaMonth })
+      setMetrics({
+        disponible: disponible || 0,
+        reserve: reserveCount || 0,
+        vendu: venduCount || 0,
+        ca,
+        benefice,
+        beneficeReel,
+        tvaMonth,
+      })
       setOrders(ordersData || [])
       setLoading(false)
     }
