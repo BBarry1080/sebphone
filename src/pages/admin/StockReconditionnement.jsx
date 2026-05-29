@@ -182,6 +182,61 @@ export default function StockReconditionnement() {
     }
   }
 
+  const handleAddToStock = async (entry) => {
+    const confirmed = window.confirm(
+      `Ajouter "${entry.brand} ${entry.model}" au stock disponible ?\n\n` +
+      `Cette action le rendra visible dans le stock et sur le site.`
+    )
+    if (!confirmed) return
+
+    try {
+      const sellerLabel = `${entry.seller_first_name || ''} ${entry.seller_last_name || ''}`.trim()
+        || entry.fournisseur || 'Reconditionnement'
+      const sellPrice = Math.round((Number(entry.purchase_price) || 0) * 1.3)
+
+      const { error: stockError } = await supabase
+        .from('phones')
+        .insert([{
+          name:             `${entry.brand} ${entry.model}`,
+          model:            entry.model,
+          brand:            entry.brand,
+          color:            entry.color || '',
+          storage:          entry.storage || '',
+          condition:        'reconditionne',
+          grade:            entry.phone_grade || 'Bon état',
+          price:            sellPrice,
+          purchase_price:   Number(entry.purchase_price) || 0,
+          imei:             entry.imei,
+          status:           'disponible',
+          visible_on_site:  true,
+          battery_health:   entry.battery_health ? parseInt(entry.battery_health) : null,
+          magasins:         [entry.magasin_id],
+          fournisseur:      sellerLabel,
+          parts_replaced:   [],
+          added_by:         currentUser?.name || 'Admin',
+          added_by_magasin: entry.magasin_id,
+        }])
+      if (stockError) throw stockError
+
+      const { error: regError } = await supabase
+        .from('purchase_registry')
+        .update({
+          reconditioning_status:  'termine',
+          added_to_stock:         true,
+          reconditioning_done_at: new Date().toISOString(),
+          final_grade:            entry.phone_grade || 'Bon état',
+          sale_price_estimated:   sellPrice,
+        })
+        .eq('id', entry.id)
+      if (regError) throw regError
+
+      alert(`✅ ${entry.brand} ${entry.model} ajouté au stock !`)
+      fetchEntries()
+    } catch (err) {
+      alert('Erreur : ' + err.message)
+    }
+  }
+
   const handleAdd = async () => {
     if (!addForm.model || !addForm.purchase_price) {
       alert('Modèle et prix obligatoires')
@@ -340,13 +395,21 @@ export default function StockReconditionnement() {
                       {MAGASINS[entry.magasin_id]?.nom?.replace('Seb Telecom — ', '') || entry.magasin_id}
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => openRepairModal(entry)}
-                        className="flex items-center gap-1.5 bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-orange-600 transition-all whitespace-nowrap cursor-pointer"
-                      >
-                        <Wrench size={12} />
-                        Réparation terminée
-                      </button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => openRepairModal(entry)}
+                          className="flex items-center gap-1.5 bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-orange-600 transition-all whitespace-nowrap cursor-pointer"
+                        >
+                          <Wrench size={12} />
+                          Réparation terminée
+                        </button>
+                        <button
+                          onClick={() => handleAddToStock(entry)}
+                          className="flex items-center gap-1.5 bg-green-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-green-700 transition-all whitespace-nowrap cursor-pointer"
+                        >
+                          + Ajouter au stock
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
