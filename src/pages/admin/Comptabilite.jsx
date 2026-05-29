@@ -84,6 +84,10 @@ export default function Comptabilite() {
   const isSurCommandeSale = (p) =>
     p.purchase_price === 0 && p.status === 'vendu' && p.condition === 'neuf' && !p.imei
 
+  // Stock Pro Price MyPhone — n'appartient pas au stock réel SebPhone
+  // (mirror du filtre Dashboard : fournisseur.is.null OR fournisseur.neq.Price MyPhone)
+  const isStockPro = (p) => p.fournisseur === 'Price MyPhone'
+
   const accountingPhones = phones.filter((p) => !isSurCommandeSale(p))
 
   const filteredPhones = selectedMagasin === 'tous'
@@ -92,7 +96,7 @@ export default function Comptabilite() {
       ? accountingPhones.filter((p) => p.fournisseur === 'SebPhone')
       : accountingPhones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(selectedMagasin))
 
-  const stockDisponible = filteredPhones.filter((p) => p.status === 'disponible')
+  const stockDisponible = filteredPhones.filter((p) => p.status === 'disponible' && !isStockPro(p))
   const stockVendu      = filteredPhones.filter((p) => p.status === 'vendu')
 
   const totalPrixAchat          = stockDisponible.reduce((acc, p) => acc + (p.purchase_price || 0), 0)
@@ -170,7 +174,7 @@ export default function Comptabilite() {
 
   const statsByMagasin = allowedMagasins.map((mag) => {
     const magPhones   = accountingPhones.filter((p) => Array.isArray(p.magasins) && p.magasins.includes(mag.id))
-    const dispo       = magPhones.filter((p) => p.status === 'disponible')
+    const dispo       = magPhones.filter((p) => p.status === 'disponible' && !isStockPro(p))
     const vendu       = accountingPhones.filter((p) => p.status === 'vendu' && soldMagasinMap[p.id] === mag.id)
     const magPayments = payments.filter((p) => p.magasin_id === mag.id)
     return {
