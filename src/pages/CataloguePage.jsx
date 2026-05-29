@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getPhoneImage } from '../utils/phoneImage'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -38,11 +38,17 @@ const getCategorieConfig = (t) => ({
   },
 })
 
+const toSlug = (name) =>
+  (name || '').toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+
 export default function CataloguePage() {
   const { categorie } = useParams()
   const [searchParams] = useSearchParams()
   const brandParam = searchParams.get('brand')
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const config = getCategorieConfig(t)[categorie] || {}
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -68,8 +74,7 @@ export default function CataloguePage() {
         .from('phones')
         .select('*')
         .eq('categorie', categorie)
-        .eq('status', 'disponible')
-        .eq('visible_on_site', true)
+        .in('status', ['disponible', 'sur_commande'])
         .order('created_at', { ascending: false })
       setProducts(data || [])
       setLoading(false)
@@ -92,6 +97,19 @@ export default function CataloguePage() {
     if (filterMagasin && !(Array.isArray(p.magasins) && p.magasins.includes(filterMagasin))) return false
     return true
   })
+
+  // Groupe par nom de modèle — préfère "disponible" à "sur_commande"
+  const groupedProducts = Object.values(
+    filtered.reduce((acc, phone) => {
+      const key = phone.name || phone.model
+      if (!key) return acc
+      if (!acc[key]) acc[key] = phone
+      else if (phone.status === 'disponible' && acc[key].status === 'sur_commande') {
+        acc[key] = phone
+      }
+      return acc
+    }, {})
+  )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,7 +141,7 @@ export default function CataloguePage() {
           filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
           filterGrade={filterGrade} setFilterGrade={setFilterGrade}
           sortBy={sortBy} setSortBy={setSortBy}
-          total={filtered.length}
+          total={groupedProducts.length}
           phones={products}
         />
 
@@ -136,14 +154,14 @@ export default function CataloguePage() {
             filterMagasin={filterMagasin} setFilterMagasin={setFilterMagasin}
             filterGrade={filterGrade} setFilterGrade={setFilterGrade}
             sortBy={sortBy} setSortBy={setSortBy}
-            total={filtered.length}
+            total={groupedProducts.length}
             phones={products}
           />
 
           <div className="flex-1 min-w-0 w-full">
             {loading ? (
               <div className="text-center py-12 text-gray-400">{t('cat_loading')}</div>
-            ) : filtered.length === 0 ? (
+            ) : groupedProducts.length === 0 ? (
               <div className="text-center py-12">
                 <span className="text-5xl">{config.emoji}</span>
                 <p className="text-gray-500 mt-3">
@@ -159,7 +177,7 @@ export default function CataloguePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filtered.map((product) => (
+                {groupedProducts.map((product) => (
                   <div key={product.id}
                     className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all p-4">
                     <div className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center mb-3 overflow-hidden">
@@ -193,10 +211,11 @@ export default function CataloguePage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-lg font-black text-[#1B2A4A]">{product.price}€</span>
-                      <a href={`mailto:contact@sebphone.be?subject=Intérêt pour ${product.name}`}
-                        className="bg-[#00B4CC] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[#1B2A4A] transition-all">
-                        {t('cat_interested')}
-                      </a>
+                      <button
+                        onClick={() => navigate(`/modele/${toSlug(product.name)}`)}
+                        className="bg-[#1B2A4A] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[#00B4CC] transition-all">
+                        Choisir →
+                      </button>
                     </div>
                     <p className="text-xs text-green-600 font-medium mt-2">{t('cat_guarantee')}</p>
                   </div>
