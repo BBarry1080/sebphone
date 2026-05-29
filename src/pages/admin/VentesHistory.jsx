@@ -23,22 +23,24 @@ export default function VentesHistory() {
   const [modelLimits, setModelLimits]     = useState([])
 
   const [showAddSale, setShowAddSale]     = useState(false)
-  const [imeiLookup, setImeiLookup]       = useState('')
-  const [foundPhone, setFoundPhone]       = useState(null)
-  const [lookupDone, setLookupDone]       = useState(false)
   const [addSaleLoading, setAddSaleLoading] = useState(false)
-  const emptyAddSaleForm = {
-    customer_firstname: '', customer_name: '',
-    customer_email: '', customer_phone: '',
+  const emptyPhone = {
     model: '', brand: 'Apple', color: '', storage: '',
     condition: 'occasion', grade: '', imei: '',
     categorie: 'telephone',
     purchase_price: '', sale_price: '',
-    sale_magasin: '', fournisseur: '',
+    foundPhoneId: null,
+    lookupDone: false,
+  }
+  const emptyAddSaleForm = {
+    customer_firstname: '', customer_name: '',
+    customer_email: '', customer_phone: '',
+    sale_magasin: '',
     discount_value: '', discount_type: 'fixed',
     is_company_sale: false,
     company_name: '', company_vat: '', company_address: '',
     payments: [{ method: 'cash', amount: '' }],
+    phones: [{ ...emptyPhone }],
   }
   const [addSaleForm, setAddSaleForm] = useState(emptyAddSaleForm)
 
@@ -63,159 +65,165 @@ export default function VentesHistory() {
     fetchLimits()
   }, [])
 
-  const handleImeiLookup = async () => {
-    if (!imeiLookup || imeiLookup.length < 6) return
+  const handleImeiLookup = async (index) => {
+    const imei = addSaleForm.phones[index]?.imei
+    if (!imei || imei.length < 6) return
     const { data } = await supabase
-      .from('phones')
-      .select('*')
-      .eq('imei', imeiLookup)
-      .eq('status', 'disponible')
+      .from('phones').select('*')
+      .eq('imei', imei).eq('status', 'disponible')
       .maybeSingle()
 
-    setLookupDone(true)
     if (data) {
-      setFoundPhone(data)
       setAddSaleForm((f) => ({
         ...f,
-        model: data.name || data.model,
-        brand: data.brand || 'Apple',
-        color: data.color || '',
-        storage: data.storage || '',
-        condition: data.condition || 'occasion',
-        grade: data.grade || '',
-        imei: data.imei,
-        categorie: data.categorie || 'telephone',
-        purchase_price: data.purchase_price || '',
-        sale_price: data.price || '',
-        fournisseur: data.fournisseur || '',
+        phones: f.phones.map((p, i) => i === index ? {
+          ...p,
+          model: data.name || data.model,
+          brand: data.brand || 'Apple',
+          color: data.color || '',
+          storage: data.storage || '',
+          condition: data.condition || 'occasion',
+          grade: data.grade || '',
+          categorie: data.categorie || 'telephone',
+          purchase_price: data.purchase_price || '',
+          sale_price: data.price || '',
+          foundPhoneId: data.id,
+          lookupDone: true,
+        } : p),
       }))
     } else {
-      setFoundPhone(null)
-      setAddSaleForm((f) => ({ ...f, imei: imeiLookup }))
+      setAddSaleForm((f) => ({
+        ...f,
+        phones: f.phones.map((p, i) => i === index
+          ? { ...p, foundPhoneId: null, lookupDone: true }
+          : p),
+      }))
     }
   }
+
+  const addPhoneRow = () => setAddSaleForm((f) => ({
+    ...f,
+    phones: [...f.phones, { ...emptyPhone }],
+  }))
+  const removePhoneRow = (index) => setAddSaleForm((f) => ({
+    ...f,
+    phones: f.phones.filter((_, i) => i !== index),
+  }))
+  const updatePhoneField = (index, field, value) => setAddSaleForm((f) => ({
+    ...f,
+    phones: f.phones.map((p, i) => i === index ? { ...p, [field]: value } : p),
+  }))
 
   const handleAddSale = async () => {
     if (!addSaleForm.customer_firstname || !addSaleForm.customer_name) {
       alert('Prénom et nom du client obligatoires'); return
     }
-    if (!addSaleForm.model) {
-      alert('Modèle obligatoire'); return
-    }
-    if (!addSaleForm.imei || addSaleForm.imei.length < 6) {
-      alert('IMEI obligatoire'); return
-    }
-    if (!addSaleForm.sale_price) {
-      alert('Prix de vente obligatoire'); return
-    }
     if (!addSaleForm.sale_magasin) {
-      alert('Magasin de vente obligatoire'); return
+      alert('Magasin/canal de vente obligatoire'); return
+    }
+    if (!addSaleForm.phones.length) {
+      alert('Ajoutez au moins un téléphone'); return
+    }
+    for (const [i, p] of addSaleForm.phones.entries()) {
+      if (!p.model) { alert(`Appareil ${i + 1} : modèle obligatoire`); return }
+      if (!p.imei || p.imei.length < 6) {
+        alert(`Appareil ${i + 1} : IMEI obligatoire`); return
+      }
+      if (!p.sale_price) {
+        alert(`Appareil ${i + 1} : prix de vente obligatoire`); return
+      }
     }
 
-    const modelLimit = (modelLimits || []).find((l) => l.model_name === addSaleForm.model)
-    const limitMin = Number(modelLimit?.price_min ?? priceSettings?.min ?? 0) || 0
-    const limitMax = Number(modelLimit?.price_max ?? priceSettings?.max ?? 5000) || 5000
-    const basePrice = Number(addSaleForm.sale_price) || 0
-    const discountVal = Number(addSaleForm.discount_value) || 0
-    const finalPrice = addSaleForm.discount_type === 'percent'
-      ? basePrice * (1 - discountVal / 100)
-      : basePrice - discountVal
-
-    if (limitMin > 0 && finalPrice < limitMin) {
-      alert(`⛔ Prix ${finalPrice.toFixed(2)}€ sous le minimum ${limitMin}€`)
-      return
-    }
-    if (limitMax > 0 && finalPrice > limitMax) {
-      alert(`⛔ Prix ${finalPrice.toFixed(2)}€ dépasse le maximum ${limitMax}€`)
-      return
+    for (const [i, p] of addSaleForm.phones.entries()) {
+      const ml = (modelLimits || []).find((l) => l.model_name === p.model)
+      const lMin = Number(ml?.price_min ?? priceSettings?.min ?? 0) || 0
+      const lMax = Number(ml?.price_max ?? priceSettings?.max ?? 5000) || 5000
+      const sp = Number(p.sale_price) || 0
+      if (lMin > 0 && sp < lMin) {
+        alert(`⛔ Appareil ${i + 1} (${p.model}) : prix ${sp}€ sous le minimum ${lMin}€`)
+        return
+      }
+      if (lMax > 0 && sp > lMax) {
+        alert(`⛔ Appareil ${i + 1} (${p.model}) : prix ${sp}€ dépasse le maximum ${lMax}€`)
+        return
+      }
     }
 
     setAddSaleLoading(true)
     try {
-      let phoneId = foundPhone?.id
-      const saleDate = new Date().toISOString()
-
-      if (!phoneId) {
-        const { data: newPhone, error: phoneErr } = await supabase
-          .from('phones')
-          .insert({
-            name: addSaleForm.model,
-            model: addSaleForm.model,
-            brand: addSaleForm.brand,
-            color: addSaleForm.color || '—',
-            storage: addSaleForm.storage || '—',
-            condition: addSaleForm.condition,
-            grade: addSaleForm.grade || '',
-            imei: addSaleForm.imei,
-            categorie: addSaleForm.categorie,
-            purchase_price: Number(addSaleForm.purchase_price) || 0,
-            price: finalPrice,
-            status: 'vendu',
-            fournisseur: addSaleForm.fournisseur || addSaleForm.sale_magasin,
-            magasins: [addSaleForm.sale_magasin],
-            tva_regime: 'marge',
-            parts_replaced: [],
-            visible_on_site: false,
-            added_by: 'Vente directe',
-            added_by_magasin: addSaleForm.sale_magasin,
-          })
-          .select()
-          .single()
-        if (phoneErr) throw phoneErr
-        phoneId = newPhone.id
-      } else {
-        await supabase.from('phones')
-          .update({
-            status: 'vendu',
-            price: finalPrice,
-            imei: addSaleForm.imei,
-          })
-          .eq('id', phoneId)
-      }
-
       const saleCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+      const customerFull = `${addSaleForm.customer_firstname} ${addSaleForm.customer_name}`
+      const saleDate = new Date().toISOString()
+      const orderIds = []
+      const soldPhones = []
 
-      const { data: orderData, error: orderErr } = await supabase
-        .from('orders')
-        .insert({
-          phone_id: phoneId,
-          reservation_code: saleCode,
-          customer_name: `${addSaleForm.customer_firstname} ${addSaleForm.customer_name}`,
-          customer_email: addSaleForm.customer_email || null,
-          customer_phone: addSaleForm.customer_phone || null,
-          phone_name:    addSaleForm.model,
-          phone_color:   addSaleForm.color || null,
-          phone_storage: addSaleForm.storage || null,
-          phone_grade:   addSaleForm.grade || null,
-          status: 'recupere',
-          magasin_id: addSaleForm.sale_magasin,
-          total_amount: finalPrice,
-          final_price: finalPrice,
-          deposit_amount: 0,
-          encaisse_at: saleDate,
-          discount_value: discountVal || null,
-          discount_type: addSaleForm.discount_type,
-          is_company_sale: addSaleForm.is_company_sale,
-          company_name: addSaleForm.company_name || null,
-          company_vat: addSaleForm.company_vat || null,
-          company_address: addSaleForm.company_address || null,
-        })
-        .select()
-        .single()
-      if (orderErr) throw orderErr
+      for (const p of addSaleForm.phones) {
+        let phoneId = p.foundPhoneId
+        const finalPrice = Number(p.sale_price) || 0
+
+        if (!phoneId) {
+          const { data: newPhone, error: pErr } = await supabase
+            .from('phones').insert({
+              name: p.model, model: p.model, brand: p.brand,
+              color: p.color || '—', storage: p.storage || '—',
+              condition: p.condition, grade: p.grade || '',
+              imei: p.imei, categorie: p.categorie,
+              purchase_price: Number(p.purchase_price) || 0,
+              price: finalPrice, status: 'vendu',
+              fournisseur: addSaleForm.sale_magasin,
+              magasins: [addSaleForm.sale_magasin],
+              tva_regime: 'marge', parts_replaced: [],
+              visible_on_site: false,
+              added_by: 'Vente directe',
+              added_by_magasin: addSaleForm.sale_magasin,
+            }).select().single()
+          if (pErr) throw pErr
+          phoneId = newPhone.id
+        } else {
+          await supabase.from('phones').update({
+            status: 'vendu', price: finalPrice, imei: p.imei,
+          }).eq('id', phoneId)
+        }
+
+        const { data: orderData, error: oErr } = await supabase
+          .from('orders').insert({
+            phone_id: phoneId,
+            reservation_code: saleCode,
+            customer_name: customerFull,
+            customer_email: addSaleForm.customer_email || null,
+            customer_phone: addSaleForm.customer_phone || null,
+            status: 'recupere',
+            magasin_id: addSaleForm.sale_magasin,
+            final_price: finalPrice,
+            total_amount: finalPrice,
+            phone_name: p.model,
+            phone_color: p.color || '—',
+            phone_storage: p.storage || '—',
+            phone_grade: p.grade || '',
+            discount_value: Number(addSaleForm.discount_value) || null,
+            discount_type: addSaleForm.discount_type,
+            is_company_sale: addSaleForm.is_company_sale,
+            company_name: addSaleForm.company_name || null,
+            company_vat: addSaleForm.company_vat || null,
+            company_address: addSaleForm.company_address || null,
+            encaisse_at: saleDate,
+          }).select().single()
+        if (oErr) throw oErr
+        orderIds.push(orderData.id)
+        soldPhones.push({ ...p, phoneId, finalPrice, orderId: orderData.id })
+      }
 
       const validPayments = addSaleForm.payments.filter((p) => Number(p.amount) > 0)
       if (validPayments.length > 0) {
         await supabase.from('payments').insert(
-          validPayments.map((p) => ({
-            phone_id: phoneId,
-            order_id: orderData.id,
-            payment_method: p.method,
-            amount: Number(p.amount),
+          validPayments.map((pay) => ({
+            phone_id: soldPhones[0].phoneId,
+            order_id: orderIds[0],
+            payment_method: pay.method,
+            amount: Number(pay.amount),
             magasin_id: addSaleForm.sale_magasin,
-            purchase_price: Number(addSaleForm.purchase_price) || 0,
-            description: `Vente ${addSaleForm.model} — ${addSaleForm.customer_firstname} ${addSaleForm.customer_name}`,
             payment_date: saleDate,
+            description: `Vente groupée ${saleCode} (${soldPhones.length} appareils)`,
           }))
         )
       }
@@ -227,18 +235,22 @@ export default function VentesHistory() {
           const PUBLIC_KEY = 'rqbaYNMIGNP6IQB9O'
           const templateId = addSaleForm.is_company_sale
             ? 'template_qukek6a' : 'template_pzv7w8d'
-
+          const totalFinal = soldPhones.reduce((s, p) => s + p.finalPrice, 0)
+          const phonesList = soldPhones.map((p) =>
+            `${p.model} ${p.color} ${p.storage} (IMEI: ${p.imei}) - ${p.finalPrice}€`
+          ).join(' | ')
           const paymentLabel = validPayments
             .map((p) => `${p.method}: ${p.amount}€`).join(' + ')
 
           await emailjs.send(SERVICE_ID, templateId, {
             to_email: addSaleForm.customer_email,
-            to_name: `${addSaleForm.customer_firstname} ${addSaleForm.customer_name}`,
-            phone_name: addSaleForm.model,
-            phone_color: addSaleForm.color || '—',
-            phone_storage: addSaleForm.storage || '—',
-            phone_imei: addSaleForm.imei,
-            price_total: `${finalPrice.toFixed(2)}€`,
+            to_name: customerFull,
+            phone_name: soldPhones.length > 1
+              ? `${soldPhones.length} appareils`
+              : soldPhones[0].model,
+            phone_imei: soldPhones.map((p) => p.imei).join(', '),
+            phones_list: phonesList,
+            price_total: `${totalFinal.toFixed(2)}€`,
             payment_method: paymentLabel,
             magasin_nom: MAGASINS[addSaleForm.sale_magasin]?.nom || 'SebPhone',
             magasin_adresse: MAGASINS[addSaleForm.sale_magasin]?.adresse || '',
@@ -251,15 +263,12 @@ export default function VentesHistory() {
         }
       }
 
-      alert('✅ Vente enregistrée avec succès !')
+      alert(`✅ Vente groupée enregistrée (${soldPhones.length} appareil(s)) — Code: ${saleCode}`)
       setShowAddSale(false)
-      setFoundPhone(null)
-      setLookupDone(false)
-      setImeiLookup('')
       setAddSaleForm(emptyAddSaleForm)
       fetchSales()
     } catch (err) {
-      console.error('Erreur vente:', err)
+      console.error('Erreur vente groupée:', err)
       alert('Erreur : ' + err.message)
     }
     setAddSaleLoading(false)
@@ -1017,96 +1026,123 @@ export default function VentesHistory() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between z-10">
               <h2 className="font-bold text-[#1B2A4A] text-lg">+ Ajouter une vente</h2>
-              <button onClick={() => {
-                setShowAddSale(false); setFoundPhone(null);
-                setLookupDone(false); setImeiLookup('')
-              }}>
+              <button onClick={() => setShowAddSale(false)}>
                 <X size={20} className="text-gray-400"/>
               </button>
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="bg-blue-50 rounded-xl p-4">
-                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
-                  Rechercher par IMEI (dans le stock)
-                </label>
-                <div className="flex gap-2">
-                  <input type="text" value={imeiLookup}
-                    onChange={(e) => setImeiLookup(e.target.value)}
-                    placeholder="Saisir l'IMEI..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono"/>
-                  <button onClick={handleImeiLookup}
-                    className="px-4 py-2 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold">
-                    Rechercher
-                  </button>
-                </div>
-                {lookupDone && foundPhone && (
-                  <p className="text-xs text-green-600 font-bold mt-2">
-                    ✓ Téléphone trouvé en stock : {foundPhone.name} · {foundPhone.color} · {foundPhone.storage} (modifiable ci-dessous)
-                  </p>
-                )}
-                {lookupDone && !foundPhone && (
-                  <p className="text-xs text-orange-600 font-bold mt-2">
-                    ⚠️ Aucun téléphone trouvé — vente directe, remplissez les infos manuellement
-                  </p>
-                )}
-              </div>
+              {addSaleForm.phones.map((p, idx) => (
+                <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-bold text-gray-500 uppercase">
+                      Appareil {idx + 1}
+                    </p>
+                    {addSaleForm.phones.length > 1 && (
+                      <button onClick={() => removePhoneRow(idx)}
+                        className="text-xs text-red-500 font-bold hover:underline">
+                        ✕ Retirer
+                      </button>
+                    )}
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Modèle *</label>
-                  <input type="text" value={addSaleForm.model}
-                    onChange={(e) => setAddSaleForm((f) => ({ ...f, model: e.target.value }))}
-                    placeholder="ex: iPhone 13 Pro"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">IMEI *</label>
-                  <input type="text" value={addSaleForm.imei}
-                    onChange={(e) => setAddSaleForm((f) => ({ ...f, imei: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono"/>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Couleur</label>
-                  <input type="text" value={addSaleForm.color}
-                    onChange={(e) => setAddSaleForm((f) => ({ ...f, color: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Stockage</label>
-                  <input type="text" value={addSaleForm.storage}
-                    onChange={(e) => setAddSaleForm((f) => ({ ...f, storage: e.target.value }))}
-                    placeholder="ex: 128Go"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">État</label>
-                  <select value={addSaleForm.condition}
-                    onChange={(e) => setAddSaleForm((f) => ({ ...f, condition: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
-                    <option value="neuf">Neuf</option>
-                    <option value="reconditionne">Reconditionné</option>
-                    <option value="occasion">Occasion</option>
-                  </select>
-                </div>
-              </div>
+                  <div className="bg-blue-50 rounded-xl p-3 mb-3">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
+                      IMEI — rechercher en stock
+                    </label>
+                    <div className="flex gap-2">
+                      <input type="text" value={p.imei}
+                        onChange={(e) => updatePhoneField(idx, 'imei', e.target.value)}
+                        placeholder="Saisir l'IMEI..."
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono"/>
+                      <button onClick={() => handleImeiLookup(idx)}
+                        className="px-4 py-2 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold">
+                        Rechercher
+                      </button>
+                    </div>
+                    {p.lookupDone && p.foundPhoneId && (
+                      <p className="text-xs text-green-600 font-bold mt-2">
+                        ✓ Téléphone trouvé en stock — pré-rempli, modifiable
+                      </p>
+                    )}
+                    {p.lookupDone && !p.foundPhoneId && (
+                      <p className="text-xs text-orange-600 font-bold mt-2">
+                        ⚠️ Aucun téléphone trouvé — vente directe, remplissez manuellement
+                      </p>
+                    )}
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
-                    Prix d'achat (€) {!foundPhone && '*'}
-                  </label>
-                  <input type="number" value={addSaleForm.purchase_price}
-                    onChange={(e) => setAddSaleForm((f) => ({ ...f, purchase_price: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Modèle *</label>
+                      <input type="text" value={p.model}
+                        onChange={(e) => updatePhoneField(idx, 'model', e.target.value)}
+                        placeholder="ex: iPhone 13 Pro"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Couleur</label>
+                      <input type="text" value={p.color}
+                        onChange={(e) => updatePhoneField(idx, 'color', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Stockage</label>
+                      <input type="text" value={p.storage}
+                        onChange={(e) => updatePhoneField(idx, 'storage', e.target.value)}
+                        placeholder="ex: 128Go"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">État</label>
+                      <select value={p.condition}
+                        onChange={(e) => updatePhoneField(idx, 'condition', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                        <option value="neuf">Neuf</option>
+                        <option value="reconditionne">Reconditionné</option>
+                        <option value="occasion">Occasion</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                        Prix d'achat (€) {!p.foundPhoneId && '*'}
+                      </label>
+                      <input type="number" value={p.purchase_price}
+                        onChange={(e) => updatePhoneField(idx, 'purchase_price', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Prix de vente (€) *</label>
+                      <input type="number" value={p.sale_price}
+                        onChange={(e) => updatePhoneField(idx, 'sale_price', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Prix de vente (€) *</label>
-                  <input type="number" value={addSaleForm.sale_price}
-                    onChange={(e) => setAddSaleForm((f) => ({ ...f, sale_price: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-                </div>
-              </div>
+              ))}
+
+              <button onClick={addPhoneRow}
+                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-sm font-bold text-[#1B2A4A] hover:border-[#00B4CC] hover:text-[#00B4CC] transition-all">
+                + Ajouter un téléphone
+              </button>
+
+              {(() => {
+                const total = addSaleForm.phones.reduce((s, p) => s + (Number(p.sale_price) || 0), 0)
+                const disc = Number(addSaleForm.discount_value) || 0
+                const final = addSaleForm.discount_type === 'percent'
+                  ? total * (1 - disc / 100)
+                  : total - disc
+                return (
+                  <div className="bg-gray-50 rounded-xl p-3 flex justify-between">
+                    <span className="text-sm text-gray-600">
+                      Total ({addSaleForm.phones.length} appareil(s))
+                    </span>
+                    <span className="font-bold text-[#1B2A4A]">
+                      {final.toFixed(2)}€
+                    </span>
+                  </div>
+                )
+              })()}
 
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Magasin de vente *</label>
@@ -1213,7 +1249,7 @@ export default function VentesHistory() {
               )}
 
               <div className="flex gap-3 pt-2">
-                <button onClick={() => { setShowAddSale(false); setFoundPhone(null) }}
+                <button onClick={() => setShowAddSale(false)}
                   className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-medium">
                   Annuler
                 </button>

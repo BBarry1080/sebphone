@@ -39,6 +39,18 @@ export const MAGASINS = {
     adresse: 'Marrakech, Maroc',
     tel:     '+32(0)492 40.54.57',
   },
+  'livraison-sebtelecom': {
+    id:      'livraison-sebtelecom',
+    nom:     'Livraison SebTelecom',
+    virtuel: true,
+    canal:   true,
+  },
+  'livraison-sebphone': {
+    id:      'livraison-sebphone',
+    nom:     'Livraison SebPhone',
+    virtuel: true,
+    canal:   true,
+  },
 }
 
 export const MAGASINS_LIST       = Object.values(MAGASINS)
