@@ -1624,28 +1624,24 @@ export default function Stock() {
 
     // Validation limites de prix — AVANT setSaleLoading et tout fetch
     const limits = getPriceLimits(salePhone?.name || salePhone?.model)
-    const basePrice = parseFloat(saleForm.sale_price ?? salePhone?.price) || 0
-    const discountValue = parseFloat(saleForm.discount_value) || 0
+    const basePrice = Number(saleForm.sale_price) || Number(salePhone?.price) || 0
+    const discountValue = Number(saleForm.discount_value) || 0
     const discountType = saleForm.discount_type || 'fixed'
     const computedFinalPrice = discountType === 'percent'
       ? basePrice * (1 - discountValue / 100)
       : basePrice - discountValue
 
+    console.log('VALIDATION PRIX:', {
+      model: salePhone?.name || salePhone?.model,
+      limits, basePrice, discountValue, computedFinalPrice,
+    })
+
     if (limits.min > 0 && computedFinalPrice < limits.min) {
-      alert(
-        `⛔ REMISE REFUSÉE\n\n` +
-        `Prix après remise : ${computedFinalPrice.toFixed(2)}€\n` +
-        `Prix minimum autorisé : ${limits.min}€\n\n` +
-        `Réduisez la remise ou contactez l'admin.`
-      )
+      alert(`⛔ VENTE REFUSÉE\n\nPrix après remise : ${computedFinalPrice.toFixed(2)}€\nPrix MINIMUM autorisé : ${limits.min}€\n\nRéduisez la remise.`)
       return
     }
     if (limits.max > 0 && computedFinalPrice > limits.max) {
-      alert(
-        `⛔ PRIX TROP ÉLEVÉ\n\n` +
-        `Prix : ${computedFinalPrice.toFixed(2)}€\n` +
-        `Prix maximum autorisé : ${limits.max}€`
-      )
+      alert(`⛔ VENTE REFUSÉE\n\nPrix : ${computedFinalPrice.toFixed(2)}€\nPrix MAXIMUM autorisé : ${limits.max}€\n\nBaissez le prix.`)
       return
     }
 
@@ -1932,19 +1928,28 @@ export default function Stock() {
     const fetchLimits = async () => {
       const { data: s } = await supabase
         .from('price_settings').select('*').eq('id', 1).single()
-      if (s) setPriceSettings({ min: s.global_min, max: s.global_max })
+      if (s) setPriceSettings({
+        min: Number(s.global_min) || 0,
+        max: Number(s.global_max) || 5000,
+      })
       const { data: ml } = await supabase
         .from('model_price_limits').select('*')
-      setModelLimits(ml || [])
+      setModelLimits((ml || []).map((l) => ({
+        ...l,
+        price_min: l.price_min != null ? Number(l.price_min) : null,
+        price_max: l.price_max != null ? Number(l.price_max) : null,
+      })))
     }
     fetchLimits()
   }, [])
 
   const getPriceLimits = (modelName) => {
     const modelLimit = modelLimits.find((l) => l.model_name === modelName)
+    const min = modelLimit?.price_min ?? priceSettings?.min ?? 0
+    const max = modelLimit?.price_max ?? priceSettings?.max ?? 5000
     return {
-      min: modelLimit?.price_min ?? priceSettings.min,
-      max: modelLimit?.price_max ?? priceSettings.max,
+      min: Number(min) || 0,
+      max: Number(max) || 5000,
     }
   }
 
@@ -2711,6 +2716,34 @@ export default function Stock() {
                         ) - salePhone.purchase_price).toFixed(0)}€
                       </p>
                     )}
+                    {(() => {
+                      if (!salePhone) return null
+                      const limits = getPriceLimits(salePhone.name || salePhone.model)
+                      const current = Number(saleForm.sale_price) || 0
+                      const discount = Number(saleForm.discount_value) || 0
+                      const final = saleForm.discount_type === 'percent'
+                        ? current * (1 - discount / 100)
+                        : current - discount
+                      const tooLow  = limits.min > 0 && final < limits.min && current > 0
+                      const tooHigh = limits.max > 0 && final > limits.max
+                      return (
+                        <div className="mt-1">
+                          <p className="text-xs text-gray-400">
+                            Limites : {limits.min}€ — {limits.max}€
+                          </p>
+                          {tooLow && (
+                            <p className="text-xs text-red-600 font-bold">
+                              ⛔ Prix final {final.toFixed(2)}€ sous le minimum {limits.min}€
+                            </p>
+                          )}
+                          {tooHigh && (
+                            <p className="text-xs text-red-600 font-bold">
+                              ⛔ Prix {final.toFixed(2)}€ dépasse le maximum {limits.max}€
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   <div>
