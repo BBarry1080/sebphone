@@ -170,36 +170,60 @@ export default function Registre() {
   }
 
   const handleAddToStock = async (entry) => {
+    const phoneLabel = `${entry.brand || ''} ${entry.model || ''}`.trim()
     const confirmed = window.confirm(
-      `Ajouter ${entry.brand} ${entry.model} au stock ?\n` +
-      `IMEI: ${entry.imei}\n` +
-      `Prix d'achat: ${entry.purchase_price}€`
+      `Ajouter "${phoneLabel}" au stock ?\n\n` +
+      `Vous pourrez définir le prix de vente dans la page Stock.`
     )
     if (!confirmed) return
 
     try {
-      const { error } = await supabase
-        .from('phones')
-        .insert([{
-          name: `${entry.brand} ${entry.model}`,
-          model: entry.model,
-          brand: entry.brand,
-          color: entry.color || '',
-          storage: entry.storage || '',
-          condition: 'occasion',
-          grade: 'Bon état',
-          price: Math.round((entry.purchase_price || 0) * 1.3),
-          purchase_price: entry.purchase_price,
-          imei: entry.imei,
-          status: 'disponible',
-          magasins: [entry.magasin_id],
-          fournisseur: `${entry.seller_first_name} ${entry.seller_last_name}`,
-          notes: `Racheté le ${new Date(entry.transaction_date).toLocaleDateString('fr-BE')} — ${entry.payment_method || 'Cash'}`,
-          parts_replaced: [],
-        }])
+      const sellerLabel = `${entry.seller_first_name || ''} ${entry.seller_last_name || ''}`.trim()
+        || entry.fournisseur || 'Rachat client'
 
-      if (error) throw error
-      alert(`✅ ${entry.brand} ${entry.model} ajouté au stock !`)
+      const { data: newPhone, error: phoneErr } = await supabase
+        .from('phones')
+        .insert({
+          name:             phoneLabel,
+          model:            entry.model,
+          brand:            entry.brand,
+          color:            entry.color || '—',
+          storage:          entry.storage || '—',
+          imei:             entry.imei,
+          condition:        entry.phone_condition || 'occasion',
+          grade:            entry.phone_grade || '',
+          purchase_price:   Number(entry.purchase_price) || 0,
+          price:            Number(entry.purchase_price) || 0,
+          status:           'disponible',
+          visible_on_site:  false,
+          magasins:         entry.magasin_id ? [entry.magasin_id] : [],
+          added_by_magasin: entry.magasin_id || '',
+          fournisseur:      sellerLabel,
+          tva_regime:       'marge',
+          parts_replaced:   [],
+          battery_health:   entry.battery_health || null,
+          face_id_status:   entry.face_id_status || null,
+        })
+        .select()
+        .single()
+
+      if (phoneErr) throw phoneErr
+
+      const { error: regErr } = await supabase
+        .from('purchase_registry')
+        .update({
+          added_to_stock: true,
+          phone_id:       newPhone.id,
+        })
+        .eq('id', entry.id)
+      if (regErr) throw regErr
+
+      alert(
+        `✅ ${phoneLabel} ajouté au stock !\n\n` +
+        `N'oubliez pas de définir le prix de vente dans la page Stock.\n` +
+        `Le téléphone est masqué du site public par défaut.`
+      )
+      fetchEntries()
     } catch (err) {
       alert('Erreur : ' + err.message)
     }
@@ -347,7 +371,7 @@ export default function Registre() {
             phone_condition:  p.phone_condition,
             phone_grade:      p.phone_condition !== 'neuf' ? p.phone_grade : null,
             reconditioning_status: p.phone_condition === 'reconditionne' ? 'en_attente' : null,
-            added_to_stock:   p.phone_condition !== 'reconditionne',
+            added_to_stock:   false,
             notes:            mixedNotes,
           }
         })
@@ -356,42 +380,12 @@ export default function Registre() {
           .insert(inserts)
         if (insertError) throw insertError
 
-        // Phones non-reconditionnés → insertion automatique dans phones (stock)
-        const stockPhones = phones
-          .filter((p) => p.phone_condition !== 'reconditionne')
-          .map((p) => ({
-            name:             p.model,
-            model:            p.model,
-            brand:            p.brand,
-            color:            p.color || '',
-            storage:          p.storage || '',
-            condition:        p.phone_condition,
-            grade:            p.phone_condition !== 'neuf' ? (p.phone_grade || null) : null,
-            price:            parseFloat(p.purchase_price) * 1.3,
-            purchase_price:   parseFloat(p.purchase_price),
-            imei:             p.imei || null,
-            battery_health:   p.battery_health ? parseInt(p.battery_health) : null,
-            status:           'disponible',
-            fournisseur:      (form.fournisseur === '__custom__' ? form.fournisseur_custom : form.fournisseur) || 'SebPhone',
-            magasins:         [form.magasin_id],
-            stock_location:   form.magasin_id,
-            added_by_magasin: form.magasin_id,
-            added_by:         currentUser?.name || 'Admin',
-            visible_on_site:  true,
-            parts_replaced:   [],
-            tva_regime:       'marge',
-          }))
-
-        if (stockPhones.length > 0) {
-          const { error: phonesError } = await supabase.from('phones').insert(stockPhones)
-          if (phonesError) throw phonesError
-        }
-
-        const nbStock  = stockPhones.length
-        const nbRecond = phones.length - nbStock
+        const nbRecond = phones.filter((p) => p.phone_condition === 'reconditionne').length
+        const nbRegistre = phones.length - nbRecond
         const parts    = []
-        if (nbStock > 0)  parts.push(`${nbStock} téléphone${nbStock > 1 ? 's' : ''} ajouté${nbStock > 1 ? 's' : ''} au stock ✅`)
-        if (nbRecond > 0) parts.push(`${nbRecond} téléphone${nbRecond > 1 ? 's' : ''} envoyé${nbRecond > 1 ? 's' : ''} en reconditionnement 🔧`)
+        if (nbRegistre > 0) parts.push(`${nbRegistre} téléphone${nbRegistre > 1 ? 's' : ''} enregistré${nbRegistre > 1 ? 's' : ''} au registre ✅`)
+        if (nbRecond > 0)   parts.push(`${nbRecond} téléphone${nbRecond > 1 ? 's' : ''} envoyé${nbRecond > 1 ? 's' : ''} en reconditionnement 🔧`)
+        parts.push("Cliquez 'Ajouter au stock' pour les rendre disponibles à la vente.")
         setSuccess(parts.join(' · '))
       }
 
@@ -720,7 +714,20 @@ export default function Registre() {
                     {MAGASINS[entry.magasin_id]?.nom?.replace('Seb Telecom — ', '') || entry.magasin_id}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      {entry.added_to_stock ? (
+                        <span className="text-xs text-green-600 font-medium whitespace-nowrap">
+                          ✓ Dans le stock
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleAddToStock(entry)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700 transition-all whitespace-nowrap cursor-pointer"
+                        >
+                          + Ajouter au stock
+                        </button>
+                      )}
+                    <div className="relative">
                       <button
                         onClick={() => setOpenMenu(openMenu === entry.id ? null : entry.id)}
                         className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all cursor-pointer">
@@ -794,11 +801,6 @@ export default function Registre() {
                             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-cyan-600 hover:bg-cyan-50 font-medium cursor-pointer">
                             <Plus size={14}/> Ajouter un téléphone
                           </button>
-                          <button
-                            onClick={() => { handleAddToStock(entry); setOpenMenu(null) }}
-                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#00B4CC] hover:bg-cyan-50 font-medium cursor-pointer">
-                            <Plus size={14}/> Ajouter au stock
-                          </button>
                           {isAdmin && (
                             <>
                               <div className="border-t border-gray-100 my-1"/>
@@ -811,6 +813,7 @@ export default function Registre() {
                           )}
                         </div>
                       )}
+                    </div>
                     </div>
                   </td>
                 </tr>
