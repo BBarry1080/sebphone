@@ -19,7 +19,251 @@ export default function VentesHistory() {
   const [editForm, setEditForm]               = useState({})
   const [saving, setSaving]                   = useState(false)
 
+  const [priceSettings, setPriceSettings] = useState({ min: 0, max: 5000 })
+  const [modelLimits, setModelLimits]     = useState([])
+
+  const [showAddSale, setShowAddSale]     = useState(false)
+  const [imeiLookup, setImeiLookup]       = useState('')
+  const [foundPhone, setFoundPhone]       = useState(null)
+  const [lookupDone, setLookupDone]       = useState(false)
+  const [addSaleLoading, setAddSaleLoading] = useState(false)
+  const emptyAddSaleForm = {
+    customer_firstname: '', customer_name: '',
+    customer_email: '', customer_phone: '',
+    model: '', brand: 'Apple', color: '', storage: '',
+    condition: 'occasion', grade: '', imei: '',
+    categorie: 'telephone',
+    purchase_price: '', sale_price: '',
+    sale_magasin: '', fournisseur: '',
+    discount_value: '', discount_type: 'fixed',
+    is_company_sale: false,
+    company_name: '', company_vat: '', company_address: '',
+    payments: [{ method: 'cash', amount: '' }],
+  }
+  const [addSaleForm, setAddSaleForm] = useState(emptyAddSaleForm)
+
   useEffect(() => { fetchSales() }, [])
+
+  useEffect(() => {
+    const fetchLimits = async () => {
+      const { data: s } = await supabase
+        .from('price_settings').select('*').eq('id', 1).single()
+      if (s) setPriceSettings({
+        min: Number(s.global_min) || 0,
+        max: Number(s.global_max) || 5000,
+      })
+      const { data: ml } = await supabase
+        .from('model_price_limits').select('*')
+      setModelLimits((ml || []).map((l) => ({
+        ...l,
+        price_min: l.price_min != null ? Number(l.price_min) : null,
+        price_max: l.price_max != null ? Number(l.price_max) : null,
+      })))
+    }
+    fetchLimits()
+  }, [])
+
+  const handleImeiLookup = async () => {
+    if (!imeiLookup || imeiLookup.length < 6) return
+    const { data } = await supabase
+      .from('phones')
+      .select('*')
+      .eq('imei', imeiLookup)
+      .eq('status', 'disponible')
+      .maybeSingle()
+
+    setLookupDone(true)
+    if (data) {
+      setFoundPhone(data)
+      setAddSaleForm((f) => ({
+        ...f,
+        model: data.name || data.model,
+        brand: data.brand || 'Apple',
+        color: data.color || '',
+        storage: data.storage || '',
+        condition: data.condition || 'occasion',
+        grade: data.grade || '',
+        imei: data.imei,
+        categorie: data.categorie || 'telephone',
+        purchase_price: data.purchase_price || '',
+        sale_price: data.price || '',
+        fournisseur: data.fournisseur || '',
+      }))
+    } else {
+      setFoundPhone(null)
+      setAddSaleForm((f) => ({ ...f, imei: imeiLookup }))
+    }
+  }
+
+  const handleAddSale = async () => {
+    if (!addSaleForm.customer_firstname || !addSaleForm.customer_name) {
+      alert('Prénom et nom du client obligatoires'); return
+    }
+    if (!addSaleForm.model) {
+      alert('Modèle obligatoire'); return
+    }
+    if (!addSaleForm.imei || addSaleForm.imei.length < 6) {
+      alert('IMEI obligatoire'); return
+    }
+    if (!addSaleForm.sale_price) {
+      alert('Prix de vente obligatoire'); return
+    }
+    if (!addSaleForm.sale_magasin) {
+      alert('Magasin de vente obligatoire'); return
+    }
+
+    const modelLimit = (modelLimits || []).find((l) => l.model_name === addSaleForm.model)
+    const limitMin = Number(modelLimit?.price_min ?? priceSettings?.min ?? 0) || 0
+    const limitMax = Number(modelLimit?.price_max ?? priceSettings?.max ?? 5000) || 5000
+    const basePrice = Number(addSaleForm.sale_price) || 0
+    const discountVal = Number(addSaleForm.discount_value) || 0
+    const finalPrice = addSaleForm.discount_type === 'percent'
+      ? basePrice * (1 - discountVal / 100)
+      : basePrice - discountVal
+
+    if (limitMin > 0 && finalPrice < limitMin) {
+      alert(`⛔ Prix ${finalPrice.toFixed(2)}€ sous le minimum ${limitMin}€`)
+      return
+    }
+    if (limitMax > 0 && finalPrice > limitMax) {
+      alert(`⛔ Prix ${finalPrice.toFixed(2)}€ dépasse le maximum ${limitMax}€`)
+      return
+    }
+
+    setAddSaleLoading(true)
+    try {
+      let phoneId = foundPhone?.id
+      const saleDate = new Date().toISOString()
+
+      if (!phoneId) {
+        const { data: newPhone, error: phoneErr } = await supabase
+          .from('phones')
+          .insert({
+            name: addSaleForm.model,
+            model: addSaleForm.model,
+            brand: addSaleForm.brand,
+            color: addSaleForm.color || '—',
+            storage: addSaleForm.storage || '—',
+            condition: addSaleForm.condition,
+            grade: addSaleForm.grade || '',
+            imei: addSaleForm.imei,
+            categorie: addSaleForm.categorie,
+            purchase_price: Number(addSaleForm.purchase_price) || 0,
+            price: finalPrice,
+            status: 'vendu',
+            fournisseur: addSaleForm.fournisseur || addSaleForm.sale_magasin,
+            magasins: [addSaleForm.sale_magasin],
+            tva_regime: 'marge',
+            parts_replaced: [],
+            visible_on_site: false,
+            added_by: 'Vente directe',
+            added_by_magasin: addSaleForm.sale_magasin,
+          })
+          .select()
+          .single()
+        if (phoneErr) throw phoneErr
+        phoneId = newPhone.id
+      } else {
+        await supabase.from('phones')
+          .update({
+            status: 'vendu',
+            price: finalPrice,
+            imei: addSaleForm.imei,
+          })
+          .eq('id', phoneId)
+      }
+
+      const saleCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+
+      const { data: orderData, error: orderErr } = await supabase
+        .from('orders')
+        .insert({
+          phone_id: phoneId,
+          reservation_code: saleCode,
+          customer_name: `${addSaleForm.customer_firstname} ${addSaleForm.customer_name}`,
+          customer_email: addSaleForm.customer_email || null,
+          customer_phone: addSaleForm.customer_phone || null,
+          phone_name:    addSaleForm.model,
+          phone_color:   addSaleForm.color || null,
+          phone_storage: addSaleForm.storage || null,
+          phone_grade:   addSaleForm.grade || null,
+          status: 'recupere',
+          magasin_id: addSaleForm.sale_magasin,
+          total_amount: finalPrice,
+          final_price: finalPrice,
+          deposit_amount: 0,
+          encaisse_at: saleDate,
+          discount_value: discountVal || null,
+          discount_type: addSaleForm.discount_type,
+          is_company_sale: addSaleForm.is_company_sale,
+          company_name: addSaleForm.company_name || null,
+          company_vat: addSaleForm.company_vat || null,
+          company_address: addSaleForm.company_address || null,
+        })
+        .select()
+        .single()
+      if (orderErr) throw orderErr
+
+      const validPayments = addSaleForm.payments.filter((p) => Number(p.amount) > 0)
+      if (validPayments.length > 0) {
+        await supabase.from('payments').insert(
+          validPayments.map((p) => ({
+            phone_id: phoneId,
+            order_id: orderData.id,
+            payment_method: p.method,
+            amount: Number(p.amount),
+            magasin_id: addSaleForm.sale_magasin,
+            purchase_price: Number(addSaleForm.purchase_price) || 0,
+            description: `Vente ${addSaleForm.model} — ${addSaleForm.customer_firstname} ${addSaleForm.customer_name}`,
+            payment_date: saleDate,
+          }))
+        )
+      }
+
+      if (addSaleForm.customer_email) {
+        try {
+          const emailjs = (await import('@emailjs/browser')).default
+          const SERVICE_ID = 'service_nn74puq'
+          const PUBLIC_KEY = 'rqbaYNMIGNP6IQB9O'
+          const templateId = addSaleForm.is_company_sale
+            ? 'template_qukek6a' : 'template_pzv7w8d'
+
+          const paymentLabel = validPayments
+            .map((p) => `${p.method}: ${p.amount}€`).join(' + ')
+
+          await emailjs.send(SERVICE_ID, templateId, {
+            to_email: addSaleForm.customer_email,
+            to_name: `${addSaleForm.customer_firstname} ${addSaleForm.customer_name}`,
+            phone_name: addSaleForm.model,
+            phone_color: addSaleForm.color || '—',
+            phone_storage: addSaleForm.storage || '—',
+            phone_imei: addSaleForm.imei,
+            price_total: `${finalPrice.toFixed(2)}€`,
+            payment_method: paymentLabel,
+            magasin_nom: MAGASINS[addSaleForm.sale_magasin]?.nom || 'SebPhone',
+            magasin_adresse: MAGASINS[addSaleForm.sale_magasin]?.adresse || '',
+            invoice_url: `https://sebphone.be/facture/${saleCode}`,
+            company_name: addSaleForm.company_name || '',
+            company_vat: addSaleForm.company_vat || '',
+          }, PUBLIC_KEY)
+        } catch (e) {
+          console.warn('Email facture non envoyé:', e)
+        }
+      }
+
+      alert('✅ Vente enregistrée avec succès !')
+      setShowAddSale(false)
+      setFoundPhone(null)
+      setLookupDone(false)
+      setImeiLookup('')
+      setAddSaleForm(emptyAddSaleForm)
+      fetchSales()
+    } catch (err) {
+      console.error('Erreur vente:', err)
+      alert('Erreur : ' + err.message)
+    }
+    setAddSaleLoading(false)
+  }
 
   const fetchSales = async () => {
     setLoading(true)
@@ -321,6 +565,12 @@ export default function VentesHistory() {
           <h1 className="text-2xl font-bold text-[#1B2A4A]">Historique des ventes</h1>
           <p className="text-sm text-gray-500 mt-1">{filtered.length} vente(s) enregistrée(s)</p>
         </div>
+        <button
+          onClick={() => setShowAddSale(true)}
+          className="flex items-center gap-2 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#00B4CC] transition-all"
+        >
+          + Ajouter une vente
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6">
@@ -757,6 +1007,221 @@ export default function VentesHistory() {
               >
                 {saving ? 'Enregistrement...' : 'Enregistrer'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddSale && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex items-center justify-between z-10">
+              <h2 className="font-bold text-[#1B2A4A] text-lg">+ Ajouter une vente</h2>
+              <button onClick={() => {
+                setShowAddSale(false); setFoundPhone(null);
+                setLookupDone(false); setImeiLookup('')
+              }}>
+                <X size={20} className="text-gray-400"/>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 rounded-xl p-4">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">
+                  Rechercher par IMEI (dans le stock)
+                </label>
+                <div className="flex gap-2">
+                  <input type="text" value={imeiLookup}
+                    onChange={(e) => setImeiLookup(e.target.value)}
+                    placeholder="Saisir l'IMEI..."
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono"/>
+                  <button onClick={handleImeiLookup}
+                    className="px-4 py-2 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold">
+                    Rechercher
+                  </button>
+                </div>
+                {lookupDone && foundPhone && (
+                  <p className="text-xs text-green-600 font-bold mt-2">
+                    ✓ Téléphone trouvé en stock : {foundPhone.name} · {foundPhone.color} · {foundPhone.storage} (modifiable ci-dessous)
+                  </p>
+                )}
+                {lookupDone && !foundPhone && (
+                  <p className="text-xs text-orange-600 font-bold mt-2">
+                    ⚠️ Aucun téléphone trouvé — vente directe, remplissez les infos manuellement
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Modèle *</label>
+                  <input type="text" value={addSaleForm.model}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, model: e.target.value }))}
+                    placeholder="ex: iPhone 13 Pro"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">IMEI *</label>
+                  <input type="text" value={addSaleForm.imei}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, imei: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Couleur</label>
+                  <input type="text" value={addSaleForm.color}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, color: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Stockage</label>
+                  <input type="text" value={addSaleForm.storage}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, storage: e.target.value }))}
+                    placeholder="ex: 128Go"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">État</label>
+                  <select value={addSaleForm.condition}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, condition: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                    <option value="neuf">Neuf</option>
+                    <option value="reconditionne">Reconditionné</option>
+                    <option value="occasion">Occasion</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                    Prix d'achat (€) {!foundPhone && '*'}
+                  </label>
+                  <input type="number" value={addSaleForm.purchase_price}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, purchase_price: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Prix de vente (€) *</label>
+                  <input type="number" value={addSaleForm.sale_price}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, sale_price: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Magasin de vente *</label>
+                <select value={addSaleForm.sale_magasin}
+                  onChange={(e) => setAddSaleForm((f) => ({ ...f, sale_magasin: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                  <option value="">Sélectionner...</option>
+                  {Object.entries(MAGASINS)
+                    .filter(([id]) => id !== 'sebphone')
+                    .map(([id, m]) => (
+                      <option key={id} value={id}>{m.nom}</option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Prénom client *</label>
+                  <input type="text" value={addSaleForm.customer_firstname}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, customer_firstname: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Nom client *</label>
+                  <input type="text" value={addSaleForm.customer_name}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, customer_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Email (facture auto)</label>
+                  <input type="email" value={addSaleForm.customer_email}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, customer_email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Téléphone client</label>
+                  <input type="tel" value={addSaleForm.customer_phone}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, customer_phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Modes de paiement</label>
+                {addSaleForm.payments.map((p, i) => (
+                  <div key={i} className="flex gap-2 mb-2">
+                    <select value={p.method}
+                      onChange={(e) => setAddSaleForm((f) => ({
+                        ...f, payments: f.payments.map((pp, idx) =>
+                          idx === i ? { ...pp, method: e.target.value } : pp),
+                      }))}
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                      <option value="cash">Espèces</option>
+                      <option value="bancontact">Bancontact</option>
+                      <option value="virement">Virement</option>
+                    </select>
+                    <input type="number" value={p.amount}
+                      onChange={(e) => setAddSaleForm((f) => ({
+                        ...f, payments: f.payments.map((pp, idx) =>
+                          idx === i ? { ...pp, amount: e.target.value } : pp),
+                      }))}
+                      placeholder="Montant €"
+                      className="w-28 px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                    {addSaleForm.payments.length > 1 && (
+                      <button onClick={() => setAddSaleForm((f) => ({
+                        ...f, payments: f.payments.filter((_, idx) => idx !== i),
+                      }))}
+                        className="text-red-500 px-2">✕</button>
+                    )}
+                  </div>
+                ))}
+                <button onClick={() => setAddSaleForm((f) => ({
+                  ...f, payments: [...f.payments, { method: 'bancontact', amount: '' }],
+                }))}
+                  className="text-xs text-[#00B4CC] font-bold">
+                  + Ajouter un mode de paiement
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="company"
+                  checked={addSaleForm.is_company_sale}
+                  onChange={(e) => setAddSaleForm((f) => ({ ...f, is_company_sale: e.target.checked }))}
+                  className="w-4 h-4"/>
+                <label htmlFor="company" className="text-sm text-gray-700">
+                  Vente à une société (facture TVA)
+                </label>
+              </div>
+              {addSaleForm.is_company_sale && (
+                <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-xl">
+                  <input type="text" placeholder="Nom société"
+                    value={addSaleForm.company_name}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, company_name: e.target.value }))}
+                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                  <input type="text" placeholder="N° TVA"
+                    value={addSaleForm.company_vat}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, company_vat: e.target.value }))}
+                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                  <input type="text" placeholder="Adresse société"
+                    value={addSaleForm.company_address}
+                    onChange={(e) => setAddSaleForm((f) => ({ ...f, company_address: e.target.value }))}
+                    className="col-span-2 px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => { setShowAddSale(false); setFoundPhone(null) }}
+                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-medium">
+                  Annuler
+                </button>
+                <button onClick={handleAddSale} disabled={addSaleLoading}
+                  className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC] transition-all disabled:opacity-50">
+                  {addSaleLoading ? 'Enregistrement...' : '✅ Enregistrer la vente'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
