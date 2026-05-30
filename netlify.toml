@@ -6,6 +6,12 @@
   directory = "netlify/functions"
 
 [[redirects]]
+  from = "/bbaa5190-14e4-4a83-8719-6b118720bbe1.html"
+  to = "/bbaa5190-14e4-4a83-8719-6b118720bbe1.html"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
