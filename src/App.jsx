@@ -6,7 +6,8 @@ function AdminOnlyRoute({ children }) {
   if (!isAdmin) return <Navigate to="/admin/dashboard" replace />
   return children
 }
-import { CartProvider } from './context/CartContext';
+import { CartProvider as LegacyCartProvider } from './context/CartContext';
+import { CartProvider } from './contexts/CartContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import ScrollToTop from './components/utils/ScrollToTop';
 import Header from './components/layout/Header';
@@ -23,6 +24,8 @@ import PhoneDetailPage from './pages/PhoneDetailPage'
 import ModelDetailPage from './pages/ModelDetailPage';
 import Reservation from './pages/Reservation';
 import Cart from './pages/Cart';
+import Panier from './pages/Panier';
+import Checkout from './pages/Checkout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminLogin from './pages/admin/AdminLogin';
@@ -69,6 +72,7 @@ export default function App() {
     <BrowserRouter>
       <ScrollToTop />
       <LanguageProvider>
+      <LegacyCartProvider>
       <CartProvider>
         <Routes>
           {/* ── PUBLIC SITE ── */}
@@ -118,6 +122,12 @@ export default function App() {
           } />
           <Route path="/facture/:code" element={<Facture />} />
           <Route path="/panier" element={
+            <Layout><Panier /></Layout>
+          } />
+          <Route path="/checkout" element={
+            <Layout><Checkout /></Layout>
+          } />
+          <Route path="/panier-legacy" element={
             <Layout><Cart /></Layout>
           } />
           <Route path="/pro" element={
@@ -173,6 +183,7 @@ export default function App() {
           </Route>
         </Routes>
       </CartProvider>
+      </LegacyCartProvider>
       </LanguageProvider>
     </BrowserRouter>
   );

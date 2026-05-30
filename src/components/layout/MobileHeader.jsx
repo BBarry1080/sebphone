@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, Search, Phone, Mail, ShoppingCart, ChevronDown, Smartphone, Tablet, Watch, Headphones, Monitor, Home } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import LanguageSelector from '../ui/LanguageSelector';
 
@@ -55,7 +55,7 @@ export default function MobileHeader() {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const { totalItems } = useCart();
+  const { cartCount } = useCart();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -114,9 +114,9 @@ export default function MobileHeader() {
           </button>
           <Link to="/panier" className="relative p-2 text-[#555555]">
             <ShoppingCart size={20} />
-            {totalItems > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {totalItems > 9 ? '9+' : totalItems}
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#00B4CC] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {cartCount}
               </span>
             )}
           </Link>

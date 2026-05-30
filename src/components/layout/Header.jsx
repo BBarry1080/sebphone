@@ -1,7 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, User, Phone, Mail, ShoppingCart, ChevronDown, Smartphone, Tablet, Watch, Headphones, Monitor, Home } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import LanguageSelector from '../ui/LanguageSelector';
 
@@ -71,7 +71,7 @@ export default function Header() {
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const { totalItems } = useCart();
+  const { cartCount } = useCart();
   const { t } = useLanguage();
 
   const handleSearch = (e) => {
@@ -211,9 +211,9 @@ export default function Header() {
           </Link>
           <Link to="/panier" className="relative p-2 rounded-lg hover:bg-gray-50 text-[#555555] hover:text-[#00B4CC] transition-colors">
             <ShoppingCart size={20} />
-            {totalItems > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {totalItems > 9 ? '9+' : totalItems}
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#00B4CC] text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {cartCount}
               </span>
             )}
           </Link>

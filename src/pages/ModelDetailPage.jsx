@@ -3,8 +3,9 @@
 
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Smartphone, CheckCircle, MapPin } from 'lucide-react'
+import { ArrowLeft, Smartphone, CheckCircle, MapPin, ShoppingCart, Check } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../lib/supabase'
+import { useCart } from '../contexts/CartContext'
 import { phonesMock } from '../data/phonesMock'
 import Spinner from '../components/ui/Spinner'
 import { colorToHex } from '../components/catalogue/PhoneListCard'
@@ -127,6 +128,7 @@ export default function ModelDetailPage() {
   const [searchParams] = useSearchParams()
   const filterStatus = searchParams.get('status') // 'disponible' | 'sur_commande' | null
   const { t } = useLanguage()
+  const { addToCart, isInCart } = useCart()
   const [phones, setPhones]             = useState([])
   const [loading, setLoading]           = useState(true)
   const [filterStorage, setFilterStorage] = useState(null)
@@ -510,16 +512,30 @@ export default function ModelDetailPage() {
                               <span className="font-bold text-[#1B2A4A] text-base">{charmPrice(phone.price)}€</span>
                             </td>
                             <td className="px-4 py-3">
-                              <button
-                                onClick={() => {
-                                  console.log('Téléphone choisi:', phone);
-                                  console.log('Magasins:', phone.magasins);
-                                  navigate(`/reservation/${phone.id}`, { state: { phone } });
-                                }}
-                                className="px-4 py-2 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
-                              >
-                                {t('model_choose_btn')}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => addToCart(phone)}
+                                  disabled={isInCart(phone.id)}
+                                  className={`p-2 rounded-xl border transition-all ${
+                                    isInCart(phone.id)
+                                      ? 'bg-green-50 border-green-200 text-green-600'
+                                      : 'border-gray-200 text-gray-500 hover:border-[#00B4CC] hover:text-[#00B4CC]'
+                                  }`}
+                                  title={isInCart(phone.id) ? 'Déjà dans le panier' : 'Ajouter au panier'}
+                                >
+                                  {isInCart(phone.id) ? <Check size={18} /> : <ShoppingCart size={18} />}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    console.log('Téléphone choisi:', phone);
+                                    console.log('Magasins:', phone.magasins);
+                                    navigate(`/reservation/${phone.id}`, { state: { phone } });
+                                  }}
+                                  className="px-4 py-2 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+                                >
+                                  {t('model_choose_btn')}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         )
@@ -626,15 +642,29 @@ export default function ModelDetailPage() {
                           )}
                         </div>
 
-                        <button
-                          onClick={() => {
-                            console.log('ID téléphone:', phone.id, phone);
-                            navigate(`/reservation/${phone.id}`);
-                          }}
-                          className="w-full py-2.5 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
-                        >
-                          {t('model_choose_btn')}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => addToCart(phone)}
+                            disabled={isInCart(phone.id)}
+                            className={`p-2.5 rounded-xl border transition-all flex-shrink-0 ${
+                              isInCart(phone.id)
+                                ? 'bg-green-50 border-green-200 text-green-600'
+                                : 'border-gray-200 text-gray-500 hover:border-[#00B4CC] hover:text-[#00B4CC]'
+                            }`}
+                            title={isInCart(phone.id) ? 'Déjà dans le panier' : 'Ajouter au panier'}
+                          >
+                            {isInCart(phone.id) ? <Check size={18} /> : <ShoppingCart size={18} />}
+                          </button>
+                          <button
+                            onClick={() => {
+                              console.log('ID téléphone:', phone.id, phone);
+                              navigate(`/reservation/${phone.id}`);
+                            }}
+                            className="flex-1 py-2.5 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
+                          >
+                            {t('model_choose_btn')}
+                          </button>
+                        </div>
                       </div>
                     )
                   })}
