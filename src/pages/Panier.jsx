@@ -29,7 +29,7 @@ export default function Panier() {
 
   const handleCheckout = () => {
     if (selectedItems.length === 0) return
-    navigate('/checkout', { state: { items: selectedItems } })
+    navigate(`/reservation/${selectedItems[0].id}`)
   }
 
   if (cart.length === 0) return (
@@ -105,6 +105,12 @@ export default function Panier() {
           className="w-full py-3 bg-[#1B2A4A] text-white rounded-xl font-bold hover:bg-[#00B4CC] transition-all disabled:opacity-50">
           Passer à la commande →
         </button>
+        {selectedItems.length > 1 && (
+          <p className="text-xs text-amber-600 mt-2 text-center">
+            La réservation se fait appareil par appareil.
+            Commencez par le premier, les autres restent dans votre panier.
+          </p>
+        )}
       </div>
     </div>
   )

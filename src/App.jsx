@@ -25,7 +25,6 @@ import ModelDetailPage from './pages/ModelDetailPage';
 import Reservation from './pages/Reservation';
 import Cart from './pages/Cart';
 import Panier from './pages/Panier';
-import Checkout from './pages/Checkout';
 import ProtectedRoute from './components/admin/ProtectedRoute';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminLogin from './pages/admin/AdminLogin';
@@ -123,9 +122,6 @@ export default function App() {
           <Route path="/facture/:code" element={<Facture />} />
           <Route path="/panier" element={
             <Layout><Panier /></Layout>
-          } />
-          <Route path="/checkout" element={
-            <Layout><Checkout /></Layout>
           } />
           <Route path="/panier-legacy" element={
             <Layout><Cart /></Layout>

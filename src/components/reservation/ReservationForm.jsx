@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar, Wrench, Tag, X, BatteryCharging } from 'lucide-react';
@@ -70,17 +70,28 @@ export default function ReservationForm({ phone }) {
     notes:      '',
   });
 
-  // ── Livraison express (Bruxelles + alentours) ──
+  // ── Livraison express (autocomplete Nominatim + distance GPS) ──
   const [isExpress, setIsExpress] = useState(false)
-  const [deliveryAddress, setDeliveryAddress] = useState('')
-  const [deliveryCity, setDeliveryCity] = useState('')
-  const [deliveryZip, setDeliveryZip] = useState('')
+  const [addressQuery, setAddressQuery] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [selectedAddress, setSelectedAddress] = useState(null)
+  const [distance, setDistance] = useState(null)
+  const [deliveryPrice, setDeliveryPrice] = useState(null)
   const [creneau, setCreneau] = useState('')
-  const BRUSSELS_ZIPS = ['1000','1005','1006','1007','1008','1009',
-    '1020','1030','1040','1050','1060','1070','1080','1081','1082',
-    '1083','1090','1120','1130','1140','1150','1160','1170','1180',
-    '1190','1200','1210']
-  const deliveryPrice = BRUSSELS_ZIPS.includes(deliveryZip) ? 10 : 25
+  const debounceRef = useRef(null)
+
+  const BRUSSELS_LAT = 50.8503
+  const BRUSSELS_LNG = 4.3517
+
+  const getDistanceKm = (lat1, lng1, lat2, lng2) => {
+    const R = 6371
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLng = (lng2 - lng1) * Math.PI / 180
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) ** 2
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  }
   const [selectedPack, setSelectedPack] = useState('none');
   const [paymentMode,  setPaymentMode]  = useState('acompte');
   const [batteryReplace, setBatteryReplace] = useState(false);
@@ -97,6 +108,40 @@ export default function ReservationForm({ phone }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone?.id])
+
+  useEffect(() => {
+    if (addressQuery.length < 4) { setSuggestions([]); return }
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `format=json&countrycodes=be&addressdetails=1&limit=5&` +
+          `q=${encodeURIComponent(addressQuery)}`,
+          { headers: { 'Accept-Language': 'fr' } }
+        )
+        const data = await res.json()
+        setSuggestions(data || [])
+      } catch (e) { console.warn('Nominatim error', e) }
+    }, 400)
+  }, [addressQuery])
+
+  const selectAddress = (sugg) => {
+    const addr = sugg.address || {}
+    const lat = parseFloat(sugg.lat)
+    const lng = parseFloat(sugg.lon)
+    const dist = getDistanceKm(BRUSSELS_LAT, BRUSSELS_LNG, lat, lng)
+    setSelectedAddress({
+      full: sugg.display_name,
+      zip: addr.postcode || '',
+      city: addr.city || addr.town || addr.village || addr.municipality || '',
+      lat, lng,
+    })
+    setAddressQuery(sugg.display_name)
+    setSuggestions([])
+    setDistance(Math.round(dist))
+    setDeliveryPrice(dist <= 30 ? 10 : 25)
+  }
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -214,16 +259,16 @@ export default function ReservationForm({ phone }) {
         }
 
         // Si livraison express : crée la course liée
-        if (isExpress && deliveryAddress && creneau) {
+        if (isExpress && selectedAddress && creneau) {
           await supabase.from('deliveries').insert({
             order_id:         insertedOrder?.id || null,
             phone_id:         phone?.id || null,
             customer_name:    clientName,
             customer_phone:   form.phone,
             customer_email:   form.email,
-            delivery_address: `${deliveryAddress}, ${deliveryZip} ${deliveryCity}`,
-            delivery_city:    deliveryCity,
-            delivery_zip:     deliveryZip,
+            delivery_address: selectedAddress.full,
+            delivery_city:    selectedAddress.city,
+            delivery_zip:     selectedAddress.zip,
             creneau:          creneau,
             delivery_date:    new Date().toISOString().split('T')[0],
             delivery_price:   deliveryPrice,
@@ -696,63 +741,73 @@ export default function ReservationForm({ phone }) {
                   className="w-4 h-4" />
                 <label htmlFor="express" className="cursor-pointer">
                   <p className="text-sm font-bold text-orange-800">🚗 Livraison express jour même</p>
-                  <p className="text-xs text-orange-600">Bruxelles 10€ · Hors Bruxelles 25€</p>
+                  <p className="text-xs text-orange-600">Bruxelles 10€ · +30km 25€ (calcul auto)</p>
                 </label>
               </div>
 
               {isExpress && (
                 <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Adresse de livraison</label>
-                    <input type="text"
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
-                      placeholder="Rue et numéro"
+                  <div className="relative">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                      Votre adresse
+                    </label>
+                    <input type="text" value={addressQuery}
+                      onChange={(e) => {
+                        setAddressQuery(e.target.value)
+                        setSelectedAddress(null)
+                        setDeliveryPrice(null)
+                      }}
+                      placeholder="Commencez à taper votre adresse..."
                       className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Code postal</label>
-                      <input type="text"
-                        value={deliveryZip}
-                        onChange={(e) => setDeliveryZip(e.target.value)}
-                        placeholder="1000" maxLength={4}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Ville</label>
-                      <input type="text"
-                        value={deliveryCity}
-                        onChange={(e) => setDeliveryCity(e.target.value)}
-                        placeholder="Bruxelles"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
-                    </div>
+                    {suggestions.length > 0 && (
+                      <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto">
+                        {suggestions.map((sugg, i) => (
+                          <button key={i} type="button"
+                            onClick={() => selectAddress(sugg)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                            {sugg.display_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Créneau de livraison</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { key: '8-16', label: '8h — 16h' },
-                        { key: '16-20', label: '16h — 20h' },
-                        { key: '20-00', label: '20h — 00h' },
-                      ].map((c) => (
-                        <button key={c.key} type="button"
-                          onClick={() => setCreneau(c.key)}
-                          className={`py-2 rounded-xl text-xs font-bold border
-                            ${creneau === c.key
-                              ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                              : 'bg-white text-gray-600 border-gray-200'}`}>
-                          {c.label}
-                        </button>
-                      ))}
+                  {selectedAddress && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                      <p className="text-sm font-bold text-green-800">
+                        ✓ Adresse confirmée
+                      </p>
+                      <p className="text-xs text-green-700 mt-1">
+                        {selectedAddress.zip} {selectedAddress.city} · à {distance}km de Bruxelles
+                      </p>
+                      <p className="text-sm font-bold text-green-800 mt-2">
+                        Frais de livraison : {deliveryPrice}€
+                      </p>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
-                    <span className="text-sm text-green-700">Frais de livraison express</span>
-                    <span className="font-bold text-green-700">+{deliveryPrice}€</span>
-                  </div>
+                  {selectedAddress && (
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                        Créneau de livraison
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { key: '10-20', label: '10h — 20h' },
+                          { key: '20-00', label: '20h — 00h' },
+                        ].map((c) => (
+                          <button key={c.key} type="button"
+                            onClick={() => setCreneau(c.key)}
+                            className={`py-2 rounded-xl text-xs font-bold border
+                              ${creneau === c.key
+                                ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                                : 'bg-white text-gray-600 border-gray-200'}`}>
+                            {c.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
