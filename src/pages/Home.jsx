@@ -9,10 +9,10 @@ export default function Home() {
   return (
     <main>
       <Hero />
-      <Services />
-      <StoreSection />
-      <FeaturedPhones />
       <BestSellers />
+      <Services />
+      <FeaturedPhones />
+      <StoreSection />
       <WhyUs />
     </main>
   );
