@@ -203,8 +203,8 @@ export default function ReservationForm({ phone }) {
       setSubmitError('Remplissez tous les champs obligatoires')
       return
     }
-    if (form.delivery === 'delivery' && !form.address) {
-      setSubmitError('Renseignez votre adresse de livraison')
+    if (form.delivery === 'delivery' && !selectedAddress) {
+      setSubmitError('Sélectionnez votre adresse dans les suggestions')
       return
     }
 
@@ -233,7 +233,7 @@ export default function ReservationForm({ phone }) {
           phone_grade:      phone?.grade || '',
           delivery_mode:    form.delivery,
           magasin_id:       form.delivery === 'collect' ? magasinFinal : null,
-          delivery_address: form.delivery === 'delivery' ? form.address : null,
+          delivery_address: form.delivery === 'delivery' ? (selectedAddress?.full || null) : null,
           pickup_date:      form.delivery === 'collect' && form.pickupDate ? form.pickupDate : null,
           payment_mode:     paymentMode,
           total_amount:     totalPrice,
@@ -337,7 +337,7 @@ export default function ReservationForm({ phone }) {
           phone_grade:      phone?.grade || '',
           delivery_mode:    form.delivery,
           magasin_id:       form.delivery === 'collect' ? magasinFinal : null,
-          delivery_address: form.delivery === 'delivery' ? form.address : null,
+          delivery_address: form.delivery === 'delivery' ? (selectedAddress?.full || null) : null,
           pickup_date:      form.delivery === 'collect' && form.pickupDate ? form.pickupDate : null,
           payment_mode:     paymentMode,
           total_amount:     totalPrice,
@@ -389,7 +389,7 @@ export default function ReservationForm({ phone }) {
         pickupMode:       form.delivery,
         magasinId:        magasinFinal,
         pickupDate:       form.pickupDate,
-        deliveryAddress:  form.address,
+        deliveryAddress:  selectedAddress?.full || '',
         accessoryPack:    selectedPack !== 'none' ? packLabel : 'Aucun',
         batteryReplace:   batteryReplace && batteryEligible,
         accessoriesTotal: packPrice + batteryPrice,
@@ -413,7 +413,7 @@ export default function ReservationForm({ phone }) {
           magasinId:      magasinFinal,
           magasinInfo:    MAGASINS[magasinFinal] || null,
           pickupDate:     form.pickupDate,
-          deliveryAddress: form.address,
+          deliveryAddress: selectedAddress?.full || '',
         }
       })
     } catch (err) {
@@ -727,11 +727,41 @@ export default function ReservationForm({ phone }) {
 
         {form.delivery === 'delivery' && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} transition={{ duration: 0.3 }}>
-            <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">{t('reservation_address')} *</label>
-            <input type="text" name="address" value={form.address} onChange={handleChange}
-              required={form.delivery === 'delivery'}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all"
-              placeholder="Rue, numéro, ville, code postal" />
+            <div className="relative">
+              <label className="block text-sm font-medium text-[#1B2A4A] mb-1.5">
+                {t('reservation_address')} *
+              </label>
+              <input type="text" value={addressQuery}
+                onChange={(e) => {
+                  setAddressQuery(e.target.value)
+                  setSelectedAddress(null)
+                  setDeliveryPrice(null)
+                }}
+                placeholder="Commencez à taper votre adresse..."
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all" />
+              {suggestions.length > 0 && (
+                <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto">
+                  {suggestions.map((sugg, i) => (
+                    <button key={i} type="button"
+                      onClick={() => selectAddress(sugg)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-50 last:border-0">
+                      {sugg.display_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {selectedAddress && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 mt-3">
+                <p className="text-sm font-bold text-green-800">
+                  ✓ Adresse confirmée
+                </p>
+                <p className="text-xs text-green-700 mt-1">
+                  {selectedAddress.zip} {selectedAddress.city} · à {distance}km de Bruxelles
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3 mt-3">
               <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-xl">
@@ -745,70 +775,41 @@ export default function ReservationForm({ phone }) {
                 </label>
               </div>
 
-              {isExpress && (
+              {isExpress && selectedAddress && (
                 <div className="space-y-3">
-                  <div className="relative">
-                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
-                      Votre adresse
-                    </label>
-                    <input type="text" value={addressQuery}
-                      onChange={(e) => {
-                        setAddressQuery(e.target.value)
-                        setSelectedAddress(null)
-                        setDeliveryPrice(null)
-                      }}
-                      placeholder="Commencez à taper votre adresse..."
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
-                    {suggestions.length > 0 && (
-                      <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto">
-                        {suggestions.map((sugg, i) => (
-                          <button key={i} type="button"
-                            onClick={() => selectAddress(sugg)}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                            {sugg.display_name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+                    <p className="text-sm font-bold text-green-800">
+                      Frais de livraison : {deliveryPrice}€
+                    </p>
                   </div>
 
-                  {selectedAddress && (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-                      <p className="text-sm font-bold text-green-800">
-                        ✓ Adresse confirmée
-                      </p>
-                      <p className="text-xs text-green-700 mt-1">
-                        {selectedAddress.zip} {selectedAddress.city} · à {distance}km de Bruxelles
-                      </p>
-                      <p className="text-sm font-bold text-green-800 mt-2">
-                        Frais de livraison : {deliveryPrice}€
-                      </p>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                      Créneau de livraison
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { key: '10-20', label: '10h — 20h' },
+                        { key: '20-00', label: '20h — 00h' },
+                      ].map((c) => (
+                        <button key={c.key} type="button"
+                          onClick={() => setCreneau(c.key)}
+                          className={`py-2 rounded-xl text-xs font-bold border
+                            ${creneau === c.key
+                              ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                              : 'bg-white text-gray-600 border-gray-200'}`}>
+                          {c.label}
+                        </button>
+                      ))}
                     </div>
-                  )}
-
-                  {selectedAddress && (
-                    <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
-                        Créneau de livraison
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { key: '10-20', label: '10h — 20h' },
-                          { key: '20-00', label: '20h — 00h' },
-                        ].map((c) => (
-                          <button key={c.key} type="button"
-                            onClick={() => setCreneau(c.key)}
-                            className={`py-2 rounded-xl text-xs font-bold border
-                              ${creneau === c.key
-                                ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                                : 'bg-white text-gray-600 border-gray-200'}`}>
-                            {c.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
+              )}
+
+              {isExpress && !selectedAddress && (
+                <p className="text-xs text-amber-600 font-medium">
+                  ⚠️ Sélectionnez une adresse ci-dessus pour calculer le tarif express.
+                </p>
               )}
             </div>
           </motion.div>
