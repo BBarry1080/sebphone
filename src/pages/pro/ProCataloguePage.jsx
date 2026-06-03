@@ -3,10 +3,33 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { getPhoneImage } from '../../utils/phoneImage'
 import ProLayout from '../../components/pro/ProLayout'
+import GradeBadge from '../../components/pro/GradeBadge'
 
 const CAT_LABELS = {
   telephone: 'Smartphones', tablette: 'Tablettes',
   ordinateur: 'Ordinateurs', montre: 'Montres', ecouteur: 'Écouteurs',
+}
+
+const getTvaDetail = (price, regime) => {
+  const p = Number(price) || 0
+  if (regime === 'normale' || regime === 'classique') {
+    const ht = p / 1.21
+    const tva = p - ht
+    return {
+      label: 'TVA 21%',
+      ht: ht.toFixed(2),
+      tva: tva.toFixed(2),
+      ttc: p.toFixed(2),
+      isMarge: false,
+    }
+  }
+  return {
+    label: 'TVA sur marge',
+    ht: null,
+    tva: null,
+    ttc: p.toFixed(2),
+    isMarge: true,
+  }
 }
 
 export default function ProCataloguePage() {
@@ -96,8 +119,11 @@ export default function ProCataloguePage() {
                     {phone.name}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {phone.color} · {phone.storage} · {phone.grade || phone.condition}
+                    {phone.color} · {phone.storage} · {phone.condition}
                   </p>
+                  <div className="mt-1">
+                    <GradeBadge grade={phone.grade} />
+                  </div>
                   <div className="mt-2">
                     <p className="text-lg font-black text-[#00B4CC]">
                       {displayPrice}€
@@ -108,6 +134,37 @@ export default function ProCataloguePage() {
                       </p>
                     )}
                   </div>
+                  {(() => {
+                    const tva = getTvaDetail(displayPrice, phone.tva_regime)
+                    return (
+                      <div className="mt-2 pt-2 border-t border-gray-100">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          tva.isMarge
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {tva.label}
+                        </span>
+                        {tva.isMarge ? (
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            Pas de TVA déductible (régime marge)
+                          </p>
+                        ) : (
+                          <div className="text-[10px] text-gray-500 mt-1 space-y-0.5">
+                            <div className="flex justify-between">
+                              <span>HT</span><span>{tva.ht}€</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>TVA 21%</span><span>{tva.tva}€</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-[#1B2A4A]">
+                              <span>TTC</span><span>{tva.ttc}€</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}

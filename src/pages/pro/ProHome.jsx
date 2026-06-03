@@ -4,6 +4,7 @@ import { Smartphone, Tablet, Monitor, Watch, Headphones } from 'lucide-react'
 import { useProAccount } from '../../hooks/useProAccount'
 import ProLayout from '../../components/pro/ProLayout'
 import BestSellersPro from '../../components/pro/BestSellersPro'
+import GradeBadge from '../../components/pro/GradeBadge'
 
 export default function ProHome() {
   const navigate = useNavigate()
@@ -50,6 +51,54 @@ export default function ProHome() {
               </span>
             </Link>
           ))}
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 mb-12">
+        <h2 className="text-2xl font-black text-[#1B2A4A] mb-1">
+          Comprendre nos grades
+        </h2>
+        <p className="text-gray-500 text-sm mb-6">
+          Le système de classification pour nos revendeurs
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {[
+            { grade: 'A+', desc: 'Excellent état, comme neuf. Aucune trace d\'usure visible.' },
+            { grade: 'B', desc: 'Très bon état. Traces d\'usage minimes, parfaitement fonctionnel.' },
+            { grade: 'C', desc: 'État correct. Marques d\'usage visibles mais pleinement fonctionnel.' },
+            { grade: 'C-BAT', desc: 'Fonctionnel — batterie à remplacer pour des performances optimales.' },
+            { grade: 'C-REF', desc: 'Rayures présentes — à reconditionner esthétiquement.' },
+            { grade: 'PIECE', desc: 'Nécessite le remplacement d\'une pièce détachée.' },
+            { grade: 'LCD', desc: 'Écran / LCD à remplacer.' },
+          ].map((item) => (
+            <div key={item.grade}
+              className="bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3">
+              <GradeBadge grade={item.grade} />
+              <p className="text-sm text-gray-600 flex-1">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="font-bold text-amber-800 text-sm mb-1">
+              TVA sur marge
+            </p>
+            <p className="text-xs text-amber-700">
+              Régime Art. 313-343 du Code TVA belge. La TVA n'est pas
+              déductible — le prix affiché est le prix final. Idéal pour
+              la revente à des particuliers.
+            </p>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+            <p className="font-bold text-blue-800 text-sm mb-1">
+              TVA classique 21%
+            </p>
+            <p className="text-xs text-blue-700">
+              TVA déductible récupérable. Le prix se décompose en HT +
+              TVA 21%. Idéal pour la revente B2B avec facture TVA.
+            </p>
+          </div>
         </div>
       </div>
 

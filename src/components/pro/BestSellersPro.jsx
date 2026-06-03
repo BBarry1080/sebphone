@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { getPhoneImage } from '../../utils/phoneImage'
+import GradeBadge from './GradeBadge'
 
 export default function BestSellersPro() {
   const navigate = useNavigate()
@@ -41,6 +42,9 @@ export default function BestSellersPro() {
           <p className="text-xs text-gray-400">
             {phone.color} · {phone.storage}
           </p>
+          <div className="mt-1">
+            <GradeBadge grade={phone.grade} />
+          </div>
           <div className="mt-2">
             <p className="text-lg font-black text-[#00B4CC]">
               {phone.price_pro}€

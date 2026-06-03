@@ -132,7 +132,7 @@ export default function ProAdmin() {
     if (name.includes('eco repair +') || name.includes('eco repair+'))
       return 'LCD'
     if (name.includes('eco repair'))
-      return 'PEACE'
+      return 'PIECE'
     if (name.includes('éco bat') || name.includes('eco bat'))
       return 'C-BAT'
     if (name.includes('éco rayure') || name.includes('eco rayure'))
@@ -497,7 +497,7 @@ export default function ProAdmin() {
                             : phone.grade === 'C' ? 'bg-yellow-500'
                             : phone.grade === 'C-BAT' ? 'bg-orange-400'
                             : phone.grade === 'C-REF' ? 'bg-orange-600'
-                            : phone.grade === 'PEACE' ? 'bg-purple-500'
+                            : phone.grade === 'PIECE' ? 'bg-purple-500'
                             : phone.grade === 'LCD' ? 'bg-red-400'
                             : 'bg-gray-400'}`}>
                           {phone.grade || '—'}
@@ -623,7 +623,7 @@ export default function ProAdmin() {
                                 : p.grade === 'C' ? 'bg-yellow-500'
                                 : p.grade === 'C-BAT' ? 'bg-orange-400'
                                 : p.grade === 'C-REF' ? 'bg-orange-600'
-                                : p.grade === 'PEACE' ? 'bg-purple-500'
+                                : p.grade === 'PIECE' ? 'bg-purple-500'
                                 : p.grade === 'LCD' ? 'bg-red-400'
                                 : 'bg-gray-400'}`}>
                               {p.grade}
