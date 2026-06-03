@@ -448,6 +448,7 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
   const [imei, setImei]               = useState(phone?.imei || '')
   const [hasEsim, setHasEsim]         = useState(phone?.has_esim ?? isEsimModel(phone?.name || phone?.model))
   const [price, setPrice]             = useState(phone?.price || '')
+  const [pricePro, setPricePro]       = useState(phone?.price_pro ?? '')
   const [purchasePrice, setPurchasePrice] = useState(phone?.purchase_price ?? '')
   const [tvaRegime, setTvaRegime]     = useState(phone?.tva_regime || (phone?.condition === 'neuf' ? 'normale' : 'marge'))
   const [fournisseur, setFournisseur] = useState(phone?.fournisseur || '')
@@ -625,6 +626,7 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
         storage:        storage || null,
         color:          colorSearch.trim() || null,
         price:          parseFloat(price) || 0,
+        price_pro:      pricePro !== '' && pricePro != null ? parseFloat(pricePro) : null,
         purchase_price: purchasePrice !== '' ? parseFloat(purchasePrice) : null,
         deposit_amount: parseFloat(deposit) || 50,
         magasins:       magasins || [],
@@ -1210,6 +1212,21 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
                     Bénéfice : {parseFloat(price) - parseFloat(purchasePrice)}€
                   </p>
                 )}
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Prix Pro (€) <span className="text-gray-400 normal-case">— réservé revendeurs, masqué du public</span>
+                </label>
+                <input
+                  type="number"
+                  value={pricePro}
+                  onChange={(e) => setPricePro(e.target.value)}
+                  placeholder="Laisser vide = non visible en Pro"
+                  className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Si défini, l'appareil apparaît dans l'Espace Pro à ce prix.
+                </p>
               </div>
               <div>
                 <label className="text-xs text-[#555] mb-1 block">Acompte (€)</label>

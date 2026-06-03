@@ -149,10 +149,17 @@ export default function ReservationForm({ phone }) {
 
   const isTelephone = phone?.categorie === 'telephone' || !phone?.categorie;
 
+  const proAccount = (() => {
+    try { return JSON.parse(localStorage.getItem('sebphone_pro') || 'null') } catch { return null }
+  })()
+  const isProConnected = !!proAccount
+  const proPriceApplies = isProConnected && phone?.price_pro != null
+
   const packPrice    = isTelephone ? (ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.price || 0) : 0;
   const batteryEligible = isTelephone && phone?.battery_health != null && phone.battery_health <= 80;
   const batteryPrice = batteryReplace && batteryEligible ? 20 : 0;
-  const basePrice    = (phone?.price || 0) + packPrice + batteryPrice;
+  const unitPrice    = proPriceApplies ? Number(phone.price_pro) : (Number(phone?.price) || 0);
+  const basePrice    = unitPrice + packPrice + batteryPrice;
   const discount   = promoCode
     ? promoCode.type === 'percent'
       ? Math.round(basePrice * promoCode.value / 100)
@@ -436,6 +443,12 @@ export default function ReservationForm({ phone }) {
       onSubmit={handleSubmit}
       className="flex flex-col gap-6"
     >
+      {proPriceApplies && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-2 text-xs text-blue-700 font-bold text-center">
+          💼 Prix professionnel appliqué
+        </div>
+      )}
+
       {/* Résumé téléphone */}
       {(() => {
         const imgSrc = getPhoneImage(phone?.name || phone?.model, phone?.color)
