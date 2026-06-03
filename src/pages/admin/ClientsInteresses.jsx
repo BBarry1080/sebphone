@@ -43,8 +43,10 @@ export default function ClientsInteresses() {
         .select('*')
         .eq('status', 'disponible')
         .eq('categorie', client.categorie)
-        .ilike('model', `%${client.model}%`)
+        .eq('model', client.model)
+
       if (client.storage) query = query.eq('storage', client.storage)
+      if (client.color) query = query.eq('color', client.color)
 
       const { data: available } = await query
       if (available && available.length > 0) {
