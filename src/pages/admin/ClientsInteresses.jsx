@@ -2,60 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, Trash2, Bell, Check, X } from 'lucide-react'
 import { MAGASINS } from '../../utils/magasins'
+import { getBrands, getModels, getColors, getStorages } from '../../data/catalogConstants'
 
-const CATEGORIES = [
-  { value: 'telephone', label: 'Téléphone' },
-  { value: 'tablette', label: 'Tablette' },
-  { value: 'montre', label: 'Montre connectée' },
-  { value: 'ecouteur', label: 'Écouteurs / AirPods' },
-  { value: 'ordinateur', label: 'Ordinateur' },
-  { value: 'accessoire', label: 'Accessoire' },
-]
-
-const MODELS = {
-  telephone: [
-    'iPhone 17 Pro Max', 'iPhone 17 Pro', 'iPhone 17 Air', 'iPhone 17',
-    'iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone 16 Plus', 'iPhone 16', 'iPhone 16e',
-    'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
-    'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
-    'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13', 'iPhone 13 mini',
-    'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12', 'iPhone 12 mini',
-    'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
-    'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
-    'iPhone SE (2022)', 'iPhone SE (2020)',
-    'iPhone 8 Plus', 'iPhone 8',
-    'Samsung Galaxy S24 Ultra', 'Samsung Galaxy S24+', 'Samsung Galaxy S24',
-    'Samsung Galaxy S23 Ultra', 'Samsung Galaxy S23',
-    'Samsung Galaxy A55', 'Samsung Galaxy A35', 'Samsung Galaxy Z Fold 6',
-    'Samsung Galaxy Z Flip 6',
-  ],
-  tablette: [
-    'iPad Air 13" M4', 'iPad Air 11" M4', 'iPad Air 13" M3', 'iPad Air 11" M3',
-    'iPad Pro 13" M4', 'iPad Pro 11" M4', 'iPad 11e génération', 'iPad 10e génération',
-    'iPad mini 7', 'iPad mini 6',
-    'Samsung Galaxy Tab S11 Ultra', 'Samsung Galaxy Tab S11',
-    'Samsung Galaxy Tab S10 Ultra', 'Samsung Galaxy Tab S10+',
-  ],
-  montre: [
-    'Apple Watch Ultra 3', 'Apple Watch Series 11', 'Apple Watch SE 3',
-    'Apple Watch Ultra 2', 'Apple Watch Series 10', 'Apple Watch Series 9',
-    'Samsung Galaxy Watch Ultra 2025', 'Samsung Galaxy Watch 8 Classic',
-    'Samsung Galaxy Watch 8',
-  ],
-  ecouteur: [
-    'AirPods Pro 3', 'AirPods Pro 2', 'AirPods 4 (ANC)', 'AirPods 4',
-    'AirPods Max 2', 'AirPods Max', 'AirPods 3',
-    'Samsung Galaxy Buds 3 Pro', 'Samsung Galaxy Buds 3',
-    'Sony WH-1000XM6', 'Sony WH-1000XM5', 'Sony WF-1000XM5',
-  ],
-  ordinateur: [
-    'MacBook Air M4', 'MacBook Air M3', 'MacBook Pro M4', 'MacBook Pro M3',
-    'Dell XPS', 'HP Spectre', 'Lenovo ThinkPad',
-  ],
-  accessoire: ['Chargeur', 'Coque', 'Câble', 'Adaptateur', 'Verre trempé'],
-}
-
-const STORAGES = ['64Go', '128Go', '256Go', '512Go', '1To', '2To']
 const REMINDER_DAYS = 10
 
 export default function ClientsInteresses() {
@@ -65,8 +13,8 @@ export default function ClientsInteresses() {
   const [matches, setMatches] = useState({})
   const [form, setForm] = useState({
     customer_name: '', customer_email: '', customer_phone: '',
-    categorie: 'telephone', model: '', storage: '', color: '',
-    grade: '', max_budget: '', notes: '',
+    categorie: 'telephone', brand: 'Apple', model: '',
+    storage: '', color: '', grade: '', max_budget: '', notes: '',
   })
 
   useEffect(() => {
@@ -197,8 +145,8 @@ export default function ClientsInteresses() {
     setShowAdd(false)
     setForm({
       customer_name: '', customer_email: '', customer_phone: '',
-      categorie: 'telephone', model: '', storage: '', color: '',
-      grade: '', max_budget: '', notes: '',
+      categorie: 'telephone', brand: 'Apple', model: '',
+      storage: '', color: '', grade: '', max_budget: '', notes: '',
     })
     fetchClients()
   }
@@ -336,11 +284,30 @@ export default function ClientsInteresses() {
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
                 <select value={form.categorie}
                   onChange={(e) => setForm((f) => ({
-                    ...f, categorie: e.target.value, model: '',
+                    ...f,
+                    categorie: e.target.value,
+                    brand: getBrands(e.target.value)[0] || '',
+                    model: '', storage: '', color: '',
                   }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
-                  {CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
+                  <option value="telephone">Téléphone</option>
+                  <option value="tablette">Tablette</option>
+                  <option value="montre">Montre connectée</option>
+                  <option value="ecouteur">Écouteurs / AirPods</option>
+                  <option value="ordinateur">Ordinateur</option>
+                  <option value="accessoire">Accessoire</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Marque</label>
+                <select value={form.brand}
+                  onChange={(e) => setForm((f) => ({
+                    ...f, brand: e.target.value, model: '', storage: '', color: '',
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                  {getBrands(form.categorie).map((b) => (
+                    <option key={b} value={b}>{b}</option>
                   ))}
                 </select>
               </div>
@@ -348,10 +315,12 @@ export default function ClientsInteresses() {
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Modèle *</label>
                 <select value={form.model}
-                  onChange={(e) => setForm((f) => ({ ...f, model: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({
+                    ...f, model: e.target.value, storage: '', color: '',
+                  }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
                   <option value="">Sélectionner...</option>
-                  {(MODELS[form.categorie] || []).map((m) => (
+                  {getModels(form.categorie, form.brand).map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
@@ -359,17 +328,31 @@ export default function ClientsInteresses() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Stockage</label>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                    {form.categorie === 'montre' ? 'Taille' : 'Stockage'}
+                  </label>
                   <select value={form.storage}
                     onChange={(e) => setForm((f) => ({ ...f, storage: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                    disabled={!form.model}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm disabled:opacity-50">
                     <option value="">Indifférent</option>
-                    {STORAGES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    {getStorages(form.categorie, form.brand, form.model).map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
                   </select>
                 </div>
-                <input placeholder="Couleur souhaitée" value={form.color}
-                  onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm self-end" />
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Couleur</label>
+                  <select value={form.color}
+                    onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
+                    disabled={!form.model}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm disabled:opacity-50">
+                    <option value="">Indifférente</option>
+                    {getColors(form.categorie, form.brand, form.model).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
