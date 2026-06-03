@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChevronDown, Home, Smartphone, Tablet, Monitor, Watch, Headphones, LogOut } from 'lucide-react'
+import Footer from '../layout/Footer'
 
 const ProNavDropdown = ({ label, icon, items }) => {
   const [open, setOpen] = useState(false)
@@ -96,6 +97,7 @@ export default function ProLayout({ children }) {
       </header>
 
       <main>{children}</main>
+      <Footer />
     </div>
   )
 }
