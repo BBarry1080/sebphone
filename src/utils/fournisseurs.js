@@ -1,6 +1,7 @@
 export const FOURNISSEURS_LIST = [
   'GPC',
   'Price MyPhone',
+  'Price MyPhone Pro',
   'DVK',
   'Hichem',
   'Phone X',

@@ -1604,7 +1604,7 @@ export default function Stock() {
       .from('phones')
       .select('*')
       .neq('status', 'vendu')
-      .or('fournisseur.is.null,fournisseur.neq.Price MyPhone')
+      .or('fournisseur.is.null,fournisseur.neq.Price MyPhone Pro')
       .order('created_at', { ascending: false })
     setPhones(data || [])
     setLoading(false)

@@ -44,7 +44,7 @@ export default function ProAdmin() {
     const { data: phonesData } = await supabase
       .from('phones')
       .select('*')
-      .or('fournisseur.eq.Price MyPhone,added_by_magasin.eq.sebphone')
+      .or('fournisseur.eq.Price MyPhone Pro,added_by_magasin.eq.sebphone')
       .eq('status', 'disponible')
       .order('created_at', { ascending: false })
     await fetchAccounts()
@@ -247,7 +247,7 @@ export default function ProAdmin() {
       status: 'disponible',
       visible_on_site: false, // caché par défaut dans le stock pro
       categorie: 'telephone',
-      fournisseur: 'Price MyPhone',
+      fournisseur: 'Price MyPhone Pro',
       tva_regime: 'marge',
       parts_replaced: [],
       magasins: [],

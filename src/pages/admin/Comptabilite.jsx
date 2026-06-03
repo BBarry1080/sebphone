@@ -86,7 +86,7 @@ export default function Comptabilite() {
 
   // Stock Pro Price MyPhone — n'appartient pas au stock réel SebPhone
   // (mirror du filtre Dashboard : fournisseur.is.null OR fournisseur.neq.Price MyPhone)
-  const isStockPro = (p) => p.fournisseur === 'Price MyPhone'
+  const isStockPro = (p) => p.fournisseur === 'Price MyPhone Pro'
 
   const accountingPhones = phones.filter((p) => !isSurCommandeSale(p))
 

@@ -67,7 +67,7 @@ export default function Dashboard() {
         .from('phones')
         .select('id, purchase_price, price, status, fournisseur, added_by_magasin')
         .in('status', ['disponible', 'reserve'])
-        .or('fournisseur.is.null,fournisseur.neq.Price MyPhone')
+        .or('fournisseur.is.null,fournisseur.neq.Price MyPhone Pro')
       const { data: stockData } = await addStockFilter(stockQuery)
 
       const reserveQuery = supabase
