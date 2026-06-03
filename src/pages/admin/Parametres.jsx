@@ -5,6 +5,10 @@ import { MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
 import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle } from 'lucide-react'
 import { ALL_PERMISSIONS, useIsAdmin, usePermission } from '../../hooks/usePermissions'
+import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
+import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
+import { PHONES_DATABASE } from '../../data/phonesDatabase'
+import { MODELS_BY_CATEGORIE } from '../../data/catalogConstants'
 
 const SALT = 'sebphone_salt_2026'
 
@@ -88,6 +92,31 @@ const PERMISSION_GROUPS = [
 const DEFAULT_PERMS = Object.fromEntries(
   ALL_PERMISSIONS.map((p) => [p, false])
 )
+
+const IPHONE_CHRONO_ORDER = [
+  ...IPHONE_DATABASE.map((i) => i.model),
+  ...IPHONE_ON_DEMAND.map((i) => i.model),
+]
+
+const getModelOrder = (categorie, brand) => {
+  if (categorie === 'telephone') {
+    if (brand === 'Apple' || !brand) return IPHONE_CHRONO_ORDER
+    return (PHONES_DATABASE[brand] || []).map((p) => p.model)
+  }
+  return Object.values(MODELS_BY_CATEGORIE[categorie] || {}).flat()
+}
+
+const detectBrand = (name) => {
+  if (!name) return ''
+  const n = name.toLowerCase()
+  if (n.includes('iphone') || n.includes('ipad') ||
+      n.includes('macbook') || n.includes('airpods') ||
+      n.includes('apple watch')) return 'Apple'
+  if (n.includes('samsung')) return 'Samsung'
+  if (n.includes('xiaomi')) return 'Xiaomi'
+  if (n.includes('huawei')) return 'Huawei'
+  return ''
+}
 
 const AVATAR_COLORS = [
   'bg-[#00B4CC]', 'bg-[#1B2A4A]', 'bg-emerald-500',
@@ -389,7 +418,18 @@ export default function Parametres() {
       ).values()]
         .filter((m) => m.name)
         .sort((a, b) => {
-          if (a.categorie !== b.categorie) return a.categorie.localeCompare(b.categorie)
+          if (a.categorie !== b.categorie)
+            return (a.categorie || '').localeCompare(b.categorie || '')
+
+          const brandA = detectBrand(a.name)
+          const orderList = getModelOrder(a.categorie, brandA)
+
+          const idxA = orderList.indexOf(a.name)
+          const idxB = orderList.indexOf(b.name)
+
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB
+          if (idxA !== -1) return -1
+          if (idxB !== -1) return 1
           return (a.name || '').localeCompare(b.name || '')
         })
       setAllModels(uniqueModels)
