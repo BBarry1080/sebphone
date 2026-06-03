@@ -405,16 +405,39 @@ export default function Parametres() {
         .from('model_price_limits').select('*')
       setModelLimits(limits || [])
 
-      const { data: phones } = await supabase
+      const applePhones = [
+        ...IPHONE_DATABASE.map((i) => ({ name: i.model, categorie: 'telephone' })),
+        ...IPHONE_ON_DEMAND.map((i) => ({ name: i.model, categorie: 'telephone' })),
+      ]
+
+      const otherPhones = Object.entries(PHONES_DATABASE).flatMap(
+        ([, models]) => models.map((m) => ({ name: m.model, categorie: 'telephone' }))
+      )
+
+      const otherCategories = Object.entries(MODELS_BY_CATEGORIE)
+        .flatMap(([categorie, brands]) =>
+          Object.values(brands).flat().map((model) => ({ name: model, categorie }))
+        )
+
+      const { data: phonesFromDB } = await supabase
         .from('phones')
         .select('name, model, categorie')
         .neq('status', 'vendu')
 
+      const dbModels = (phonesFromDB || []).map((p) => ({
+        name: (p.name || p.model || '').replace(/^Apple\s+/i, '').trim(),
+        categorie: p.categorie || 'telephone',
+      })).filter((m) => m.name)
+
+      const allModelsRaw = [
+        ...applePhones,
+        ...otherPhones,
+        ...otherCategories,
+        ...dbModels,
+      ]
+
       const uniqueModels = [...new Map(
-        (phones || []).map((p) => [
-          p.name || p.model,
-          { name: p.name || p.model, categorie: p.categorie || 'telephone' },
-        ])
+        allModelsRaw.map((m) => [m.name, m])
       ).values()]
         .filter((m) => m.name)
         .sort((a, b) => {
