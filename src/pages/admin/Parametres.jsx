@@ -4,6 +4,7 @@ import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
 import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle } from 'lucide-react'
+import { ALL_PERMISSIONS, useIsAdmin, usePermission } from '../../hooks/usePermissions'
 
 const SALT = 'sebphone_salt_2026'
 
@@ -21,76 +22,72 @@ const generateEmail = (firstName, lastName) => {
 const PERMISSION_GROUPS = [
   {
     label: 'Dashboard',
+    icon: '📊',
     perms: [
       { key: 'voir_dashboard', label: 'Voir le dashboard' },
     ],
   },
   {
     label: 'Stock',
+    icon: '📱',
     perms: [
-      { key: 'voir_stock',              label: 'Voir le stock' },
-      { key: 'ajouter_stock',           label: 'Ajouter des téléphones' },
-      { key: 'modifier_stock',          label: 'Modifier les téléphones' },
-      { key: 'supprimer_stock',         label: 'Supprimer des téléphones' },
-      { key: 'offre_semaine',           label: "Définir l'offre de la semaine" },
-      { key: 'stock_reconditionnement', label: 'Accès Stock Reconditionnement' },
+      { key: 'voir_stock', label: 'Voir le stock' },
+      { key: 'ajouter_stock', label: 'Ajouter un téléphone' },
+      { key: 'modifier_stock', label: 'Modifier un téléphone' },
+      { key: 'supprimer_stock', label: 'Supprimer un téléphone' },
+      { key: 'offre_semaine', label: "Gérer l'offre de la semaine" },
+      { key: 'stock_reconditionnement', label: 'Accès reconditionnement' },
     ],
   },
   {
     label: 'Commandes',
+    icon: '🛍️',
     perms: [
-      { key: 'voir_commandes',     label: 'Voir les commandes' },
-      { key: 'modifier_commandes', label: 'Modifier / Annuler les commandes' },
-      { key: 'encaisser',          label: 'Encaisser une commande' },
-      { key: 'changer_modele',     label: 'Changer le modèle d\'une commande' },
+      { key: 'voir_commandes', label: 'Voir les commandes' },
+      { key: 'modifier_commandes', label: 'Modifier une commande' },
+      { key: 'encaisser', label: 'Encaisser une commande' },
+      { key: 'changer_modele', label: 'Changer le modèle' },
       { key: 'supprimer_commande', label: 'Supprimer une commande' },
-      { key: 'verifier_code',      label: 'Vérifier un code client' },
+      { key: 'verifier_code', label: 'Vérifier un code client' },
+    ],
+  },
+  {
+    label: 'Ventes',
+    icon: '💶',
+    perms: [
+      { key: 'ajouter_vente_directe', label: 'Ajouter une vente directe' },
     ],
   },
   {
     label: 'Clients & Marketing',
+    icon: '👥',
     perms: [
       { key: 'voir_clients', label: 'Voir les clients' },
-      { key: 'codes_promo',  label: 'Gérer les codes promo' },
+      { key: 'voir_clients_interesses', label: 'Clients intéressés' },
+      { key: 'codes_promo', label: 'Gérer les codes promo' },
     ],
   },
   {
     label: 'Finance',
+    icon: '💰',
     perms: [
       { key: 'voir_comptabilite', label: 'Voir la comptabilité' },
-      { key: 'ajouter_paiements', label: 'Ajouter des paiements' },
-      { key: 'compta_anderlecht',  label: 'Comptabilité — Anderlecht' },
-      { key: 'compta_molenbeek',   label: 'Comptabilité — Molenbeek' },
-      { key: 'compta_rue_neuve',   label: 'Comptabilité — Rue Neuve' },
-      { key: 'compta_louise',      label: 'Comptabilité — Louise' },
-      { key: 'compta_tubize',      label: 'Comptabilité — Tubize' },
-      { key: 'compta_saint_gilles', label: 'Comptabilité — Saint-Gilles' },
+      { key: 'ajouter_paiements', label: 'Ajouter un paiement' },
     ],
   },
   {
     label: 'Administration',
+    icon: '⚙️',
     perms: [
+      { key: 'registre_achats', label: "Registre d'achats" },
       { key: 'gerer_utilisateurs', label: 'Gérer les utilisateurs' },
-      { key: 'registre_achats',    label: "Accès Registre d'achats" },
     ],
   },
 ]
 
-const DEFAULT_PERMS = {
-  voir_dashboard: true,
-  voir_stock: true, ajouter_stock: false, modifier_stock: false,
-  supprimer_stock: false, offre_semaine: false,
-  voir_commandes: false, modifier_commandes: false, encaisser: false,
-  changer_modele: false, supprimer_commande: false, verifier_code: false,
-  voir_clients: false, codes_promo: false,
-  voir_comptabilite: false, ajouter_paiements: false,
-  compta_anderlecht: false, compta_molenbeek: false,
-  compta_rue_neuve: false, compta_louise: false,
-  compta_tubize: false, compta_saint_gilles: false,
-  gerer_utilisateurs: false,
-  registre_achats: false,
-  stock_reconditionnement: false,
-}
+const DEFAULT_PERMS = Object.fromEntries(
+  ALL_PERMISSIONS.map((p) => [p, false])
+)
 
 const AVATAR_COLORS = [
   'bg-[#00B4CC]', 'bg-[#1B2A4A]', 'bg-emerald-500',
@@ -338,12 +335,14 @@ function EmployeeModal({ employee, onClose, onSaved }) {
 
 export default function Parametres() {
   const navigate = useNavigate()
-  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('sebphone_user') || '{}') } catch { return {} } })()
-  const isAdmin = currentUser.role === 'admin' || !currentUser.role
+  const isAdmin = useIsAdmin()
+  const canManageUsers = usePermission('gerer_utilisateurs')
 
   useEffect(() => {
-    if (!isAdmin) navigate('/admin/dashboard', { replace: true })
-  }, [])
+    if (!isAdmin && !canManageUsers) {
+      navigate('/admin/dashboard', { replace: true })
+    }
+  }, [isAdmin, canManageUsers])
 
   const [tab, setTab]             = useState('utilisateurs')
   const [staff, setStaff]         = useState([])

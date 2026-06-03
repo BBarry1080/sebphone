@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, Wrench, Briefcase, Truck, Users,
+  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, Wrench, Briefcase, Truck, Users, Package, History,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -38,19 +38,19 @@ function SidebarContent({ onClose }) {
   const initials = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'AD'
 
   const navItems = [
-    { to: '/admin/dashboard',     label: 'Dashboard',     Icon: LayoutDashboard, show: true },
-    { to: '/admin/stock',         label: 'Stock',             Icon: Smartphone,    show: has('voir_stock') },
-    { to: '/admin/vendus',        label: 'Historique ventes', Icon: ShoppingBag,   show: has('voir_stock') },
-    { to: '/admin/commandes',     label: 'Commandes',     Icon: ClipboardList,   show: has('voir_commandes') },
-    { to: '/admin/promoCodes',    label: 'Codes promo',   Icon: Tag,             show: has('codes_promo') },
-    { to: '/admin/verifier-code', label: 'Vérifier code', Icon: QrCode,          show: has('verifier_code') },
-    { to: '/admin/comptabilite',  label: 'Comptabilité',  Icon: Calculator,      show: has('voir_comptabilite') },
-    { to: '/admin/registre',          label: "Registre d'achat",      Icon: BookOpen, show: has('registre_achats') },
-    { to: '/admin/clients-interesses', label: 'Clients intéressés',   Icon: Users,    show: has('voir_clients') || isAdmin },
-    { to: '/admin/reconditionnement', label: 'Stock Reconditionnement', Icon: Wrench,  show: has('stock_reconditionnement') },
-    { to: '/admin/livraisons',    label: '🚗 Livraisons', Icon: Truck,           show: isAdmin },
-    { to: '/admin/pro',           label: '👔 Espace Pro', Icon: Briefcase,       show: isAdmin },
-    { to: '/admin/parametres',    label: 'Paramètres',    Icon: Settings,        show: isAdmin },
+    { to: '/admin/dashboard',          label: 'Dashboard',           Icon: LayoutDashboard, show: true },
+    { to: '/admin/stock',              label: 'Stock',               Icon: Package,         show: has('voir_stock') },
+    { to: '/admin/vendus',             label: 'Historique ventes',   Icon: History,         show: has('voir_stock') || has('ajouter_vente_directe') },
+    { to: '/admin/commandes',          label: 'Commandes',           Icon: ShoppingBag,     show: has('voir_commandes') },
+    { to: '/admin/promoCodes',         label: 'Codes promo',         Icon: Tag,             show: has('codes_promo') },
+    { to: '/admin/verifier-code',      label: 'Vérifier code',       Icon: QrCode,          show: has('verifier_code') },
+    { to: '/admin/comptabilite',       label: 'Comptabilité',        Icon: Calculator,      show: has('voir_comptabilite') },
+    { to: '/admin/registre',           label: "Registre d'achats",   Icon: ClipboardList,   show: has('registre_achats') },
+    { to: '/admin/clients-interesses', label: 'Clients intéressés',  Icon: Users,           show: has('voir_clients_interesses') || has('voir_clients') || isAdmin },
+    { to: '/admin/reconditionnement',  label: 'Reconditionnement',   Icon: Wrench,          show: has('stock_reconditionnement') },
+    { to: '/admin/livraisons',         label: 'Livraisons',          Icon: Truck,           show: isAdmin },
+    { to: '/admin/pro',                label: 'Espace Pro Admin',    Icon: Briefcase,       show: isAdmin },
+    { to: '/admin/parametres',         label: 'Paramètres',          Icon: Settings,        show: isAdmin || has('gerer_utilisateurs') },
   ]
 
   return (

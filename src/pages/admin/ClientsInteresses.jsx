@@ -1,12 +1,24 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Plus, Trash2, Bell, Check, X } from 'lucide-react'
 import { MAGASINS } from '../../utils/magasins'
 import { getBrands, getModels, getColors, getStorages } from '../../data/catalogConstants'
+import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 
 const REMINDER_DAYS = 10
 
 export default function ClientsInteresses() {
+  const navigate = useNavigate()
+  const isAdmin = useIsAdmin()
+  const hasPermission = usePermission('voir_clients_interesses')
+
+  useEffect(() => {
+    if (!isAdmin && !hasPermission) {
+      navigate('/admin/dashboard', { replace: true })
+    }
+  }, [isAdmin, hasPermission])
+
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)

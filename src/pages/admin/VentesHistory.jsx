@@ -9,6 +9,7 @@ import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 export default function VentesHistory() {
   const isAdmin = useIsAdmin()
   const canEdit = usePermission('modifier_commandes')
+  const canAddVente = usePermission('ajouter_vente_directe')
   const [sales, setSales]                     = useState([])
   const [loading, setLoading]                 = useState(true)
   const [searchQuery, setSearchQuery]         = useState('')
@@ -574,12 +575,14 @@ export default function VentesHistory() {
           <h1 className="text-2xl font-bold text-[#1B2A4A]">Historique des ventes</h1>
           <p className="text-sm text-gray-500 mt-1">{filtered.length} vente(s) enregistrée(s)</p>
         </div>
-        <button
-          onClick={() => setShowAddSale(true)}
-          className="flex items-center gap-2 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#00B4CC] transition-all"
-        >
-          + Ajouter une vente
-        </button>
+        {(canAddVente || isAdmin) && (
+          <button
+            onClick={() => setShowAddSale(true)}
+            className="flex items-center gap-2 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-[#00B4CC] transition-all"
+          >
+            + Ajouter une vente
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6">

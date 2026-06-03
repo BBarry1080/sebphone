@@ -2,14 +2,38 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../lib/supabase'
 
-const ALL_PERMISSIONS = [
+export const ALL_PERMISSIONS = [
   'voir_dashboard',
-  'voir_stock', 'ajouter_stock', 'modifier_stock', 'supprimer_stock', 'offre_semaine',
+
+  // Stock
+  'voir_stock',
+  'ajouter_stock',
+  'modifier_stock',
+  'supprimer_stock',
+  'offre_semaine',
   'stock_reconditionnement',
-  'voir_commandes', 'modifier_commandes', 'encaisser', 'changer_modele', 'supprimer_commande', 'verifier_code',
-  'voir_clients', 'codes_promo',
-  'voir_comptabilite', 'ajouter_paiements',
-  'compta_anderlecht', 'compta_molenbeek', 'compta_rue_neuve', 'compta_louise', 'compta_tubize', 'compta_saint_gilles',
+
+  // Commandes
+  'voir_commandes',
+  'modifier_commandes',
+  'encaisser',
+  'changer_modele',
+  'supprimer_commande',
+  'verifier_code',
+
+  // Clients & Marketing
+  'voir_clients',
+  'voir_clients_interesses',
+  'codes_promo',
+
+  // Finance
+  'voir_comptabilite',
+  'ajouter_paiements',
+
+  // Ventes
+  'ajouter_vente_directe',
+
+  // Administration
   'registre_achats',
   'gerer_utilisateurs',
 ]
