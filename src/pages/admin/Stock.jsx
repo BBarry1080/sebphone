@@ -1348,7 +1348,7 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-[#00B4CC] outline-none mb-2"
                 >
                   <option value="">— Choisir —</option>
-                  {FOURNISSEURS_LIST.map((f) => (
+                  {FOURNISSEURS_LIST.filter((f) => f !== 'Price MyPhone').map((f) => (
                     <option key={f} value={f}>{f}</option>
                   ))}
                   <option value="__custom__">+ Ajouter un fournisseur</option>
