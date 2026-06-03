@@ -72,7 +72,7 @@ export default function ProLogin() {
           contact_name: account.contact_name,
           email: account.email,
         }))
-        navigate('/pro/catalogue')
+        navigate('/pro/accueil')
         return
       }
       setError('Statut de compte inconnu')

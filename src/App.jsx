@@ -48,6 +48,8 @@ import DashboardLivreur from './pages/livreur/DashboardLivreur';
 import Facture from './pages/Facture';
 import ProLogin from './pages/ProLogin';
 import ProCatalogue from './pages/ProCatalogue';
+import ProHome from './pages/pro/ProHome';
+import ProCataloguePage from './pages/pro/ProCataloguePage';
 import ProAdmin from './pages/admin/ProAdmin';
 import CataloguePage from './pages/CataloguePage';
 import Avis from './pages/Avis';
@@ -132,6 +134,8 @@ export default function App() {
           <Route path="/pro/catalogue" element={
             <Layout><ProCatalogue /></Layout>
           } />
+          <Route path="/pro/accueil" element={<ProHome />} />
+          <Route path="/pro/catalogue/:categorie" element={<ProCataloguePage />} />
           <Route path="/catalogue/:categorie" element={
             <Layout><CataloguePage /></Layout>
           } />
