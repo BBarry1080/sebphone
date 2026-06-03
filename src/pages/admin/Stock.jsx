@@ -568,6 +568,17 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
     setHasEsim(isEsimModel(modelName))
   }
 
+  // Mode édition : peuple selectedModel pour faire apparaître les pills couleur/stockage,
+  // puis restaure les valeurs réelles du phone (handleSelectModel reset au 1er élément).
+  useEffect(() => {
+    if (isEdit && (phone?.model || phone?.name)) {
+      handleSelectModel(phone.model || phone.name)
+      setStorage(phone.storage || '')
+      setColorSearch(phone.color || '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const handleMagasinToggle = (id) => {
     setMagasins((prev) =>
       prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
