@@ -137,6 +137,44 @@ export default function ModelDetailPage() {
   const [selectedSurCommandeStorage, setSelectedSurCommandeStorage] = useState('')
   const [surCommandeImageUrl, setSurCommandeImageUrl] = useState('')
 
+  const [alertEmail, setAlertEmail]     = useState('')
+  const [alertPhone, setAlertPhone]     = useState('')
+  const [alertStatus, setAlertStatus]   = useState(null)
+  const [alertLoading, setAlertLoading] = useState(false)
+
+  const handleStockAlert = async () => {
+    if (!alertEmail || !alertEmail.includes('@')) {
+      setAlertStatus('error')
+      return
+    }
+    setAlertLoading(true)
+    try {
+      const decodedModel = modelSlug.replace(/-/g, ' ')
+      const { error } = await supabase
+        .from('interested_clients')
+        .insert({
+          customer_name:  alertEmail.split('@')[0],
+          customer_email: alertEmail.toLowerCase().trim(),
+          customer_phone: alertPhone.trim() || null,
+          categorie:      phones[0]?.categorie || 'telephone',
+          brand:          phones[0]?.brand || 'Apple',
+          model:          decodedModel,
+          status:         'en_attente',
+        })
+
+      if (error && error.code !== '23505') {
+        setAlertStatus('error')
+      } else {
+        setAlertStatus('success')
+        setAlertEmail('')
+        setAlertPhone('')
+      }
+    } catch (e) {
+      setAlertStatus('error')
+    }
+    setAlertLoading(false)
+  }
+
   useEffect(() => {
     async function fetchPhones() {
       setLoading(true)
@@ -784,6 +822,54 @@ export default function ModelDetailPage() {
               <p className="text-xs text-gray-400 text-center">
                 📦 Disponible chez notre fournisseur — livraison sous {surCommandePhones[0]?.delai_commande || '1h à 72h'}
               </p>
+            </div>
+          )}
+
+          {stockPhones.length === 0 && surCommandePhones.length === 0 && (
+            <div className="mt-6 bg-blue-50 border border-blue-200 rounded-2xl p-6">
+              <h3 className="font-bold text-[#1B2A4A] mb-1">
+                M'avertir quand disponible
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Laissez votre email et nous vous préviendrons dès que
+                ce modèle arrive en stock.
+              </p>
+
+              {alertStatus === 'success' ? (
+                <div className="bg-green-100 border border-green-300 rounded-xl px-4 py-3 text-green-700 text-sm font-medium">
+                  ✓ Inscription enregistrée ! Nous vous contacterons
+                  dès que le modèle est disponible.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <input
+                    type="email"
+                    value={alertEmail}
+                    onChange={(e) => { setAlertEmail(e.target.value); setAlertStatus(null) }}
+                    placeholder="votre@email.com *"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                  <input
+                    type="tel"
+                    value={alertPhone}
+                    onChange={(e) => setAlertPhone(e.target.value)}
+                    placeholder="Téléphone (optionnel)"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                  />
+                  {alertStatus === 'error' && (
+                    <p className="text-red-500 text-xs">
+                      Email invalide. Vérifiez et réessayez.
+                    </p>
+                  )}
+                  <button
+                    onClick={handleStockAlert}
+                    disabled={alertLoading}
+                    className="w-full py-2.5 bg-[#1B2A4A] text-white rounded-xl font-bold text-sm hover:bg-[#00B4CC] transition-all disabled:opacity-50"
+                  >
+                    {alertLoading ? 'Enregistrement...' : "M'avertir par email"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </>

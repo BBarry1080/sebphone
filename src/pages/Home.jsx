@@ -4,6 +4,7 @@ import Services from '../components/home/Services';
 import BestSellers from '../components/home/BestSellers';
 import FeaturedPhones from '../components/home/FeaturedPhones';
 import WhyUs from '../components/home/WhyUs';
+import NewsletterSection from '../components/home/NewsletterSection';
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
       <FeaturedPhones />
       <StoreSection />
       <WhyUs />
+      <NewsletterSection />
     </main>
   );
 }
