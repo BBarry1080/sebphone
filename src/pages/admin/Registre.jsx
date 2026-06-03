@@ -34,6 +34,12 @@ export default function Registre() {
   const [idError, setIdError] = useState(null)
   const [imeiError, setImeiError] = useState(null)
   const [imeiDuplicate, setImeiDuplicate] = useState(false)
+
+  const [showStockModal, setShowStockModal] = useState(false)
+  const [stockEntry, setStockEntry]         = useState(null)
+  const [stockPrice, setStockPrice]         = useState('')
+  const [stockMagasin, setStockMagasin]     = useState('')
+  const [stockLoading, setStockLoading]     = useState(false)
   const [idType, setIdType] = useState("Carte d'identité")
   const [editingEntry, setEditingEntry] = useState(null)
   const [openMenu, setOpenMenu] = useState(null)
@@ -169,64 +175,72 @@ export default function Registre() {
     )
   }
 
-  const handleAddToStock = async (entry) => {
-    const phoneLabel = `${entry.brand || ''} ${entry.model || ''}`.trim()
-    const confirmed = window.confirm(
-      `Ajouter "${phoneLabel}" au stock ?\n\n` +
-      `Vous pourrez définir le prix de vente dans la page Stock.`
-    )
-    if (!confirmed) return
+  const handleAddToStock = (entry) => {
+    setStockEntry(entry)
+    setStockPrice(entry.purchase_price || '')
+    setStockMagasin(entry.magasin_id || '')
+    setShowStockModal(true)
+  }
 
-    try {
-      const sellerLabel = `${entry.seller_first_name || ''} ${entry.seller_last_name || ''}`.trim()
-        || entry.fournisseur || 'Rachat client'
-
-      const { data: newPhone, error: phoneErr } = await supabase
-        .from('phones')
-        .insert({
-          name:             phoneLabel,
-          model:            entry.model,
-          brand:            entry.brand,
-          color:            entry.color || '—',
-          storage:          entry.storage || '—',
-          imei:             entry.imei,
-          condition:        entry.phone_condition || 'occasion',
-          grade:            entry.phone_grade || '',
-          purchase_price:   Number(entry.purchase_price) || 0,
-          price:            Number(entry.purchase_price) || 0,
-          status:           'disponible',
-          visible_on_site:  false,
-          magasins:         entry.magasin_id ? [entry.magasin_id] : [],
-          added_by_magasin: entry.magasin_id || '',
-          fournisseur:      sellerLabel,
-          tva_regime:       'marge',
-          parts_replaced:   [],
-          battery_health:   entry.battery_health || null,
-          face_id_status:   entry.face_id_status || null,
-        })
-        .select()
-        .single()
-
-      if (phoneErr) throw phoneErr
-
-      const { error: regErr } = await supabase
-        .from('purchase_registry')
-        .update({
-          added_to_stock: true,
-          phone_id:       newPhone.id,
-        })
-        .eq('id', entry.id)
-      if (regErr) throw regErr
-
-      alert(
-        `✅ ${phoneLabel} ajouté au stock !\n\n` +
-        `N'oubliez pas de définir le prix de vente dans la page Stock.\n` +
-        `Le téléphone est masqué du site public par défaut.`
-      )
-      fetchEntries()
-    } catch (err) {
-      alert('Erreur : ' + err.message)
+  const confirmAddToStock = async () => {
+    if (!stockPrice || isNaN(Number(stockPrice)) || Number(stockPrice) <= 0) {
+      alert('Veuillez entrer un prix de vente valide.')
+      return
     }
+    if (!stockMagasin) {
+      alert('Veuillez sélectionner un magasin.')
+      return
+    }
+    setStockLoading(true)
+
+    const { data: newPhone, error: phoneErr } = await supabase
+      .from('phones')
+      .insert({
+        name:             `${stockEntry.brand || ''} ${stockEntry.model}`.trim(),
+        model:            stockEntry.model,
+        brand:            stockEntry.brand || '',
+        color:            stockEntry.color || '—',
+        storage:          stockEntry.storage || '—',
+        imei:             stockEntry.imei || null,
+        condition:        stockEntry.phone_condition || 'occasion',
+        grade:            stockEntry.phone_grade || '',
+        purchase_price:   Number(stockEntry.purchase_price) || 0,
+        price:            Number(stockPrice),
+        status:           'disponible',
+        visible_on_site:  false,
+        magasins:         [stockMagasin],
+        added_by_magasin: stockMagasin,
+        fournisseur:      `${stockEntry.seller_first_name || ''} ${stockEntry.seller_last_name || ''}`.trim() || 'Rachat client',
+        tva_regime:       'marge',
+        parts_replaced:   [],
+        battery_health:   stockEntry.battery_health || null,
+        face_id_status:   stockEntry.face_id_status || null,
+        categorie:        'telephone',
+      })
+      .select()
+      .single()
+
+    if (phoneErr) {
+      alert('Erreur : ' + phoneErr.message)
+      setStockLoading(false)
+      return
+    }
+
+    await supabase
+      .from('purchase_registry')
+      .update({
+        added_to_stock: true,
+        phone_id:       newPhone.id,
+      })
+      .eq('id', stockEntry.id)
+
+    alert(`✅ ${stockEntry.model} ajouté au stock à ${stockPrice}€ — Magasin : ${stockMagasin}`)
+    setShowStockModal(false)
+    setStockEntry(null)
+    setStockPrice('')
+    setStockMagasin('')
+    setStockLoading(false)
+    fetchEntries()
   }
 
   const fetchEntries = async () => {
@@ -1423,6 +1437,95 @@ export default function Registre() {
                   <Printer size={16}/> Imprimer la fiche
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showStockModal && stockEntry && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-[#1B2A4A] text-lg">
+                Ajouter au stock
+              </h2>
+              <button onClick={() => setShowStockModal(false)}>
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3 mb-4">
+              <p className="font-bold text-[#1B2A4A] text-sm">
+                {stockEntry.brand} {stockEntry.model}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {stockEntry.storage} · {stockEntry.color} ·
+                Grade {stockEntry.phone_grade}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Prix d'achat : {stockEntry.purchase_price}€
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Prix de vente (€) *
+                </label>
+                <input
+                  type="number"
+                  value={stockPrice}
+                  onChange={(e) => setStockPrice(e.target.value)}
+                  placeholder="Ex: 299"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-bold focus:border-[#00B4CC] outline-none"
+                />
+                {stockPrice && stockEntry.purchase_price && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Marge : +{(Number(stockPrice) - Number(stockEntry.purchase_price)).toFixed(0)}€
+                    ({((Number(stockPrice) - Number(stockEntry.purchase_price)) / Number(stockEntry.purchase_price) * 100).toFixed(0)}%)
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Magasin *
+                </label>
+                <select
+                  value={stockMagasin}
+                  onChange={(e) => setStockMagasin(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                >
+                  <option value="">Sélectionner un magasin...</option>
+                  <option value="anderlecht">Anderlecht</option>
+                  <option value="molenbeek">Molenbeek</option>
+                  <option value="louise">Louise</option>
+                  <option value="rue-neuve">Rue Neuve</option>
+                  <option value="tubize">Tubize</option>
+                  <option value="saint-gilles">Saint-Gilles</option>
+                </select>
+              </div>
+
+              <p className="text-xs text-amber-600">
+                ⚠️ Le téléphone sera masqué du site public par défaut.
+                Activez-le dans Stock une fois le prix vérifié.
+              </p>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setShowStockModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmAddToStock}
+                disabled={stockLoading}
+                className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+              >
+                {stockLoading ? 'Ajout...' : '+ Ajouter au stock'}
+              </button>
             </div>
           </div>
         </div>
