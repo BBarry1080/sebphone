@@ -115,7 +115,35 @@ const detectBrand = (name) => {
   if (n.includes('samsung')) return 'Samsung'
   if (n.includes('xiaomi')) return 'Xiaomi'
   if (n.includes('huawei')) return 'Huawei'
+  if (n.includes('oneplus')) return 'OnePlus'
+  if (n.includes('google') || n.includes('pixel')) return 'Google'
+  if (n.includes('microsoft') || n.includes('surface')) return 'Microsoft'
+  if (n.includes('garmin')) return 'Garmin'
+  if (n.includes('sony')) return 'Sony'
+  if (n.includes('bose')) return 'Bose'
+  if (n.includes('jbl')) return 'JBL'
+  if (n.includes('dell')) return 'Dell'
+  if (n.includes('hp ') || n.startsWith('hp')) return 'HP'
+  if (n.includes('lenovo')) return 'Lenovo'
   return ''
+}
+
+const BRANDS_BY_CATEGORIE = {
+  telephone:  ['Apple', 'Samsung', 'Xiaomi', 'Huawei', 'OnePlus', 'Google'],
+  tablette:   ['Apple', 'Samsung', 'Microsoft'],
+  montre:     ['Apple', 'Samsung', 'Garmin'],
+  ecouteur:   ['Apple', 'Samsung', 'Sony', 'Bose', 'JBL'],
+  ordinateur: ['Apple', 'Dell', 'HP', 'Lenovo', 'Microsoft'],
+  accessoire: ['Apple', 'Samsung', 'Autre'],
+}
+
+const CATEGORIE_LABELS = {
+  telephone:  'Téléphones',
+  tablette:   'Tablettes',
+  montre:     'Montres',
+  ecouteur:   'Écouteurs',
+  ordinateur: 'Ordinateurs',
+  accessoire: 'Accessoires',
 }
 
 const AVATAR_COLORS = [
@@ -389,6 +417,8 @@ export default function Parametres() {
   const [searchModel, setSearchModel] = useState('')
   const [filterCategorie, setFilterCategorie] = useState('tous')
   const [filterType, setFilterType] = useState('client')
+  const [selectedCategorie, setSelectedCategorie] = useState(null)
+  const [selectedBrand, setSelectedBrand]         = useState(null)
 
   useEffect(() => {
     const fetchPriceSettings = async () => {
@@ -732,7 +762,7 @@ export default function Parametres() {
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-3"
             />
 
-            <div className="flex gap-2 flex-wrap mb-3 items-center">
+            <div className="flex gap-2 flex-wrap mb-4 items-center">
               {['client', 'pro'].map((type) => (
                 <button
                   key={type}
@@ -746,55 +776,99 @@ export default function Parametres() {
                   {type === 'client' ? '👤 Client' : '🏢 Pro'}
                 </button>
               ))}
-
-              <div className="w-px h-6 bg-gray-200 mx-1" />
-
-              {['tous', 'telephone', 'tablette', 'montre', 'ecouteur', 'ordinateur', 'accessoire'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setFilterCategorie(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                    filterCategorie === cat
-                      ? 'bg-[#00B4CC] text-white'
-                      : 'bg-white text-gray-600 border border-gray-200'
-                  }`}
-                >
-                  {cat === 'tous' ? 'Tous'
-                    : cat === 'telephone' ? '📱 Téléphones'
-                    : cat === 'tablette' ? '📟 Tablettes'
-                    : cat === 'montre' ? '⌚ Montres'
-                    : cat === 'ecouteur' ? '🎧 Écouteurs'
-                    : cat === 'ordinateur' ? '💻 Ordinateurs'
-                    : '🛍️ Accessoires'}
-                </button>
-              ))}
             </div>
 
-            <div className="max-h-96 overflow-y-auto space-y-2">
-              {allModels
-                .filter((m) => {
-                  const matchSearch = m.name?.toLowerCase().includes(searchModel.toLowerCase())
-                  const matchCat = filterCategorie === 'tous' || m.categorie === filterCategorie
-                  return matchSearch && matchCat
-                })
-                .map((m) => {
-                  const limit = modelLimits.find((l) => l.model_name === m.name)
+            {!selectedCategorie && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {Object.entries(CATEGORIE_LABELS).map(([cat, label]) => {
+                  const count = allModels.filter((m) => m.categorie === cat).length
                   return (
-                    <ModelLimitRow
-                      key={m.name}
-                      model={m}
-                      limit={limit}
-                      filterType={filterType}
-                      onSave={saveModelLimit}
-                    />
+                    <button key={cat}
+                      onClick={() => {
+                        setSelectedCategorie(cat)
+                        setSelectedBrand(null)
+                      }}
+                      className="bg-white border-2 border-gray-100 rounded-2xl p-4 text-left hover:border-[#00B4CC] hover:shadow-md transition-all">
+                      <p className="font-bold text-[#1B2A4A]">{label}</p>
+                      <p className="text-xs text-gray-400 mt-1">{count} modèles</p>
+                    </button>
                   )
                 })}
-              {allModels.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-6">
-                  Aucun modèle en stock pour le moment
-                </p>
-              )}
-            </div>
+              </div>
+            )}
+
+            {selectedCategorie && !selectedBrand && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <button onClick={() => setSelectedCategorie(null)}
+                    className="text-sm text-[#00B4CC] hover:underline">
+                    ← Catégories
+                  </button>
+                  <span className="text-gray-400">/</span>
+                  <span className="text-sm font-bold text-[#1B2A4A]">
+                    {CATEGORIE_LABELS[selectedCategorie]}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {(BRANDS_BY_CATEGORIE[selectedCategorie] || []).map((brand) => {
+                    const count = allModels.filter((m) =>
+                      m.categorie === selectedCategorie &&
+                      detectBrand(m.name) === brand
+                    ).length
+                    if (count === 0) return null
+                    return (
+                      <button key={brand}
+                        onClick={() => setSelectedBrand(brand)}
+                        className="bg-white border-2 border-gray-100 rounded-2xl p-4 text-left hover:border-[#00B4CC] hover:shadow-md transition-all">
+                        <p className="font-bold text-[#1B2A4A]">{brand}</p>
+                        <p className="text-xs text-gray-400 mt-1">{count} modèles</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {selectedCategorie && selectedBrand && (
+              <div>
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
+                  <button onClick={() => setSelectedCategorie(null)}
+                    className="text-sm text-[#00B4CC] hover:underline">
+                    ← Catégories
+                  </button>
+                  <span className="text-gray-400">/</span>
+                  <button onClick={() => setSelectedBrand(null)}
+                    className="text-sm text-[#00B4CC] hover:underline">
+                    {CATEGORIE_LABELS[selectedCategorie]}
+                  </button>
+                  <span className="text-gray-400">/</span>
+                  <span className="text-sm font-bold text-[#1B2A4A]">
+                    {selectedBrand}
+                  </span>
+                </div>
+
+                <div className="max-h-96 overflow-y-auto space-y-2">
+                  {allModels
+                    .filter((m) =>
+                      m.categorie === selectedCategorie &&
+                      detectBrand(m.name) === selectedBrand &&
+                      (!searchModel || m.name?.toLowerCase().includes(searchModel.toLowerCase()))
+                    )
+                    .map((m) => {
+                      const limit = modelLimits.find((l) => l.model_name === m.name)
+                      return (
+                        <ModelLimitRow
+                          key={m.name}
+                          model={m}
+                          limit={limit}
+                          filterType={filterType}
+                          onSave={saveModelLimit}
+                        />
+                      )
+                    })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
