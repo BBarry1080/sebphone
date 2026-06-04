@@ -44,7 +44,7 @@ export default function ProAdmin() {
     const { data: phonesData } = await supabase
       .from('phones')
       .select('*')
-      .or('fournisseur.eq.Price MyPhone Pro,added_by_magasin.eq.sebphone')
+      .not('price_pro', 'is', null)
       .eq('status', 'disponible')
       .order('created_at', { ascending: false })
     await fetchAccounts()
@@ -507,12 +507,12 @@ export default function ProAdmin() {
                       <td className="px-3 py-2">
                         <input
                           type="number"
-                          defaultValue={phone.price}
+                          defaultValue={phone.price_pro}
                           onBlur={async (e) => {
                             const newPrice = parseFloat(e.target.value)
-                            if (!newPrice || newPrice === phone.price) return
+                            if (!newPrice || newPrice === phone.price_pro) return
                             await supabase.from('phones')
-                              .update({ price: newPrice })
+                              .update({ price_pro: newPrice })
                               .eq('id', phone.id)
                           }}
                           className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-sm text-center font-bold"
