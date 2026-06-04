@@ -522,7 +522,10 @@ export default function ProAdmin() {
                         <button
                           onClick={async () => {
                             await supabase.from('phones')
-                              .update({ visible_on_site: !phone.visible_on_site })
+                              .update({
+                                visible_on_site: !phone.visible_on_site,
+                                fournisseur: 'Price MyPhone Pro',
+                              })
                               .eq('id', phone.id)
                             fetchAll()
                           }}

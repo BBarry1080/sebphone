@@ -2053,7 +2053,8 @@ export default function Stock() {
       const q = search.toLowerCase().trim()
       if (q) {
         const name = (p.name || '').toLowerCase()
-        if (!name.startsWith(q) && !name.includes(' ' + q)) return false
+        const imeiMatch = p.imei && p.imei.includes(search.trim())
+        if (!name.startsWith(q) && !name.includes(' ' + q) && !imeiMatch) return false
       }
       if (filterMagasin) {
         const mags = Array.isArray(p.magasins) ? p.magasins : []
