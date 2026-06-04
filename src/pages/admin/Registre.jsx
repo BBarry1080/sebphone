@@ -323,6 +323,8 @@ export default function Registre() {
       if (!p.payment_method) { setError(`Téléphone ${i + 1} : mode de paiement obligatoire`); return }
     }
 
+    console.log('Nb téléphones à insérer:', phones.length, phones)
+
     setSubmitting(true)
     try {
       const sharedSeller = {
@@ -1363,6 +1365,12 @@ export default function Registre() {
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">
                   ⚠️ {error}
+                </div>
+              )}
+
+              {phones.length > 1 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3 text-sm text-amber-700">
+                  ⚠️ Vous allez enregistrer <strong>{phones.length} téléphones</strong> pour ce vendeur. Vérifiez que c'est correct.
                 </div>
               )}
 
