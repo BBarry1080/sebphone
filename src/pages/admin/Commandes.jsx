@@ -350,7 +350,6 @@ export default function Commandes() {
     }
     setOrders((prev) => prev.filter((x) => x.id !== o.id))
     setDeletingId(null)
-    setTimeout(() => window.location.reload(), 500)
   }
 
   const fetchOrders = async () => {

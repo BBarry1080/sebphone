@@ -442,8 +442,7 @@ export default function VentesHistory() {
         }).eq('id', sale.phone_id)
       }
       await supabase.from('orders').delete().eq('id', sale.id)
-      fetchSales()
-      setTimeout(() => window.location.reload(), 500)
+      setSales((prev) => prev.filter((s) => s.id !== sale.id))
     } catch (err) {
       console.error('Erreur suppression:', err)
       alert('Erreur lors de la suppression')
