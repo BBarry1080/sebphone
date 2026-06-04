@@ -23,6 +23,13 @@ export default function StockReconditionnement() {
   const [selectedEntry, setSelectedEntry]   = useState(null)
   const [showRepairModal, setShowRepairModal] = useState(false)
   const [submitting, setSubmitting]         = useState(false)
+
+  const [showStockModal, setShowStockModal] = useState(false)
+  const [stockEntry, setStockEntry]         = useState(null)
+  const [stockPrice, setStockPrice]         = useState('')
+  const [stockPricePro, setStockPricePro]   = useState('')
+  const [stockMagasin, setStockMagasin]     = useState('')
+  const [stockLoading, setStockLoading]     = useState(false)
   const [repairForm, setRepairForm]         = useState({
     parts_replaced: [],
     parts_prices: {},
@@ -182,59 +189,81 @@ export default function StockReconditionnement() {
     }
   }
 
-  const handleAddToStock = async (entry) => {
-    const confirmed = window.confirm(
-      `Ajouter "${entry.brand} ${entry.model}" au stock disponible ?\n\n` +
-      `Cette action le rendra visible dans le stock et sur le site.`
-    )
-    if (!confirmed) return
+  const handleAddToStock = (entry) => {
+    setStockEntry(entry)
+    setStockPrice(Math.round(Number(entry.purchase_price) * 1.3) || '')
+    setStockPricePro('')
+    setStockMagasin(entry.magasin_id || '')
+    setShowStockModal(true)
+  }
 
-    try {
-      const sellerLabel = `${entry.seller_first_name || ''} ${entry.seller_last_name || ''}`.trim()
-        || entry.fournisseur || 'Reconditionnement'
-      const sellPrice = Math.round((Number(entry.purchase_price) || 0) * 1.3)
-
-      const { error: stockError } = await supabase
-        .from('phones')
-        .insert([{
-          name:             `${entry.brand} ${entry.model}`,
-          model:            entry.model,
-          brand:            entry.brand,
-          color:            entry.color || '',
-          storage:          entry.storage || '',
-          condition:        'reconditionne',
-          grade:            entry.phone_grade || 'Bon état',
-          price:            sellPrice,
-          purchase_price:   Number(entry.purchase_price) || 0,
-          imei:             entry.imei,
-          status:           'disponible',
-          visible_on_site:  true,
-          battery_health:   entry.battery_health ? parseInt(entry.battery_health) : null,
-          magasins:         [entry.magasin_id],
-          fournisseur:      sellerLabel,
-          parts_replaced:   [],
-          added_by:         currentUser?.name || 'Admin',
-          added_by_magasin: entry.magasin_id,
-        }])
-      if (stockError) throw stockError
-
-      const { error: regError } = await supabase
-        .from('purchase_registry')
-        .update({
-          reconditioning_status:  'termine',
-          added_to_stock:         true,
-          reconditioning_done_at: new Date().toISOString(),
-          final_grade:            entry.phone_grade || 'Bon état',
-          sale_price_estimated:   sellPrice,
-        })
-        .eq('id', entry.id)
-      if (regError) throw regError
-
-      alert(`✅ ${entry.brand} ${entry.model} ajouté au stock !`)
-      fetchEntries()
-    } catch (err) {
-      alert('Erreur : ' + err.message)
+  const confirmAddToStock = async () => {
+    if (!stockPrice || Number(stockPrice) <= 0) {
+      alert('Veuillez entrer un prix de vente valide.')
+      return
     }
+    if (!stockMagasin) {
+      alert('Veuillez sélectionner un magasin.')
+      return
+    }
+    setStockLoading(true)
+
+    const sellerLabel = `${stockEntry.seller_first_name || ''} ${stockEntry.seller_last_name || ''}`.trim()
+      || stockEntry.fournisseur || 'Reconditionnement'
+
+    const { data: newPhone, error: phoneErr } = await supabase
+      .from('phones')
+      .insert({
+        name:             `${stockEntry.brand} ${stockEntry.model}`,
+        model:            stockEntry.model,
+        brand:            stockEntry.brand,
+        color:            stockEntry.color || '—',
+        storage:          stockEntry.storage || '—',
+        condition:        'reconditionne',
+        grade:            stockEntry.phone_grade || 'Bon état',
+        purchase_price:   Number(stockEntry.purchase_price) || 0,
+        price:            Number(stockPrice),
+        price_pro:        stockPricePro ? Number(stockPricePro) : null,
+        imei:             stockEntry.imei,
+        status:           'disponible',
+        visible_on_site:  true,
+        battery_health:   stockEntry.battery_health ? parseInt(stockEntry.battery_health) : null,
+        magasins:         [stockMagasin],
+        added_by_magasin: stockMagasin,
+        fournisseur:      sellerLabel,
+        tva_regime:       'marge',
+        parts_replaced:   [],
+        added_by:         currentUser?.name || 'Admin',
+        categorie:        'telephone',
+      })
+      .select()
+      .single()
+
+    if (phoneErr) {
+      alert('Erreur : ' + phoneErr.message)
+      setStockLoading(false)
+      return
+    }
+
+    await supabase
+      .from('purchase_registry')
+      .update({
+        reconditioning_status:  'termine',
+        added_to_stock:         true,
+        reconditioning_done_at: new Date().toISOString(),
+        final_grade:            stockEntry.phone_grade || 'Bon état',
+        sale_price_estimated:   Number(stockPrice),
+        phone_id:               newPhone.id,
+      })
+      .eq('id', stockEntry.id)
+
+    setShowStockModal(false)
+    setStockEntry(null)
+    setStockPrice('')
+    setStockPricePro('')
+    setStockMagasin('')
+    setStockLoading(false)
+    fetchEntries()
   }
 
   const handleAdd = async () => {
@@ -930,6 +959,93 @@ export default function StockReconditionnement() {
                 className="w-full bg-[#00B4CC] text-white rounded-xl py-3 font-bold text-sm hover:bg-cyan-600 transition-all cursor-pointer"
               >
                 ✅ Ajouter au stock reconditionnement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showStockModal && stockEntry && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-[#1B2A4A] text-lg">
+                Ajouter au stock
+              </h2>
+              <button onClick={() => setShowStockModal(false)}>
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3 mb-4">
+              <p className="font-bold text-[#1B2A4A] text-sm">
+                {stockEntry.brand} {stockEntry.model}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {stockEntry.storage} · {stockEntry.color} ·
+                Grade {stockEntry.phone_grade}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Prix d'achat : {stockEntry.purchase_price}€
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Prix de vente (€) *
+                </label>
+                <input type="number" value={stockPrice}
+                  onChange={(e) => setStockPrice(e.target.value)}
+                  placeholder="Ex: 299"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-bold focus:border-[#00B4CC] outline-none" />
+                {stockPrice && stockEntry.purchase_price && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Marge : +{(Number(stockPrice) - Number(stockEntry.purchase_price)).toFixed(0)}€
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Prix Pro (€)
+                  <span className="text-gray-400 normal-case ml-1">
+                    — optionnel, réservé revendeurs
+                  </span>
+                </label>
+                <input type="number" value={stockPricePro}
+                  onChange={(e) => setStockPricePro(e.target.value)}
+                  placeholder="Laisser vide = non visible en Pro"
+                  className="w-full px-3 py-2.5 border border-blue-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Magasin *
+                </label>
+                <select value={stockMagasin}
+                  onChange={(e) => setStockMagasin(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none">
+                  <option value="">Sélectionner...</option>
+                  <option value="anderlecht">Anderlecht</option>
+                  <option value="molenbeek">Molenbeek</option>
+                  <option value="louise">Louise</option>
+                  <option value="rue-neuve">Rue Neuve</option>
+                  <option value="tubize">Tubize</option>
+                  <option value="saint-gilles">Saint-Gilles</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowStockModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Annuler
+              </button>
+              <button onClick={confirmAddToStock}
+                disabled={stockLoading}
+                className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50">
+                {stockLoading ? 'Ajout...' : '+ Ajouter au stock'}
               </button>
             </div>
           </div>
