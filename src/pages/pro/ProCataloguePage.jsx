@@ -17,8 +17,8 @@ const getTvaDetail = (price, regime) => {
     const tva = p - ht
     return {
       label: 'TVA 21%',
-      ht,
-      tva,
+      ht: ht.toFixed(2),
+      tva: tva.toFixed(2),
       ttc: p,
       isMarge: false,
     }
