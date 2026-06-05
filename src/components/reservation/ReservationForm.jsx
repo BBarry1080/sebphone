@@ -152,7 +152,8 @@ export default function ReservationForm({ phone }) {
   const proAccount = (() => {
     try { return JSON.parse(localStorage.getItem('sebphone_pro') || 'null') } catch { return null }
   })()
-  const isProConnected = !!proAccount
+  const isProRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/pro')
+  const isProConnected = !!proAccount && isProRoute
   const proPriceApplies = isProConnected && phone?.price_pro != null
 
   const packPrice    = isTelephone ? (ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.price || 0) : 0;
