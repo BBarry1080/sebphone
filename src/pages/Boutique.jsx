@@ -153,6 +153,7 @@ export default function Boutique({ defaultBrand = null }) {
                   const slug = canonicalModel.model
                     .toLowerCase()
                     .replace(/\s+/g, '-')
+                    .replace(/[()]/g, '')
                     .replace(/[^a-z0-9-]/g, '')
                   const stockPhones = getModelStock(canonicalModel.model)
                   const hasStock = stockPhones.length > 0

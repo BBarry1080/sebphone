@@ -10,19 +10,19 @@ import { translateColor } from '../../utils/translateColor'
 export const colorToHex = (colorName) => {
   const map = {
     'Noir': '#1C1C1E', 'Minuit': '#1C1C1E', 'Noir de jais': '#0A0A0A', 'Noir spatial': '#1C1C1E',
-    'Blanc': '#F5F5F0', 'Lumière stellaire': '#F5F0E8', 'Argent': '#E2E2E2',
+    'Blanc': '#F5F5F0', 'Lumière stellaire': '#F5F0E8', 'Argent': '#C0C0C0',
     'Rouge': '#BF0000',
     'Bleu': '#2E5CA8', 'Bleu alpin': '#3A6B9A', 'Bleu Pacifique': '#2A5FA8',
-    'Bleu outremer': '#1B3A8C', 'Bleu intense': '#1B3A8C', 'Bleu ciel': '#6BB8E8',
+    'Bleu outremer': '#1B3A8C', 'Bleu intense': '#1B3A6B', 'Bleu ciel': '#6BB8E8',
     'Violet': '#7B5EA7', 'Violet intense': '#5B2D8A',
     'Or': '#D4A96A', 'Or rose': '#F4C2C2',
     'Rose': '#FADADD',
     'Vert': '#4A7C6F', 'Vert nuit': '#1E3A2F', 'Vert alpin': '#2E5C42', 'Vert jade': '#2E7D5C',
     'Jaune': '#F5D76E',
     'Graphite': '#54524F',
-    'Titane naturel': '#C4B69A', 'Titane noir': '#2C2C2E', 'Titane blanc': '#E8E4DC',
+    'Titane naturel': '#C4B69A', 'Titane noir': '#2D2D2D', 'Titane blanc': '#E8E4DC',
     'Titane bleu': '#4A6FA5', 'Titane désert': '#C8A87A',
-    'Corail': '#FF7F50', 'Orange cosmique': '#FF6B2B',
+    'Corail': '#FF7F50', 'Orange cosmique': '#FF6B35',
     'Gris sidéral': '#4A4A4A',
   }
   return map[colorName] || '#9CA3AF'

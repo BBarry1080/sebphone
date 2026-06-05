@@ -180,7 +180,25 @@ export default function ModelDetailPage() {
   useEffect(() => {
     async function fetchPhones() {
       setLoading(true)
-      const decodedModel = decodeURIComponent(modelSlug).replace(/-/g, ' ')
+      const rawDecoded = decodeURIComponent(modelSlug).replace(/-/g, ' ')
+
+      const findCanonicalModel = (slug) => {
+        const slugNorm = slug.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+        const fromIphone = IPHONE_ON_DEMAND.find((i) =>
+          i.model.toLowerCase().replace(/[^a-z0-9]/g, '') === slugNorm
+        )
+        if (fromIphone) return fromIphone.model
+
+        const fromDB = Object.values(PHONES_DATABASE).flat().find((p) =>
+          p.model.toLowerCase().replace(/[^a-z0-9]/g, '') === slugNorm
+        )
+        if (fromDB) return fromDB.model
+
+        return rawDecoded
+      }
+
+      const decodedModel = findCanonicalModel(decodeURIComponent(modelSlug))
 
       if (!isSupabaseReady) {
         const result = phonesMock.filter((p) => {
