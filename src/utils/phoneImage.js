@@ -391,6 +391,42 @@ const IMAGE_MAP = {
     "or":          "/images/macs/macbook-air-m3-or.png",
     "minuit":      "/images/macs/macbook-air-m3-minuit.png",
   },
+
+  // ── MacBook Air 13" M4 ──────────────────────────────────────────────────
+  "macbook air 13 m4": {
+    default:       "/images/macs/macbook-air-m4-gris-sideral.png",
+    "gris sideral":"/images/macs/macbook-air-m4-gris-sideral.png",
+    "argent":      "/images/macs/macbook-air-m4-argent.png",
+    "or":          "/images/macs/macbook-air-m4-or.png",
+    "minuit":      "/images/macs/macbook-air-m4-minuit.png",
+  },
+
+  // ── MacBook Air 15" M4 ──────────────────────────────────────────────────
+  "macbook air 15 m4": {
+    default:       "/images/macs/macbook-air-m4-gris-sideral.png",
+    "gris sideral":"/images/macs/macbook-air-m4-gris-sideral.png",
+    "argent":      "/images/macs/macbook-air-m4-argent.png",
+    "or":          "/images/macs/macbook-air-m4-or.png",
+    "minuit":      "/images/macs/macbook-air-m4-minuit.png",
+  },
+
+  // ── MacBook Air 13" M3 ──────────────────────────────────────────────────
+  "macbook air 13 m3": {
+    default:       "/images/macs/macbook-air-m3-gris-sideral.png",
+    "gris sideral":"/images/macs/macbook-air-m3-gris-sideral.png",
+    "argent":      "/images/macs/macbook-air-m3-argent.png",
+    "or":          "/images/macs/macbook-air-m3-or.png",
+    "minuit":      "/images/macs/macbook-air-m3-minuit.png",
+  },
+
+  // ── MacBook Air 15" M3 ──────────────────────────────────────────────────
+  "macbook air 15 m3": {
+    default:       "/images/macs/macbook-air-m3-gris-sideral.png",
+    "gris sideral":"/images/macs/macbook-air-m3-gris-sideral.png",
+    "argent":      "/images/macs/macbook-air-m3-argent.png",
+    "or":          "/images/macs/macbook-air-m3-or.png",
+    "minuit":      "/images/macs/macbook-air-m3-minuit.png",
+  },
 }
 
 // Variantes de couleurs (FR + EN) pour fallback intelligent quand
