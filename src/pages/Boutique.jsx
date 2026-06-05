@@ -7,6 +7,7 @@ import PhoneListCard from '../components/catalogue/PhoneListCard'
 import Spinner from '../components/ui/Spinner'
 import { useLanguage } from '../contexts/LanguageContext'
 import { IPHONE_ON_DEMAND } from '../data/iphoneOnDemand'
+import { IPHONE_DATABASE } from '../data/iphoneDatabase'
 import { PHONES_DATABASE } from '../data/phonesDatabase'
 import { getPhoneImage } from '../utils/phoneImage'
 
@@ -44,12 +45,25 @@ export default function Boutique({ defaultBrand = null }) {
 
   useEffect(() => {
     if (defaultBrand === 'Apple') {
-      setAllCanonicalModels(IPHONE_ON_DEMAND.map((i) => ({
-        model: i.model,
-        brand: 'Apple',
-        storages: i.storages,
-        colors: i.colors,
-      })))
+      const legacyModels = IPHONE_DATABASE.filter((i) =>
+        i.model.startsWith('iPhone 7') ||
+        i.model.startsWith('iPhone 8') ||
+        i.model === 'iPhone SE (2020)'
+      )
+      setAllCanonicalModels([
+        ...legacyModels.map((i) => ({
+          model: i.model,
+          brand: 'Apple',
+          storages: i.storages,
+          colors: i.colors,
+        })),
+        ...IPHONE_ON_DEMAND.map((i) => ({
+          model: i.model,
+          brand: 'Apple',
+          storages: i.storages,
+          colors: i.colors,
+        })),
+      ])
     } else if (defaultBrand === 'Samsung') {
       const samsungModels = PHONES_DATABASE['Samsung'] || []
       setAllCanonicalModels(samsungModels.map((m) => ({
@@ -59,12 +73,25 @@ export default function Boutique({ defaultBrand = null }) {
         colors: m.colors,
       })))
     } else {
-      const iphones = IPHONE_ON_DEMAND.map((i) => ({
-        model: i.model,
-        brand: 'Apple',
-        storages: i.storages,
-        colors: i.colors,
-      }))
+      const legacyModels = IPHONE_DATABASE.filter((i) =>
+        i.model.startsWith('iPhone 7') ||
+        i.model.startsWith('iPhone 8') ||
+        i.model === 'iPhone SE (2020)'
+      )
+      const iphones = [
+        ...legacyModels.map((i) => ({
+          model: i.model,
+          brand: 'Apple',
+          storages: i.storages,
+          colors: i.colors,
+        })),
+        ...IPHONE_ON_DEMAND.map((i) => ({
+          model: i.model,
+          brand: 'Apple',
+          storages: i.storages,
+          colors: i.colors,
+        })),
+      ]
       const others = Object.entries(PHONES_DATABASE)
         .flatMap(([brand, models]) =>
           models.map((m) => ({
