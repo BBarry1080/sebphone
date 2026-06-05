@@ -109,7 +109,7 @@ export default function ProCataloguePage() {
               const displayPrice = priceMode === 'pro' ? phone.price_pro : phone.price
               return (
                 <div key={phone.id}
-                  onClick={() => navigate(`/reservation/${phone.id}`)}
+                  onClick={() => navigate(`/reservation/${phone.id}`, { state: { fromPro: true } })}
                   className="bg-white rounded-2xl border border-gray-100 p-4 cursor-pointer hover:shadow-md hover:border-[#00B4CC] transition-all">
                   <img src={getPhoneImage(phone.name, phone.color)}
                     alt={phone.name}

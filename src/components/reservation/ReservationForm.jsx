@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Phone, Mail, MapPin, Store, Truck, CreditCard, Package, CheckCircle, Calendar, Wrench, Tag, X, BatteryCharging } from 'lucide-react';
 import Button from '../ui/Button';
@@ -35,6 +35,7 @@ function generateCode() {
 
 export default function ReservationForm({ phone }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useLanguage()
 
   // Parse magasins — Supabase peut renvoyer un tableau ou une string JSON
@@ -152,7 +153,9 @@ export default function ReservationForm({ phone }) {
   const proAccount = (() => {
     try { return JSON.parse(localStorage.getItem('sebphone_pro') || 'null') } catch { return null }
   })()
-  const isProRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/pro')
+  const isProRoute = (typeof window !== 'undefined'
+    && window.location.pathname.startsWith('/pro'))
+    || location.state?.fromPro === true
   const isProConnected = !!proAccount && isProRoute
   const proPriceApplies = isProConnected && phone?.price_pro != null
 
