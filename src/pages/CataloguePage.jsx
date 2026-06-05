@@ -57,6 +57,7 @@ export default function CataloguePage() {
   const filterCondition = searchParams.get('condition') || null
   const filterBrand     = searchParams.get('brand')     || null
   const filterStatus    = searchParams.get('status')    || null
+  const brandParam      = filterBrand
 
   const updateParam = (key, val) => {
     const params = new URLSearchParams(searchParams)
