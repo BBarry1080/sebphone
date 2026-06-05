@@ -44,7 +44,7 @@ export default function Boutique({ defaultBrand = null }) {
 
   useEffect(() => {
     if (defaultBrand === 'Apple') {
-      setAllCanonicalModels([...IPHONE_ON_DEMAND].reverse().map((i) => ({
+      setAllCanonicalModels(IPHONE_ON_DEMAND.map((i) => ({
         model: i.model,
         brand: 'Apple',
         storages: i.storages,
@@ -59,7 +59,7 @@ export default function Boutique({ defaultBrand = null }) {
         colors: m.colors,
       })))
     } else {
-      const iphones = [...IPHONE_ON_DEMAND].reverse().map((i) => ({
+      const iphones = IPHONE_ON_DEMAND.map((i) => ({
         model: i.model,
         brand: 'Apple',
         storages: i.storages,
