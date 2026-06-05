@@ -48,6 +48,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { translateColor } from '../utils/translateColor'
 import { getSurCommandeColors, getSurCommandeStorages } from '../utils/surCommandeColors'
 import { IPHONE_ON_DEMAND } from '../data/iphoneOnDemand'
+import { IPHONE_DATABASE } from '../data/iphoneDatabase'
 import { PHONES_DATABASE } from '../data/phonesDatabase'
 
 const translateRepair = (name, t) => {
@@ -190,10 +191,15 @@ export default function ModelDetailPage() {
         )
         if (fromIphone) return fromIphone.model
 
-        const fromDB = Object.values(PHONES_DATABASE).flat().find((p) =>
+        const fromLegacy = IPHONE_DATABASE.find((i) =>
+          i.model.toLowerCase().replace(/[^a-z0-9]/g, '') === slugNorm
+        )
+        if (fromLegacy) return fromLegacy.model
+
+        const fromOther = Object.values(PHONES_DATABASE).flat().find((p) =>
           p.model.toLowerCase().replace(/[^a-z0-9]/g, '') === slugNorm
         )
-        if (fromDB) return fromDB.model
+        if (fromOther) return fromOther.model
 
         return rawDecoded
       }
@@ -221,10 +227,13 @@ export default function ModelDetailPage() {
       const canonicalIphone = IPHONE_ON_DEMAND.find((i) =>
         i.model.toLowerCase() === decodedModel.toLowerCase()
       )
+      const canonicalLegacy = IPHONE_DATABASE.find((i) =>
+        i.model.toLowerCase() === decodedModel.toLowerCase()
+      )
       const canonicalOther = Object.values(PHONES_DATABASE)
         .flat()
         .find((p) => p.model.toLowerCase() === decodedModel.toLowerCase())
-      const canonical = canonicalIphone || canonicalOther
+      const canonical = canonicalIphone || canonicalLegacy || canonicalOther
 
       if (canonical && (!data || data.length === 0)) {
         setPhones([{
