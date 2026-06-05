@@ -237,6 +237,17 @@ export default function ModelDetailPage() {
     }
   }, [phones])
 
+  useEffect(() => {
+    const scLength = phones.filter((p) => p.status === 'sur_commande').length
+    if (filterColor && scLength > 0) {
+      setSelectedSurCommandeColor(filterColor)
+    }
+    if (filterStorage && scLength > 0) {
+      setSelectedSurCommandeStorage(filterStorage)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterColor, filterStorage, phones.length])
+
   // Sépare le stock physique des téléphones sur commande
   const stockPhones       = phones.filter((p) => p.status === 'disponible')
   const surCommandePhones = phones.filter((p) => p.status === 'sur_commande')
@@ -263,6 +274,16 @@ export default function ModelDetailPage() {
     const scoreBest = gradeScore(best) * 100 + (best.battery_health || 0)
     return scoreP > scoreBest ? p : best
   }, null)
+
+  const selectedCombinationExists = !filterColor && !filterStorage
+    ? true
+    : filtered.length > 0
+
+  const canonicalPhone = IPHONE_ON_DEMAND.find(
+    (i) => i.model.toLowerCase() === (phones[0]?.model || '').toLowerCase()
+  ) || Object.values(PHONES_DATABASE).flat().find(
+    (p) => p.model.toLowerCase() === (phones[0]?.model || '').toLowerCase()
+  )
 
   // Tous les magasins où ce modèle est disponible
   const availableMagasins = [...new Set(
@@ -358,7 +379,7 @@ export default function ModelDetailPage() {
               )}
 
               {/* Filtre stockage */}
-              {showStock && storages.length > 1 && (
+              {showStock && storages.length >= 1 && (
                 <div className="mb-3">
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_capacity')}</p>
                   <div className="flex flex-wrap gap-2">
@@ -371,7 +392,7 @@ export default function ModelDetailPage() {
               )}
 
               {/* Filtre couleur */}
-              {showStock && colors.length > 1 && (
+              {showStock && colors.length >= 1 && (
                 <div>
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_color')}</p>
                   <div className="flex flex-wrap gap-2 items-center">
@@ -392,6 +413,44 @@ export default function ModelDetailPage() {
                       />
                     ))}
                   </div>
+                </div>
+              )}
+
+              {showStock && (filterColor || filterStorage) &&
+               !selectedCombinationExists && canonicalPhone && (
+                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                  <p className="text-sm font-bold text-[#1B2A4A] mb-1">
+                    Cette combinaison n'est pas en stock
+                  </p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    {filterColor && `Couleur : ${filterColor}`}
+                    {filterColor && filterStorage && ' · '}
+                    {filterStorage && `Stockage : ${filterStorage}`}
+                    {' '}n'est pas disponible actuellement.
+                    Vous pouvez la commander — délai 24h à 5 jours.
+                  </p>
+                  <button
+                    onClick={() => navigate('/reservation-commande', {
+                      state: {
+                        phone: {
+                          id:          null,
+                          name:        phones[0]?.name || phones[0]?.model,
+                          model:       phones[0]?.model,
+                          brand:       phones[0]?.brand || 'Apple',
+                          status:      'sur_commande',
+                          surCommande: true,
+                          storages:    canonicalPhone.storages,
+                          colors:      canonicalPhone.colors,
+                          price:       0,
+                          categorie:   'telephone',
+                        },
+                        selectedColor:   filterColor,
+                        selectedStorage: filterStorage,
+                      },
+                    })}
+                    className="w-full py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC] transition-all">
+                    Commander sur commande →
+                  </button>
                 </div>
               )}
             </div>
