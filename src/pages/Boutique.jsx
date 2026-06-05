@@ -70,6 +70,13 @@ export default function Boutique({ defaultBrand = null }) {
     )
   }
 
+  const getModelSurCommande = (modelName) => {
+    return phones.filter((p) =>
+      p.model?.toLowerCase() === modelName.toLowerCase() &&
+      p.status === 'sur_commande'
+    )
+  }
+
   return (
     <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 pb-24 md:pb-12">
       <div className="mb-6">
@@ -130,7 +137,18 @@ export default function Boutique({ defaultBrand = null }) {
           ) : (defaultBrand === 'Apple' || defaultBrand === 'Samsung') ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {allCanonicalModels
-                .filter((m) => !search || m.model.toLowerCase().includes(search.toLowerCase()))
+                .filter((canonicalModel) => {
+                  if (!search && !filterStatus) return true
+                  if (search && !canonicalModel.model
+                    .toLowerCase().includes(search.toLowerCase())) return false
+                  if (filterStatus === 'disponible') {
+                    return getModelStock(canonicalModel.model).length > 0
+                  }
+                  if (filterStatus === 'sur_commande') {
+                    return getModelStock(canonicalModel.model).length === 0
+                  }
+                  return true
+                })
                 .map((canonicalModel) => {
                   const slug = canonicalModel.model
                     .toLowerCase()
