@@ -428,9 +428,17 @@ export default function Parametres() {
   const fetchBestSellers = async () => {
     const { data: config } = await supabase
       .from('best_sellers_config')
-      .select('id, phone_id, position, phones(*)')
+      .select(`
+        id, phone_id, position,
+        phones (
+          id, name, model, color, storage,
+          price, status, visible_on_site
+        )
+      `)
       .order('position', { ascending: true })
-    setBestSellers(config || [])
+    setBestSellers((config || []).filter(
+      (bs) => bs.phones && bs.phones.status === 'disponible'
+    ))
   }
 
   const addBestSeller = async (phone) => {
@@ -447,6 +455,26 @@ export default function Parametres() {
 
   const removeBestSeller = async (configId) => {
     await supabase.from('best_sellers_config').delete().eq('id', configId)
+    fetchBestSellers()
+  }
+
+  const moveBestSeller = async (configId, direction) => {
+    const currentIdx = bestSellers.findIndex((bs) => bs.id === configId)
+    const swapIdx = direction === 'up' ? currentIdx - 1 : currentIdx + 1
+
+    if (swapIdx < 0 || swapIdx >= bestSellers.length) return
+
+    const current = bestSellers[currentIdx]
+    const swap    = bestSellers[swapIdx]
+
+    await supabase.from('best_sellers_config')
+      .update({ position: swap.position })
+      .eq('id', current.id)
+
+    await supabase.from('best_sellers_config')
+      .update({ position: current.position })
+      .eq('id', swap.id)
+
     fetchBestSellers()
   }
 
@@ -957,10 +985,24 @@ export default function Parametres() {
                       </p>
                     </div>
                   </div>
-                  <button onClick={() => removeBestSeller(bs.id)}
-                    className="text-red-400 hover:text-red-600 p-1">
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <div className="flex gap-1 mr-2">
+                      <button onClick={() => moveBestSeller(bs.id, 'up')}
+                        disabled={idx === 0}
+                        className="text-gray-400 hover:text-[#1B2A4A] disabled:opacity-20 text-sm px-1">
+                        ↑
+                      </button>
+                      <button onClick={() => moveBestSeller(bs.id, 'down')}
+                        disabled={idx === bestSellers.length - 1}
+                        className="text-gray-400 hover:text-[#1B2A4A] disabled:opacity-20 text-sm px-1">
+                        ↓
+                      </button>
+                    </div>
+                    <button onClick={() => removeBestSeller(bs.id)}
+                      className="text-red-400 hover:text-red-600 p-1">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

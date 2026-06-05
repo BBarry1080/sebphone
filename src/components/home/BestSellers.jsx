@@ -66,6 +66,21 @@ function BestSellerCard({ phone }) {
       </span>
 
       <p className="font-bold text-[#1B2A4A] text-lg">{displayPrice(phone)}€</p>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          const robustSlug = (phone.model || phone.name)
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[()]/g, '')
+            .replace(/[^a-z0-9-]/g, '')
+          window.open(`/modele/${robustSlug}`, '_blank')
+        }}
+        className="mt-2 text-xs text-[#00B4CC] hover:underline font-medium"
+      >
+        Voir sur le site →
+      </button>
     </div>
   );
 }
