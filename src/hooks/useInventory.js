@@ -25,7 +25,7 @@ export function useInventory(filters = {}) {
     let query = supabase
       .from('phones')
       .select('*')
-      .eq('status', filters.status || 'disponible')
+      .in('status', ['disponible', 'sur_commande'])
       .or('visible_on_site.eq.true,visible_on_site.is.null')
       .order('created_at', { ascending: false })
 

@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useLocation } from 'react-router-dom'
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutGrid, List } from 'lucide-react'
 import { useGroupedPhones } from '../hooks/useGroupedPhones'
 import FilterSidebar, { MobileFilterBar, SortDropdown } from '../components/catalogue/FilterSidebar'
 import PhoneListCard from '../components/catalogue/PhoneListCard'
 import Spinner from '../components/ui/Spinner'
 import { useLanguage } from '../contexts/LanguageContext'
+import { IPHONE_ON_DEMAND } from '../data/iphoneOnDemand'
+import { PHONES_DATABASE } from '../data/phonesDatabase'
 
 export default function Boutique({ defaultBrand = null }) {
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [viewMode, setViewMode] = useState('list')
   const [searchParams] = useSearchParams()
   const location = useLocation()
+  const [allCanonicalModels, setAllCanonicalModels] = useState([])
   const {
     groups, phones, totalPhones, loading, error,
     search, setSearch,
@@ -36,6 +40,34 @@ export default function Boutique({ defaultBrand = null }) {
     const q = searchParams.get('q')
     if (q) setSearch(q)
   }, [searchParams, setSearch])
+
+  useEffect(() => {
+    if (defaultBrand === 'Apple') {
+      setAllCanonicalModels(IPHONE_ON_DEMAND.map((i) => ({
+        model: i.model,
+        brand: 'Apple',
+        storages: i.storages,
+        colors: i.colors,
+      })))
+    } else if (defaultBrand === 'Samsung') {
+      const samsungModels = PHONES_DATABASE['Samsung'] || []
+      setAllCanonicalModels(samsungModels.map((m) => ({
+        model: m.model,
+        brand: 'Samsung',
+        storages: m.storages,
+        colors: m.colors,
+      })))
+    } else {
+      setAllCanonicalModels([])
+    }
+  }, [defaultBrand])
+
+  const getModelStock = (modelName) => {
+    return phones.filter((p) =>
+      p.model?.toLowerCase() === modelName.toLowerCase() &&
+      p.status === 'disponible'
+    )
+  }
 
   return (
     <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 pb-24 md:pb-12">
@@ -94,6 +126,64 @@ export default function Boutique({ defaultBrand = null }) {
 
           {loading ? (
             <Spinner />
+          ) : (defaultBrand === 'Apple' || defaultBrand === 'Samsung') ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {allCanonicalModels
+                .filter((m) => !search || m.model.toLowerCase().includes(search.toLowerCase()))
+                .map((canonicalModel) => {
+                  const slug = canonicalModel.model
+                    .toLowerCase()
+                    .replace(/\s+/g, '-')
+                    .replace(/[^a-z0-9-]/g, '')
+                  const stockPhones = getModelStock(canonicalModel.model)
+                  const hasStock = stockPhones.length > 0
+                  const lowestPrice = hasStock
+                    ? Math.min(...stockPhones.map((p) => p.price))
+                    : null
+
+                  return (
+                    <div key={canonicalModel.model}
+                      onClick={() => navigate(`/modele/${slug}`)}
+                      className="bg-white rounded-2xl border-2 border-gray-100 p-4 cursor-pointer hover:border-[#00B4CC] hover:shadow-md transition-all">
+                      <img
+                        src={`/images/phones/${canonicalModel.brand.toLowerCase()}/${slug}.png`}
+                        onError={(e) => { e.target.src = '/images/placeholder.png' }}
+                        alt={canonicalModel.model}
+                        className="w-full h-32 object-contain mb-3" />
+                      <p className="font-bold text-[#1B2A4A] text-sm">
+                        {canonicalModel.model}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between">
+                        {hasStock ? (
+                          <>
+                            <p className="text-[#00B4CC] font-black text-lg">
+                              À partir de {lowestPrice}€
+                            </p>
+                            <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-lg">
+                              En stock
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-gray-400 text-sm">
+                              Sur commande
+                            </p>
+                            <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-lg">
+                              Disponible
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {hasStock && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {stockPhones.length} appareil{stockPhones.length > 1 ? 's' : ''} disponible{stockPhones.length > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })
+              }
+            </div>
           ) : groups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="text-4xl mb-4">📱</p>
