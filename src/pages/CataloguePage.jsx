@@ -59,6 +59,10 @@ export default function CataloguePage() {
   const filterStatus    = searchParams.get('status')    || null
   const brandParam      = filterBrand
 
+  const imageHeight = ['ordinateur', 'tablette'].includes(categorie)
+    ? 'h-40'
+    : 'h-32'
+
   const updateParam = (key, val) => {
     const params = new URLSearchParams(searchParams)
     if (val) params.set(key, val)
@@ -194,7 +198,7 @@ export default function CataloguePage() {
                       <img
                         src={getPhoneImage(product.name, product.color)}
                         alt={product.name}
-                        className="w-24 h-24 object-contain"
+                        className={`w-full ${imageHeight} object-contain mb-3 p-2`}
                         onError={(e) => {
                           e.target.onerror = null
                           e.target.style.display = 'none'
