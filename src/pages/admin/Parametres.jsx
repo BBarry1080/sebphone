@@ -420,6 +420,50 @@ export default function Parametres() {
   const [selectedCategorie, setSelectedCategorie] = useState(null)
   const [selectedBrand, setSelectedBrand]         = useState(null)
 
+  const [bestSellers, setBestSellers] = useState([])
+  const [showBSModal, setShowBSModal] = useState(false)
+  const [bsSearch, setBsSearch]       = useState('')
+  const [bsResults, setBsResults]     = useState([])
+
+  const fetchBestSellers = async () => {
+    const { data: config } = await supabase
+      .from('best_sellers_config')
+      .select('id, phone_id, position, phones(*)')
+      .order('position', { ascending: true })
+    setBestSellers(config || [])
+  }
+
+  const addBestSeller = async (phone) => {
+    const nextPos = bestSellers.length + 1
+    await supabase.from('best_sellers_config').insert({
+      phone_id: phone.id,
+      position: nextPos,
+    })
+    setShowBSModal(false)
+    setBsSearch('')
+    setBsResults([])
+    fetchBestSellers()
+  }
+
+  const removeBestSeller = async (configId) => {
+    await supabase.from('best_sellers_config').delete().eq('id', configId)
+    fetchBestSellers()
+  }
+
+  const searchPhones = async (q) => {
+    if (!q || q.length < 2) { setBsResults([]); return }
+    const { data } = await supabase
+      .from('phones')
+      .select('id, name, model, color, storage, price')
+      .eq('status', 'disponible')
+      .or('visible_on_site.eq.true,visible_on_site.is.null')
+      .ilike('name', `%${q}%`)
+      .limit(10)
+    setBsResults(data || [])
+  }
+
+  useEffect(() => { fetchBestSellers() }, [])
+
   useEffect(() => {
     const fetchPriceSettings = async () => {
       const { data: settings } = await supabase
@@ -667,6 +711,7 @@ export default function Parametres() {
       )}
 
       {tab === 'general' && (
+        <>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
           <h2 className="text-lg font-bold text-[#1B2A4A] mb-1">💰 Limites de prix</h2>
           <p className="text-sm text-gray-500 mb-4">
@@ -869,6 +914,105 @@ export default function Parametres() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-bold text-[#1B2A4A] text-lg">
+                Best Sellers
+              </h2>
+              <p className="text-xs text-gray-500">
+                Choisissez les téléphones affichés en home page (max 8). Si vide → sélection auto par prix.
+              </p>
+            </div>
+            {bestSellers.length < 8 && (
+              <button onClick={() => setShowBSModal(true)}
+                className="flex items-center gap-2 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                <Plus size={16} /> Ajouter
+              </button>
+            )}
+          </div>
+
+          {bestSellers.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-4">
+              Aucun best seller configuré — sélection automatique active
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {bestSellers.map((bs, idx) => (
+                <div key={bs.id}
+                  className="flex items-center justify-between bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 bg-[#1B2A4A] text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-[#1B2A4A]">
+                        {bs.phones?.name || bs.phones?.model}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {bs.phones?.color} · {bs.phones?.storage} · {bs.phones?.price}€
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => removeBestSeller(bs.id)}
+                    className="text-red-400 hover:text-red-600 p-1">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        </>
+      )}
+
+      {showBSModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#1B2A4A]">
+                Ajouter un best seller
+              </h3>
+              <button onClick={() => {
+                setShowBSModal(false)
+                setBsSearch('')
+                setBsResults([])
+              }}>
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+            <input
+              type="text"
+              placeholder="Rechercher un téléphone..."
+              value={bsSearch}
+              onChange={(e) => {
+                setBsSearch(e.target.value)
+                searchPhones(e.target.value)
+              }}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-3 focus:border-[#00B4CC] outline-none"
+            />
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {bsResults.map((phone) => (
+                <button key={phone.id}
+                  onClick={() => addBestSeller(phone)}
+                  className="w-full text-left px-3 py-2 bg-gray-50 hover:bg-blue-50 rounded-xl text-sm transition-all">
+                  <p className="font-bold text-[#1B2A4A]">
+                    {phone.name || phone.model}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {phone.color} · {phone.storage} · {phone.price}€
+                  </p>
+                </button>
+              ))}
+              {bsSearch.length >= 2 && bsResults.length === 0 && (
+                <p className="text-gray-400 text-sm text-center py-4">
+                  Aucun téléphone trouvé
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}

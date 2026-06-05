@@ -82,15 +82,36 @@ export default function BestSellers() {
         setLoading(false);
         return;
       }
-      const { data } = await supabase
-        .from('phones')
-        .select('*')
-        .eq('status', 'disponible')
-        .or('visible_on_site.eq.true,visible_on_site.is.null')
-        .gte('price', 400)
-        .order('price', { ascending: false })
+
+      const { data: config } = await supabase
+        .from('best_sellers_config')
+        .select('phone_id, position')
+        .order('position', { ascending: true })
         .limit(8);
-      if (data) setPhones(data);
+
+      if (config && config.length > 0) {
+        const ids = config.map((c) => c.phone_id);
+        const { data: phonesData } = await supabase
+          .from('phones')
+          .select('*')
+          .in('id', ids)
+          .eq('status', 'disponible');
+
+        const ordered = config
+          .map((c) => phonesData?.find((p) => p.id === c.phone_id))
+          .filter(Boolean);
+        setPhones(ordered);
+      } else {
+        const { data } = await supabase
+          .from('phones')
+          .select('*')
+          .eq('status', 'disponible')
+          .or('visible_on_site.eq.true,visible_on_site.is.null')
+          .gte('price', 400)
+          .order('price', { ascending: false })
+          .limit(8);
+        if (data) setPhones(data);
+      }
       setLoading(false);
     }
     fetchBestSellers();

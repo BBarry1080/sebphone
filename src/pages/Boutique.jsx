@@ -221,7 +221,7 @@ export default function Boutique({ defaultBrand = null }) {
                       <p className="font-bold text-[#1B2A4A] text-sm">
                         {canonicalModel.model}
                       </p>
-                      <div className="mt-2 flex items-center justify-between">
+                      <div className="mt-2">
                         {hasStock ? (
                           <p className="text-[#00B4CC] font-black text-lg">
                             À partir de {lowestPrice}€
@@ -230,15 +230,6 @@ export default function Boutique({ defaultBrand = null }) {
                           <p className="text-gray-400 text-sm italic">
                             Sur commande
                           </p>
-                        )}
-                        {hasStock ? (
-                          <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-lg">
-                            En stock
-                          </span>
-                        ) : (
-                          <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-lg">
-                            Disponible
-                          </span>
                         )}
                       </div>
                     </div>
