@@ -44,7 +44,7 @@ export default function Boutique({ defaultBrand = null }) {
 
   useEffect(() => {
     if (defaultBrand === 'Apple') {
-      setAllCanonicalModels(IPHONE_ON_DEMAND.map((i) => ({
+      setAllCanonicalModels([...IPHONE_ON_DEMAND].reverse().map((i) => ({
         model: i.model,
         brand: 'Apple',
         storages: i.storages,
@@ -59,7 +59,22 @@ export default function Boutique({ defaultBrand = null }) {
         colors: m.colors,
       })))
     } else {
-      setAllCanonicalModels([])
+      const iphones = [...IPHONE_ON_DEMAND].reverse().map((i) => ({
+        model: i.model,
+        brand: 'Apple',
+        storages: i.storages,
+        colors: i.colors,
+      }))
+      const others = Object.entries(PHONES_DATABASE)
+        .flatMap(([brand, models]) =>
+          models.map((m) => ({
+            model: m.model,
+            brand,
+            storages: m.storages,
+            colors: m.colors,
+          }))
+        )
+      setAllCanonicalModels([...iphones, ...others])
     }
   }, [defaultBrand])
 
@@ -134,11 +149,10 @@ export default function Boutique({ defaultBrand = null }) {
 
           {loading ? (
             <Spinner />
-          ) : (defaultBrand === 'Apple' || defaultBrand === 'Samsung') ? (
+          ) : allCanonicalModels.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {allCanonicalModels
                 .filter((canonicalModel) => {
-                  if (!search && !filterStatus) return true
                   if (search && !canonicalModel.model
                     .toLowerCase().includes(search.toLowerCase())) return false
                   if (filterStatus === 'disponible') {
@@ -175,48 +189,30 @@ export default function Boutique({ defaultBrand = null }) {
                       </p>
                       <div className="mt-2 flex items-center justify-between">
                         {hasStock ? (
-                          <>
-                            <p className="text-[#00B4CC] font-black text-lg">
-                              À partir de {lowestPrice}€
-                            </p>
-                            <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-lg">
-                              En stock
-                            </span>
-                          </>
+                          <p className="text-[#00B4CC] font-black text-lg">
+                            À partir de {lowestPrice}€
+                          </p>
                         ) : (
-                          <>
-                            <p className="text-gray-400 text-sm">
-                              Sur commande
-                            </p>
-                            <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-lg">
-                              Disponible
-                            </span>
-                          </>
+                          <p className="text-gray-400 text-sm italic">
+                            Sur commande
+                          </p>
+                        )}
+                        {hasStock ? (
+                          <span className="text-xs bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-lg">
+                            En stock
+                          </span>
+                        ) : (
+                          <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-lg">
+                            Disponible
+                          </span>
                         )}
                       </div>
-                      {hasStock && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          {stockPhones.length} appareil{stockPhones.length > 1 ? 's' : ''} disponible{stockPhones.length > 1 ? 's' : ''}
-                        </p>
-                      )}
                     </div>
                   )
                 })
               }
             </div>
-          ) : groups.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <p className="text-4xl mb-4">📱</p>
-              <p className="text-[#1B2A4A] font-semibold text-lg">{t('catalogue_empty')}</p>
-              <p className="text-[#555555] text-sm mt-1">{t('catalogue_try_filters')}</p>
-            </div>
-          ) : (
-            <div className={`grid gap-3 ${viewMode === 'grid' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              {groups.map((group) => (
-                <PhoneListCard key={group.model} group={group} viewMode={viewMode} filterStatus={filterStatus} />
-              ))}
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </main>
