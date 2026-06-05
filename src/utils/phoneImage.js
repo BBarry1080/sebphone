@@ -373,6 +373,24 @@ const IMAGE_MAP = {
     "bleu intense":   "/images/iphones/iphone-17-pro-max-bleu-profond.png",
     "titane noir":    "/images/iphones/iphone-17-pro-max-orange-cosmique.png",
   },
+
+  // ── MacBook Air M4 — fichiers locaux ─────────────────────────────────────
+  "macbook air m4": {
+    default:       "/images/macs/macbook-air-m4-gris-sideral.png",
+    "gris sideral":"/images/macs/macbook-air-m4-gris-sideral.png",
+    "argent":      "/images/macs/macbook-air-m4-argent.png",
+    "or":          "/images/macs/macbook-air-m4-or.png",
+    "minuit":      "/images/macs/macbook-air-m4-minuit.png",
+  },
+
+  // ── MacBook Air M3 — fichiers locaux ─────────────────────────────────────
+  "macbook air m3": {
+    default:       "/images/macs/macbook-air-m3-gris-sideral.png",
+    "gris sideral":"/images/macs/macbook-air-m3-gris-sideral.png",
+    "argent":      "/images/macs/macbook-air-m3-argent.png",
+    "or":          "/images/macs/macbook-air-m3-or.png",
+    "minuit":      "/images/macs/macbook-air-m3-minuit.png",
+  },
 }
 
 // Variantes de couleurs (FR + EN) pour fallback intelligent quand
