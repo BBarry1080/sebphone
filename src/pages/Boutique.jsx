@@ -8,6 +8,7 @@ import Spinner from '../components/ui/Spinner'
 import { useLanguage } from '../contexts/LanguageContext'
 import { IPHONE_ON_DEMAND } from '../data/iphoneOnDemand'
 import { PHONES_DATABASE } from '../data/phonesDatabase'
+import { getPhoneImage } from '../utils/phoneImage'
 
 export default function Boutique({ defaultBrand = null }) {
   const { t } = useLanguage()
@@ -146,7 +147,7 @@ export default function Boutique({ defaultBrand = null }) {
                       onClick={() => navigate(`/modele/${slug}`)}
                       className="bg-white rounded-2xl border-2 border-gray-100 p-4 cursor-pointer hover:border-[#00B4CC] hover:shadow-md transition-all">
                       <img
-                        src={`/images/phones/${canonicalModel.brand.toLowerCase()}/${slug}.png`}
+                        src={getPhoneImage(canonicalModel.model, canonicalModel.colors?.[0] || '')}
                         onError={(e) => { e.target.src = '/images/placeholder.png' }}
                         alt={canonicalModel.model}
                         className="w-full h-32 object-contain mb-3" />
