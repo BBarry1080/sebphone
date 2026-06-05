@@ -180,7 +180,7 @@ export default function ModelDetailPage() {
   useEffect(() => {
     async function fetchPhones() {
       setLoading(true)
-      const decodedModel = modelSlug.replace(/-/g, ' ')
+      const decodedModel = decodeURIComponent(modelSlug).replace(/-/g, ' ')
 
       if (!isSupabaseReady) {
         const result = phonesMock.filter((p) => {
@@ -200,38 +200,28 @@ export default function ModelDetailPage() {
         .or('visible_on_site.eq.true,visible_on_site.is.null,status.eq.sur_commande')
         .order('price', { ascending: false })
 
-      if (!data || data.length === 0) {
-        const capitalizedModel = decodedModel.replace(/\b\w/g, (c) => c.toUpperCase())
-        const canonicalIphone = IPHONE_ON_DEMAND.find((i) =>
-          i.model.toLowerCase() === decodedModel.toLowerCase() ||
-          i.model.toLowerCase() === capitalizedModel.toLowerCase()
-        )
-        const canonicalOther = Object.values(PHONES_DATABASE)
-          .flat()
-          .find((p) =>
-            p.model.toLowerCase() === decodedModel.toLowerCase() ||
-            p.model.toLowerCase() === capitalizedModel.toLowerCase()
-          )
-        const canonical = canonicalIphone || canonicalOther
+      const canonicalIphone = IPHONE_ON_DEMAND.find((i) =>
+        i.model.toLowerCase() === decodedModel.toLowerCase()
+      )
+      const canonicalOther = Object.values(PHONES_DATABASE)
+        .flat()
+        .find((p) => p.model.toLowerCase() === decodedModel.toLowerCase())
+      const canonical = canonicalIphone || canonicalOther
 
-        if (canonical) {
-          const virtualPhone = {
-            id:             null,
-            name:           canonical.model,
-            model:          canonical.model,
-            status:         'sur_commande',
-            surCommande:    true,
-            storages:       canonical.storages,
-            colors:         canonical.colors,
-            price:          0,
-            categorie:      'telephone',
-          }
-          setPhones([virtualPhone])
-        } else {
-          setPhones([])
-        }
+      if (canonical && (!data || data.length === 0)) {
+        setPhones([{
+          id:          null,
+          name:        canonical.model,
+          model:       canonical.model,
+          status:      'sur_commande',
+          surCommande: true,
+          storages:    canonical.storages,
+          colors:      canonical.colors,
+          price:       0,
+          categorie:   'telephone',
+        }])
       } else {
-        setPhones(data)
+        setPhones(data || [])
       }
       setLoading(false)
     }
