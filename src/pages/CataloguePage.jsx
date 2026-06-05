@@ -45,27 +45,35 @@ const toSlug = (name) =>
 
 export default function CataloguePage() {
   const { categorie } = useParams()
-  const [searchParams] = useSearchParams()
-  const brandParam = searchParams.get('brand')
+  const [searchParams, setSearchParams] = useSearchParams()
   const { t } = useLanguage()
   const navigate = useNavigate()
   const config = getCategorieConfig(t)[categorie] || {}
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // États filtres (alimentés par FilterSidebar)
-  const [search, setSearch] = useState('')
-  const [filterCondition, setFilterCondition] = useState(null)
-  const [filterBrand, setFilterBrand] = useState(brandParam || null)
-  const [filterStatus, setFilterStatus] = useState(null)
+  // États filtres backed sur l'URL pour persistance lors d'un retour arrière
+  const search          = searchParams.get('q')         || ''
+  const filterCondition = searchParams.get('condition') || null
+  const filterBrand     = searchParams.get('brand')     || null
+  const filterStatus    = searchParams.get('status')    || null
+
+  const updateParam = (key, val) => {
+    const params = new URLSearchParams(searchParams)
+    if (val) params.set(key, val)
+    else params.delete(key)
+    setSearchParams(params, { replace: true })
+  }
+
+  const setSearch          = (val) => updateParam('q', val)
+  const setFilterCondition = (val) => updateParam('condition', val)
+  const setFilterBrand     = (val) => updateParam('brand', val)
+  const setFilterStatus    = (val) => updateParam('status', val)
+
+  // États non backed sur l'URL (sélections temporaires) — restent locaux
   const [filterMagasin, setFilterMagasin] = useState(null)
   const [filterGrade, setFilterGrade] = useState(null)
   const [sortBy, setSortBy] = useState('alpha_asc')
-
-  // Synchronise brand depuis l'URL
-  useEffect(() => {
-    setFilterBrand(brandParam || null)
-  }, [brandParam])
 
   useEffect(() => {
     const fetchProducts = async () => {

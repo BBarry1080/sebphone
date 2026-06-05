@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { LayoutGrid, List } from 'lucide-react'
 import { useGroupedPhones } from '../hooks/useGroupedPhones'
 import FilterSidebar, { MobileFilterBar, SortDropdown } from '../components/catalogue/FilterSidebar'
@@ -15,33 +15,43 @@ export default function Boutique({ defaultBrand = null }) {
   const { t } = useLanguage()
   const navigate = useNavigate()
   const [viewMode, setViewMode] = useState('list')
-  const [searchParams] = useSearchParams()
-  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [allCanonicalModels, setAllCanonicalModels] = useState([])
   const {
     groups, phones, totalPhones, loading, error,
-    search, setSearch,
-    filterCondition, setFilterCondition,
+    setSearch: hookSetSearch,
+    setFilterCondition: hookSetFilterCondition,
     filterBrand, setFilterBrand,
-    filterStatus, setFilterStatus,
+    setFilterStatus: hookSetFilterStatus,
     filterGrade, setFilterGrade,
     sortBy, setSortBy,
   } = useGroupedPhones(null, defaultBrand)
 
-  // Reset filters when route or brand changes (iPhone ↔ Samsung ↔ Boutique)
-  useEffect(() => {
-    setSearch('')
-    setFilterBrand(defaultBrand || null)
-    setFilterCondition(null)
-    setFilterStatus(null)
-    setFilterGrade(null)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname, defaultBrand])
+  const search          = searchParams.get('q')         || ''
+  const filterCondition = searchParams.get('condition') || null
+  const filterStatus    = searchParams.get('status')    || null
+
+  const updateParam = (key, val) => {
+    const params = new URLSearchParams(searchParams)
+    if (val) params.set(key, val)
+    else params.delete(key)
+    setSearchParams(params, { replace: true })
+  }
+
+  const setSearch          = (val) => updateParam('q', val)
+  const setFilterCondition = (val) => updateParam('condition', val)
+  const setFilterStatus    = (val) => updateParam('status', val)
+
+  // Synchronise URL → hook (le hook drive le fetch/filter des phones)
+  useEffect(() => { hookSetSearch(search) }, [search])
+  useEffect(() => { hookSetFilterCondition(filterCondition) }, [filterCondition])
+  useEffect(() => { hookSetFilterStatus(filterStatus) }, [filterStatus])
 
   useEffect(() => {
-    const q = searchParams.get('q')
-    if (q) setSearch(q)
-  }, [searchParams, setSearch])
+    setFilterBrand(defaultBrand || null)
+    setFilterGrade(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultBrand])
 
   useEffect(() => {
     if (defaultBrand === 'Apple') {
@@ -92,16 +102,13 @@ export default function Boutique({ defaultBrand = null }) {
           colors: i.colors,
         })),
       ]
-      const others = Object.entries(PHONES_DATABASE)
-        .flatMap(([brand, models]) =>
-          models.map((m) => ({
-            model: m.model,
-            brand,
-            storages: m.storages,
-            colors: m.colors,
-          }))
-        )
-      setAllCanonicalModels([...iphones, ...others])
+      const samsungModels = (PHONES_DATABASE['Samsung'] || []).map((m) => ({
+        model: m.model,
+        brand: 'Samsung',
+        storages: m.storages,
+        colors: m.colors,
+      }))
+      setAllCanonicalModels([...iphones, ...samsungModels])
     }
   }, [defaultBrand])
 
