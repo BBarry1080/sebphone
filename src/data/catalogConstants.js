@@ -1,29 +1,23 @@
 import { IPHONE_ON_DEMAND } from './iphoneOnDemand'
 import { IPHONE_DATABASE } from './iphoneDatabase'
 import { PHONES_DATABASE, findPhoneModel } from './phonesDatabase'
+import { IPAD_CATALOG, AIRPODS_CATALOG, WATCH_CATALOG } from './catalogDevices'
 
 export const MODELS_BY_CATEGORIE = {
   tablette: {
     'Apple': [
-      'iPad Air 13" M4',
-      'iPad Air 11" M4',
-      'iPad Air 13" M3',
-      'iPad Air 11" M3',
-      'iPad Pro 13" M4',
-      'iPad Pro 11" M4',
-      'iPad 11e génération',
-      'iPad 10e génération',
-      'iPad 9e génération',
-      'iPad mini 7',
-      'iPad mini 6',
-      'iPad mini 5',
-      'iPad Pro 12.9" M2',
-      'iPad Pro 11" M2',
-      'iPad Pro 12.9" M1',
-      'iPad Pro 11" M1',
-      'iPad Air M2',
-      'iPad Air M1',
-      'iPad Air 4',
+      // Neufs
+      'iPad 11 A16 2025 WiFi',
+      'iPad Air 11" 2025 WiFi',
+      'iPad Pro 11" M4 WiFi',
+      'iPad Pro 13" M5 WiFi',
+      'iPad Pro 11" M5 WiFi',
+      // Occasion
+      'iPad 7e génération WiFi',
+      'iPad 6e génération WiFi',
+      'iPad Air 2 WiFi',
+      'iPad Air 2 WiFi + Cellular',
+      'iPad 3 WiFi',
     ],
     'Samsung': [
       'Samsung Galaxy Tab S11 Ultra',
@@ -49,20 +43,10 @@ export const MODELS_BY_CATEGORIE = {
   },
   montre: {
     'Apple': [
-      'Apple Watch Ultra 3',
-      'Apple Watch Series 11',
       'Apple Watch SE 3',
-      'Apple Watch Ultra 2',
-      'Apple Watch Series 10',
-      'Apple Watch Series 9',
-      'Apple Watch Series 8',
-      'Apple Watch Series 7',
-      'Apple Watch Series 6',
-      'Apple Watch Series 5',
-      'Apple Watch Series 4',
-      'Apple Watch Series 3',
-      'Apple Watch SE 2',
-      'Apple Watch SE',
+      'Apple Watch Series 11 42mm',
+      'Apple Watch Series 11 46mm',
+      'Apple Watch Ultra 3',
     ],
     'Samsung': [
       'Samsung Galaxy Watch Ultra 2025',
@@ -84,14 +68,12 @@ export const MODELS_BY_CATEGORIE = {
   },
   ecouteur: {
     'Apple': [
-      'AirPods Pro 3',
-      'AirPods Pro 2',
-      'AirPods 4 ANC',
-      'AirPods 4',
-      'AirPods Max 2',
-      'AirPods Max',
       'AirPods 3',
-      'AirPods 2',
+      'AirPods 4',
+      'AirPods 4 ANC',
+      'AirPods Pro 2',
+      'AirPods Pro 3',
+      'AirPods Max',
     ],
     'Samsung': [
       'Samsung Galaxy Buds3 Pro',
@@ -296,6 +278,15 @@ export const getModels = (categorie, brand) => {
     }
     return (PHONES_DATABASE[brand] || []).map((p) => p.model)
   }
+  if (categorie === 'tablette' && brand === 'Apple') {
+    return IPAD_CATALOG.map((i) => i.model)
+  }
+  if (categorie === 'ecouteur' && brand === 'Apple') {
+    return AIRPODS_CATALOG.map((i) => i.model)
+  }
+  if (categorie === 'montre' && brand === 'Apple') {
+    return WATCH_CATALOG.map((i) => i.model)
+  }
   return MODELS_BY_CATEGORIE[categorie]?.[brand] || []
 }
 
@@ -307,6 +298,18 @@ export const getColors = (categorie, brand, model) => {
       return found?.colors || []
     }
     const found = findPhoneModel(brand, model)
+    return found?.colors || []
+  }
+  if (categorie === 'tablette' && brand === 'Apple') {
+    const found = IPAD_CATALOG.find((i) => i.model.toLowerCase() === (model || '').toLowerCase())
+    return found?.colors || []
+  }
+  if (categorie === 'ecouteur' && brand === 'Apple') {
+    const found = AIRPODS_CATALOG.find((i) => i.model.toLowerCase() === (model || '').toLowerCase())
+    return found?.colors || []
+  }
+  if (categorie === 'montre' && brand === 'Apple') {
+    const found = WATCH_CATALOG.find((i) => i.model.toLowerCase() === (model || '').toLowerCase())
     return found?.colors || []
   }
   if (categorie === 'montre') {
@@ -334,6 +337,17 @@ export const getStorages = (categorie, brand, model) => {
     }
     const found = findPhoneModel(brand, model)
     return found?.storages || STORAGE_OPTIONS
+  }
+  if (categorie === 'tablette' && brand === 'Apple') {
+    const found = IPAD_CATALOG.find((i) => i.model.toLowerCase() === (model || '').toLowerCase())
+    return found?.storages || []
+  }
+  if (categorie === 'montre' && brand === 'Apple') {
+    const found = WATCH_CATALOG.find((i) => i.model.toLowerCase() === (model || '').toLowerCase())
+    return found?.storages || []
+  }
+  if (categorie === 'ecouteur' && brand === 'Apple') {
+    return []
   }
   if (categorie === 'montre') {
     return WATCH_SIZES[brand]?.[model]

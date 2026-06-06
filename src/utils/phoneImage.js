@@ -427,6 +427,108 @@ const IMAGE_MAP = {
     "or":          "/images/macs/macbook-air-m3-or.png",
     "minuit":      "/images/macs/macbook-air-m3-minuit.png",
   },
+
+  // ── iPADS ───────────────────────────────────────────────────────────────
+  "ipad 11 a16 2025 wifi": {
+    default: "/images/ipads/ipad-11-a16-argent.png",
+    "argent": "/images/ipads/ipad-11-a16-argent.png",
+    "noir":   "/images/ipads/ipad-11-a16-noir.png",
+    "bleu":   "/images/ipads/ipad-11-a16-bleu.png",
+    "rose":   "/images/ipads/ipad-11-a16-rose.png",
+  },
+  "ipad air 11 2025 wifi": {
+    default:            "/images/ipads/ipad-air-11-2025-bleu-ciel.png",
+    "bleu ciel":        "/images/ipads/ipad-air-11-2025-bleu-ciel.png",
+    "lumiere stellaire":"/images/ipads/ipad-air-11-2025-lumiere-stellaire.png",
+    "violet":           "/images/ipads/ipad-air-11-2025-violet.png",
+    "rose":             "/images/ipads/ipad-air-11-2025-rose.png",
+  },
+  "ipad pro 11 m4 wifi": {
+    default:       "/images/ipads/ipad-pro-11-m4-argent.png",
+    "argent":      "/images/ipads/ipad-pro-11-m4-argent.png",
+    "noir sideral":"/images/ipads/ipad-pro-11-m4-noir-sideral.png",
+  },
+  "ipad pro 13 m5 wifi": {
+    default:       "/images/ipads/ipad-pro-13-m5-argent.png",
+    "argent":      "/images/ipads/ipad-pro-13-m5-argent.png",
+    "noir sideral":"/images/ipads/ipad-pro-13-m5-noir-sideral.png",
+  },
+  "ipad pro 11 m5 wifi": {
+    default:       "/images/ipads/ipad-pro-11-m5-argent.png",
+    "argent":      "/images/ipads/ipad-pro-11-m5-argent.png",
+    "noir sideral":"/images/ipads/ipad-pro-11-m5-noir-sideral.png",
+  },
+  "ipad 7e generation wifi": {
+    default:       "/images/ipads/ipad-7-argent.png",
+    "argent":      "/images/ipads/ipad-7-argent.png",
+    "or":          "/images/ipads/ipad-7-or.png",
+    "gris sideral":"/images/ipads/ipad-7-gris-sideral.png",
+  },
+  "ipad 6e generation wifi": {
+    default:       "/images/ipads/ipad-6-argent.png",
+    "argent":      "/images/ipads/ipad-6-argent.png",
+    "or":          "/images/ipads/ipad-6-or.png",
+    "gris sideral":"/images/ipads/ipad-6-gris-sideral.png",
+  },
+  "ipad air 2 wifi": {
+    default:       "/images/ipads/ipad-air-2-argent.png",
+    "argent":      "/images/ipads/ipad-air-2-argent.png",
+    "or":          "/images/ipads/ipad-air-2-or.png",
+    "gris sideral":"/images/ipads/ipad-air-2-gris-sideral.png",
+  },
+  "ipad air 2 wifi + cellular": {
+    default:       "/images/ipads/ipad-air-2-argent.png",
+    "argent":      "/images/ipads/ipad-air-2-argent.png",
+    "or":          "/images/ipads/ipad-air-2-or.png",
+    "gris sideral":"/images/ipads/ipad-air-2-gris-sideral.png",
+  },
+  "ipad 3 wifi": {
+    default: "/images/ipads/ipad-3-argent.png",
+    "argent":"/images/ipads/ipad-3-argent.png",
+    "noir":  "/images/ipads/ipad-3-noir.png",
+  },
+
+  // ── AirPODS ─────────────────────────────────────────────────────────────
+  "airpods 3":     { default: "/images/airpods/airpods-3-blanc.png",     "blanc": "/images/airpods/airpods-3-blanc.png" },
+  "airpods 4":     { default: "/images/airpods/airpods-4-blanc.png",     "blanc": "/images/airpods/airpods-4-blanc.png" },
+  "airpods 4 anc": { default: "/images/airpods/airpods-4-anc-blanc.png", "blanc": "/images/airpods/airpods-4-anc-blanc.png" },
+  "airpods pro 2": { default: "/images/airpods/airpods-pro-2-blanc.png", "blanc": "/images/airpods/airpods-pro-2-blanc.png" },
+  "airpods pro 3": { default: "/images/airpods/airpods-pro-3-blanc.png", "blanc": "/images/airpods/airpods-pro-3-blanc.png" },
+  "airpods max": {
+    default:                  "/images/airpods/airpods-max-blanc.png",
+    "blanc lumiere stellaire":"/images/airpods/airpods-max-blanc.png",
+    "noir minuit":            "/images/airpods/airpods-max-noir.png",
+    "bleu":                   "/images/airpods/airpods-max-bleu.png",
+    "orange":                 "/images/airpods/airpods-max-orange.png",
+    "violet":                 "/images/airpods/airpods-max-violet.png",
+  },
+
+  // ── APPLE WATCH ─────────────────────────────────────────────────────────
+  "apple watch se 3": {
+    default:            "/images/watch/watch-se3-lumiere-stellaire.png",
+    "lumiere stellaire":"/images/watch/watch-se3-lumiere-stellaire.png",
+    "minuit":           "/images/watch/watch-se3-minuit.png",
+    "argent":           "/images/watch/watch-se3-argent.png",
+  },
+  "apple watch series 11 42mm": {
+    default:        "/images/watch/watch-series11-42-noir.png",
+    "noir":         "/images/watch/watch-series11-42-noir.png",
+    "argent":       "/images/watch/watch-series11-42-argent.png",
+    "or rose":      "/images/watch/watch-series11-42-or-rose.png",
+    "titane naturel":"/images/watch/watch-series11-42-titane-naturel.png",
+  },
+  "apple watch series 11 46mm": {
+    default:        "/images/watch/watch-series11-46-noir.png",
+    "noir":         "/images/watch/watch-series11-46-noir.png",
+    "argent":       "/images/watch/watch-series11-46-argent.png",
+    "or rose":      "/images/watch/watch-series11-46-or-rose.png",
+    "titane naturel":"/images/watch/watch-series11-46-titane-naturel.png",
+  },
+  "apple watch ultra 3": {
+    default:        "/images/watch/watch-ultra3-titane-naturel.png",
+    "titane naturel":"/images/watch/watch-ultra3-titane-naturel.png",
+    "titane noir":  "/images/watch/watch-ultra3-titane-noir.png",
+  },
 }
 
 // Variantes de couleurs (FR + EN) pour fallback intelligent quand
