@@ -14,6 +14,12 @@ const PARTS_LIST = [
   'Face ID / Touch ID',
 ]
 
+const SCREEN_QUALITIES = [
+  'Originale',
+  'Qualite originale',
+  'Compatible',
+]
+
 export default function StockReconditionnement() {
   useRequirePermission('stock_reconditionnement')
   const currentUser = useCurrentUser()
@@ -41,6 +47,7 @@ export default function StockReconditionnement() {
     face_id_status: null,
     battery_health: '',
   })
+  const [screenQuality, setScreenQuality] = useState('')
 
   const totalPartsCost = Object.values(repairForm.parts_prices)
     .reduce((acc, price) => acc + (parseFloat(price) || 0), 0)
@@ -118,6 +125,8 @@ export default function StockReconditionnement() {
       face_id_status: entry.face_id_status || null,
       battery_health: entry.battery_health || '',
     })
+    const savedScreen = entry.parts_quality?.['Écran']
+    setScreenQuality(SCREEN_QUALITIES.includes(savedScreen) ? savedScreen : '')
     setShowRepairModal(true)
   }
 
@@ -146,6 +155,7 @@ export default function StockReconditionnement() {
       if (regError) throw regError
 
       const partsWithQuality = (repairForm.parts_replaced || []).map((p) => {
+        if (p === 'Écran' && screenQuality) return `Écran (${screenQuality})`
         const q = repairForm.parts_quality?.[p]
         const qLabel = q === 'compatible' ? ' (Compatible)'
           : q === 'qualite_originale' ? ' (Qualité originale)'
@@ -531,12 +541,14 @@ export default function StockReconditionnement() {
                               const newPrices = { ...repairForm.parts_prices }
                               if (!updated.includes(part)) delete newPrices[part]
                               const resetFaceId = part === 'Face ID / Touch ID' && current.includes(part)
+                              const resetScreen = part === 'Écran' && current.includes(part)
                               setRepairForm((f) => ({
                                 ...f,
                                 parts_replaced: updated,
                                 parts_prices: newPrices,
                                 ...(resetFaceId ? { face_id_status: null } : {}),
                               }))
+                              if (resetScreen) setScreenQuality('')
                             }}
                             className="w-4 h-4 accent-[#00B4CC] flex-shrink-0"
                           />
@@ -560,7 +572,24 @@ export default function StockReconditionnement() {
                             </div>
                           )}
                         </div>
-                        {isChecked && (
+                        {isChecked && part === 'Écran' && (
+                          <div className="ml-6 mt-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                              Qualité écran
+                            </label>
+                            <select
+                              value={screenQuality}
+                              onChange={(e) => setScreenQuality(e.target.value)}
+                              className="px-3 py-1.5 border border-gray-200 rounded-xl text-xs"
+                            >
+                              <option value="">Sélectionner...</option>
+                              {SCREEN_QUALITIES.map((q) => (
+                                <option key={q} value={q}>{q}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        {isChecked && part !== 'Écran' && (
                           <div className="ml-6 mt-1 flex gap-2 flex-wrap">
                             {[
                               { value: 'compatible', label: 'Compatible' },

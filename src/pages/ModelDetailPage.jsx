@@ -13,6 +13,15 @@ import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
 import { getStartingPrice } from '../data/startingPrices'
 import { charmPrice } from '../utils/charmPrice'
 
+const PRIORITY_PARTS = ['Vitre arrière', 'Batterie', 'Écran']
+
+const getPublicParts = (parts) => {
+  if (!parts || parts.length === 0) return []
+  return PRIORITY_PARTS
+    .filter((priority) => parts.some((p) => typeof p === 'string' && p.startsWith(priority)))
+    .slice(0, 3)
+}
+
 function gradeScore(phone) {
   if (!phone) return 0
   if (phone.condition === 'reconditionne') {
@@ -620,31 +629,33 @@ export default function ModelDetailPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 max-w-[220px]">
-                              {phone.condition === 'neuf' ? (
-                                <span className="text-xs text-blue-600 font-medium">Neuf sous scellé</span>
-                              ) : phone.condition === 'occasion' ? (
-                                allParts.length > 0 ? (
-                                  <div className="flex flex-col gap-0.5">
-                                    {allParts.map((p) => (
-                                      <div key={p} className="flex items-center gap-1 text-xs text-[#555]">
-                                        <span className="text-orange-500">🔧</span><span>{translateRepair(p, t)}</span>
+                              {(() => {
+                                const publicParts = getPublicParts(allParts)
+                                if (phone.condition === 'neuf') {
+                                  return <span className="text-xs text-blue-600 font-medium">Neuf sous scellé</span>
+                                }
+                                if (publicParts.length > 0) {
+                                  return (
+                                    <div>
+                                      <p className="text-xs font-bold text-gray-500 uppercase mb-1">
+                                        Pièces remplacées
+                                      </p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {publicParts.map((part) => (
+                                          <span key={part}
+                                            className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-lg">
+                                            {translateRepair(part, t)}
+                                          </span>
+                                        ))}
                                       </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-green-600 text-xs font-medium">✓ {t('phone_no_repair')}</span>
-                                )
-                              ) : phone.condition === 'reconditionne' ? (
-                                allParts.length > 0 ? (
-                                  <div className="flex flex-col gap-0.5">
-                                    {allParts.map((p) => (
-                                      <div key={p} className="flex items-center gap-1 text-xs text-[#555]">
-                                        <span className="text-orange-500">🔧</span><span>{translateRepair(p, t)}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : null
-                              ) : null}
+                                    </div>
+                                  )
+                                }
+                                if (phone.condition === 'occasion') {
+                                  return <span className="text-green-600 text-xs font-medium">✓ {t('phone_no_repair')}</span>
+                                }
+                                return null
+                              })()}
                               {(phone.storage || phone.color) && (
                                 <p className="text-[11px] text-[#888] mt-1">
                                   {[phone.storage, translateColor(phone.color, t)].filter(Boolean).join(' · ')}
@@ -736,31 +747,33 @@ export default function ModelDetailPage() {
                               eSIM
                             </span>
                           )}
-                          {phone.condition === 'neuf' ? (
-                            <p className="text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>
-                          ) : phone.condition === 'occasion' ? (
-                            allParts.length > 0 ? (
-                              <div className="flex flex-col gap-0.5">
-                                {allParts.map((p) => (
-                                  <div key={p} className="flex items-center gap-1">
-                                    <span className="text-orange-500">🔧</span><span>{translateRepair(p, t)}</span>
+                          {(() => {
+                            const publicParts = getPublicParts(allParts)
+                            if (phone.condition === 'neuf') {
+                              return <p className="text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>
+                            }
+                            if (publicParts.length > 0) {
+                              return (
+                                <div>
+                                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">
+                                    Pièces remplacées
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {publicParts.map((part) => (
+                                      <span key={part}
+                                        className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-lg">
+                                        {translateRepair(part, t)}
+                                      </span>
+                                    ))}
                                   </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-green-600 font-medium">✓ {t('phone_no_repair')}</p>
-                            )
-                          ) : phone.condition === 'reconditionne' ? (
-                            allParts.length > 0 ? (
-                              <div className="flex flex-col gap-0.5">
-                                {allParts.map((p) => (
-                                  <div key={p} className="flex items-center gap-1">
-                                    <span className="text-orange-500">🔧</span><span>{translateRepair(p, t)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : null
-                          ) : null}
+                                </div>
+                              )
+                            }
+                            if (phone.condition === 'occasion') {
+                              return <p className="text-green-600 font-medium">✓ {t('phone_no_repair')}</p>
+                            }
+                            return null
+                          })()}
                           {phone.status === 'sur_commande' ? (
                             <span className="text-xs italic text-gray-400">
                               {t('model_battery_range')}

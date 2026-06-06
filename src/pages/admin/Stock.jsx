@@ -2319,6 +2319,16 @@ export default function Stock() {
                   </div>
                   <span className="font-bold text-[#00B4CC] text-sm flex-shrink-0">{phone.price}€</span>
                 </div>
+                {Array.isArray(phone.parts_replaced) && phone.parts_replaced.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1 mb-2">
+                    {phone.parts_replaced.map((part, i) => (
+                      <span key={i}
+                        className="text-[10px] bg-orange-50 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded-md">
+                        {part}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CONDITION_COLORS[phone.condition] || 'bg-gray-100 text-gray-600'}`}>
@@ -2486,6 +2496,16 @@ export default function Stock() {
                           <span className="px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 w-fit">
                             {phone.grade}
                           </span>
+                        )}
+                        {Array.isArray(phone.parts_replaced) && phone.parts_replaced.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {phone.parts_replaced.map((part, i) => (
+                              <span key={i}
+                                className="text-[10px] bg-orange-50 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded-md">
+                                {part}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </td>
