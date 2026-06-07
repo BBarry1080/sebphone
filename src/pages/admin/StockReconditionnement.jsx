@@ -59,13 +59,6 @@ export default function StockReconditionnement() {
     .reduce((acc, price) => acc + (parseFloat(price) || 0), 0)
   const totalCost = (selectedEntry?.purchase_price || 0) + totalPartsCost
 
-  useEffect(() => {
-    if (totalCost > 0) {
-      const suggested = Math.round(totalCost * 1.3)
-      setRepairForm((f) => ({ ...f, sale_price_estimated: suggested.toString() }))
-    }
-  }, [totalCost])
-
   const [showAddModal, setShowAddModal] = useState(false)
   const initialAddForm = {
     brand: 'Apple',
@@ -242,7 +235,7 @@ export default function StockReconditionnement() {
 
   const handleAddToStock = (entry) => {
     setStockEntry(entry)
-    setStockPrice(Math.round(Number(entry.purchase_price) * 1.3) || '')
+    setStockPrice('')
     setStockPricePro('')
     setStockMagasin(entry.magasin_id || '')
     setShowStockModal(true)
@@ -905,7 +898,7 @@ export default function StockReconditionnement() {
                 />
                 {totalCost > 0 && (
                   <p className="text-xs text-gray-400 mt-1">
-                    Prix de revient : {totalCost}€ — Marge suggérée 30 % : {Math.round(totalCost * 1.3)}€
+                    Prix de revient : {totalCost}€
                   </p>
                 )}
                 {repairForm.sale_price_estimated && totalCost > 0 && (

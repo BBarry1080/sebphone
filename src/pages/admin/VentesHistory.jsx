@@ -438,7 +438,6 @@ export default function VentesHistory() {
         await supabase.from('payments').delete().eq('phone_id', sale.phone_id)
         await supabase.from('phones').update({
           status: 'disponible',
-          price: sale.phone?.purchase_price ? sale.phone.purchase_price * 1.3 : (sale.phone?.price || 0),
         }).eq('id', sale.phone_id)
       }
       await supabase.from('orders').delete().eq('id', sale.id)
