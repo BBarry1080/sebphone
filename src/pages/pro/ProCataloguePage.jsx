@@ -107,6 +107,7 @@ export default function ProCataloguePage() {
           {[
             { label: 'Occasion', value: 'occasion' },
             { label: 'Neuf', value: 'neuf' },
+            { label: 'Reconditionné', value: 'reconditionne' },
           ].map((f) => (
             <button key={f.value}
               onClick={() => setFilterCondition(filterCondition === f.value ? null : f.value)}
