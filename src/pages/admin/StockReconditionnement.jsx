@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS, MAGASINS_ADMIN } from '../../utils/magasins'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
-import { CheckCircle, Clock, X, Wrench, Plus } from 'lucide-react'
+import { CheckCircle, Clock, X, Wrench, Plus, Trash2 } from 'lucide-react'
 import { useCurrentUser, useRequirePermission } from '../../hooks/usePermissions'
 import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
 
@@ -280,6 +280,19 @@ export default function StockReconditionnement() {
     fetchEntries()
   }
 
+  const handleDelete = async (entryId) => {
+    if (!window.confirm('Supprimer cette entrée du reconditionnement ?')) return
+    const { error } = await supabase
+      .from('purchase_registry')
+      .delete()
+      .eq('id', entryId)
+    if (error) {
+      alert('Erreur : ' + error.message)
+      return
+    }
+    setEntries((prev) => prev.filter((e) => e.id !== entryId))
+  }
+
   const handleAdd = async () => {
     if (!addForm.model || !addForm.purchase_price) {
       alert('Modèle et prix obligatoires')
@@ -342,7 +355,12 @@ export default function StockReconditionnement() {
           <p className="text-sm text-gray-500 mt-1">{enAttente.length} en attente · {termines.length} terminés</p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setAddForm(initialAddForm)
+            setModelSearch('')
+            setAvailableColors([])
+            setShowAddModal(true)
+          }}
           className="flex items-center gap-2 bg-[#00B4CC] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-cyan-600 transition-all cursor-pointer"
         >
           <Plus size={16} />
@@ -451,6 +469,13 @@ export default function StockReconditionnement() {
                           className="flex items-center gap-1.5 bg-green-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-green-700 transition-all whitespace-nowrap cursor-pointer"
                         >
                           + Ajouter au stock
+                        </button>
+                        <button
+                          onClick={() => handleDelete(entry.id)}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     </td>
@@ -788,6 +813,7 @@ export default function StockReconditionnement() {
               <button
                 onClick={() => {
                   setShowAddModal(false)
+                  setAddForm(initialAddForm)
                   setModelSearch('')
                   setAvailableColors([])
                 }}
