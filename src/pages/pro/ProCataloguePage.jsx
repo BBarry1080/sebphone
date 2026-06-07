@@ -40,6 +40,9 @@ export default function ProCataloguePage() {
   const [phones, setPhones] = useState([])
   const [priceMode, setPriceMode] = useState('pro')
   const [search, setSearch] = useState('')
+  const [filterCondition, setFilterCondition] = useState(null)
+  const [filterStatus, setFilterStatus] = useState(null)
+  const [filterTva, setFilterTva] = useState(null)
 
   useEffect(() => {
     const stored = localStorage.getItem('sebphone_pro')
@@ -49,7 +52,7 @@ export default function ProCataloguePage() {
         .from('phones')
         .select('*')
         .eq('categorie', categorie)
-        .eq('status', 'disponible')
+        .in('status', ['disponible', 'sur_commande'])
         .not('price_pro', 'is', null)
         .order('created_at', { ascending: false })
       setPhones(data || [])
@@ -64,7 +67,13 @@ export default function ProCataloguePage() {
       (p.name?.toLowerCase().includes(brandParam.toLowerCase()))
     const matchSearch = !search ||
       p.name?.toLowerCase().includes(search.toLowerCase())
-    return matchBrand && matchSearch
+    const matchCondition = !filterCondition ||
+      p.condition?.toLowerCase() === filterCondition.toLowerCase()
+    const matchStatus = !filterStatus ||
+      p.status === filterStatus
+    const matchTva = !filterTva ||
+      p.tva_regime === filterTva
+    return matchBrand && matchSearch && matchCondition && matchStatus && matchTva
   })
 
   return (
@@ -92,6 +101,66 @@ export default function ProCataloguePage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[
+            { label: 'Occasion', value: 'occasion' },
+            { label: 'Neuf', value: 'neuf' },
+          ].map((f) => (
+            <button key={f.value}
+              onClick={() => setFilterCondition(filterCondition === f.value ? null : f.value)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all
+                ${filterCondition === f.value
+                  ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+              {f.label}
+            </button>
+          ))}
+
+          <div className="w-px bg-gray-200 mx-1" />
+
+          {[
+            { label: 'Disponible immédiatement', value: 'disponible' },
+            { label: 'Sur commande', value: 'sur_commande' },
+          ].map((f) => (
+            <button key={f.value}
+              onClick={() => setFilterStatus(filterStatus === f.value ? null : f.value)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all
+                ${filterStatus === f.value
+                  ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
+              {f.label}
+            </button>
+          ))}
+
+          <div className="w-px bg-gray-200 mx-1" />
+
+          {[
+            { label: 'TVA sur marge', value: 'marge' },
+            { label: 'TVA classique', value: 'normale' },
+          ].map((f) => (
+            <button key={f.value}
+              onClick={() => setFilterTva(filterTva === f.value ? null : f.value)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all
+                ${filterTva === f.value
+                  ? 'bg-amber-500 text-white border-amber-500'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-amber-400'}`}>
+              {f.label}
+            </button>
+          ))}
+
+          {(filterCondition || filterStatus || filterTva) && (
+            <button
+              onClick={() => {
+                setFilterCondition(null)
+                setFilterStatus(null)
+                setFilterTva(null)
+              }}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-500 border border-red-200 hover:bg-red-50 transition-all">
+              ✕ Réinitialiser
+            </button>
+          )}
         </div>
 
         <input type="text" value={search}
