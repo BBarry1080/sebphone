@@ -109,13 +109,36 @@ export default function StockReconditionnement() {
 
   const fetchEntries = async () => {
     setLoading(true)
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('purchase_registry')
-      .select('*')
+      .select('*, phones(id, price, price_pro, status)')
       .eq('phone_condition', 'reconditionne')
       .order('created_at', { ascending: false })
-    setEntries(data || [])
+    if (error) {
+      const { data: fallback } = await supabase
+        .from('purchase_registry')
+        .select('*')
+        .eq('phone_condition', 'reconditionne')
+        .order('created_at', { ascending: false })
+      setEntries(fallback || [])
+    } else {
+      setEntries(data || [])
+    }
     setLoading(false)
+  }
+
+  const resolvePhoneId = async (entry) => {
+    if (entry.phones?.id) return entry.phones.id
+    if (entry.phone_id) return entry.phone_id
+    if (entry.imei) {
+      const { data } = await supabase
+        .from('phones')
+        .select('id')
+        .eq('imei', entry.imei)
+        .maybeSingle()
+      return data?.id || null
+    }
+    return null
   }
 
   const openRepairModal = (entry) => {
@@ -308,16 +331,17 @@ export default function StockReconditionnement() {
   }
 
   const openEditStock = async (entry) => {
-    if (!entry.phone_id) {
+    const phoneId = await resolvePhoneId(entry)
+    if (!phoneId) {
       alert('Téléphone non lié — impossible de modifier les prix.')
       return
     }
     const { data: phone } = await supabase
       .from('phones')
-      .select('price, price_pro')
-      .eq('id', entry.phone_id)
+      .select('id, price, price_pro')
+      .eq('id', phoneId)
       .single()
-    setEditStockPhone(entry)
+    setEditStockPhone({ ...entry, phone_id: phoneId })
     setEditStockPrice(phone?.price ?? '')
     setEditStockPricePro(phone?.price_pro ?? '')
   }
@@ -344,11 +368,12 @@ export default function StockReconditionnement() {
 
   const handleDeleteStock = async (entry) => {
     if (!window.confirm('Supprimer ce téléphone du stock et de la liste ?')) return
-    if (entry.phone_id) {
+    const phoneId = await resolvePhoneId(entry)
+    if (phoneId) {
       await supabase
         .from('phones')
         .delete()
-        .eq('id', entry.phone_id)
+        .eq('id', phoneId)
     }
     await supabase
       .from('purchase_registry')
@@ -543,17 +568,17 @@ export default function StockReconditionnement() {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           <span className="font-mono text-xs">{entry.imei || '—'}</span>
                           <button
                             onClick={() => {
                               setEditImeiId(entry.id)
                               setEditImeiValue(entry.imei || '')
                             }}
-                            className="text-gray-400 hover:text-[#00B4CC] p-0.5"
+                            className="text-[#00B4CC] hover:text-[#1B2A4A] hover:bg-cyan-50 p-1 rounded-md transition-all"
                             title="Modifier IMEI"
                           >
-                            <Pencil size={12} />
+                            <Pencil size={14} />
                           </button>
                         </div>
                       )}
