@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS, MAGASINS_ADMIN } from '../../utils/magasins'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
-import { CheckCircle, Clock, X, Wrench, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle, Clock, X, Wrench, Plus, Trash2, Pencil, Check } from 'lucide-react'
 import { useCurrentUser, useRequirePermission } from '../../hooks/usePermissions'
 import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
 
@@ -49,6 +49,11 @@ export default function StockReconditionnement() {
   })
   const [screenQuality, setScreenQuality] = useState('')
   const [repairPricePro, setRepairPricePro] = useState('')
+  const [editImeiId, setEditImeiId] = useState(null)
+  const [editImeiValue, setEditImeiValue] = useState('')
+  const [editStockPhone, setEditStockPhone] = useState(null)
+  const [editStockPrice, setEditStockPrice] = useState('')
+  const [editStockPricePro, setEditStockPricePro] = useState('')
 
   const totalPartsCost = Object.values(repairForm.parts_prices)
     .reduce((acc, price) => acc + (parseFloat(price) || 0), 0)
@@ -165,7 +170,7 @@ export default function StockReconditionnement() {
         return p + qLabel
       })
 
-      const { error: stockError } = await supabase
+      const { data: newPhone, error: stockError } = await supabase
         .from('phones')
         .insert([{
           name:             `${selectedEntry.brand} ${selectedEntry.model}`,
@@ -190,7 +195,16 @@ export default function StockReconditionnement() {
           added_by:         currentUser?.name || 'Admin',
           added_by_magasin: repairForm.magasin_id,
         }])
+        .select()
+        .single()
       if (stockError) throw stockError
+
+      if (newPhone?.id) {
+        await supabase
+          .from('purchase_registry')
+          .update({ phone_id: newPhone.id })
+          .eq('id', selectedEntry.id)
+      }
 
       setShowRepairModal(false)
       setRepairPricePro('')
@@ -291,6 +305,60 @@ export default function StockReconditionnement() {
       return
     }
     setEntries((prev) => prev.filter((e) => e.id !== entryId))
+  }
+
+  const openEditStock = async (entry) => {
+    if (!entry.phone_id) {
+      alert('Téléphone non lié — impossible de modifier les prix.')
+      return
+    }
+    const { data: phone } = await supabase
+      .from('phones')
+      .select('price, price_pro')
+      .eq('id', entry.phone_id)
+      .single()
+    setEditStockPhone(entry)
+    setEditStockPrice(phone?.price ?? '')
+    setEditStockPricePro(phone?.price_pro ?? '')
+  }
+
+  const handleEditStock = async () => {
+    if (!editStockPrice || Number(editStockPrice) <= 0) {
+      alert('Prix invalide')
+      return
+    }
+    const { error } = await supabase
+      .from('phones')
+      .update({
+        price: Number(editStockPrice),
+        price_pro: editStockPricePro ? Number(editStockPricePro) : null,
+      })
+      .eq('id', editStockPhone.phone_id)
+    if (error) {
+      alert('Erreur : ' + error.message)
+      return
+    }
+    setEditStockPhone(null)
+    fetchEntries()
+  }
+
+  const handleDeleteStock = async (entry) => {
+    if (!window.confirm('Supprimer ce téléphone du stock et de la liste ?')) return
+    if (entry.phone_id) {
+      await supabase
+        .from('phones')
+        .delete()
+        .eq('id', entry.phone_id)
+    }
+    await supabase
+      .from('purchase_registry')
+      .update({
+        added_to_stock: false,
+        phone_id: null,
+        reconditioning_status: 'en_attente',
+      })
+      .eq('id', entry.id)
+    fetchEntries()
   }
 
   const handleAdd = async () => {
@@ -436,7 +504,60 @@ export default function StockReconditionnement() {
                       <p className="font-medium text-[#1B2A4A] text-sm">{entry.brand} {entry.model}</p>
                       <p className="text-xs text-gray-400">{entry.color}{entry.color && entry.storage ? ' · ' : ''}{entry.storage}</p>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600 font-mono">{entry.imei}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600">
+                      {editImeiId === entry.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={editImeiValue}
+                            onChange={(e) => setEditImeiValue(e.target.value)}
+                            className="w-32 px-2 py-1 border border-[#00B4CC] rounded-lg text-xs font-mono"
+                            autoFocus
+                          />
+                          <button
+                            onClick={async () => {
+                              const { error } = await supabase
+                                .from('purchase_registry')
+                                .update({ imei: editImeiValue })
+                                .eq('id', entry.id)
+                              if (error) {
+                                alert('Erreur : ' + error.message)
+                                return
+                              }
+                              setEntries((prev) => prev.map((e) =>
+                                e.id === entry.id ? { ...e, imei: editImeiValue } : e
+                              ))
+                              setEditImeiId(null)
+                            }}
+                            className="text-green-600 hover:text-green-800 p-1"
+                            title="Valider"
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            onClick={() => setEditImeiId(null)}
+                            className="text-gray-400 hover:text-gray-600 p-1"
+                            title="Annuler"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-xs">{entry.imei || '—'}</span>
+                          <button
+                            onClick={() => {
+                              setEditImeiId(entry.id)
+                              setEditImeiValue(entry.imei || '')
+                            }}
+                            className="text-gray-400 hover:text-[#00B4CC] p-0.5"
+                            title="Modifier IMEI"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <p className="text-sm text-gray-700">{entry.seller_first_name} {entry.seller_last_name}</p>
                       <p className="text-xs text-gray-400">{entry.seller_phone || '—'}</p>
@@ -497,7 +618,7 @@ export default function StockReconditionnement() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Date', 'Téléphone', 'IMEI', 'Pièces remplacées', 'Grade final', 'Prix vente'].map((h) => (
+                  {['Date', 'Téléphone', 'IMEI', 'Pièces remplacées', 'Grade final', 'Prix vente', 'Actions'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500">{h}</th>
                   ))}
                 </tr>
@@ -527,6 +648,24 @@ export default function StockReconditionnement() {
                       <span className="text-xs bg-green-100 text-green-700 font-medium px-2 py-1 rounded-full">{entry.final_grade}</span>
                     </td>
                     <td className="px-4 py-3 text-sm font-bold text-green-600">{entry.sale_price_estimated}€</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => openEditStock(entry)}
+                          className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                          title="Modifier prix"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStock(entry)}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Supprimer du stock"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1118,6 +1257,49 @@ export default function StockReconditionnement() {
                 disabled={stockLoading}
                 className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50">
                 {stockLoading ? 'Ajout...' : '+ Ajouter au stock'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editStockPhone && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#1B2A4A]">Modifier les prix</h3>
+              <button onClick={() => setEditStockPhone(null)}>
+                <X size={20} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Prix de vente (€) *
+                </label>
+                <input type="number" value={editStockPrice}
+                  onChange={(e) => setEditStockPrice(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-bold focus:border-[#00B4CC] outline-none" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Prix Pro (€)
+                  <span className="text-gray-400 normal-case ml-1">— optionnel</span>
+                </label>
+                <input type="number" value={editStockPricePro}
+                  onChange={(e) => setEditStockPricePro(e.target.value)}
+                  placeholder="Laisser vide = non visible en Pro"
+                  className="w-full px-3 py-2.5 border border-blue-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setEditStockPhone(null)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Annuler
+              </button>
+              <button onClick={handleEditStock}
+                className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                Sauvegarder
               </button>
             </div>
           </div>
