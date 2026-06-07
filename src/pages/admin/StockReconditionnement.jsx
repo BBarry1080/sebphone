@@ -48,6 +48,7 @@ export default function StockReconditionnement() {
     battery_health: '',
   })
   const [screenQuality, setScreenQuality] = useState('')
+  const [repairPricePro, setRepairPricePro] = useState('')
 
   const totalPartsCost = Object.values(repairForm.parts_prices)
     .reduce((acc, price) => acc + (parseFloat(price) || 0), 0)
@@ -127,6 +128,7 @@ export default function StockReconditionnement() {
     })
     const savedScreen = entry.parts_quality?.['Écran']
     setScreenQuality(SCREEN_QUALITIES.includes(savedScreen) ? savedScreen : '')
+    setRepairPricePro('')
     setShowRepairModal(true)
   }
 
@@ -174,6 +176,7 @@ export default function StockReconditionnement() {
           condition:        'reconditionne',
           grade:            repairForm.final_grade,
           price:            parseFloat(repairForm.sale_price_estimated),
+          price_pro:        repairPricePro ? Number(repairPricePro) : null,
           purchase_price:   totalCost,
           imei:             selectedEntry.imei,
           status:           'disponible',
@@ -190,6 +193,7 @@ export default function StockReconditionnement() {
       if (stockError) throw stockError
 
       setShowRepairModal(false)
+      setRepairPricePro('')
       fetchEntries()
       alert('✅ Téléphone reconditionné ajouté au stock !')
     } catch (err) {
@@ -720,6 +724,19 @@ export default function StockReconditionnement() {
                     Bénéfice estimé : +{(parseFloat(repairForm.sale_price_estimated) - totalCost).toFixed(0)}€
                   </p>
                 )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Prix Pro (€)
+                  <span className="text-gray-400 normal-case ml-1">
+                    — optionnel
+                  </span>
+                </label>
+                <input type="number" value={repairPricePro}
+                  onChange={(e) => setRepairPricePro(e.target.value)}
+                  placeholder="Laisser vide = non visible en Pro"
+                  className="w-full px-3 py-2.5 border border-blue-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
               </div>
 
               <div>
