@@ -11,6 +11,47 @@ import { IPHONE_DATABASE } from '../data/iphoneDatabase'
 import { PHONES_DATABASE } from '../data/phonesDatabase'
 import { getPhoneImage } from '../utils/phoneImage'
 
+const IPHONE_STARTING_PRICES = {
+  'iPhone 7': 69,
+  'iPhone 7 Plus': 79,
+  'iPhone 8': 89,
+  'iPhone 8 Plus': 99,
+  'iPhone SE (2020)': 99,
+  'iPhone X': 119,
+  'iPhone XS': 119,
+  'iPhone XR': 129,
+  'iPhone XS Max': 129,
+  'iPhone 11': 139,
+  'iPhone 11 Pro': 189,
+  'iPhone 11 Pro Max': 199,
+  'iPhone 12': 179,
+  'iPhone 12 Pro': 199,
+  'iPhone 12 Pro Max': 289,
+  'iPhone 12 mini': 159,
+  'iPhone 13': 229,
+  'iPhone 13 mini': 229,
+  'iPhone 13 Pro': 299,
+  'iPhone 13 Pro Max': 349,
+  'iPhone 14': 299,
+  'iPhone 14 Plus': 309,
+  'iPhone 14 Pro': 399,
+  'iPhone 14 Pro Max': 429,
+  'iPhone 15': 389,
+  'iPhone 15 Plus': 399,
+  'iPhone 15 Pro': 499,
+  'iPhone 15 Pro Max': 549,
+  'iPhone 16': 499,
+  'iPhone 16 Plus': 549,
+  'iPhone 16 Pro': 629,
+  'iPhone 16 Pro Max': 689,
+  'iPhone 16e': 399,
+  'iPhone 17e': 599,
+  'iPhone 17': 799,
+  'iPhone 17 Air': 649,
+  'iPhone 17 Pro': 1099,
+  'iPhone 17 Pro Max': 1149,
+}
+
 export default function Boutique({ defaultBrand = null }) {
   const { t } = useLanguage()
   const navigate = useNavigate()
@@ -205,9 +246,13 @@ export default function Boutique({ defaultBrand = null }) {
                     .replace(/[^a-z0-9-]/g, '')
                   const stockPhones = getModelStock(canonicalModel.model)
                   const hasStock = stockPhones.length > 0
-                  const lowestPrice = hasStock
-                    ? Math.min(...stockPhones.map((p) => p.price))
+                  const stockPrice = hasStock
+                    ? Math.min(...stockPhones.map((p) => Number(p.price)).filter((n) => n > 0))
                     : null
+                  const fixedPrice = IPHONE_STARTING_PRICES[canonicalModel.model] ?? null
+                  const startingPrice = stockPrice != null && fixedPrice != null
+                    ? Math.min(stockPrice, fixedPrice)
+                    : (stockPrice ?? fixedPrice)
 
                   return (
                     <div key={canonicalModel.model}
@@ -222,13 +267,9 @@ export default function Boutique({ defaultBrand = null }) {
                         {canonicalModel.model}
                       </p>
                       <div className="mt-2">
-                        {hasStock ? (
+                        {startingPrice != null && (
                           <p className="text-[#00B4CC] font-black text-lg">
-                            À partir de {lowestPrice}€
-                          </p>
-                        ) : (
-                          <p className="text-gray-400 text-sm italic">
-                            Sur commande
+                            À partir de {startingPrice}€
                           </p>
                         )}
                       </div>
