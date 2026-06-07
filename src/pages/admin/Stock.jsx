@@ -2008,6 +2008,8 @@ export default function Stock() {
     try {
       await supabase.from('payments').delete().eq('phone_id', phoneId)
       await supabase.from('orders').delete().eq('phone_id', phoneId)
+      await supabase.from('weekly_offer').delete().eq('phone_id', phoneId)
+      await supabase.from('best_sellers_config').delete().eq('phone_id', phoneId)
       const { error } = await supabase.from('phones').delete().eq('id', phoneId)
       if (error) throw error
       setPhones((prev) => prev.filter((p) => p.id !== phoneId))
