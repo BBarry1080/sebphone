@@ -4,18 +4,9 @@ import { ArrowRight, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase';
 import { getPhoneImage } from '../../utils/phoneImage';
 import { getColorHex } from '../../utils/colors'
-import { getStartingPrice } from '../../data/startingPrices'
-import { charmPrice } from '../../utils/charmPrice'
 import { useLanguage } from '../../contexts/LanguageContext';
 import { translateColor } from '../../utils/translateColor';
 
-function displayPrice(phone) {
-  if (phone.condition === 'reconditionne') {
-    const ref = getStartingPrice(phone.model)
-    if (ref) return charmPrice(ref)
-  }
-  return charmPrice(phone.price)
-};
 
 function BestSellerCard({ phone }) {
   const navigate = useNavigate();
@@ -65,7 +56,7 @@ function BestSellerCard({ phone }) {
         {conditionLabel}
       </span>
 
-      <p className="font-bold text-[#1B2A4A] text-lg">{displayPrice(phone)}€</p>
+      <p className="font-bold text-[#1B2A4A] text-lg">{phone.price}€</p>
 
       <button
         onClick={(e) => {
