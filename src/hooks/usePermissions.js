@@ -12,6 +12,8 @@ export const ALL_PERMISSIONS = [
   'supprimer_stock',
   'offre_semaine',
   'stock_reconditionnement',
+  'stock_magasin',
+  'caisse',
 
   // Commandes
   'voir_commandes',

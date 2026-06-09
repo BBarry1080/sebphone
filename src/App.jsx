@@ -30,6 +30,7 @@ import AdminLayout from './components/admin/AdminLayout';
 import AdminLogin from './pages/admin/AdminLogin';
 import Dashboard from './pages/admin/Dashboard';
 import Stock from './pages/admin/Stock';
+import StockMagasin from './pages/admin/StockMagasin';
 import Commandes from './pages/admin/Commandes'
 import PromoCodes from './pages/admin/PromoCodes';
 import Comptabilite from './pages/admin/Comptabilite';
@@ -168,6 +169,7 @@ export default function App() {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="stock" element={<Stock />} />
+            <Route path="stock-magasin" element={<StockMagasin />} />
             <Route path="vendus" element={<VentesHistory />} />
             <Route path="reconditionnement" element={<StockReconditionnement />} />
             <Route path="commandes" element={<Commandes />} />

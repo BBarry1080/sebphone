@@ -40,6 +40,7 @@ function SidebarContent({ onClose }) {
   const navItems = [
     { to: '/admin/dashboard',          label: 'Dashboard',           Icon: LayoutDashboard, show: true },
     { to: '/admin/stock',              label: 'Stock',               Icon: Package,         show: has('voir_stock') },
+    { to: '/admin/stock-magasin',      label: 'Stock magasin',       Icon: Package,         show: has('stock_magasin') || isAdmin },
     { to: '/admin/vendus',             label: 'Historique ventes',   Icon: History,         show: has('voir_stock') || has('ajouter_vente_directe') },
     { to: '/admin/commandes',          label: 'Commandes',           Icon: ShoppingBag,     show: has('voir_commandes') },
     { to: '/admin/promoCodes',         label: 'Codes promo',         Icon: Tag,             show: has('codes_promo') },

@@ -41,6 +41,7 @@ const PERMISSION_GROUPS = [
       { key: 'supprimer_stock', label: 'Supprimer un téléphone' },
       { key: 'offre_semaine', label: "Gérer l'offre de la semaine" },
       { key: 'stock_reconditionnement', label: 'Accès reconditionnement' },
+      { key: 'stock_magasin', label: 'Stock magasin' },
     ],
   },
   {
