@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, Wrench, Briefcase, Truck, Users, Package, History,
+  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -38,9 +38,9 @@ function SidebarContent({ onClose }) {
   const initials = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'AD'
 
   const navItems = [
+    { to: '/admin/stock-magasin',      label: 'Système de caisse',   Icon: ShoppingCart,    show: has('stock_magasin') || isAdmin },
     { to: '/admin/dashboard',          label: 'Dashboard',           Icon: LayoutDashboard, show: true },
     { to: '/admin/stock',              label: 'Stock',               Icon: Package,         show: has('voir_stock') },
-    { to: '/admin/stock-magasin',      label: 'Stock magasin',       Icon: Package,         show: has('stock_magasin') || isAdmin },
     { to: '/admin/vendus',             label: 'Historique ventes',   Icon: History,         show: has('voir_stock') || has('ajouter_vente_directe') },
     { to: '/admin/commandes',          label: 'Commandes',           Icon: ShoppingBag,     show: has('voir_commandes') },
     { to: '/admin/promoCodes',         label: 'Codes promo',         Icon: Tag,             show: has('codes_promo') },
