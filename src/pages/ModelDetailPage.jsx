@@ -315,6 +315,34 @@ export default function ModelDetailPage() {
     ? true
     : filtered.length > 0
 
+  const availableStoragesForColor = filterColor
+    ? [...new Set(
+        stockPhones
+          .filter((p) => p.color === filterColor)
+          .map((p) => p.storage)
+          .filter(Boolean)
+      )]
+    : storages
+
+  const availableColorsForStorage = filterStorage
+    ? [...new Set(
+        stockPhones
+          .filter((p) => p.storage === filterStorage)
+          .map((p) => p.color)
+          .filter(Boolean)
+      )]
+    : colors
+
+  const isStorageAvailable = (storage) => {
+    if (!filterColor) return true
+    return stockPhones.some((p) => p.color === filterColor && p.storage === storage)
+  }
+
+  const isColorAvailable = (color) => {
+    if (!filterStorage) return true
+    return stockPhones.some((p) => p.storage === filterStorage && p.color === color)
+  }
+
   const canonicalPhone = IPHONE_ON_DEMAND.find(
     (i) => i.model.toLowerCase() === (phones[0]?.model || '').toLowerCase()
   ) || Object.values(PHONES_DATABASE).flat().find(
@@ -416,38 +444,106 @@ export default function ModelDetailPage() {
 
               {/* Filtre stockage */}
               {showStock && storages.length >= 1 && (
-                <div className="mb-3">
-                  <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_capacity')}</p>
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
+                    {t('phone_capacity')}
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    <FilterPill label={t('phone_all')} active={!filterStorage} onClick={() => setFilterStorage(null)} />
-                    {storages.map((s) => (
-                      <FilterPill key={s} label={s} active={filterStorage === s} onClick={() => setFilterStorage(s)} />
-                    ))}
+                    <FilterPill
+                      label={t('phone_all')}
+                      active={!filterStorage}
+                      onClick={() => setFilterStorage(null)}
+                    />
+                    {storages.map((s) => {
+                      const available = isStorageAvailable(s)
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => available && setFilterStorage(filterStorage === s ? null : s)}
+                          disabled={!available}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all relative
+                            ${filterStorage === s
+                              ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                              : available
+                                ? 'bg-white text-[#1B2A4A] border-gray-200 hover:border-[#1B2A4A] cursor-pointer'
+                                : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
+                            }`}
+                          title={!available ? `${s} indisponible en ${filterColor}` : s}
+                        >
+                          {!available ? (
+                            <span className="relative">
+                              <span className="line-through opacity-50">{s}</span>
+                            </span>
+                          ) : s}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               )}
 
               {/* Filtre couleur */}
               {showStock && colors.length >= 1 && (
-                <div>
-                  <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">{t('phone_color')}</p>
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
+                    {t('phone_color')}
+                    {filterColor && (
+                      <span className="ml-2 normal-case text-[#1B2A4A] font-bold">
+                        — {translateColor(filterColor, t)}
+                      </span>
+                    )}
+                  </p>
                   <div className="flex flex-wrap gap-2 items-center">
                     <button
                       onClick={() => setFilterColor(null)}
-                      className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs cursor-pointer transition-all ${!filterColor ? 'border-[#1B2A4A]' : 'border-gray-300 hover:border-gray-400'}`}
+                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs cursor-pointer transition-all
+                        ${!filterColor
+                          ? 'border-[#1B2A4A]'
+                          : 'border-gray-300 hover:border-gray-400'}`}
                       title={t('model_all')}
                     >
                       <span className="text-[10px] text-gray-500">∀</span>
                     </button>
-                    {colors.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => setFilterColor(filterColor === c ? null : c)}
-                        className={`w-7 h-7 rounded-full border-2 cursor-pointer transition-all ${filterColor === c ? 'border-[#1B2A4A] scale-110' : 'border-gray-300 hover:border-gray-400'}`}
-                        style={{ background: colorToHex(c) }}
-                        title={translateColor(c, t)}
-                      />
-                    ))}
+                    {colors.map((c) => {
+                      const available = isColorAvailable(c)
+                      return (
+                        <div key={c} className="relative">
+                          <button
+                            onClick={() => {
+                              if (!available) return
+                              const newColor = filterColor === c ? null : c
+                              setFilterColor(newColor)
+                              if (newColor && filterStorage) {
+                                const storageStillAvailable = stockPhones.some(
+                                  (p) => p.color === newColor && p.storage === filterStorage
+                                )
+                                if (!storageStillAvailable) setFilterStorage(null)
+                              }
+                            }}
+                            disabled={!available}
+                            className={`w-8 h-8 rounded-full border-2 transition-all relative
+                              ${filterColor === c
+                                ? 'border-[#1B2A4A] scale-110'
+                                : available
+                                  ? 'border-gray-300 hover:border-gray-400 cursor-pointer'
+                                  : 'border-gray-100 cursor-not-allowed opacity-40'
+                              }`}
+                            style={{ background: colorToHex(c) }}
+                            title={available
+                              ? translateColor(c, t)
+                              : `${translateColor(c, t)} — indisponible en ${filterStorage}`}
+                          />
+                          {!available && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-full h-0.5 bg-gray-400 rotate-45 rounded-full" />
+                            </div>
+                          )}
+                          {filterColor === c && (
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#1B2A4A] rounded-full" />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
