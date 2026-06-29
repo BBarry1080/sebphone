@@ -295,8 +295,28 @@ export default function ModelDetailPage() {
   const showStock        = filterStatus !== 'sur_commande' && hasStock
   const showSurCommande  = filterStatus !== 'disponible'   && hasSurCommande
 
-  const storages = [...new Set(stockPhones.map((p) => p.storage).filter(Boolean))]
-  const colors   = [...new Set(stockPhones.map((p) => p.color).filter(Boolean))]
+  const modelName = phones[0]
+    ? (typeof phones[0].model === 'string' ? phones[0].model : phones[0].model?.name) || phones[0].name
+    : modelSlug.replace(/-/g, ' ')
+
+  const canonicalForVariants =
+    IPHONE_ON_DEMAND.find((i) => i.model.toLowerCase() === modelName.toLowerCase()) ||
+    IPHONE_DATABASE.find((i) => i.model.toLowerCase() === modelName.toLowerCase()) ||
+    Object.values(PHONES_DATABASE).flat().find((p) => p.model.toLowerCase() === modelName.toLowerCase())
+
+  const allColors = canonicalForVariants?.colors?.length
+    ? canonicalForVariants.colors
+    : [...new Set(stockPhones.map((p) => p.color).filter(Boolean))]
+
+  const allStorages = canonicalForVariants?.storages?.length
+    ? canonicalForVariants.storages
+    : [...new Set(stockPhones.map((p) => p.storage).filter(Boolean))]
+
+  const inStockStorages = new Set(stockPhones.map((p) => p.storage).filter(Boolean))
+  const inStockColors   = new Set(stockPhones.map((p) => p.color).filter(Boolean))
+
+  const storages = allStorages
+  const colors   = allColors
 
   const filtered = stockPhones.filter((p) => {
     if (filterStorage && p.storage !== filterStorage) return false
@@ -315,31 +335,15 @@ export default function ModelDetailPage() {
     ? true
     : filtered.length > 0
 
-  const availableStoragesForColor = filterColor
-    ? [...new Set(
-        stockPhones
-          .filter((p) => p.color === filterColor)
-          .map((p) => p.storage)
-          .filter(Boolean)
-      )]
-    : storages
-
-  const availableColorsForStorage = filterStorage
-    ? [...new Set(
-        stockPhones
-          .filter((p) => p.storage === filterStorage)
-          .map((p) => p.color)
-          .filter(Boolean)
-      )]
-    : colors
-
   const isStorageAvailable = (storage) => {
-    if (!filterColor) return true
+    if (!hasStock) return false
+    if (!filterColor) return inStockStorages.has(storage)
     return stockPhones.some((p) => p.color === filterColor && p.storage === storage)
   }
 
   const isColorAvailable = (color) => {
-    if (!filterStorage) return true
+    if (!hasStock) return false
+    if (!filterStorage) return inStockColors.has(color)
     return stockPhones.some((p) => p.storage === filterStorage && p.color === color)
   }
 
@@ -355,10 +359,6 @@ export default function ModelDetailPage() {
       .filter((p) => p.status === 'disponible')
       .flatMap((p) => p.magasins || [])
   )]
-
-  const modelName = phones[0]
-    ? (typeof phones[0].model === 'string' ? phones[0].model : phones[0].model?.name) || phones[0].name
-    : modelSlug.replace(/-/g, ' ')
 
   const minPrice = filtered.length > 0 ? Math.min(...filtered.map((p) => p.price)) : null
   const isAllReconditionne = filtered.length > 0 && filtered.every((p) => p.condition === 'reconditionne')
