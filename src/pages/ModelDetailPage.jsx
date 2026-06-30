@@ -182,7 +182,7 @@ export default function ModelDetailPage() {
         setAlertEmail('')
         setAlertPhone('')
       }
-    } catch (e) {
+    } catch {
       setAlertStatus('error')
     }
     setAlertLoading(false)
