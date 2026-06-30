@@ -632,4 +632,4 @@ export function getPublicModelIndex(modelName) {
   return idx === -1 ? 999 : idx
 }
 
-export { PLACEHOLDER }
+export { PLACEHOLDER, IMAGE_MAP }
