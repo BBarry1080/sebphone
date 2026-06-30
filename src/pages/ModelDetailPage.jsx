@@ -374,10 +374,6 @@ export default function ModelDetailPage() {
     return scoreP > scoreBest ? p : best
   }, null)
 
-  const selectedCombinationExists = !filterColor && !filterStorage
-    ? true
-    : filtered.length > 0
-
   const isStorageAvailable = (storage) => {
     if (!hasStock) return false
     if (!filterColor) return inStockStorages.has(storage)
@@ -389,12 +385,6 @@ export default function ModelDetailPage() {
     if (!filterStorage) return inStockColors.has(color)
     return stockPhones.some((p) => p.storage === filterStorage && p.color === color)
   }
-
-  const canonicalPhone = IPHONE_ON_DEMAND.find(
-    (i) => i.model.toLowerCase() === (phones[0]?.model || '').toLowerCase()
-  ) || Object.values(PHONES_DATABASE).flat().find(
-    (p) => p.model.toLowerCase() === (phones[0]?.model || '').toLowerCase()
-  )
 
   // Tous les magasins où ce modèle est disponible
   const availableMagasins = [...new Set(
