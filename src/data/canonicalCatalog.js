@@ -414,7 +414,7 @@ const normalizeColor = (str) =>
   (str || '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .trim()
 
 export const colorsMatch = (dbColor, catalogColor, modelName) => {
