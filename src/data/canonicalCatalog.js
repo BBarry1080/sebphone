@@ -410,6 +410,35 @@ const COLOR_ALIASES = {
   },
 }
 
+const normalizeColor = (str) =>
+  (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+
+export const colorsMatch = (dbColor, catalogColor, modelName) => {
+  if (!dbColor || !catalogColor) return false
+
+  const dbNorm = normalizeColor(dbColor)
+  const catalogNorm = normalizeColor(catalogColor)
+
+  if (dbNorm === catalogNorm) return true
+
+  const model = getCanonicalModel(modelName)
+  if (model) {
+    const aliasMap = COLOR_ALIASES[model.name]
+    if (aliasMap) {
+      const aliasTarget = aliasMap[dbColor.toLowerCase()]
+      if (aliasTarget && normalizeColor(aliasTarget) === catalogNorm) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
 export const getCanonicalImage = (modelName, colorName) => {
   const model = getCanonicalModel(modelName)
   if (!model) return null
@@ -418,13 +447,13 @@ export const getCanonicalImage = (modelName, colorName) => {
     return model.colors[firstColor] || null
   }
 
-  // 1. Match exact insensible à la casse
+  const colorNorm = normalizeColor(colorName)
+
   const colorKeyExact = Object.keys(model.colors).find(
-    c => c.toLowerCase() === colorName.toLowerCase()
+    c => normalizeColor(c) === colorNorm
   )
   if (colorKeyExact) return model.colors[colorKeyExact]
 
-  // 2. Match via alias (si la base utilise un ancien nom)
   const aliasMap = COLOR_ALIASES[model.name]
   if (aliasMap) {
     const aliasTarget = aliasMap[colorName.toLowerCase()]
@@ -433,30 +462,6 @@ export const getCanonicalImage = (modelName, colorName) => {
     }
   }
 
-  // 3. Fallback première couleur
   const firstColor = Object.keys(model.colors)[0]
   return model.colors[firstColor] || null
-}
-
-export const colorsMatch = (dbColor, catalogColor, modelName) => {
-  if (!dbColor || !catalogColor) return false
-
-  // Match exact insensible à la casse
-  if (dbColor.toLowerCase() === catalogColor.toLowerCase()) {
-    return true
-  }
-
-  // Match via alias
-  const model = getCanonicalModel(modelName)
-  if (model) {
-    const aliasMap = COLOR_ALIASES[model.name]
-    if (aliasMap) {
-      const aliasTarget = aliasMap[dbColor.toLowerCase()]
-      if (aliasTarget && aliasTarget.toLowerCase() === catalogColor.toLowerCase()) {
-        return true
-      }
-    }
-  }
-
-  return false
 }
