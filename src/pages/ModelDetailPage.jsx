@@ -350,7 +350,8 @@ export default function ModelDetailPage() {
 
   const filtered = stockPhones.filter((p) => {
     if (filterStorage && p.storage !== filterStorage) return false
-    if (filterColor   && p.color   !== filterColor)   return false
+    if (filterColor && p.color?.toLowerCase() !== filterColor.toLowerCase())
+      return false
     return true
   })
 
@@ -377,13 +378,18 @@ export default function ModelDetailPage() {
   const isStorageAvailable = (storage) => {
     if (!hasStock) return false
     if (!filterColor) return inStockStorages.has(storage)
-    return stockPhones.some((p) => p.color === filterColor && p.storage === storage)
+    return stockPhones.some(
+      (p) => p.color?.toLowerCase() === filterColor.toLowerCase() && p.storage === storage
+    )
   }
 
   const isColorAvailable = (color) => {
     if (!hasStock) return false
     if (!filterStorage) return inStockColors.has(color)
-    return stockPhones.some((p) => p.storage === filterStorage && p.color === color)
+    return stockPhones.some(
+      p => p.storage === filterStorage &&
+      p.color?.toLowerCase() === color.toLowerCase()
+    )
   }
 
   // Tous les magasins où ce modèle est disponible

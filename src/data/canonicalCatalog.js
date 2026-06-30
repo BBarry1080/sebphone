@@ -401,12 +401,39 @@ export const getCanonicalModel = (modelName) => {
   return found ? { name: found, ...CANONICAL_CATALOG[found] } : null
 }
 
+// Alias pour les couleurs qui ont changé de nom
+// entre la base de données et le catalogue officiel
+const COLOR_ALIASES = {
+  'iPhone 17': {
+    'bleu': 'Bleu brume',
+    'rose': 'Lavande',
+  },
+}
+
 export const getCanonicalImage = (modelName, colorName) => {
   const model = getCanonicalModel(modelName)
   if (!model) return null
-  if (colorName && model.colors[colorName]) {
-    return model.colors[colorName]
+  if (!colorName) {
+    const firstColor = Object.keys(model.colors)[0]
+    return model.colors[firstColor] || null
   }
+
+  // 1. Match exact insensible à la casse
+  const colorKeyExact = Object.keys(model.colors).find(
+    c => c.toLowerCase() === colorName.toLowerCase()
+  )
+  if (colorKeyExact) return model.colors[colorKeyExact]
+
+  // 2. Match via alias (si la base utilise un ancien nom)
+  const aliasMap = COLOR_ALIASES[model.name]
+  if (aliasMap) {
+    const aliasTarget = aliasMap[colorName.toLowerCase()]
+    if (aliasTarget && model.colors[aliasTarget]) {
+      return model.colors[aliasTarget]
+    }
+  }
+
+  // 3. Fallback première couleur
   const firstColor = Object.keys(model.colors)[0]
   return model.colors[firstColor] || null
 }
