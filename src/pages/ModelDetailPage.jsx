@@ -10,7 +10,7 @@ import { phonesMock } from '../data/phonesMock'
 import Spinner from '../components/ui/Spinner'
 import { colorToHex } from '../components/catalogue/PhoneListCard'
 import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
-import { getCanonicalModel, getCanonicalImage } from '../data/canonicalCatalog'
+import { getCanonicalModel, getCanonicalImage, colorsMatch } from '../data/canonicalCatalog'
 import { getStartingPrice } from '../data/startingPrices'
 import { charmPrice } from '../utils/charmPrice'
 
@@ -341,16 +341,13 @@ export default function ModelDetailPage() {
   const inStockStorages = new Set(
     stockPhones.map(p => p.storage).filter(Boolean)
   )
-  const inStockColors = new Set(
-    stockPhones.map(p => p.color).filter(Boolean)
-  )
 
   const storages = allStorages
   const colors = allColors
 
   const filtered = stockPhones.filter((p) => {
     if (filterStorage && p.storage !== filterStorage) return false
-    if (filterColor && p.color?.toLowerCase() !== filterColor.toLowerCase())
+    if (filterColor && !colorsMatch(p.color, filterColor, modelName))
       return false
     return true
   })
@@ -359,7 +356,7 @@ export default function ModelDetailPage() {
   // en stock physique ?
   const isCurrentSelectionInStock = stockPhones.some(p =>
     (!filterStorage || p.storage === filterStorage) &&
-    (!filterColor || p.color === filterColor)
+    (!filterColor || colorsMatch(p.color, filterColor, modelName))
   )
 
   // Si rien en stock direct mais des options sont sélectionnées
@@ -385,10 +382,14 @@ export default function ModelDetailPage() {
 
   const isColorAvailable = (color) => {
     if (!hasStock) return false
-    if (!filterStorage) return inStockColors.has(color)
+    if (!filterStorage) {
+      return stockPhones.some(p =>
+        colorsMatch(p.color, color, modelName)
+      )
+    }
     return stockPhones.some(
       p => p.storage === filterStorage &&
-      p.color?.toLowerCase() === color.toLowerCase()
+      colorsMatch(p.color, color, modelName)
     )
   }
 

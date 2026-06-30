@@ -437,3 +437,26 @@ export const getCanonicalImage = (modelName, colorName) => {
   const firstColor = Object.keys(model.colors)[0]
   return model.colors[firstColor] || null
 }
+
+export const colorsMatch = (dbColor, catalogColor, modelName) => {
+  if (!dbColor || !catalogColor) return false
+
+  // Match exact insensible à la casse
+  if (dbColor.toLowerCase() === catalogColor.toLowerCase()) {
+    return true
+  }
+
+  // Match via alias
+  const model = getCanonicalModel(modelName)
+  if (model) {
+    const aliasMap = COLOR_ALIASES[model.name]
+    if (aliasMap) {
+      const aliasTarget = aliasMap[dbColor.toLowerCase()]
+      if (aliasTarget && aliasTarget.toLowerCase() === catalogColor.toLowerCase()) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
