@@ -324,6 +324,19 @@ export default function ModelDetailPage() {
     return true
   })
 
+  // La combinaison exacte choisie par le client est-elle
+  // en stock physique ?
+  const isCurrentSelectionInStock = stockPhones.some(p =>
+    (!filterStorage || p.storage === filterStorage) &&
+    (!filterColor || p.color === filterColor)
+  )
+
+  // Si rien en stock direct mais des options sont sélectionnées
+  // → mode "Sur commande" pour cette combinaison précise
+  const isOnDemand = hasStock
+    && !isCurrentSelectionInStock
+    && (filterColor || filterStorage)
+
   const bestPhone = filtered.reduce((best, p) => {
     if (!best) return p
     const scoreP    = gradeScore(p) * 100 + (p.battery_health || 0)
@@ -459,22 +472,20 @@ export default function ModelDetailPage() {
                       return (
                         <button
                           key={s}
-                          onClick={() => available && setFilterStorage(filterStorage === s ? null : s)}
-                          disabled={!available}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all relative
+                          onClick={() => setFilterStorage(filterStorage === s ? null : s)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold
+                                      border-2 transition-all cursor-pointer
                             ${filterStorage === s
                               ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
                               : available
-                                ? 'bg-white text-[#1B2A4A] border-gray-200 hover:border-[#1B2A4A] cursor-pointer'
-                                : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
+                                ? 'bg-white text-[#1B2A4A] border-gray-200 hover:border-[#1B2A4A]'
+                                : 'bg-white text-gray-400 border-dashed border-gray-300 hover:border-orange-400'
                             }`}
-                          title={!available ? `${s} indisponible en ${filterColor}` : s}
+                          title={!available
+                            ? `${s} sur commande${filterColor ? ` en ${translateColor(filterColor, t)}` : ''}`
+                            : s}
                         >
-                          {!available ? (
-                            <span className="relative">
-                              <span className="line-through opacity-50">{s}</span>
-                            </span>
-                          ) : s}
+                          {s}
                         </button>
                       )
                     })}
@@ -510,34 +521,30 @@ export default function ModelDetailPage() {
                         <div key={c} className="relative">
                           <button
                             onClick={() => {
-                              if (!available) return
                               const newColor = filterColor === c ? null : c
                               setFilterColor(newColor)
                               if (newColor && filterStorage) {
                                 const storageStillAvailable = stockPhones.some(
-                                  (p) => p.color === newColor && p.storage === filterStorage
+                                  p => p.color === newColor && p.storage === filterStorage
                                 )
-                                if (!storageStillAvailable) setFilterStorage(null)
+                                if (!storageStillAvailable) {
+                                  // Garde le storage sélectionné — le mode "sur commande"
+                                  // va s'activer automatiquement, ne reset plus
+                                }
                               }
                             }}
-                            disabled={!available}
-                            className={`w-8 h-8 rounded-full border-2 transition-all relative
+                            className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer
                               ${filterColor === c
                                 ? 'border-[#1B2A4A] scale-110'
                                 : available
-                                  ? 'border-gray-300 hover:border-gray-400 cursor-pointer'
-                                  : 'border-gray-100 cursor-not-allowed opacity-40'
+                                  ? 'border-gray-300 hover:border-gray-400'
+                                  : 'border-dashed border-gray-300 hover:border-orange-400'
                               }`}
                             style={{ background: colorToHex(c) }}
                             title={available
                               ? translateColor(c, t)
-                              : `${translateColor(c, t)} — indisponible en ${filterStorage}`}
+                              : `${translateColor(c, t)} — sur commande`}
                           />
-                          {!available && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="w-full h-0.5 bg-gray-400 rotate-45 rounded-full" />
-                            </div>
-                          )}
                           {filterColor === c && (
                             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#1B2A4A] rounded-full" />
                           )}
@@ -582,6 +589,48 @@ export default function ModelDetailPage() {
                     })}
                     className="w-full py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC] transition-all">
                     Commander sur commande →
+                  </button>
+                </div>
+              )}
+
+              {showStock && isOnDemand && (
+                <div className="mt-4 bg-orange-50 border border-orange-200
+                                rounded-2xl p-4">
+                  <p className="text-sm font-bold text-orange-700 mb-1">
+                    ⏳ Cette combinaison n'est pas disponible immédiatement
+                  </p>
+                  <p className="text-xs text-orange-600 mb-3">
+                    {filterColor && `Couleur : ${translateColor(filterColor, t)}`}
+                    {filterColor && filterStorage && ' · '}
+                    {filterStorage && `Stockage : ${filterStorage}`}
+                    {' '}— disponible sur commande, délai 24h à 5 jours.
+                  </p>
+                  <button
+                    onClick={() => {
+                      const canonical = canonicalForVariants
+                      navigate('/reservation-commande', {
+                        state: {
+                          phone: {
+                            id: null,
+                            name: modelName,
+                            model: modelName,
+                            brand: phones[0]?.brand || 'Apple',
+                            status: 'sur_commande',
+                            surCommande: true,
+                            storages: canonical?.storages || storages,
+                            colors: canonical?.colors || colors,
+                            price: 0,
+                            categorie: 'telephone',
+                          },
+                          selectedColor: filterColor,
+                          selectedStorage: filterStorage,
+                        }
+                      })
+                    }}
+                    className="w-full py-2.5 bg-orange-500 text-white rounded-xl
+                               text-sm font-bold hover:bg-orange-600
+                               transition-all">
+                    Passer une commande →
                   </button>
                 </div>
               )}
