@@ -230,11 +230,21 @@ export default function Boutique({ defaultBrand = null }) {
                 .filter((canonicalModel) => {
                   if (search && !canonicalModel.model
                     .toLowerCase().includes(search.toLowerCase())) return false
+
+                  const modelStock = getModelStock(canonicalModel.model)
+
+                  if (filterCondition) {
+                    const hasCondition = modelStock.some(
+                      p => p.condition === filterCondition
+                    )
+                    if (!hasCondition) return false
+                  }
+
                   if (filterStatus === 'disponible') {
-                    return getModelStock(canonicalModel.model).length > 0
+                    return modelStock.length > 0
                   }
                   if (filterStatus === 'sur_commande') {
-                    return getModelStock(canonicalModel.model).length === 0
+                    return modelStock.length === 0
                   }
                   return true
                 })
