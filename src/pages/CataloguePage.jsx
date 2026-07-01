@@ -182,7 +182,7 @@ export default function CataloguePage() {
           <div className="flex-1 min-w-0 w-full">
             {loading ? (
               <div className="text-center py-12 text-gray-400">{t('cat_loading')}</div>
-            ) : groupedProducts.length === 0 ? (
+            ) : (canonicalModels.length === 0 && groupedProducts.length === 0) ? (
               <div className="text-center py-12">
                 <span className="text-5xl">{config.emoji}</span>
                 <p className="text-gray-500 mt-3">
