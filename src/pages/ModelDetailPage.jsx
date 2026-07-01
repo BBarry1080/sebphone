@@ -243,17 +243,24 @@ export default function ModelDetailPage() {
       const canonicalOther = Object.values(PHONES_DATABASE)
         .flat()
         .find((p) => p.model.toLowerCase() === decodedModel.toLowerCase())
-      const canonical = canonicalIphone || canonicalLegacy || canonicalOther
+      const canonicalFromCatalog = getCanonicalModel(decodedModel)
+
+      const canonical = canonicalIphone || canonicalLegacy ||
+        canonicalOther || canonicalFromCatalog
 
       if (canonical && (!data || data.length === 0)) {
         setPhones([{
           id:          null,
-          name:        canonical.model,
-          model:       canonical.model,
+          name:        canonical.model || decodedModel,
+          model:       decodedModel,
+          brand:       phones[0]?.brand || 'Apple',
           status:      'sur_commande',
           surCommande: true,
-          storages:    canonical.storages,
-          colors:      canonical.colors,
+          storages:    canonical.storages ||
+            Object.values(canonical.colors || {}).map(() => '').filter(Boolean),
+          colors:      Array.isArray(canonical.colors)
+            ? canonical.colors
+            : (canonical.colors ? Object.keys(canonical.colors) : []),
           price:       0,
           categorie:   'telephone',
         }])

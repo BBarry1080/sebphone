@@ -1,4 +1,6 @@
 import { IMAGE_MAP, PLACEHOLDER } from '../utils/phoneImage'
+import { IPAD_CATALOG, AIRPODS_CATALOG, WATCH_CATALOG } from './catalogDevices'
+import { PHONES_DATABASE } from './phonesDatabase'
 
 // Helper interne : cherche l'image dans IMAGE_MAP par modèle+couleur
 const findImg = (modelKey, colorKey, fallbackColorKey) => {
@@ -389,6 +391,136 @@ export const CANONICAL_CATALOG = {
     },
   },
 }
+
+// Ajout dynamique des Samsung
+if (PHONES_DATABASE?.Samsung) {
+  PHONES_DATABASE.Samsung.forEach(phone => {
+    if (!CANONICAL_CATALOG[phone.model]) {
+      CANONICAL_CATALOG[phone.model] = {
+        storages: phone.storages || [],
+        colors: Object.fromEntries(
+          (phone.colors || []).map(color => [
+            color,
+            findImg(
+              phone.model.toLowerCase().replace(/^samsung\s+/i, ''),
+              color.toLowerCase()
+            )
+          ])
+        ),
+      }
+    }
+  })
+}
+
+// Ajout dynamique des iPads
+IPAD_CATALOG.forEach(ipad => {
+  if (!CANONICAL_CATALOG[ipad.model]) {
+    CANONICAL_CATALOG[ipad.model] = {
+      storages: ipad.storages || [],
+      colors: Object.fromEntries(
+        (ipad.colors || []).map(color => [
+          color,
+          findImg(
+            ipad.model.toLowerCase()
+              .replace(/['"]/g, '')
+              .replace(/\s+/g, ' '),
+            color.toLowerCase()
+          )
+        ])
+      ),
+    }
+  }
+})
+
+// Ajout dynamique des AirPods
+AIRPODS_CATALOG.forEach(airpods => {
+  if (!CANONICAL_CATALOG[airpods.model]) {
+    CANONICAL_CATALOG[airpods.model] = {
+      storages: airpods.storages || [],
+      colors: Object.fromEntries(
+        (airpods.colors || []).map(color => [
+          color,
+          findImg(
+            airpods.model.toLowerCase(),
+            color.toLowerCase()
+          )
+        ])
+      ),
+    }
+  }
+})
+
+// Ajout dynamique des Watch
+WATCH_CATALOG.forEach(watch => {
+  if (!CANONICAL_CATALOG[watch.model]) {
+    CANONICAL_CATALOG[watch.model] = {
+      storages: watch.storages || [],
+      colors: Object.fromEntries(
+        (watch.colors || []).map(color => [
+          color,
+          findImg(
+            watch.model.toLowerCase(),
+            color.toLowerCase()
+          )
+        ])
+      ),
+    }
+  }
+})
+
+// Ajout manuel des MacBook
+const MACBOOK_MODELS = [
+  {
+    model: 'MacBook Air M4',
+    key: 'macbook air m4',
+    storages: ['256Go', '512Go', '1To'],
+    colors: ['Gris sidéral', 'Argent', 'Or', 'Minuit']
+  },
+  {
+    model: 'MacBook Air M3',
+    key: 'macbook air m3',
+    storages: ['256Go', '512Go', '1To'],
+    colors: ['Gris sidéral', 'Argent', 'Or', 'Minuit']
+  },
+  {
+    model: 'MacBook Air 13" M4',
+    key: 'macbook air 13 m4',
+    storages: ['256Go', '512Go', '1To'],
+    colors: ['Gris sidéral', 'Argent', 'Or', 'Minuit']
+  },
+  {
+    model: 'MacBook Air 15" M4',
+    key: 'macbook air 15 m4',
+    storages: ['256Go', '512Go', '1To'],
+    colors: ['Gris sidéral', 'Argent', 'Or', 'Minuit']
+  },
+  {
+    model: 'MacBook Air 13" M3',
+    key: 'macbook air 13 m3',
+    storages: ['256Go', '512Go', '1To'],
+    colors: ['Gris sidéral', 'Argent', 'Or', 'Minuit']
+  },
+  {
+    model: 'MacBook Air 15" M3',
+    key: 'macbook air 15 m3',
+    storages: ['256Go', '512Go', '1To'],
+    colors: ['Gris sidéral', 'Argent', 'Or', 'Minuit']
+  },
+]
+
+MACBOOK_MODELS.forEach(mac => {
+  if (!CANONICAL_CATALOG[mac.model]) {
+    CANONICAL_CATALOG[mac.model] = {
+      storages: mac.storages,
+      colors: Object.fromEntries(
+        mac.colors.map(color => [
+          color,
+          findImg(mac.key, color.toLowerCase())
+        ])
+      ),
+    }
+  }
+})
 
 export const getCanonicalModel = (modelName) => {
   if (!modelName) return null
