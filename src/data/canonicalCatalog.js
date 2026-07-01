@@ -469,7 +469,7 @@ WATCH_CATALOG.forEach(watch => {
 })
 
 // Ajout manuel des MacBook
-const MACBOOK_MODELS = [
+export const MACBOOK_MODELS = [
   {
     model: 'MacBook Air M4',
     key: 'macbook air m4',

@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { getPhoneImage } from '../utils/phoneImage'
 import { useLanguage } from '../contexts/LanguageContext'
 import FilterSidebar, { MobileFilterBar } from '../components/catalogue/FilterSidebar'
+import { IPAD_CATALOG, AIRPODS_CATALOG, WATCH_CATALOG } from '../data/catalogDevices'
+import { MACBOOK_MODELS } from '../data/canonicalCatalog'
 
 const getCategorieConfig = (t) => ({
   tablette: {
@@ -59,10 +61,6 @@ export default function CataloguePage() {
   const filterStatus    = searchParams.get('status')    || null
   const brandParam      = filterBrand
 
-  const imageHeight = ['ordinateur', 'tablette'].includes(categorie)
-    ? 'h-40'
-    : 'h-32'
-
   const updateParam = (key, val) => {
     const params = new URLSearchParams(searchParams)
     if (val) params.set(key, val)
@@ -95,6 +93,15 @@ export default function CataloguePage() {
     }
     fetchProducts()
   }, [categorie])
+
+  // Modèles canoniques affichés selon la catégorie (valeur dérivée,
+  // pas de state/effet : évite react-hooks/set-state-in-effect)
+  const canonicalModels =
+    categorie === 'tablette'   ? IPAD_CATALOG :
+    categorie === 'ecouteur'   ? AIRPODS_CATALOG :
+    categorie === 'montre'     ? WATCH_CATALOG :
+    categorie === 'ordinateur' ? MACBOOK_MODELS :
+    []
 
   const filtered = products.filter((p) => {
     if (search.trim()) {
@@ -191,49 +198,62 @@ export default function CataloguePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {groupedProducts.map((product) => (
-                  <div key={product.id}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all p-4">
-                    <div className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center mb-3 overflow-hidden">
+                {(canonicalModels.length > 0 ? canonicalModels : groupedProducts).map((item) => {
+                  // Si c'est un modèle canonique (vient de IPAD_CATALOG etc.)
+                  const isCanonical = !item.id
+                  const modelName = isCanonical ? item.model : (item.name || item.model)
+                  const slug = toSlug(item.model || item.name)
+
+                  // Cherche si ce modèle a du stock en base
+                  const stockItem = isCanonical
+                    ? groupedProducts.find(p =>
+                        p.model?.toLowerCase() === item.model?.toLowerCase() ||
+                        p.name?.toLowerCase() === item.model?.toLowerCase()
+                      )
+                    : item
+
+                  const hasStock = !!stockItem
+                  const price = stockItem?.price
+                  const imageUrl = getPhoneImage(modelName, item.colors?.[0] || stockItem?.color)
+
+                  return (
+                    <div key={modelName}
+                      className="bg-white rounded-2xl border border-gray-100
+                                 p-4 cursor-pointer hover:border-[#00B4CC]
+                                 hover:shadow-md transition-all"
+                      onClick={() => navigate(`/modele/${slug}`)}>
                       <img
-                        src={getPhoneImage(product.name, product.color)}
-                        alt={product.name}
-                        className={`w-full ${imageHeight} object-contain mb-3 p-2`}
-                        onError={(e) => {
-                          e.target.onerror = null
-                          e.target.style.display = 'none'
-                          e.target.parentElement.innerHTML = `<span style="font-size:48px">${config.emoji}</span>`
-                        }}
+                        src={imageUrl}
+                        onError={e => { e.target.src = '/images/placeholder.png' }}
+                        alt={modelName}
+                        className={`w-full object-contain mb-3
+                          ${['ordinateur','tablette'].includes(categorie)
+                            ? 'h-40' : 'h-32'}`}
                       />
+                      <p className="font-bold text-[#1B2A4A] text-sm">
+                        {modelName}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between">
+                        {hasStock && price ? (
+                          <p className="text-[#00B4CC] font-black text-lg">
+                            {price}€
+                          </p>
+                        ) : (
+                          <p className="text-gray-400 text-sm italic">
+                            Sur commande
+                          </p>
+                        )}
+                        <button
+                          onClick={e => { e.stopPropagation(); navigate(`/modele/${slug}`) }}
+                          className="text-xs bg-[#1B2A4A] text-white
+                                     px-3 py-1.5 rounded-lg
+                                     hover:bg-[#00B4CC] transition-all font-bold">
+                          Choisir →
+                        </button>
+                      </div>
                     </div>
-                    <h3 className="font-bold text-[#1B2A4A] text-sm mb-1">{product.name}</h3>
-                    <p className="text-xs text-gray-500 mb-2">
-                      {product.storage && `${product.storage} · `}
-                      {product.color}
-                    </p>
-                    <div className="flex gap-1 flex-wrap mb-3">
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-lg font-medium">
-                        {product.condition === 'neuf' ? t('cat_filter_new')
-                          : product.condition === 'occasion' ? t('cat_filter_used')
-                          : t('cat_filter_refurbished')}
-                      </span>
-                      {product.grade && (
-                        <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-lg font-medium">
-                          {product.grade}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-black text-[#1B2A4A]">{product.price}€</span>
-                      <button
-                        onClick={() => navigate(`/modele/${toSlug(product.name)}`)}
-                        className="bg-[#1B2A4A] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[#00B4CC] transition-all">
-                        Choisir →
-                      </button>
-                    </div>
-                    <p className="text-xs text-green-600 font-medium mt-2">{t('cat_guarantee')}</p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
