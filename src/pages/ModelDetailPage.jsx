@@ -253,7 +253,7 @@ export default function ModelDetailPage() {
           id:          null,
           name:        canonical.model || decodedModel,
           model:       decodedModel,
-          brand:       phones[0]?.brand || 'Apple',
+          brand:       'Apple',
           status:      'sur_commande',
           surCommande: true,
           storages:    canonical.storages ||
