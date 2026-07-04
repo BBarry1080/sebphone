@@ -496,7 +496,8 @@ export default function ModelDetailPage() {
               )}
 
               {/* Filtre stockage */}
-              {showStock && storages.length >= 1 && (
+              {showStock && storages.length >= 1 &&
+               storages.some(s => s && s.trim() !== '') && (
                 <div className="mb-4">
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
                     {t('phone_capacity')}
@@ -1041,6 +1042,8 @@ export default function ModelDetailPage() {
               </div>
 
               {/* Sélecteur stockage */}
+              {surCommandeStorages.length > 0 &&
+               surCommandeStorages.some(s => s && s.trim() !== '') && (
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase mb-2">
                   {t('model_capacity')}
@@ -1059,6 +1062,7 @@ export default function ModelDetailPage() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Prix + Bouton */}
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
