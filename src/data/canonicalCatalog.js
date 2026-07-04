@@ -528,7 +528,7 @@ export const getCanonicalModel = (modelName) => {
     .replace(/^apple\s+/i, '')
     .trim()
   const found = Object.keys(CANONICAL_CATALOG).find(
-    k => k.toLowerCase() === normalized
+    k => k.toLowerCase().replace(/^apple\s+/i, '') === normalized
   )
   return found ? { name: found, ...CANONICAL_CATALOG[found] } : null
 }
