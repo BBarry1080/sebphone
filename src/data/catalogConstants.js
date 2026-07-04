@@ -7,17 +7,17 @@ export const MODELS_BY_CATEGORIE = {
   tablette: {
     'Apple': [
       // Neufs
-      'iPad 11 A16 2025 WiFi',
-      'iPad Air 11" 2025 WiFi',
-      'iPad Pro 11" M4 WiFi',
-      'iPad Pro 13" M5 WiFi',
-      'iPad Pro 11" M5 WiFi',
+      'iPad 11',
+      'iPad Air 11"',
+      'iPad Pro 11"',
+      'iPad Pro 13"',
+      'iPad Pro 11" M5',
       // Occasion
-      'iPad 7e génération WiFi',
-      'iPad 6e génération WiFi',
-      'iPad Air 2 WiFi',
-      'iPad Air 2 WiFi + Cellular',
-      'iPad 3 WiFi',
+      'iPad 7e génération',
+      'iPad 6e génération',
+      'iPad Air 2',
+      'iPad Air 2 ',
+      'iPad 3',
     ],
     'Samsung': [
       'Samsung Galaxy Tab S11 Ultra',

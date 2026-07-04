@@ -429,46 +429,46 @@ const IMAGE_MAP = {
   },
 
   // ── iPADS ───────────────────────────────────────────────────────────────
-  "ipad 11 a16 2025 wifi": {
+  "ipad 11": {
     default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-finish-select-202503-blue?wid=5120&hei=2880&fmt=webp&qlt=90&.v=aHYyeWZ6TVBzTWw5WlZ2bFJCZno2cjdIcnY1QlRYMFlvWlhuNHdTVUZQS1Z4L0VZT3V2TzUvUTBrMmhIQlZsS3lPWjFvdU5EZVdwUnRCZ2RHSDBFS3NRZ2ZhNWVISml5WG1SY0E5S0hPaFoyUXQrc1F4VFIwcWJZNzNTUVpwSTY&traceId=1",
     "bleu": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-finish-select-202503-blue?wid=5120&hei=2880&fmt=webp&qlt=90&.v=aHYyeWZ6TVBzTWw5WlZ2bFJCZno2cjdIcnY1QlRYMFlvWlhuNHdTVUZQS1Z4L0VZT3V2TzUvUTBrMmhIQlZsS3lPWjFvdU5EZVdwUnRCZ2RHSDBFS3NRZ2ZhNWVISml5WG1SY0E5S0hPaFoyUXQrc1F4VFIwcWJZNzNTUVpwSTY&traceId=1",
   },
-  "ipad air 11 2025 wifi": {
+  "ipad air 11": {
     default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-11inch-space-gray?wid=5120&hei=2880&fmt=webp&qlt=90&.v=SzlUeW5ITUpKK1FKdDdNS0xNUVhmM3hxSU9Rc1hENld5ZlZGbisxZU9hWHRiNzVnbmkvN1ZZYkRMenpIV2Q5emdCOVI4SUNZWW56UDRQN0hkK2RSSEFDb1F2RTNvUEVHRkpGaGtOSVFHak5ZWG1Bb2Y1bnlJNll0dFBJUmxDYUcrUjFWME04VFo1RjFVZk82TGFEcklB&traceId=1",
     "gris sideral": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-11inch-space-gray?wid=5120&hei=2880&fmt=webp&qlt=90&.v=SzlUeW5ITUpKK1FKdDdNS0xNUVhmM3hxSU9Rc1hENld5ZlZGbisxZU9hWHRiNzVnbmkvN1ZZYkRMenpIV2Q5emdCOVI4SUNZWW56UDRQN0hkK2RSSEFDb1F2RTNvUEVHRkpGaGtOSVFHak5ZWG1Bb2Y1bnlJNll0dFBJUmxDYUcrUjFWME04VFo1RjFVZk82TGFEcklB&traceId=1",
   },
-  "ipad pro 11 m4 wifi": {
+  "ipad pro 11": {
     default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-silver?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUJLNkVlVkZpVE5VcEU5RHJDbXpCOXF2TWlpSzUzejRCZGt2SjJUNGl1VEE4bm1RcmlWRWp2eDN1WHNkSjNmUmEvQ0hVc0dNMTRHeWE3dDZOT0ZZVDk&traceId=1",
     "argent": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-silver?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUJLNkVlVkZpVE5VcEU5RHJDbXpCOXF2TWlpSzUzejRCZGt2SjJUNGl1VEE4bm1RcmlWRWp2eDN1WHNkSjNmUmEvQ0hVc0dNMTRHeWE3dDZOT0ZZVDk&traceId=1",
     "noir sideral": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUFkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE4dUoyTGQvczVjTzVnd1B6UVQwaE1kY2pTL29BZENSMUorTENnaisrZ2Q1V2I1SmdseVdkemNCYWFjKzF3OGpkUDFB&traceId=1",
   },
-  "ipad pro 13 m5 wifi": {
+  "ipad pro 13": {
     default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-13inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNDByMHhIZkdBbFEwRFROUE9ubkFjT0FkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE0dUoyTGQvczVjTzVnd1B6UVQwaE1kY2ltdVdwbG5WMFRSbXYxQVhPWGZnNzlPSWh1UVhJRldSUVRIMWxicWhmRG1R&traceId=1",
     "noir sideral": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-13inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNDByMHhIZkdBbFEwRFROUE9ubkFjT0FkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE0dUoyTGQvczVjTzVnd1B6UVQwaE1kY2ltdVdwbG5WMFRSbXYxQVhPWGZnNzlPSWh1UVhJRldSUVRIMWxicWhmRG1R&traceId=1",
   },
-  "ipad pro 11 m5 wifi": {
+  "ipad pro 11 m5": {
     default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUFkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE4dUoyTGQvczVjTzVnd1B6UVQwaE1kY2pTL29BZENSMUorTENnaisrZ2Q1V2I1SmdseVdkemNCYWFjKzF3OGpkUDFB&traceId=1",
     "noir sideral": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUFkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE4dUoyTGQvczVjTzVnd1B6UVQwaE1kY2pTL29BZENSMUorTENnaisrZ2Q1V2I1SmdseVdkemNCYWFjKzF3OGpkUDFB&traceId=1",
   },
-  "ipad 7e generation wifi": {
+  "ipad 7e generation": {
     default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111911_sp807-ipad-7th-gen.png",
     "argent": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111911_sp807-ipad-7th-gen.png",
   },
-  "ipad 6e generation wifi": {
+  "ipad 6e generation": {
     default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111957_sp774-ipad-6-gen.png",
     "argent": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111957_sp774-ipad-6-gen.png",
   },
-  "ipad air 2 wifi": {
+  "ipad air 2": {
     default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/112017_SP708-gold.jpeg",
     "or": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/112017_SP708-gold.jpeg",
   },
-  "ipad air 2 wifi + cellular": {
+  "ipad air 2 + cellular": {
     default:       "/images/ipads/ipad-air-2-argent.png",
     "argent":      "/images/ipads/ipad-air-2-argent.png",
     "or":          "/images/ipads/ipad-air-2-or.png",
     "gris sideral":"/images/ipads/ipad-air-2-gris-sideral.png",
   },
-  "ipad 3 wifi": {
+  "ipad 3": {
     default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111904_ipad-air-2019.jpg",
     "argent": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111904_ipad-air-2019.jpg",
   },
