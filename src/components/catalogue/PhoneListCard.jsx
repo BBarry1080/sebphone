@@ -24,6 +24,13 @@ export const colorToHex = (colorName) => {
     'Titane bleu': '#4A6FA5', 'Titane désert': '#C8A87A',
     'Corail': '#FF7F50', 'Orange cosmique': '#FF6B35',
     'Gris sidéral': '#4A4A4A',
+    // AirPods Max
+    'lumiere stellaire': '#E9DFD3',
+    'lumière stellaire': '#E9DFD3',
+    'minuit': '#2B3336',
+    'bleu': '#AABFCA',
+    'violet': '#C8C0D5',
+    'orange': '#FEC2A0',
   }
   return map[colorName] || '#9CA3AF'
 }
