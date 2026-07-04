@@ -413,6 +413,9 @@ export default function ModelDetailPage() {
 
   const surCommandeModel    = surCommandePhones[0]?.name || surCommandePhones[0]?.model || modelName
   const canonicalSurCommande = getCanonicalModel(surCommandeModel)
+  const isWatch = modelName.toLowerCase().includes('watch')
+  const storageLabel = isWatch ? 'Taille' : t('phone_capacity')
+  const surCommandeStorageLabel = isWatch ? 'Taille' : t('model_capacity')
   const surCommandeColors = canonicalSurCommande?.colors
     ? Object.keys(canonicalSurCommande.colors)
     : getSurCommandeColors(surCommandeModel)
@@ -505,7 +508,7 @@ export default function ModelDetailPage() {
                storages.some(s => s && s.trim() !== '') && (
                 <div className="mb-4">
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
-                    {t('phone_capacity')}
+                    {storageLabel}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <FilterPill
@@ -1051,7 +1054,7 @@ export default function ModelDetailPage() {
                surCommandeStorages.some(s => s && s.trim() !== '') && (
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase mb-2">
-                  {t('model_capacity')}
+                  {surCommandeStorageLabel}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {surCommandeStorages.map((s) => (
