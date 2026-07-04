@@ -7,7 +7,25 @@ import { charmPrice } from '../../utils/charmPrice'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { translateColor } from '../../utils/translateColor'
 
-export const colorToHex = (colorName) => {
+const AIRPODS_MAX_COLORS = {
+  'Lumière stellaire': '#E9DFD3',
+  'Lumiere stellaire': '#E9DFD3',
+  'Minuit':            '#2B3336',
+  'Bleu':              '#AABFCA',
+  'Violet':            '#C8C0D5',
+  'Orange':            '#FEC2A0',
+}
+
+export const colorToHex = (colorName, modelName = '') => {
+  if (!colorName) return '#9CA3AF'
+
+  // Table dédiée AirPods Max
+  if (modelName?.toLowerCase().includes('airpods max') ||
+      modelName?.toLowerCase().includes('airpods-max')) {
+    return AIRPODS_MAX_COLORS[colorName] || '#9CA3AF'
+  }
+
+  // Table générale existante (inchangée)
   const map = {
     'Noir': '#1C1C1E', 'Minuit': '#1C1C1E', 'Noir de jais': '#0A0A0A', 'Noir spatial': '#1C1C1E',
     'Blanc': '#F5F5F0', 'Lumière stellaire': '#F5F0E8', 'Argent': '#C0C0C0',
@@ -24,13 +42,6 @@ export const colorToHex = (colorName) => {
     'Titane bleu': '#4A6FA5', 'Titane désert': '#C8A87A',
     'Corail': '#FF7F50', 'Orange cosmique': '#FF6B35',
     'Gris sidéral': '#4A4A4A',
-    // AirPods Max
-    'lumiere stellaire': '#E9DFD3',
-    'lumière stellaire': '#E9DFD3',
-    'minuit': '#2B3336',
-    'bleu': '#AABFCA',
-    'violet': '#C8C0D5',
-    'orange': '#FEC2A0',
   }
   return map[colorName] || '#9CA3AF'
 }

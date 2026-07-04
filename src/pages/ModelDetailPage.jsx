@@ -589,7 +589,7 @@ export default function ModelDetailPage() {
                                   ? 'border-gray-300 hover:border-gray-400'
                                   : 'border-dashed border-gray-300 hover:border-orange-400'
                               }`}
-                            style={{ background: colorToHex(c) }}
+                            style={{ background: colorToHex(c, modelName) }}
                             title={available
                               ? translateColor(c, t)
                               : `${translateColor(c, t)} — sur commande`}
