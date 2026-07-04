@@ -1032,7 +1032,7 @@ export default function ModelDetailPage() {
                         ${selectedSurCommandeColor === color
                           ? 'border-[#1B2A4A] scale-110 shadow-md'
                           : 'border-gray-200 hover:border-gray-400'}`}
-                      style={{ backgroundColor: COLOR_HEX[color] || '#d1d5db' }}>
+                      style={{ backgroundColor: colorToHex(color, surCommandeModel) }}>
                       {selectedSurCommandeColor === color && (
                         <span className="absolute inset-0 flex items-center justify-center text-xs font-bold"
                           style={{
