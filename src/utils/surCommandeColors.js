@@ -1,4 +1,21 @@
 export const getSurCommandeColors = (modelName) => {
+  const name = (modelName || '').toLowerCase()
+
+  // AirPods → uniquement Blanc
+  if (name.includes('airpods') || name.includes('airpod')) {
+    if (name.includes('max')) {
+      return ['Lumière stellaire', 'Minuit', 'Bleu', 'Violet', 'Orange']
+    }
+    return ['Blanc']
+  }
+
+  // Watch → pas de couleurs génériques
+  if (name.includes('watch')) {
+    if (name.includes('ultra')) return ['Titane naturel', 'Titane noir']
+    if (name.includes('se')) return ['Lumière stellaire', 'Minuit', 'Argent']
+    return ['Noir', 'Argent', 'Or rose', 'Titane naturel']
+  }
+
   const modelColors = {
     'iPhone 17 Pro Max': ['Titane naturel', 'Titane désert', 'Titane noir', 'Titane blanc'],
     'iPhone 17 Pro': ['Titane naturel', 'Titane désert', 'Titane noir', 'Titane blanc'],
@@ -31,6 +48,11 @@ export const getSurCommandeColors = (modelName) => {
 export const getSurCommandeStorages = (modelName) => {
   if (!modelName) return ['128Go', '256Go']
   const name = modelName.toLowerCase()
+
+  // AirPods et Watch → pas de stockage
+  if (name.includes('airpods') ||
+      name.includes('watch') ||
+      name.includes('airpod')) return []
 
   // iPhone 17 série
   if (name.includes('iphone 17 pro max') || name.includes('iphone 17 pro'))

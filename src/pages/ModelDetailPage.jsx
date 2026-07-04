@@ -412,8 +412,13 @@ export default function ModelDetailPage() {
   const refPrice = isAllReconditionne ? getStartingPrice(modelName) : null
 
   const surCommandeModel    = surCommandePhones[0]?.name || surCommandePhones[0]?.model || modelName
-  const surCommandeColors   = getSurCommandeColors(surCommandeModel)
-  const surCommandeStorages = getSurCommandeStorages(surCommandeModel)
+  const canonicalSurCommande = getCanonicalModel(surCommandeModel)
+  const surCommandeColors = canonicalSurCommande?.colors
+    ? Object.keys(canonicalSurCommande.colors)
+    : getSurCommandeColors(surCommandeModel)
+  const surCommandeStorages = canonicalSurCommande?.storages?.length >= 0
+    ? canonicalSurCommande.storages
+    : getSurCommandeStorages(surCommandeModel)
   const surCommandeDisplayImage = selectedSurCommandeColor
     ? getPhoneImage(surCommandeModel, selectedSurCommandeColor)
     : getPhoneImage(surCommandeModel, surCommandeColors[0])
