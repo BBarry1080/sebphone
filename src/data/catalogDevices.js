@@ -17,7 +17,17 @@ export const AIRPODS_CATALOG = [
   { model: 'AirPods 4 ANC', storages: [], colors: ['Blanc'] },
   { model: 'AirPods Pro 2', storages: [], colors: ['Blanc'] },
   { model: 'AirPods Pro 3', storages: [], colors: ['Blanc'] },
-  { model: 'AirPods Max',   storages: [], colors: ['Blanc lumière stellaire', 'Noir minuit', 'Bleu', 'Orange', 'Violet'] },
+  {
+    model: 'AirPods Max',
+    storages: [],
+    colors: [
+      'Lumière stellaire',
+      'Minuit',
+      'Bleu',
+      'Violet',
+      'Orange',
+    ]
+  },
 ]
 
 export const WATCH_CATALOG = [
