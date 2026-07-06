@@ -430,40 +430,40 @@ const IMAGE_MAP = {
 
   // ── iPADS ───────────────────────────────────────────────────────────────
   "ipad 11": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-finish-select-202503-blue?wid=5120&hei=2880&fmt=webp&qlt=90&.v=aHYyeWZ6TVBzTWw5WlZ2bFJCZno2cjdIcnY1QlRYMFlvWlhuNHdTVUZQS1Z4L0VZT3V2TzUvUTBrMmhIQlZsS3lPWjFvdU5EZVdwUnRCZ2RHSDBFS3NRZ2ZhNWVISml5WG1SY0E5S0hPaFoyUXQrc1F4VFIwcWJZNzNTUVpwSTY&traceId=1",
-    "bleu": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-finish-select-202503-blue?wid=5120&hei=2880&fmt=webp&qlt=90&.v=aHYyeWZ6TVBzTWw5WlZ2bFJCZno2cjdIcnY1QlRYMFlvWlhuNHdTVUZQS1Z4L0VZT3V2TzUvUTBrMmhIQlZsS3lPWjFvdU5EZVdwUnRCZ2RHSDBFS3NRZ2ZhNWVISml5WG1SY0E5S0hPaFoyUXQrc1F4VFIwcWJZNzNTUVpwSTY&traceId=1",
+    default: "/images/ipads/ipad-11-default.webp",
+    "bleu": "/images/ipads/ipad-11-bleu.webp",
   },
   "ipad air 11": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-11inch-space-gray?wid=5120&hei=2880&fmt=webp&qlt=90&.v=SzlUeW5ITUpKK1FKdDdNS0xNUVhmM3hxSU9Rc1hENld5ZlZGbisxZU9hWHRiNzVnbmkvN1ZZYkRMenpIV2Q5emdCOVI4SUNZWW56UDRQN0hkK2RSSEFDb1F2RTNvUEVHRkpGaGtOSVFHak5ZWG1Bb2Y1bnlJNll0dFBJUmxDYUcrUjFWME04VFo1RjFVZk82TGFEcklB&traceId=1",
-    "gris sideral": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-air-finish-select-gallery-202405-11inch-space-gray?wid=5120&hei=2880&fmt=webp&qlt=90&.v=SzlUeW5ITUpKK1FKdDdNS0xNUVhmM3hxSU9Rc1hENld5ZlZGbisxZU9hWHRiNzVnbmkvN1ZZYkRMenpIV2Q5emdCOVI4SUNZWW56UDRQN0hkK2RSSEFDb1F2RTNvUEVHRkpGaGtOSVFHak5ZWG1Bb2Y1bnlJNll0dFBJUmxDYUcrUjFWME04VFo1RjFVZk82TGFEcklB&traceId=1",
+    default: "/images/ipads/ipad-air-11-default.webp",
+    "gris sideral": "/images/ipads/ipad-air-11-gris-sideral.webp",
   },
   "ipad pro 11": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-silver?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUJLNkVlVkZpVE5VcEU5RHJDbXpCOXF2TWlpSzUzejRCZGt2SjJUNGl1VEE4bm1RcmlWRWp2eDN1WHNkSjNmUmEvQ0hVc0dNMTRHeWE3dDZOT0ZZVDk&traceId=1",
-    "argent": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-silver?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUJLNkVlVkZpVE5VcEU5RHJDbXpCOXF2TWlpSzUzejRCZGt2SjJUNGl1VEE4bm1RcmlWRWp2eDN1WHNkSjNmUmEvQ0hVc0dNMTRHeWE3dDZOT0ZZVDk&traceId=1",
-    "noir sideral": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUFkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE4dUoyTGQvczVjTzVnd1B6UVQwaE1kY2pTL29BZENSMUorTENnaisrZ2Q1V2I1SmdseVdkemNCYWFjKzF3OGpkUDFB&traceId=1",
+    default: "/images/ipads/ipad-pro-11-default.webp",
+    "argent": "/images/ipads/ipad-pro-11-argent.webp",
+    "noir sideral": "/images/ipads/ipad-pro-11-noir-sideral.webp",
   },
   "ipad pro 13": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-13inch-silver?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNDByMHhIZkdBbFEwRFROUE9ubkFjT0JLNkVlVkZpVE5VcEU5RHJDbXpCOXF2TWlpSzUzejRCZGt2SjJUNGl1VEE4bm1RcmlWRWp2eDN1WHNkSjNmUllZL0pKZXh4SzVKTkVSLzVNYi85bWE&traceId=1",
-    "argent": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-13inch-silver?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNDByMHhIZkdBbFEwRFROUE9ubkFjT0JLNkVlVkZpVE5VcEU5RHJDbXpCOXF2TWlpSzUzejRCZGt2SjJUNGl1VEE4bm1RcmlWRWp2eDN1WHNkSjNmUllZL0pKZXh4SzVKTkVSLzVNYi85bWE&traceId=1",
-    "noir sideral": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-13inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNDByMHhIZkdBbFEwRFROUE9ubkFjT0FkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE0dUoyTGQvczVjTzVnd1B6UVQwaE1kY2ltdVdwbG5WMFRSbXYxQVhPWGZnNzlPSWh1UVhJRldSUVRIMWxicWhmRG1R&traceId=1",
+    default: "/images/ipads/ipad-pro-13-default.webp",
+    "argent": "/images/ipads/ipad-pro-13-argent.webp",
+    "noir sideral": "/images/ipads/ipad-pro-13-default.webp",
   },
   "ipad pro 11 m5": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUFkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE4dUoyTGQvczVjTzVnd1B6UVQwaE1kY2pTL29BZENSMUorTENnaisrZ2Q1V2I1SmdseVdkemNCYWFjKzF3OGpkUDFB&traceId=1",
-    "noir sideral": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/ipad-pro-finish-select-202405-11inch-spaceblack?wid=5120&hei=2880&fmt=webp&qlt=90&.v=YXpaUEtKWGhlNnNrVGZkTEo4T0xsNEsrMGFueUl5dllOTm9xWTIwTHNieUFkTVhEZDlmdGh2cFlYWEZ5TmhXMlpGQnBBWVp4a3ZSd0Y4NzlDUVE4dUoyTGQvczVjTzVnd1B6UVQwaE1kY2pTL29BZENSMUorTENnaisrZ2Q1V2I1SmdseVdkemNCYWFjKzF3OGpkUDFB&traceId=1",
+    default: "/images/ipads/ipad-pro-11-m5-default.webp",
+    "noir sideral": "/images/ipads/ipad-pro-11-m5-noir-sideral.webp",
   },
   "ipad 7e generation": {
-    default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111911_sp807-ipad-7th-gen.png",
-    "argent": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111911_sp807-ipad-7th-gen.png",
+    default: "/images/ipads/ipad-7e-generation-default.png",
+    "argent": "/images/ipads/ipad-7e-generation-argent.png",
   },
   "ipad 6e generation": {
-    default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111957_sp774-ipad-6-gen.png",
-    "argent": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111957_sp774-ipad-6-gen.png",
+    default: "/images/ipads/ipad-6e-generation-default.png",
+    "argent": "/images/ipads/ipad-6e-generation-argent.png",
   },
   "ipad air 2": {
-    default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/112017_SP708-gold.jpeg",
-    "or": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/112017_SP708-gold.jpeg",
-    "argent": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/112017_SP708-gold.jpeg",
-    "gris sideral": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/112017_SP708-gold.jpeg",
+    default: "/images/ipads/ipad-air-2-default.jpg",
+    "or": "/images/ipads/ipad-air-2-or.jpg",
+    "argent": "/images/ipads/ipad-air-2-argent.jpg",
+    "gris sideral": "/images/ipads/ipad-air-2-gris-sideral.jpg",
   },
   "ipad air 2 + cellular": {
     default:       "/images/ipads/ipad-air-2-argent.png",
@@ -472,58 +472,58 @@ const IMAGE_MAP = {
     "gris sideral":"/images/ipads/ipad-air-2-gris-sideral.png",
   },
   "ipad 3": {
-    default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111904_ipad-air-2019.jpg",
-    "argent": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111904_ipad-air-2019.jpg",
+    default: "/images/ipads/ipad-3-default.png",
+    "argent": "/images/ipads/ipad-3-argent.png",
   },
 
   // ── AirPODS ─────────────────────────────────────────────────────────────
   "airpods 3": {
-    default: "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111863_airpods-3rdgen-2.png",
-    "blanc": "https://cdsassets.apple.com/live/SZLF0YNV/images/sp/111863_airpods-3rdgen-2.png",
+    default: "/images/airpods/airpods-3-default.png",
+    "blanc": "/images/airpods/airpods-3-blanc.png",
   },
   "airpods 4": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-4-select-202409_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=WnVKRVRUTFVsYThXaWkydWViL1Q3ZDZGTE9TV3RDcGJJclBqdUtzdTJYYjNHc3NlSmU2dzJyR1kxZEwyTE1neUJkRlpCNVhYU3AwTldRQldlSnpRa0NZZXAxWFNjRXhITDI1RVE5YVpyU0E",
-    "blanc": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-4-select-202409_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=WnVKRVRUTFVsYThXaWkydWViL1Q3ZDZGTE9TV3RDcGJJclBqdUtzdTJYYjNHc3NlSmU2dzJyR1kxZEwyTE1neUJkRlpCNVhYU3AwTldRQldlSnpRa0NZZXAxWFNjRXhITDI1RVE5YVpyU0E",
+    default: "/images/airpods/airpods-4-default.jpg",
+    "blanc": "/images/airpods/airpods-4-blanc.jpg",
   },
   "airpods 4 anc": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-4-anc-select-202409_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=Qklmb1JJend3cVIxSUxIeFBIRk96cUNGMHVRUVpqOEFiUFU4R0xNRVFxdkhJa2hkRmxkTlJIMk9SdFNSaWFNODE1UUxLT2t0cW42N3FvQzVqaGhrVVcvdmFyQU52eG9rbk9Lb1pmQWN1MGgrYWpGdS9XeFgvbS9ITnNYOEhYaG4",
-    "blanc": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-4-anc-select-202409_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=Qklmb1JJend3cVIxSUxIeFBIRk96cUNGMHVRUVpqOEFiUFU4R0xNRVFxdkhJa2hkRmxkTlJIMk9SdFNSaWFNODE1UUxLT2t0cW42N3FvQzVqaGhrVVcvdmFyQU52eG9rbk9Lb1pmQWN1MGgrYWpGdS9XeFgvbS9ITnNYOEhYaG4",
+    default: "/images/airpods/airpods-4-anc-default.jpg",
+    "blanc": "/images/airpods/airpods-4-anc-blanc.jpg",
   },
   "airpods pro 2": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-pro-3-hero-select-202509?wid=976&hei=916&fmt=jpeg&qlt=90&.v=cmp4MmZ6OWxOeHNNTXh4SzlBNUpEb1RucE9zZTI5eEREaWZpY29lSld3eWVDYXovZDMyN1dXU211bjZoVlVUcWJGcXNRQnFCV0w3WVRjTExvdm1ic1YxRUxFRmRlWDBITzhnRmZ5OTRmaVdKTExiOEFsRmxtQ2Nua0tRSC83MkI",
-    "blanc": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-pro-3-hero-select-202509?wid=976&hei=916&fmt=jpeg&qlt=90&.v=cmp4MmZ6OWxOeHNNTXh4SzlBNUpEb1RucE9zZTI5eEREaWZpY29lSld3eWVDYXovZDMyN1dXU211bjZoVlVUcWJGcXNRQnFCV0w3WVRjTExvdm1ic1YxRUxFRmRlWDBITzhnRmZ5OTRmaVdKTExiOEFsRmxtQ2Nua0tRSC83MkI",
+    default: "/images/airpods/airpods-pro-2-default.jpg",
+    "blanc": "/images/airpods/airpods-pro-2-blanc.jpg",
   },
   "airpods pro 3": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-pro-3-hero-select-202509?wid=976&hei=916&fmt=jpeg&qlt=90&.v=cmp4MmZ6OWxOeHNNTXh4SzlBNUpEb1RucE9zZTI5eEREaWZpY29lSld3eWVDYXovZDMyN1dXU211bjZoVlVUcWJGcXNRQnFCV0w3WVRjTExvdm1ic1YxRUxFRmRlWDBITzhnRmZ5OTRmaVdKTExiOEFsRmxtQ2Nua0tRSC83MkI",
-    "blanc": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-pro-3-hero-select-202509?wid=976&hei=916&fmt=jpeg&qlt=90&.v=cmp4MmZ6OWxOeHNNTXh4SzlBNUpEb1RucE9zZTI5eEREaWZpY29lSld3eWVDYXovZDMyN1dXU211bjZoVlVUcWJGcXNRQnFCV0w3WVRjTExvdm1ic1YxRUxFRmRlWDBITzhnRmZ5OTRmaVdKTExiOEFsRmxtQ2Nua0tRSC83MkI",
+    default: "/images/airpods/airpods-pro-3-default.jpg",
+    "blanc": "/images/airpods/airpods-pro-3-blanc.jpg",
   },
   "airpods max": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-max-select-202409-midnight_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=azQxRkVJKzd6V3J0aGNqWFhLMzBmdmVWNWdHYnp5cHkwMldsSElEOHpyd0cyWGRFNFZ5QTk3bFlteis2Q2NNaWpENFdPQTN0TWQ4ejhtTWxrUHVDeElGZGV2eWhZaEljUzNSeDlxcDVuWGszbTFldUtUQzN0ellEWHZ3UUFYSS8",
-    "minuit": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-max-select-202409-midnight_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=azQxRkVJKzd6V3J0aGNqWFhLMzBmdmVWNWdHYnp5cHkwMldsSElEOHpyd0cyWGRFNFZ5QTk3bFlteis2Q2NNaWpENFdPQTN0TWQ4ejhtTWxrUHVDeElGZGV2eWhZaEljUzNSeDlxcDVuWGszbTFldUtUQzN0ellEWHZ3UUFYSS8",
-    "lumiere stellaire": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-max-select-202409-starlight_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=azQxRkVJKzd6V3J0aGNqWFhLMzBmdWd1NjlYUXFPTDZEK2xySGJScW1PS1Rpbjg5MjlaRWkwN0JTZEtNR2p3b2dmcFJCOTlLWlREUEJzL3lTN2VnL0cvVnNUQWxFNHNrME94a1pxdUNOU29FM01jakdGSHhMVXhHQ21YeXBIKzU",
-    "bleu": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-max-select-202409-blue_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=azQxRkVJKzd6V3J0aGNqWFhLMzBmaVZsckZUTTZZd1pFb3lRTGNlYkF0Yy9BSXRGSWdwVEs0NXdLd3JPRVQ3TGROL2hTdHRlcnVBMFhCNlFSVHgrS01jL2RQeWJYZ1FmWXUzRFBMSzJrTlJTZy9JeUNjV2pzbzd6anYzTldHVWw",
-    "violet": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-max-select-202409-purple_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=azQxRkVJKzd6V3J0aGNqWFhLMzBmdEFZMGtjOXNTYXJEaHFYa1lFVzIyUnJHdFc3SWNOdWRSclF6WTRFc2h1eFJnYUxCQWt1UDJiRlJNZVhPYkVVc2hXdERnUW81QWI5aTlucjZuTWh1dnhzQVNZV1grZHBseDduSWhqSlA3QUE",
-    "orange": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/airpods-max-select-202409-orange_FV1?wid=976&hei=916&fmt=jpeg&qlt=90&.v=azQxRkVJKzd6V3J0aGNqWFhLMzBmbVl3dU4zNmtlQ1czYnJUSEJUcWowRnJHdFc3SWNOdWRSclF6WTRFc2h1eFJnYUxCQWt1UDJiRlJNZVhPYkVVc2hXdERnUW81QWI5aTlucjZuTWh1dnk3Zm5tZm5FR0tlWnFHbkRhQU5lZmc",
+    default: "/images/airpods/airpods-max-default.jpg",
+    "minuit": "/images/airpods/airpods-max-minuit.jpg",
+    "lumiere stellaire": "/images/airpods/airpods-max-lumiere-stellaire.jpg",
+    "bleu": "/images/airpods/airpods-max-bleu.jpg",
+    "violet": "/images/airpods/airpods-max-violet.jpg",
+    "orange": "/images/airpods/airpods-max-orange.jpg",
   },
 
   // ── APPLE WATCH ─────────────────────────────────────────────────────────
   "apple watch se 3": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/se-case-size-select-202509-midnight-40mm?wid=5120&hei=3280&fmt=p-jpg&qlt=80&.v=S0ZpY0dROXo2U0dDeTlxWXM0bXUycjBvakh1aHZuL3FLK09FcWhjUzhyVXBTWHRqQXAxMUZ6VkVsSloyUktPMXpvSEo2UzBKSm5BUmFETEIwa1Jzd1BXdlJRYjdSZWJHVUh4aFVDb0hhVVVBekpGN1FPM1VpemRHM1FDeGhkc24",
-    "minuit": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/se-case-size-select-202509-midnight-40mm?wid=5120&hei=3280&fmt=p-jpg&qlt=80&.v=S0ZpY0dROXo2U0dDeTlxWXM0bXUycjBvakh1aHZuL3FLK09FcWhjUzhyVXBTWHRqQXAxMUZ6VkVsSloyUktPMXpvSEo2UzBKSm5BUmFETEIwa1Jzd1BXdlJRYjdSZWJHVUh4aFVDb0hhVVVBekpGN1FPM1VpemRHM1FDeGhkc24",
-    "lumiere stellaire": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/se-case-size-select-202509-midnight-40mm?wid=5120&hei=3280&fmt=p-jpg&qlt=80&.v=S0ZpY0dROXo2U0dDeTlxWXM0bXUycjBvakh1aHZuL3FLK09FcWhjUzhyVXBTWHRqQXAxMUZ6VkVsSloyUktPMXpvSEo2UzBKSm5BUmFETEIwa1Jzd1BXdlJRYjdSZWJHVUh4aFVDb0hhVVVBekpGN1FPM1VpemRHM1FDeGhkc24",
-    "argent": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/se-case-size-select-202509-midnight-40mm?wid=5120&hei=3280&fmt=p-jpg&qlt=80&.v=S0ZpY0dROXo2U0dDeTlxWXM0bXUycjBvakh1aHZuL3FLK09FcWhjUzhyVXBTWHRqQXAxMUZ6VkVsSloyUktPMXpvSEo2UzBKSm5BUmFETEIwa1Jzd1BXdlJRYjdSZWJHVUh4aFVDb0hhVVVBekpGN1FPM1VpemRHM1FDeGhkc24",
+    default: "/images/watch/apple-watch-se-3-default.png",
+    "minuit": "/images/watch/apple-watch-se-3-minuit.png",
+    "lumiere stellaire": "/images/watch/apple-watch-se-3-lumiere-stellaire.png",
+    "argent": "/images/watch/apple-watch-se-3-argent.png",
   },
   "apple watch series 11 42mm": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/s11-case-size-select-202509-aluminum-jet-black-42mm?wid=5120&hei=3280&fmt=p-jpg&qlt=80&.v=UFd5c0w0Q1h4Zlp0b0lmaDI3Q0E3ZFQ1R3hUZGRwcVR2alVFTjJibjJkRVdFeEtkd2lBUEtxWldFZTNXeGFkVVU0ZHFaSW5XTXJ0SWJGUmV5V3pIUW54TS9QOFlhVHZoV2xFZjU3V3B4aXV6MGt0Wjd5K3AzM2lLbkJRNlNHWm1ISUg0OGxZRUZZN1ROY3ZDeUZ5dFVR",
-    "noir": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/s11-case-size-select-202509-aluminum-jet-black-42mm?wid=5120&hei=3280&fmt=p-jpg&qlt=80&.v=UFd5c0w0Q1h4Zlp0b0lmaDI3Q0E3ZFQ1R3hUZGRwcVR2alVFTjJibjJkRVdFeEtkd2lBUEtxWldFZTNXeGFkVVU0ZHFaSW5XTXJ0SWJGUmV5V3pIUW54TS9QOFlhVHZoV2xFZjU3V3B4aXV6MGt0Wjd5K3AzM2lLbkJRNlNHWm1ISUg0OGxZRUZZN1ROY3ZDeUZ5dFVR",
+    default: "/images/watch/apple-watch-series-11-42mm-default.png",
+    "noir": "/images/watch/apple-watch-series-11-42mm-noir.png",
   },
   "apple watch series 11 46mm": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/s11-case-size-select-202509-aluminum-jet-black-46mm?wid=5120&hei=3280&fmt=p-jpg&qlt=80&.v=UFd5c0w0Q1h4Zlp0b0lmaDI3Q0E3ZFQ1R3hUZGRwcVR2alVFTjJibjJkRVdFeEtkd2lBUEtxWldFZTNXeGFkVXpLaG5vK3dJZXFBTTZ0d05aVlpoUVh4TS9QOFlhVHZoV2xFZjU3V3B4aXV6MGt0Wjd5K3AzM2lLbkJRNlNHWm03a3QzeWdWTlIvUnZnODJzZW53Z0ZR",
-    "noir": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/s11-case-size-select-202509-aluminum-jet-black-46mm?wid=5120&hei=3280&fmt=p-jpg&qlt=80&.v=UFd5c0w0Q1h4Zlp0b0lmaDI3Q0E3ZFQ1R3hUZGRwcVR2alVFTjJibjJkRVdFeEtkd2lBUEtxWldFZTNXeGFkVXpLaG5vK3dJZXFBTTZ0d05aVlpoUVh4TS9QOFlhVHZoV2xFZjU3V3B4aXV6MGt0Wjd5K3AzM2lLbkJRNlNHWm03a3QzeWdWTlIvUnZnODJzZW53Z0ZR",
+    default: "/images/watch/apple-watch-series-11-46mm-default.png",
+    "noir": "/images/watch/apple-watch-series-11-46mm-noir.png",
   },
   "apple watch ultra 3": {
-    default: "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/MYPD3ref_VW_PF+watch-case-49-titanium-black-ultra3_VW_PF+watch-face-49-ocean-ultra3_VW_PF?wid=5120&hei=3280&bgc=fafafa&trim=1&fmt=p-jpg&qlt=80&.v=S3FLWkZyMGRrZDlwU1BOTmJwcHJYRm1IN3VzMk1RRVk0dFdXMjgyTlo1NXFTWHJCR3FSb1VlOHBrc2tSM1pwQ1N0aFFqWGVmNnNHZW1DcGxyVUR5WTEwRGhLeG1XWk04UENwdVBBQnI4SVhzc1NPS2R0ZktuREx6cStIRjJwQjFrYTl2ZFJTUEpaRjZqdkJhWWEwblV5bmJVazJMS2NZeDNpd3p6WnVuWUthMkxNZkh4MDB4dUpVaFAyTU5LMk1GVGdVbWxFQXYxektET004MmZRaG9sQQ",
-    "titane noir": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/MYPD3ref_VW_PF+watch-case-49-titanium-black-ultra3_VW_PF+watch-face-49-ocean-ultra3_VW_PF?wid=5120&hei=3280&bgc=fafafa&trim=1&fmt=p-jpg&qlt=80&.v=S3FLWkZyMGRrZDlwU1BOTmJwcHJYRm1IN3VzMk1RRVk0dFdXMjgyTlo1NXFTWHJCR3FSb1VlOHBrc2tSM1pwQ1N0aFFqWGVmNnNHZW1DcGxyVUR5WTEwRGhLeG1XWk04UENwdVBBQnI4SVhzc1NPS2R0ZktuREx6cStIRjJwQjFrYTl2ZFJTUEpaRjZqdkJhWWEwblV5bmJVazJMS2NZeDNpd3p6WnVuWUthMkxNZkh4MDB4dUpVaFAyTU5LMk1GVGdVbWxFQXYxektET004MmZRaG9sQQ",
+    default: "/images/watch/apple-watch-ultra-3-default.png",
+    "titane noir": "/images/watch/apple-watch-ultra-3-titane-noir.png",
   },
 }
 
