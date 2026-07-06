@@ -13,7 +13,7 @@ const IMAGE_MAP = {
     "argent":  "/images/iphones/iphone-7-argent.png",
     "or":      "/images/iphones/iphone-7-or.png",
     "or rose": "/images/iphones/iphone-7-rose.png",
-    "rouge":   "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-red-select-2017?wid=400&hei=400&fmt=jpeg",
+    "rouge":   "/images/iphones/iphone-7-rouge.png",
   },
 
   // ── iPhone 7 Plus — fichiers locaux ───────────────────────────────────────
@@ -24,7 +24,7 @@ const IMAGE_MAP = {
     "argent":       "/images/iphones/iphone-7-plus-argent.png",
     "or":           "/images/iphones/iphone-7-plus-or.png",
     "or rose":      "/images/iphones/iphone-7-plus-or-rose.png",
-    "rouge":        "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7plus-red-select-2017?wid=400&hei=400&fmt=jpeg",
+    "rouge":        "/images/iphones/iphone-7-plus-noir-de-jais.png",
   },
 
   // ── iPhone 8 — fichiers locaux ────────────────────────────────────────────
@@ -111,7 +111,7 @@ const IMAGE_MAP = {
   "iphone 11 pro max": {
     default:       "/images/iphones/iphone-11-pro-max-argent.png",
     "argent":      "/images/iphones/iphone-11-pro-max-argent.png",
-    "or":          "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone11promax-gold-select?wid=400&hei=400&fmt=jpeg",
+    "or":          "/images/iphones/iphone-11-pro-max-argent.png",
     "gris sideral":"/images/iphones/iphone-11-pro-max-gris-sideral.png",
     "vert nuit":   "/images/iphones/iphone-11-pro-max-vert-nuit.png",
   },
