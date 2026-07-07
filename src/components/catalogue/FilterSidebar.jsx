@@ -60,14 +60,29 @@ function SidebarContent({
   hideBrandFilter = false,
   onReset,
   phones = [],
+  canonicalModels = [],
 }) {
   const { t } = useLanguage();
   const count = (fn) => phones.filter(fn).length;
 
+  // Compte depuis canonicalModels si disponible, sinon fallback sur phones[]
+  const canonicalApple = canonicalModels.filter(
+    m => m.brand === 'Apple'
+  ).length
+  const canonicalSamsung = canonicalModels.filter(
+    m => m.brand === 'Samsung'
+  ).length
+
   const brands = [
-    { value: 'Apple',   label: 'Apple',   count: count((p) => p.brand === 'Apple') },
-    { value: 'Samsung', label: 'Samsung', count: count((p) => p.brand === 'Samsung') },
-  ].filter((b) => b.count > 0);
+    {
+      value: 'Apple', label: 'Apple',
+      count: canonicalApple || count(p => p.brand === 'Apple')
+    },
+    {
+      value: 'Samsung', label: 'Samsung',
+      count: canonicalSamsung || count(p => p.brand === 'Samsung')
+    },
+  ].filter(b => b.count > 0);
 
   const conditions = [
     { value: 'neuf',          label: t('condition_new'),         count: count((p) => p.condition === 'neuf') },
@@ -206,6 +221,7 @@ export function MobileFilterBar({
   total,
   hideBrandFilter = false,
   phones = [],
+  canonicalModels = [],
 }) {
   const { t } = useLanguage();
   const [priceRange, setPriceRange] = useState([0, 1500]);
@@ -295,6 +311,7 @@ export function MobileFilterBar({
             hideBrandFilter={hideBrandFilter}
             onReset={onReset}
             phones={phones}
+            canonicalModels={canonicalModels}
           />
         </div>
         <div className="p-5 border-t border-gray-100 bg-white">
@@ -323,6 +340,7 @@ export default function FilterSidebar({
   search, setSearch,
   hideBrandFilter = false,
   phones = [],
+  canonicalModels = [],
 }) {
   const { t } = useLanguage();
   const [priceRange, setPriceRange] = useState([0, 1500]);
@@ -364,6 +382,7 @@ export default function FilterSidebar({
         hideBrandFilter={hideBrandFilter}
         onReset={onReset}
         phones={phones}
+        canonicalModels={canonicalModels}
       />
     </aside>
   );

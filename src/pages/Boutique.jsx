@@ -183,7 +183,9 @@ export default function Boutique({ defaultBrand = null }) {
         sortBy={sortBy} setSortBy={setSortBy}
         total={totalPhones}
         phones={phones}
-        hideBrandFilter={!!defaultBrand}
+        canonicalModels={allCanonicalModels}
+        hideBrandFilter={!!defaultBrand && allCanonicalModels.length > 0
+          && new Set(allCanonicalModels.map(m => m.brand)).size <= 1}
       />
 
       <div className="flex gap-8 items-start">
@@ -196,7 +198,9 @@ export default function Boutique({ defaultBrand = null }) {
           sortBy={sortBy} setSortBy={setSortBy}
           total={totalPhones}
           phones={phones}
-          hideBrandFilter={!!defaultBrand}
+          canonicalModels={allCanonicalModels}
+          hideBrandFilter={!!defaultBrand && allCanonicalModels.length > 0
+            && new Set(allCanonicalModels.map(m => m.brand)).size <= 1}
         />
 
         <div className="flex-1 min-w-0 w-full">
@@ -223,6 +227,10 @@ export default function Boutique({ defaultBrand = null }) {
                 .filter((canonicalModel) => {
                   if (search && !canonicalModel.model
                     .toLowerCase().includes(search.toLowerCase())) return false
+
+                  if (filterBrand &&
+                      canonicalModel.brand?.toLowerCase() !== filterBrand.toLowerCase())
+                    return false
 
                   const modelStock = getModelStock(canonicalModel.model)
 
