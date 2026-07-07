@@ -67,6 +67,24 @@ const SAMSUNG_COLORS = {
   'Graygreen':       '#6B8C6B',
   'Beige':           '#E8D8C4',
   'Icy Blue':        '#B8D4E8',
+  // Génériques EN / FR
+  'White':         '#F5F5F0',
+  'Green':         '#4A8C5C',
+  'Blue':          '#2E5CA8',
+  'Yellow':        '#F5D76E',
+  'Pink':          '#F4C2C2',
+  'Gray':          '#8C8C8C',
+  'Olive':         '#808000',
+  'Peach':         '#FFCBA4',
+  'Crafted Black': '#1A1A1A',
+  'Phantom Green': '#3A5A40',
+  'Silver':        '#C0C0C0',
+  'Black':         '#1C1C1C',
+  'Noir':          '#1C1C1C',
+  'Blanc':         '#F5F5F0',
+  'Bleu':          '#2E5CA8',
+  'Jaune':         '#F5D76E',
+  'Violet':        '#7B5EA7',
 }
 
 // Map générale (renommée en fonction interne) — inchangée

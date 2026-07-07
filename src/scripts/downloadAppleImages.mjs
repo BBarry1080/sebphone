@@ -16,6 +16,7 @@ const download = async (url, filepath) => {
 
 const slugify = (str) => str
   .toLowerCase()
+  .replace(/\+/g, '-plus')
   .replace(/\s+/g, '-')
   .replace(/[^a-z0-9-]/g, '')
 

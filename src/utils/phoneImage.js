@@ -528,140 +528,140 @@ const IMAGE_MAP = {
 
   // ── SAMSUNG — URLs officielles/CDN ───────────────────────────────────────
   "samsung galaxy s21": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_GRIS_ALL_8592.webp",
-    "gris": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_GRIS_ALL_8592.webp",
+    default: "/images/samsung/samsung-galaxy-s21-default.png",
+    "gris": "/images/samsung/samsung-galaxy-s21-gris.png",
   },
   "samsung galaxy s21+": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21PLUS_WHITE_ALL_713e.webp",
-    "blanc": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21PLUS_WHITE_ALL_713e.webp",
+    default: "/images/samsung/samsung-galaxy-s21-plus-default.png",
+    "blanc": "/images/samsung/samsung-galaxy-s21-plus-blanc.png",
   },
   "samsung galaxy s21 ultra": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_ULTRA_BLEU_ALL_a676.webp",
-    "bleu": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_ULTRA_BLEU_ALL_a676.webp",
+    default: "/images/samsung/samsung-galaxy-s21-ultra-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-s21-ultra-bleu.png",
   },
   "samsung galaxy s21 fe": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_FE_5G_GREEN_ALL_56fb.webp",
-    "vert": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_FE_5G_GREEN_ALL_56fb.webp",
+    default: "/images/samsung/samsung-galaxy-s21-fe-default.png",
+    "vert": "/images/samsung/samsung-galaxy-s21-fe-vert.png",
   },
   "samsung galaxy s22": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_VERT_ALL_95a1.webp",
-    "vert": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_VERT_ALL_95a1.webp",
+    default: "/images/samsung/samsung-galaxy-s22-default.png",
+    "vert": "/images/samsung/samsung-galaxy-s22-vert.png",
   },
   "samsung galaxy s22+": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_ROSE_ALL_d6b8.webp",
-    "rose": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_ROSE_ALL_d6b8.webp",
+    default: "/images/samsung/samsung-galaxy-s22-plus-default.png",
+    "rose": "/images/samsung/samsung-galaxy-s22-plus-rose.png",
   },
   "samsung galaxy s22 ultra": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_MARRON_ALL_8962.webp",
-    "marron": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_MARRON_ALL_8962.webp",
+    default: "/images/samsung/samsung-galaxy-s22-ultra-default.png",
+    "marron": "/images/samsung/samsung-galaxy-s22-ultra-marron.png",
   },
   "samsung galaxy s23": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_WHITE_ALL_911c.webp",
-    "blanc": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_WHITE_ALL_911c.webp",
+    default: "/images/samsung/samsung-galaxy-s23-default.png",
+    "blanc": "/images/samsung/samsung-galaxy-s23-blanc.png",
   },
   "samsung galaxy s23+": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_PLUS_VIOLET_ALL_d8ce.webp",
-    "violet": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_PLUS_VIOLET_ALL_d8ce.webp",
+    default: "/images/samsung/samsung-galaxy-s23-plus-default.png",
+    "violet": "/images/samsung/samsung-galaxy-s23-plus-violet.png",
   },
   "samsung galaxy s23 ultra": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_ULTRA_GREY_ALL_597a.webp",
-    "gris": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_ULTRA_GREY_ALL_597a.webp",
+    default: "/images/samsung/samsung-galaxy-s23-ultra-default.png",
+    "gris": "/images/samsung/samsung-galaxy-s23-ultra-gris.png",
   },
   "samsung galaxy s23 fe": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/a/f/africa_fr_galaxy_s23_fe_s711_sm_s711blgcafa_538426379_4dab.webp",
+    default: "/images/samsung/samsung-galaxy-s23-fe-default.png",
   },
   "samsung galaxy s24": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzageub-539429801?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s24-default.png",
   },
   "samsung galaxy s24+": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzkgeub-539429847?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s24-plus-default.png",
   },
   "samsung galaxy s24 ultra": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_S24_Ultra_gris_1_0dd0.webp",
-    "gris": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_S24_Ultra_gris_1_0dd0.webp",
+    default: "/images/samsung/samsung-galaxy-s24-ultra-default.png",
+    "gris": "/images/samsung/samsung-galaxy-s24-ultra-gris.png",
   },
   "samsung galaxy s24 fe": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/S/a/Samsung_S24_FE_gris_All_d140.webp",
-    "gris": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/S/a/Samsung_S24_FE_gris_All_d140.webp",
+    default: "/images/samsung/samsung-galaxy-s24-fe-default.png",
+    "gris": "/images/samsung/samsung-galaxy-s24-fe-gris.png",
   },
   "samsung galaxy s25": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s931-534299-sm-s931bzkgeub-544692880?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s25-default.png",
   },
   "samsung galaxy s25+": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s936-sm-s936bdbdeub-544684226?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s25-plus-default.png",
   },
   "samsung galaxy s25 ultra": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s938-sm-s938bztgeub-544722123?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s25-ultra-default.png",
   },
   "samsung galaxy s25 edge": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/ps_2504/gallery/be-galaxy-s25-s937-sm-s937blbgeub-546081908?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s25-edge-default.png",
   },
   "samsung galaxy s26": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/s2602/gallery/be-galaxy-s26-s942-sm-s942bzvheub-550903856?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s26-default.png",
   },
   "samsung galaxy s26+": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/s2602/gallery/be-galaxy-s26-s947-sm-s947blbgeub-550931670?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s26-plus-default.png",
   },
   "samsung galaxy s26 ultra": {
-    default: "https://images.samsung.com/is/image/samsung/p6pim/be/s2602/gallery/be-galaxy-s26-ultra-s948-sm-s948bzwgeub-550857037?imbypass=true",
+    default: "/images/samsung/samsung-galaxy-s26-ultra-default.png",
   },
   "samsung galaxy a14": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A14_Duos_noir_all_1e9a.webp",
-    "noir": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A14_Duos_noir_all_1e9a.webp",
+    default: "/images/samsung/samsung-galaxy-a14-default.png",
+    "noir": "/images/samsung/samsung-galaxy-a14-noir.png",
   },
   "samsung galaxy a15": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A15_bleu_clair_all_5e3f.webp",
-    "bleu": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A15_bleu_clair_all_5e3f.webp",
+    default: "/images/samsung/samsung-galaxy-a15-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-a15-bleu.png",
   },
   "samsung galaxy a25": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A25_noir_all_bceb.webp",
-    "noir": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A25_noir_all_bceb.webp",
+    default: "/images/samsung/samsung-galaxy-a25-default.png",
+    "noir": "/images/samsung/samsung-galaxy-a25-noir.png",
   },
   "samsung galaxy a34": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A34_5G_Duos_blanc_all_1858.webp",
-    "blanc": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A34_5G_Duos_blanc_all_1858.webp",
+    default: "/images/samsung/samsung-galaxy-a34-default.png",
+    "blanc": "/images/samsung/samsung-galaxy-a34-blanc.png",
   },
   "samsung galaxy a35": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A35_bleu_all_01f0.webp",
-    "bleu": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A35_bleu_all_01f0.webp",
+    default: "/images/samsung/samsung-galaxy-a35-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-a35-bleu.png",
   },
   "samsung galaxy a54": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/A/5/A54___BLACK___ALL_fcef.webp",
-    "noir": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/A/5/A54___BLACK___ALL_fcef.webp",
+    default: "/images/samsung/samsung-galaxy-a54-default.png",
+    "noir": "/images/samsung/samsung-galaxy-a54-noir.png",
   },
   "samsung galaxy a55": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A55_bleu_clair_all_ccd7.webp",
-    "bleu": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_A55_bleu_clair_all_ccd7.webp",
+    default: "/images/samsung/samsung-galaxy-a55-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-a55-bleu.png",
   },
   "samsung galaxy z flip 3": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_Z_FLIP_3_GREEN_ALL_2280.webp",
-    "vert": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_Z_FLIP_3_GREEN_ALL_2280.webp",
+    default: "/images/samsung/samsung-galaxy-z-flip-3-default.png",
+    "vert": "/images/samsung/samsung-galaxy-z-flip-3-vert.png",
   },
   "samsung galaxy z flip 4": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_Z_FLIP_4_BLEU_ALL_2e86.webp",
-    "bleu": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_Z_FLIP_4_BLEU_ALL_2e86.webp",
+    default: "/images/samsung/samsung-galaxy-z-flip-4-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-z-flip-4-bleu.png",
   },
   "samsung galaxy z flip 5": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/f/r/fr_galaxy_z_flip5_f731_sm_f731bzaheub_537308940_2f2b.webp",
+    default: "/images/samsung/samsung-galaxy-z-flip-5-default.png",
   },
   "samsung galaxy z flip 6": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/GalaxyZFlip6_Bleu_all_3970.webp",
-    "bleu": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/GalaxyZFlip6_Bleu_all_3970.webp",
+    default: "/images/samsung/samsung-galaxy-z-flip-6-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-z-flip-6-bleu.png",
   },
   "samsung galaxy z fold 3": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_Z_FOLD_3_GREEN_ALL_dfdf.webp",
-    "vert": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_Z_FOLD_3_GREEN_ALL_dfdf.webp",
+    default: "/images/samsung/samsung-galaxy-z-fold-3-default.png",
+    "vert": "/images/samsung/samsung-galaxy-z-fold-3-vert.png",
   },
   "samsung galaxy z fold 4": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_FOLD4_WHITE_ALL_dec7.webp",
-    "blanc": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_FOLD4_WHITE_ALL_dec7.webp",
+    default: "/images/samsung/samsung-galaxy-z-fold-4-default.png",
+    "blanc": "/images/samsung/samsung-galaxy-z-fold-4-blanc.png",
   },
   "samsung galaxy z fold 5": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/f/r/fr_galaxy_z_fold5_f946_sm_f946bzkbeub_537292657_6f59.webp",
+    default: "/images/samsung/samsung-galaxy-z-fold-5-default.png",
   },
   "samsung galaxy z fold 6": {
-    default: "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_Z_Fold6_BLUE___BACK_4e1e.webp",
-    "bleu": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_Z_Fold6_BLUE___BACK_4e1e.webp",
+    default: "/images/samsung/samsung-galaxy-z-fold-6-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-z-fold-6-bleu.png",
   },
 }
 
