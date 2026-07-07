@@ -84,9 +84,9 @@ export default function Boutique({ defaultBrand = null }) {
   const setFilterStatus    = (val) => updateParam('status', val)
 
   // Synchronise URL → hook (le hook drive le fetch/filter des phones)
-  useEffect(() => { hookSetSearch(search) }, [search])
-  useEffect(() => { hookSetFilterCondition(filterCondition) }, [filterCondition])
-  useEffect(() => { hookSetFilterStatus(filterStatus) }, [filterStatus])
+  useEffect(() => { hookSetSearch(search) }, [search, hookSetSearch])
+  useEffect(() => { hookSetFilterCondition(filterCondition) }, [filterCondition, hookSetFilterCondition])
+  useEffect(() => { hookSetFilterStatus(filterStatus) }, [filterStatus, hookSetFilterStatus])
 
   useEffect(() => {
     setFilterBrand(defaultBrand || null)
@@ -157,13 +157,6 @@ export default function Boutique({ defaultBrand = null }) {
     return phones.filter((p) =>
       p.model?.toLowerCase() === modelName.toLowerCase() &&
       p.status === 'disponible'
-    )
-  }
-
-  const getModelSurCommande = (modelName) => {
-    return phones.filter((p) =>
-      p.model?.toLowerCase() === modelName.toLowerCase() &&
-      p.status === 'sur_commande'
     )
   }
 
