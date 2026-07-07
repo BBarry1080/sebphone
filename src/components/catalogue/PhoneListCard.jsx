@@ -85,6 +85,8 @@ const SAMSUNG_COLORS = {
   'Bleu':          '#2E5CA8',
   'Jaune':         '#F5D76E',
   'Violet':        '#7B5EA7',
+  'Phantom Pink':  '#F4C2C2',
+  'Rouge':         '#C0392B',
 }
 
 // Map générale (renommée en fonction interne) — inchangée

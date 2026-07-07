@@ -1,13 +1,13 @@
 export const PHONES_DATABASE = {
 
   Samsung: [
-    { model: 'Samsung Galaxy S21',         storages: ['128Go','256Go'],            colors: ['Phantom Gray', 'Phantom White', 'Phantom Violet', 'Phantom Silver'] },
+    { model: 'Samsung Galaxy S21',         storages: ['128Go','256Go'],            colors: ['Phantom Gray', 'Phantom White', 'Phantom Violet', 'Phantom Pink'] },
     { model: 'Samsung Galaxy S21+',        storages: ['128Go','256Go'],            colors: ['Phantom Black', 'Phantom White', 'Phantom Silver', 'Phantom Violet'] },
     { model: 'Samsung Galaxy S21 Ultra',   storages: ['128Go','256Go','512Go'],    colors: ['Phantom Black', 'Phantom Brown', 'Phantom Navy', 'Phantom Silver', 'Phantom Titanium'] },
     { model: 'Samsung Galaxy S21 FE',      storages: ['128Go','256Go'],            colors: ['Graphite', 'White', 'Lavender', 'Olive', 'Navy'] },
     { model: 'Samsung Galaxy S22',         storages: ['128Go','256Go'],            colors: ['Phantom Black', 'White', 'Green', 'Pink Gold', 'Graphite', 'Sky Blue', 'Violet'] },
     { model: 'Samsung Galaxy S22+',        storages: ['128Go','256Go'],            colors: ['Phantom Black', 'White', 'Green', 'Pink Gold', 'Graphite', 'Sky Blue', 'Violet'] },
-    { model: 'Samsung Galaxy S22 Ultra',   storages: ['128Go','256Go','512Go','1To'], colors: ['Phantom Black', 'White', 'Green', 'Burgundy', 'Graphite', 'Sky Blue', 'Violet'] },
+    { model: 'Samsung Galaxy S22 Ultra',   storages: ['128Go','256Go','512Go','1To'], colors: ['Phantom Black', 'White', 'Green', 'Burgundy', 'Graphite', 'Sky Blue', 'Rouge'] },
     { model: 'Samsung Galaxy S23',         storages: ['128Go','256Go'],            colors: ['Phantom Black', 'Cream', 'Green', 'Lavender'] },
     { model: 'Samsung Galaxy S23+',        storages: ['256Go','512Go'],            colors: ['Phantom Black', 'Cream', 'Green', 'Lavender'] },
     { model: 'Samsung Galaxy S23 Ultra',   storages: ['256Go','512Go','1To'],      colors: ['Phantom Black', 'Cream', 'Green', 'Lavender'] },
@@ -15,7 +15,7 @@ export const PHONES_DATABASE = {
     { model: 'Samsung Galaxy S24',         storages: ['128Go','256Go'],            colors: ['Onyx Black', 'Marble Gray', 'Cobalt Violet', 'Amber Yellow'] },
     { model: 'Samsung Galaxy S24+',        storages: ['256Go','512Go'],            colors: ['Onyx Black', 'Marble Gray', 'Cobalt Violet', 'Amber Yellow'] },
     { model: 'Samsung Galaxy S24 Ultra',   storages: ['256Go','512Go','1To'],      colors: ['Titanium Black', 'Titanium Gray', 'Titanium Violet', 'Titanium Yellow'] },
-    { model: 'Samsung Galaxy S24 FE',      storages: ['128Go','256Go'],            colors: ['Blue', 'Mint', 'Graphite', 'Yellow', 'Pink'] },
+    { model: 'Samsung Galaxy S24 FE',      storages: ['128Go','256Go'],            colors: ['Blue', 'Mint', 'Graphite', 'Yellow', 'Noir'] },
     { model: 'Samsung Galaxy S25',         storages: ['128Go','256Go','512Go'],    colors: ['Icyblue', 'Mint', 'Navy', 'Silver Shadow'] },
     { model: 'Samsung Galaxy S25+',        storages: ['256Go','512Go'],            colors: ['Icyblue', 'Mint', 'Navy', 'Silver Shadow'] },
     { model: 'Samsung Galaxy S25 Ultra',   storages: ['256Go','512Go','1To'],      colors: ['Titanium Black', 'Titanium Gray', 'Titanium Whitesilver', 'Titanium Silverblue'] },
