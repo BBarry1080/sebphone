@@ -16,16 +16,61 @@ const AIRPODS_MAX_COLORS = {
   'Orange':            '#FEC2A0',
 }
 
-export const colorToHex = (colorName, modelName = '') => {
-  if (!colorName) return '#9CA3AF'
+const SAMSUNG_COLORS = {
+  // S21
+  'Phantom Gray':    '#6B6B6B',
+  'Phantom White':   '#F5F5F0',
+  'Phantom Violet':  '#C9B8D8',
+  'Phantom Silver':  '#D4D4D4',
+  'Phantom Black':   '#1C1C1C',
+  'Phantom Brown':   '#8B6914',
+  'Phantom Navy':    '#1B2A4A',
+  'Phantom Titanium':'#8C8C8C',
+  // S22
+  'Graphite':        '#4A4A4A',
+  'Pink Gold':       '#E8B4A0',
+  'Sky Blue':        '#A8C8E8',
+  'Bora Purple':     '#9B8EC4',
+  'Burgundy':        '#6B1F2A',
+  // S23
+  'Cream':           '#F5F0E8',
+  'Lavender':        '#C8BFD8',
+  // S24
+  'Onyx Black':      '#1A1A1A',
+  'Marble Gray':     '#C8C8C8',
+  'Cobalt Violet':   '#4A4080',
+  'Amber Yellow':    '#E8C84A',
+  'Titanium Black':  '#2C2C2C',
+  'Titanium Gray':   '#8C8C8C',
+  'Titanium Violet': '#6B5B8C',
+  'Titanium Yellow': '#D4B84A',
+  // S25
+  'Icyblue':         '#B8D4E8',
+  'Mint':            '#A8D8C8',
+  'Navy':            '#1B2A4A',
+  'Silver Shadow':   '#9A9A9A',
+  'Titanium Whitesilver': '#E8E8E8',
+  'Titanium Silverblue':  '#B0C4D8',
+  // S25 Edge
+  'Titanium Silver': '#D0D0D0',
+  'Titanium Jetblack':'#1A1A1A',
+  // S26
+  'Titanium White':  '#F0F0F0',
+  // A Series
+  'Vert':            '#4A8C5C',
+  'Bleu clair':      '#A8C8E8',
+  'Lime':            '#B8D84A',
+  'Indigo':          '#3A3A8C',
+  'Tangerine':       '#E87A3A',
+  'Khaki':           '#8C8C5C',
+  // Z Flip / Fold
+  'Graygreen':       '#6B8C6B',
+  'Beige':           '#E8D8C4',
+  'Icy Blue':        '#B8D4E8',
+}
 
-  // Table dédiée AirPods Max
-  if (modelName?.toLowerCase().includes('airpods max') ||
-      modelName?.toLowerCase().includes('airpods-max')) {
-    return AIRPODS_MAX_COLORS[colorName] || '#9CA3AF'
-  }
-
-  // Table générale existante (inchangée)
+// Map générale (renommée en fonction interne) — inchangée
+const generalColorToHex = (colorName) => {
   const map = {
     'Noir': '#1C1C1E', 'Minuit': '#1C1C1E', 'Noir de jais': '#0A0A0A', 'Noir spatial': '#1C1C1E',
     'Blanc': '#F5F5F0', 'Lumière stellaire': '#F5F0E8', 'Argent': '#C0C0C0',
@@ -43,7 +88,26 @@ export const colorToHex = (colorName, modelName = '') => {
     'Corail': '#FF7F50', 'Orange cosmique': '#FF6B35',
     'Gris sidéral': '#4A4A4A',
   }
-  return map[colorName] || '#9CA3AF'
+  return map[colorName] || null
+}
+
+export const colorToHex = (colorName, modelName = '') => {
+  if (!colorName) return '#9CA3AF'
+
+  // Table dédiée AirPods Max
+  if (modelName?.toLowerCase().includes('airpods max')) {
+    return AIRPODS_MAX_COLORS[colorName] || '#9CA3AF'
+  }
+
+  // Table dédiée Samsung
+  if (modelName?.toLowerCase().includes('samsung') ||
+      modelName?.toLowerCase().includes('galaxy')) {
+    return SAMSUNG_COLORS[colorName]
+      || generalColorToHex(colorName)
+      || '#9CA3AF'
+  }
+
+  return generalColorToHex(colorName) || '#9CA3AF'
 }
 
 function modelToSlug(name) {
