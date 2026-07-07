@@ -458,8 +458,10 @@ const IMAGE_MAP = {
     "gris sideral": "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
   },
   "ipad 6e generation": {
-    default: "/images/ipads/ipad-6e-generation-default.png",
-    "argent": "/images/ipads/ipad-6e-generation-argent.png",
+    default: "https://media.ldlc.com/r1600/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "argent": "https://media.ldlc.com/r1600/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "or": "https://media.ldlc.com/r1600/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "gris sideral": "https://media.ldlc.com/r1600/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
   },
   "ipad air 2": {
     default: "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
