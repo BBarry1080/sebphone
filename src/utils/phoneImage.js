@@ -452,18 +452,20 @@ const IMAGE_MAP = {
     "noir sideral": "/images/ipads/ipad-pro-11-m5-noir-sideral.webp",
   },
   "ipad 7e generation": {
-    default: "/images/ipads/ipad-7e-generation-default.png",
-    "argent": "/images/ipads/ipad-7e-generation-argent.png",
+    default: "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
+    "argent": "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
+    "or": "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
+    "gris sideral": "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
   },
   "ipad 6e generation": {
     default: "/images/ipads/ipad-6e-generation-default.png",
     "argent": "/images/ipads/ipad-6e-generation-argent.png",
   },
   "ipad air 2": {
-    default: "/images/ipads/ipad-air-2-default.jpg",
-    "or": "/images/ipads/ipad-air-2-or.jpg",
-    "argent": "/images/ipads/ipad-air-2-argent.jpg",
-    "gris sideral": "/images/ipads/ipad-air-2-gris-sideral.jpg",
+    default: "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
+    "or": "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
+    "argent": "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
+    "gris sideral": "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
   },
   "ipad air 2 + cellular": {
     default:       "/images/ipads/ipad-air-2-argent.png",
@@ -472,8 +474,9 @@ const IMAGE_MAP = {
     "gris sideral":"/images/ipads/ipad-air-2-gris-sideral.png",
   },
   "ipad 3": {
-    default: "/images/ipads/ipad-3-default.png",
-    "argent": "/images/ipads/ipad-3-argent.png",
+    default: "https://media.ldlc.com/r705/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "argent": "https://media.ldlc.com/r705/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "noir": "https://media.ldlc.com/r705/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
   },
 
   // ── AirPODS ─────────────────────────────────────────────────────────────
