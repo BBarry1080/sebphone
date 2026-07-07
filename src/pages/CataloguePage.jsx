@@ -132,6 +132,58 @@ export default function CataloguePage() {
     }, {})
   )
 
+  const applySortBy = (list, isCanonical = false) => {
+    const sorted = [...list]
+    switch (sortBy) {
+      case 'price_asc':
+        return sorted.sort((a, b) => {
+          const pa = isCanonical
+            ? (groupedProducts.find(p =>
+                p.model?.toLowerCase() === a.model?.toLowerCase() ||
+                p.name?.toLowerCase() === a.model?.toLowerCase()
+              )?.price || Infinity)
+            : (a.price || Infinity)
+          const pb = isCanonical
+            ? (groupedProducts.find(p =>
+                p.model?.toLowerCase() === b.model?.toLowerCase() ||
+                p.name?.toLowerCase() === b.model?.toLowerCase()
+              )?.price || Infinity)
+            : (b.price || Infinity)
+          return pa - pb
+        })
+      case 'price_desc':
+        return sorted.sort((a, b) => {
+          const pa = isCanonical
+            ? (groupedProducts.find(p =>
+                p.model?.toLowerCase() === a.model?.toLowerCase() ||
+                p.name?.toLowerCase() === a.model?.toLowerCase()
+              )?.price || 0)
+            : (a.price || 0)
+          const pb = isCanonical
+            ? (groupedProducts.find(p =>
+                p.model?.toLowerCase() === b.model?.toLowerCase() ||
+                p.name?.toLowerCase() === b.model?.toLowerCase()
+              )?.price || 0)
+            : (b.price || 0)
+          return pb - pa
+        })
+      case 'alpha_asc':
+        return sorted.sort((a, b) =>
+          (a.model || a.name || '').localeCompare(b.model || b.name || '')
+        )
+      case 'alpha_desc':
+        return sorted.sort((a, b) =>
+          (b.model || b.name || '').localeCompare(a.model || a.name || '')
+        )
+      case 'newest':
+        return sorted.sort((a, b) =>
+          new Date(b.created_at || 0) - new Date(a.created_at || 0)
+        )
+      default:
+        return sorted
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-[#1B2A4A] text-white py-12 px-4">
@@ -198,7 +250,10 @@ export default function CataloguePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {(canonicalModels.length > 0 ? canonicalModels : groupedProducts).map((item) => {
+                {applySortBy(
+                  canonicalModels.length > 0 ? canonicalModels : groupedProducts,
+                  canonicalModels.length > 0
+                ).map((item) => {
                   // Si c'est un modèle canonique (vient de IPAD_CATALOG etc.)
                   const isCanonical = !item.id
                   const modelName = isCanonical ? item.model : (item.name || item.model)

@@ -226,7 +226,7 @@ export default function Boutique({ defaultBrand = null }) {
             <Spinner />
           ) : allCanonicalModels.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {allCanonicalModels
+              {[...allCanonicalModels]
                 .filter((canonicalModel) => {
                   if (search && !canonicalModel.model
                     .toLowerCase().includes(search.toLowerCase())) return false
@@ -247,6 +247,28 @@ export default function Boutique({ defaultBrand = null }) {
                     return modelStock.length === 0
                   }
                   return true
+                })
+                .sort((a, b) => {
+                  switch (sortBy) {
+                    case 'price_asc': {
+                      const pa = getModelStock(a.model)[0]?.price || Infinity
+                      const pb = getModelStock(b.model)[0]?.price || Infinity
+                      return pa - pb
+                    }
+                    case 'price_desc': {
+                      const pa = getModelStock(a.model)[0]?.price || 0
+                      const pb = getModelStock(b.model)[0]?.price || 0
+                      return pb - pa
+                    }
+                    case 'alpha_asc':
+                      return a.model.localeCompare(b.model)
+                    case 'alpha_desc':
+                      return b.model.localeCompare(a.model)
+                    case 'newest':
+                    case 'featured':
+                    default:
+                      return 0
+                  }
                 })
                 .map((canonicalModel) => {
                   const slug = canonicalModel.model
