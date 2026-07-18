@@ -42,9 +42,9 @@ export default function Cart() {
           <ShoppingBag size={36} className="text-gray-400" />
         </div>
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('cart_empty')}</h1>
-        <p className="text-[#555555] mb-6">Découvrez nos téléphones reconditionnés et occasions.</p>
+        <p className="text-[#555555] mb-6">{t('cart_empty_desc')}</p>
         <Button variant="primary" size="md" onClick={() => navigate('/boutique')}>
-          Voir la boutique
+          {t('hero_cta_shop')}
         </Button>
       </main>
     );
@@ -52,7 +52,7 @@ export default function Cart() {
 
   return (
     <main className="max-w-6xl mx-auto px-4 md:px-6 py-8 pb-28 md:pb-12">
-      <h1 className="font-poppins font-bold text-[#1B2A4A] text-3xl md:text-4xl mb-8 text-center">Panier</h1>
+      <h1 className="font-poppins font-bold text-[#1B2A4A] text-3xl md:text-4xl mb-8 text-center">{t('nav_cart')}</h1>
 
       <div className="grid lg:grid-cols-3 gap-8 items-start">
         {/* Products list */}
@@ -81,7 +81,7 @@ export default function Cart() {
                 <div>
                   <p className="font-semibold text-[#1B2A4A] text-sm leading-tight">{item.phone.name}</p>
                   <p className="text-xs text-[#555555] mt-0.5">
-                    {[item.color, item.grade && `Grade ${item.grade}`, item.storage].filter(Boolean).join(' · ')}
+                    {[item.color, item.grade && `${t('grade_label')} ${item.grade}`, item.storage].filter(Boolean).join(' · ')}
                   </p>
                   <p className="text-sm font-bold text-[#00B4CC] mt-1">{item.price}€</p>
                   <button
@@ -137,9 +137,9 @@ export default function Cart() {
                 >
                   <div className="px-5 pb-5 flex flex-col gap-3">
                     <select className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#00B4CC] bg-white">
-                      <option>Belgique</option>
-                      <option>France</option>
-                      <option>Luxembourg</option>
+                      <option>{t('country_belgium')}</option>
+                      <option>{t('country_france')}</option>
+                      <option>{t('country_luxembourg')}</option>
                     </select>
                     <input
                       type="text"
@@ -171,7 +171,7 @@ export default function Cart() {
                   <p className="text-xs font-semibold text-green-800">{coupon.code}</p>
                   <p className="text-xs text-green-700">−{coupon.discount}€</p>
                 </div>
-                <button onClick={removeCoupon} className="text-green-600 hover:text-red-500 text-xs cursor-pointer">Retirer</button>
+                <button onClick={removeCoupon} className="text-green-600 hover:text-red-500 text-xs cursor-pointer">{t('cart_remove_coupon')}</button>
               </div>
             ) : (
               <div className="flex gap-2">
@@ -199,7 +199,7 @@ export default function Cart() {
               <span className="font-bold text-[#1B2A4A]">{t('cart_total_label')}</span>
               <span className="font-bold text-[#1B2A4A] text-xl">{total}€</span>
             </div>
-            <p className="text-xs text-[#555555] -mt-2">Taxes incluses. Frais d'expédition calculés à l'étape de paiement.</p>
+            <p className="text-xs text-[#555555] -mt-2">{t('cart_taxes_note')}</p>
 
             {/* Note */}
             <div>
@@ -209,7 +209,7 @@ export default function Cart() {
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#00B4CC] resize-none"
-                placeholder="Instructions spéciales..."
+                placeholder={t('cart_note_placeholder')}
               />
             </div>
 
