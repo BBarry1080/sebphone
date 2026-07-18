@@ -107,10 +107,20 @@ export default function Footer() {
               href="https://snapchat.com/t/PPG5RuoF"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-2xl hover:opacity-70 transition-opacity"
+              aria-label="Snapchat"
               title="Snapchat"
+              className="w-10 h-10 rounded-lg bg-white/10 hover:bg-[#00B4CC] flex items-center justify-center transition-colors duration-200"
             >
-              👻
+              <img
+                src="https://www.clipartmax.com/png/middle/94-948600_snapchat-logo-%5Bsnapchat-snapchat-ghost-black-and-white.png"
+                alt="Snapchat"
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  objectFit: 'contain',
+                  filter: 'brightness(0) invert(1)',
+                }}
+              />
             </a>
           </div>
           <p className="text-sm text-gray-400 mt-4 leading-relaxed">
