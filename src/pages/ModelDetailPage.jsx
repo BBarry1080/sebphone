@@ -47,10 +47,10 @@ const CONDITION_STYLE = {
   'reconditionne': 'bg-cyan-50 text-cyan-700 border-cyan-200',
   'occasion':      'bg-blue-50 text-blue-700 border-blue-200',
 }
-const CONDITION_LABEL = {
-  'neuf':          'Neuf',
-  'reconditionne': 'Reconditionné',
-  'occasion':      'Occasion',
+const CONDITION_KEY = {
+  'neuf':          'condition_new',
+  'reconditionne': 'condition_refurbished',
+  'occasion':      'condition_used',
 }
 
 import { MAGASINS } from '../utils/magasins'
@@ -740,7 +740,7 @@ export default function ModelDetailPage() {
                             <td className="px-4 py-3">
                               <div className="flex flex-col gap-1.5">
                                 <span className={`px-2 py-0.5 rounded border text-xs font-semibold w-fit ${CONDITION_STYLE[phone.condition] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                                  {CONDITION_LABEL[phone.condition] || phone.condition}
+                                  {CONDITION_KEY[phone.condition] ? t(CONDITION_KEY[phone.condition]) : phone.condition}
                                 </span>
                                 {phone.grade && (
                                   <span className={`px-2 py-0.5 rounded border text-xs font-bold w-fit ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
@@ -877,7 +877,7 @@ export default function ModelDetailPage() {
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex flex-col gap-1.5">
                             <span className={`px-2.5 py-0.5 rounded border text-xs font-semibold w-fit ${CONDITION_STYLE[phone.condition] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                              {CONDITION_LABEL[phone.condition] || phone.condition}
+                              {CONDITION_KEY[phone.condition] ? t(CONDITION_KEY[phone.condition]) : phone.condition}
                             </span>
                             {phone.grade && (
                               <span className={`px-2.5 py-0.5 rounded border text-xs font-bold w-fit ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>

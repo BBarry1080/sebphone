@@ -15,9 +15,9 @@ function BestSellerCard({ phone }) {
   const imgSrc = getPhoneImage(phone.model, phone.color);
 
   const conditionLabel =
-    phone.condition === 'neuf' ? 'Neuf'
-    : phone.condition === 'reconditionne' ? 'Reconditionné'
-    : phone.grade || 'Occasion';
+    phone.condition === 'neuf' ? t('condition_new')
+    : phone.condition === 'reconditionne' ? t('condition_refurbished')
+    : phone.grade || t('condition_used');
 
   const conditionClass =
     phone.condition === 'neuf' ? 'bg-green-100 text-green-700'

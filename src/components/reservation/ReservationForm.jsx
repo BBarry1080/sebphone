@@ -456,7 +456,11 @@ export default function ReservationForm({ phone }) {
       {/* Résumé téléphone */}
       {(() => {
         const imgSrc = getPhoneImage(phone?.name || phone?.model, phone?.color)
-        const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
+        const conditionLabel = {
+          neuf: t('condition_new'),
+          reconditionne: t('condition_refurbished'),
+          occasion: t('condition_used'),
+        }
         const conditionStyle = {
           neuf:          'bg-blue-50 text-blue-700 border-blue-200',
           reconditionne: 'bg-cyan-50 text-[#00B4CC] border-cyan-200',

@@ -12,7 +12,6 @@ import Spinner from '../components/ui/Spinner';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translateColor } from '../utils/translateColor';
 
-const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' };
 
 const COLORS_BY_PHONE = {
   default: [

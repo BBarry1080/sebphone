@@ -7,10 +7,10 @@ import GradeTag from '../ui/GradeTag';
 import Button from '../ui/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const conditionLabel = {
-  neuf: 'Neuf',
-  reconditionne: 'Reconditionné',
-  occasion: 'Occasion',
+const conditionKey = {
+  neuf: 'condition_new',
+  reconditionne: 'condition_refurbished',
+  occasion: 'condition_used',
 };
 
 export default function PhoneDetail({ phone, onClose }) {
@@ -68,7 +68,7 @@ export default function PhoneDetail({ phone, onClose }) {
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <GradeTag grade={phone.grade} />
                   <span className="text-xs text-[#555555] uppercase tracking-wide">
-                    {conditionLabel[phone.condition]}
+                    {conditionKey[phone.condition] ? t(conditionKey[phone.condition]) : phone.condition}
                   </span>
                 </div>
                 <p className="text-3xl font-bold text-[#00B4CC]">{phone.price}€</p>
