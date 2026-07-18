@@ -14,12 +14,13 @@ const STORES = [
 ]
 
 function StoresModal({ onClose }) {
+  const { t } = useLanguage()
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md z-10 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-poppins font-bold text-[#1B2A4A] text-lg">Nos points de vente</h2>
+          <h2 className="font-poppins font-bold text-[#1B2A4A] text-lg">{t('rachat_stores_title')}</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
             <X size={18} />
           </button>
@@ -106,12 +107,12 @@ function calcPrice(model, answers) {
 const IPHONE_MODELS = IPHONE_DATABASE.map(m => m.model)
 const STORAGES = ['64 Go', '128 Go', '256 Go', '512 Go', '1 To']
 const FUNC_QUESTIONS = [
-  { key: 'power',   label: "Votre iPhone s'allume-t-il et reste-t-il allumé sans redémarrer tout seul ?" },
-  { key: 'network', label: 'Votre iPhone peut-il se connecter à un réseau ?' },
-  { key: 'faceid',  labelKey: 'rachat_question_faceid', label: 'Votre Face ID fonctionne-t-il ?' },
-  { key: 'camera',  labelKey: 'rachat_question_camera', label: 'Votre caméra frontale fonctionne-t-elle ?' },
-  { key: 'speaker', label: 'Le haut-parleur en haut de ton iPhone fonctionne-t-il ?' },
-  { key: 'sim',     labelKey: 'rachat_question_sim', label: 'Ton iPhone a-t-il un emplacement pour carte SIM ?' },
+  { key: 'power',   labelKey: 'rachat_question_power' },
+  { key: 'network', labelKey: 'rachat_question_network' },
+  { key: 'faceid',  labelKey: 'rachat_question_faceid' },
+  { key: 'camera',  labelKey: 'rachat_question_camera' },
+  { key: 'speaker', labelKey: 'rachat_question_speaker' },
+  { key: 'sim',     labelKey: 'rachat_question_sim' },
 ]
 
 const TOTAL_STEPS = 9
@@ -161,8 +162,8 @@ function SummaryPanel({ model, storage, answers, estimatedPrice }) {
       {(model || storage) && (
         <div className="border-t border-gray-100 pt-4 flex flex-col gap-2 text-sm">
           {model && <div className="flex justify-between"><span className="text-gray-400">{t('revendre_model')}</span><span className="font-medium text-[#1B2A4A]">{model}</span></div>}
-          {storage && <div className="flex justify-between"><span className="text-gray-400">Capacité</span><span className="font-medium text-[#1B2A4A]">{storage}</span></div>}
-          {answers.battery && <div className="flex justify-between"><span className="text-gray-400">Batterie</span><span className="font-medium text-[#1B2A4A]">{answers.battery}%</span></div>}
+          {storage && <div className="flex justify-between"><span className="text-gray-400">{t('rachat_capacity_label')}</span><span className="font-medium text-[#1B2A4A]">{storage}</span></div>}
+          {answers.battery && <div className="flex justify-between"><span className="text-gray-400">{t('rachat_battery_label')}</span><span className="font-medium text-[#1B2A4A]">{answers.battery}%</span></div>}
         </div>
       )}
     </div>
@@ -215,19 +216,21 @@ export default function Rachat() {
         </div>
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('rachat_success_title')}</h1>
         <p className="text-gray-500 text-sm mb-6">
-          Nous vous rappelons sous <strong>24h</strong> au <strong>{contact.phone}</strong> pour confirmer notre offre de rachat pour votre <strong>{model} {storage}</strong>.
+          {t('rachat_success_callback')} <strong>{contact.phone}</strong>
+          <br />
+          {t('rachat_success_for')} <strong>{model} {storage}</strong>.
         </p>
         <div className="bg-[#1B2A4A] text-white rounded-2xl p-5 mb-6">
-          <p className="text-sm text-gray-300 mb-1">Notre estimation</p>
+          <p className="text-sm text-gray-300 mb-1">{t('rachat_our_estimate')}</p>
           <p className="text-4xl font-bold text-[#00B4CC]">{estimatedPrice} €</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-400 justify-center">
           <Phone size={14} className="text-[#00B4CC]" />
-          Une question ? <strong className="text-[#1B2A4A]">0472 72 85 24</strong>
+          {t('rachat_a_question')} <strong className="text-[#1B2A4A]">0472 72 85 24</strong>
         </div>
         <button onClick={() => { setStep(1); setModel(''); setStorage(''); setAnswers({ battery:'', batteryUnknown:false, functions:{}, funcStep:0, screenFunc:'', screenCracks:'', screenWear:'', frame:'', back:'' }); setDone(false); setSent(false) }}
           className="mt-6 text-sm text-[#00B4CC] underline cursor-pointer">
-          Nouvelle estimation
+          {t('rachat_new_estimate')}
         </button>
       </main>
     )
@@ -239,21 +242,21 @@ export default function Rachat() {
     const in12 = Math.round(estimatedPrice * 0.69)
     return (
       <main className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-12">
-        <h2 className="font-poppins font-bold text-2xl text-[#1B2A4A] mb-6 text-center">Votre estimation de prix</h2>
+        <h2 className="font-poppins font-bold text-2xl text-[#1B2A4A] mb-6 text-center">{t('rachat_your_estimate')}</h2>
         <div className="grid md:grid-cols-2 gap-6">
           {/* Left: price */}
           <div className="bg-[#1B2A4A] rounded-2xl p-6 text-white">
-            <p className="text-sm text-gray-300 mb-1">VOTRE ESTIMATION DE PRIX</p>
+            <p className="text-sm text-gray-300 mb-1">{t('rachat_your_estimate_up')}</p>
             <p className="text-5xl font-bold text-[#00B4CC] mb-4">{estimatedPrice} €</p>
             <div className="bg-yellow-400/20 border border-yellow-400/40 rounded-xl px-4 py-2 mb-5">
-              <p className="text-yellow-300 text-xs font-medium">✓ Valable 14 jours après confirmation</p>
+              <p className="text-yellow-300 text-xs font-medium">{t('rachat_valid_14days')}</p>
             </div>
             <div className="flex items-center gap-1 text-gray-300 text-xs mb-3">
               <TrendingDown size={14} />
-              <span>Prévision de valeur — ne pas attendre coûte jusqu'à <strong className="text-white">{estimatedPrice - in12} €</strong></span>
+              <span>{t('rachat_value_forecast')} <strong className="text-white">{estimatedPrice - in12} €</strong></span>
             </div>
             <div className="flex justify-between text-center mt-4 border-t border-white/10 pt-4">
-              {[['Aujourd\'hui', estimatedPrice, true], ['3 mois', in3, false], ['6 mois', in6, false], ['12 mois', in12, false]].map(([label, val, active]) => (
+              {[[t('rachat_today'), estimatedPrice, true], [t('rachat_3months'), in3, false], [t('rachat_6months'), in6, false], [t('rachat_12months'), in12, false]].map(([label, val, active]) => (
                 <div key={label}>
                   <p className={`text-sm font-bold ${active ? 'text-[#00B4CC]' : 'text-white/60'}`}>{val} €</p>
                   <p className="text-[10px] text-gray-400 mt-0.5">{label}</p>
@@ -261,21 +264,21 @@ export default function Rachat() {
               ))}
             </div>
             <div className="mt-5 border-t border-white/10 pt-4 text-xs text-gray-400">
-              <p className="font-medium text-gray-300 mb-2">Vos réponses</p>
+              <p className="font-medium text-gray-300 mb-2">{t('rachat_your_answers')}</p>
               <div className="flex justify-between"><span>{t('revendre_model')}</span><span className="text-white">{model}</span></div>
-              <div className="flex justify-between mt-1"><span>Capacité</span><span className="text-white">{storage}</span></div>
-              {answers.battery && <div className="flex justify-between mt-1"><span>Batterie</span><span className="text-white">{answers.battery}%</span></div>}
+              <div className="flex justify-between mt-1"><span>{t('rachat_capacity_label')}</span><span className="text-white">{storage}</span></div>
+              {answers.battery && <div className="flex justify-between mt-1"><span>{t('rachat_battery_label')}</span><span className="text-white">{answers.battery}%</span></div>}
             </div>
           </div>
 
           {/* Right: CTA + contact */}
           <div className="flex flex-col gap-4">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h3 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">Reprise {model}</h3>
+              <h3 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_tradein')} {model}</h3>
               <ul className="text-sm text-gray-500 flex flex-col gap-2 mb-6">
-                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00B4CC]" /> Livraison gratuite et sécurisée</li>
-                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00B4CC]" /> Suppression sécurisée des données</li>
-                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00B4CC]" /> Paiement rapide en boutique</li>
+                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00B4CC]" /> {t('rachat_benefit_delivery')}</li>
+                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00B4CC]" /> {t('rachat_benefit_data')}</li>
+                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00B4CC]" /> {t('rachat_benefit_payment')}</li>
               </ul>
               <div className="flex flex-col gap-3">
                 <input
@@ -297,7 +300,7 @@ export default function Rachat() {
                   disabled={!contact.name || !contact.phone}
                   className="w-full bg-[#1B2A4A] hover:bg-[#243660] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl transition-all cursor-pointer"
                 >
-                  Vendre pour {estimatedPrice} €
+                  {t('rachat_sell_for')} {estimatedPrice} €
                 </button>
               </div>
             </div>
@@ -322,7 +325,7 @@ export default function Rachat() {
           className="flex items-center gap-2 px-6 py-3 border-2 border-[#1B2A4A] text-[#1B2A4A] rounded-xl font-semibold hover:bg-[#1B2A4A] hover:text-white transition-all cursor-pointer"
         >
           <MapPin size={18} />
-          Nos points de vente
+          {t('rachat_stores_title')}
         </button>
       </div>
 
@@ -337,24 +340,24 @@ export default function Rachat() {
 
           {step > 1 && (
             <button onClick={back} className="flex items-center gap-1 text-sm text-gray-400 hover:text-[#1B2A4A] mb-4 cursor-pointer transition-colors">
-              <ArrowLeft size={14} /> Retour
+              <ArrowLeft size={14} /> {t('rachat_back_btn')}
             </button>
           )}
 
           {/* STEP 1 — Modèle */}
           {step === 1 && (
             <div>
-              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">Modèle d'iPhone</h2>
-              <p className="text-sm text-gray-400 mb-1">Vérifie le modèle de ton iPhone</p>
+              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_step1_title')}</h2>
+              <p className="text-sm text-gray-400 mb-1">{t('rachat_step1_sub')}</p>
               <div className="bg-blue-50 text-blue-700 text-xs rounded-xl px-4 py-2.5 mb-4">
-                ℹ️ Allez dans <strong>Réglages → Général → Informations → Nom du modèle</strong>
+                ℹ️ {t('rachat_goto')} <strong>{t('rachat_step1_path')}</strong>
               </div>
               <select
                 value={model}
                 onChange={e => setModel(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] bg-white mb-4"
               >
-                <option value="">Sélectionnez le modèle d'iPhone</option>
+                <option value="">{t('rachat_step1_placeholder')}</option>
                 {IPHONE_MODELS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
               <button
@@ -369,10 +372,10 @@ export default function Rachat() {
           {/* STEP 2 — Stockage */}
           {step === 2 && (
             <div>
-              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">Capacité de stockage</h2>
-              <p className="text-sm text-gray-400 mb-1">Vérifiez la capacité de stockage de l'appareil</p>
+              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_step2_title')}</h2>
+              <p className="text-sm text-gray-400 mb-1">{t('rachat_step2_sub')}</p>
               <div className="bg-blue-50 text-blue-700 text-xs rounded-xl px-4 py-2.5 mb-4">
-                ℹ️ Allez dans <strong>Réglages → Général → Informations</strong>
+                ℹ️ {t('rachat_goto')} <strong>{t('rachat_step2_path')}</strong>
               </div>
               <div className="flex flex-col gap-2 mb-4">
                 {STORAGES.map(s => (
@@ -391,29 +394,29 @@ export default function Rachat() {
           {/* STEP 3 — Batterie */}
           {step === 3 && (
             <div>
-              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">État de santé de la batterie</h2>
-              <p className="text-sm text-gray-400 mb-1">Vérifiez la capacité maximale de la batterie</p>
+              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_step3_title')}</h2>
+              <p className="text-sm text-gray-400 mb-1">{t('rachat_step3_sub')}</p>
               <div className="bg-blue-50 text-blue-700 text-xs rounded-xl px-4 py-2.5 mb-4">
-                ℹ️ Allez dans <strong>Réglages → Batterie → État de la batterie et charge.</strong>
+                ℹ️ {t('rachat_goto')} <strong>{t('rachat_step3_path')}</strong>
               </div>
               <div className="flex flex-col gap-3 mb-4">
                 <div className={`p-4 rounded-xl border-2 transition-all ${!answers.batteryUnknown ? 'border-[#00B4CC] bg-cyan-50' : 'border-gray-200'}`}>
-                  <p className="text-sm font-medium text-[#1B2A4A] mb-2">Entrez la capacité de la batterie</p>
+                  <p className="text-sm font-medium text-[#1B2A4A] mb-2">{t('rachat_step3_input')}</p>
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
                       min="1" max="100"
                       value={answers.battery}
                       onChange={e => { setAns('battery', e.target.value); setAns('batteryUnknown', false) }}
-                      placeholder="ex: 89"
+                      placeholder={t('rachat_step3_placeholder')}
                       className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#00B4CC]"
                     />
                     <span className="text-gray-500 font-medium">%</span>
                   </div>
                 </div>
                 <Radio
-                  label="Impossible de vérifier"
-                  desc="Nous confirmerons la capacité après inspection"
+                  label={t('rachat_step3_unknown')}
+                  desc={t('rachat_step3_unknown_desc')}
                   selected={answers.batteryUnknown}
                   onClick={() => { setAns('batteryUnknown', true); setAns('battery', '85') }}
                 />
@@ -430,25 +433,25 @@ export default function Rachat() {
           {/* STEP 4 — Vérification fonctionnelle (6 sous-questions) */}
           {step === 4 && (
             <div>
-              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">Vérification fonctionnelle</h2>
-              <p className="text-sm text-gray-400 mb-4">Vérifiez les fonctionnalités de votre appareil</p>
+              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_step4_title')}</h2>
+              <p className="text-sm text-gray-400 mb-4">{t('rachat_step4_sub')}</p>
 
               {/* Réponses déjà données */}
               {FUNC_QUESTIONS.slice(0, funcStep).map(q => (
                 <div key={q.key} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5 mb-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle size={14} className="text-green-500" />
-                    <span className="text-sm text-gray-600">{q.label.split(' ').slice(0, 4).join(' ')}...</span>
+                    <span className="text-sm text-gray-600">{t(q.labelKey).split(' ').slice(0, 4).join(' ')}...</span>
                   </div>
                   <button onClick={() => setAns('funcStep', q.key === 'power' ? 0 : FUNC_QUESTIONS.findIndex(f => f.key === q.key))}
-                    className="text-xs text-[#00B4CC] cursor-pointer">Modifier</button>
+                    className="text-xs text-[#00B4CC] cursor-pointer">{t('rachat_edit')}</button>
                 </div>
               ))}
 
               {!funcDone ? (
                 <div className="border-2 border-[#00B4CC]/20 rounded-xl p-4 mb-4">
                   <p className="text-xs text-gray-400 mb-2">{funcStep + 1}/6</p>
-                  <p className="font-medium text-[#1B2A4A] text-sm mb-4">{curFunc.labelKey ? t(curFunc.labelKey) : curFunc.label}</p>
+                  <p className="font-medium text-[#1B2A4A] text-sm mb-4">{t(curFunc.labelKey)}</p>
                   <div className="flex gap-3">
                     {[[t('rachat_yes'), true], [t('rachat_no'), false]].map(([label, val]) => (
                       <button key={label} onClick={() => {
@@ -469,7 +472,7 @@ export default function Rachat() {
                   onClick={next}
                   className="w-full bg-[#1B2A4A] hover:bg-[#243660] text-white font-bold py-3.5 rounded-xl transition-all cursor-pointer mt-2"
                 >
-                  Continuer →
+                  {t('rachat_continue')}
                 </button>
               )}
             </div>
@@ -478,14 +481,14 @@ export default function Rachat() {
           {/* STEP 5 — Fonctionnalité écran */}
           {step === 5 && (
             <div>
-              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">Fonctionnalité de l'écran</h2>
-              <p className="text-sm text-gray-400 mb-4">Vérifiez la présence de taches lumineuses, pixels morts ou lignes/brûlures d'écran.</p>
+              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_step5_title')}</h2>
+              <p className="text-sm text-gray-400 mb-4">{t('rachat_step5_sub')}</p>
               <div className="flex flex-col gap-2 mb-4">
                 {[
-                  { val: 'issues_spots', label: 'Taches lumineuses' },
-                  { val: 'issues_pixels', label: 'Pixels morts' },
-                  { val: 'issues_lines', label: 'Lignes visibles sur l\'écran ou brûlures d\'écran' },
-                  { val: 'ok', label: 'Tout fonctionne' },
+                  { val: 'issues_spots', label: t('rachat_screen_spots') },
+                  { val: 'issues_pixels', label: t('rachat_screen_pixels') },
+                  { val: 'issues_lines', label: t('rachat_screen_lines') },
+                  { val: 'ok', label: t('rachat_screen_all_ok') },
                 ].map(({ val, label }) => (
                   <Radio key={val} label={label} selected={answers.screenFunc === val}
                     onClick={() => setAns('screenFunc', val)} />
@@ -501,14 +504,14 @@ export default function Rachat() {
           {/* STEP 6 — Fissures écran */}
           {step === 6 && (
             <div>
-              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">Écran</h2>
-              <p className="text-sm text-gray-400 mb-4">Inspectez l'écran pour détecter les fissures, les éclats et les rayures profondes.</p>
+              <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_step6_title')}</h2>
+              <p className="text-sm text-gray-400 mb-4">{t('rachat_step6_sub')}</p>
               <div className="flex flex-col gap-2 mb-4">
                 {[
-                  { val: 'fissures', label: 'Fissures', desc: 'Une ou plusieurs fissures visibles.' },
-                  { val: 'eclats', label: 'Éclats', desc: 'Un ou plusieurs éclats détectés en inspectant les bords.' },
-                  { val: 'raye', label: 'Fortement rayé', desc: 'Nombreuses rayures visibles sans source de lumière.' },
-                  { val: 'ok', label: 'Aucune fissure, aucun éclat ni rayure profonde' },
+                  { val: 'fissures', label: t('rachat_cracks_cracks'), desc: t('rachat_cracks_cracks_d') },
+                  { val: 'eclats', label: t('rachat_cracks_chips'), desc: t('rachat_cracks_chips_d') },
+                  { val: 'raye', label: t('rachat_cracks_scratched'), desc: t('rachat_cracks_scratched_d') },
+                  { val: 'ok', label: t('rachat_cracks_none') },
                 ].map(({ val, label, desc }) => (
                   <Radio key={val} label={label} desc={desc} selected={answers.screenCracks === val}
                     onClick={() => setAns('screenCracks', val)} />
@@ -525,13 +528,13 @@ export default function Rachat() {
           {step === 7 && (
             <div>
               <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_question_screen')}</h2>
-              <p className="text-sm text-gray-400 mb-4">Inspectez l'écran pour détecter des rayures et des signes d'usure.</p>
+              <p className="text-sm text-gray-400 mb-4">{t('rachat_step7_sub')}</p>
               <div className="flex flex-col gap-2 mb-4">
                 {[
-                  { val: 'usure_visible', label: 'Usure visible', desc: 'Rayures visibles, ressenties en passant le doigt.' },
-                  { val: 'quelques', label: 'Quelques signes d\'usure', desc: 'Légères rayures aux coins.' },
-                  { val: 'minimes', label: 'Signes d\'usure minimes', desc: 'Micro-rayures visibles uniquement à la lumière.' },
-                  { val: 'ok', label: 'Aucun signe d\'utilisation', desc: 'L\'écran a l\'air comme neuf.' },
+                  { val: 'usure_visible', label: t('rachat_wear_visible'), desc: t('rachat_screen_visible_d') },
+                  { val: 'quelques', label: t('rachat_wear_some'), desc: t('rachat_screen_some_d') },
+                  { val: 'minimes', label: t('rachat_wear_minimal'), desc: t('rachat_screen_minimal_d') },
+                  { val: 'ok', label: t('rachat_wear_none'), desc: t('rachat_screen_none_d') },
                 ].map(({ val, label, desc }) => (
                   <Radio key={val} label={label} desc={desc} selected={answers.screenWear === val}
                     onClick={() => setAns('screenWear', val)} />
@@ -548,14 +551,14 @@ export default function Rachat() {
           {step === 8 && (
             <div>
               <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_question_sides')}</h2>
-              <p className="text-sm text-gray-400 mb-4">Inspectez les côtés pour détecter les rayures et l'usure.</p>
+              <p className="text-sm text-gray-400 mb-4">{t('rachat_step8_sub')}</p>
               <div className="flex flex-col gap-2 mb-4">
                 {[
-                  { val: 'fissure', label: 'Fissuré ou cassé', desc: 'Côtés pliés, courbés ou fissurés.' },
-                  { val: 'usure_visible', label: 'Usure visible', desc: 'Rayures visibles, bosses ou décoloration.' },
-                  { val: 'quelques', label: 'Quelques signes d\'usure', desc: 'Rayures, marques ou petite éraflure.' },
-                  { val: 'minimes', label: 'Signes d\'usure minimes', desc: 'Légères rayures non visibles au premier coup d\'œil.' },
-                  { val: 'ok', label: 'Aucun signe d\'utilisation', desc: 'Le contour a l\'air comme neuf.' },
+                  { val: 'fissure', label: t('rachat_frame_cracked'), desc: t('rachat_frame_cracked_d') },
+                  { val: 'usure_visible', label: t('rachat_wear_visible'), desc: t('rachat_frame_visible_d') },
+                  { val: 'quelques', label: t('rachat_wear_some'), desc: t('rachat_frame_some_d') },
+                  { val: 'minimes', label: t('rachat_wear_minimal'), desc: t('rachat_frame_minimal_d') },
+                  { val: 'ok', label: t('rachat_wear_none'), desc: t('rachat_frame_none_d') },
                 ].map(({ val, label, desc }) => (
                   <Radio key={val} label={label} desc={desc} selected={answers.frame === val}
                     onClick={() => setAns('frame', val)} />
@@ -572,14 +575,14 @@ export default function Rachat() {
           {step === 9 && (
             <div>
               <h2 className="font-poppins font-bold text-[#1B2A4A] text-xl mb-1">{t('rachat_question_back')}</h2>
-              <p className="text-sm text-gray-400 mb-4">Inspectez l'arrière pour détecter les rayures et l'usure.</p>
+              <p className="text-sm text-gray-400 mb-4">{t('rachat_step9_sub')}</p>
               <div className="flex flex-col gap-2 mb-4">
                 {[
-                  { val: 'fissure', label: 'Fissuré ou cassé.', desc: 'Le verre arrière est clairement fissuré, ou le métal est bosselé.' },
-                  { val: 'usure_visible', label: 'Usure visible', desc: 'Rayures visibles, bosses ou traces de décoloration.' },
-                  { val: 'quelques', label: 'Quelques signes d\'usure', desc: 'Rayures visibles ou marques d\'usure.' },
-                  { val: 'minimes', label: 'Signes d\'usure minimes', desc: 'Légères rayures non visibles au premier coup d\'œil.' },
-                  { val: 'ok', label: 'Aucun signe d\'utilisation', desc: 'L\'arrière de l\'appareil a l\'air comme neuf.' },
+                  { val: 'fissure', label: t('rachat_backc_cracked'), desc: t('rachat_backc_cracked_d') },
+                  { val: 'usure_visible', label: t('rachat_wear_visible'), desc: t('rachat_backc_visible_d') },
+                  { val: 'quelques', label: t('rachat_wear_some'), desc: t('rachat_backc_some_d') },
+                  { val: 'minimes', label: t('rachat_wear_minimal'), desc: t('rachat_backc_minimal_d') },
+                  { val: 'ok', label: t('rachat_wear_none'), desc: t('rachat_backc_none_d') },
                 ].map(({ val, label, desc }) => (
                   <Radio key={val} label={label} desc={desc} selected={answers.back === val}
                     onClick={() => setAns('back', val)} />
@@ -587,7 +590,7 @@ export default function Rachat() {
               </div>
               <button onClick={() => setDone(true)} disabled={!answers.back}
                 className="w-full bg-[#00B4CC] hover:bg-[#0099b3] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all cursor-pointer">
-                Voir mon estimation →
+                {t('rachat_see_estimate')}
               </button>
             </div>
           )}
