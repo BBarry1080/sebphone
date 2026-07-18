@@ -180,7 +180,7 @@ export default function ReservationForm({ phone }) {
     setPromoCode(null)
 
     if (!isSupabaseReady) {
-      setPromoError('Service indisponible.')
+      setPromoError(t('form_service_unavailable'))
       setPromoLoading(false)
       return
     }
@@ -195,9 +195,9 @@ export default function ReservationForm({ phone }) {
     setPromoLoading(false)
 
     if (error || !data) { setPromoError(t('form_error_promo')); return }
-    if (data.expires_at && new Date(data.expires_at) < new Date()) { setPromoError('Ce code a expiré.'); return }
-    if (data.max_uses && data.uses_count >= data.max_uses) { setPromoError('Ce code a atteint sa limite d\'utilisation.'); return }
-    if (data.min_order && basePrice < data.min_order) { setPromoError(`Commande minimum de ${data.min_order}€ requis.`); return }
+    if (data.expires_at && new Date(data.expires_at) < new Date()) { setPromoError(t('form_promo_expired')); return }
+    if (data.max_uses && data.uses_count >= data.max_uses) { setPromoError(t('form_promo_limit')); return }
+    if (data.min_order && basePrice < data.min_order) { setPromoError(`${t('form_promo_min')} ${data.min_order}€ ${t('form_promo_required')}`); return }
 
     setPromoCode(data)
     setPromoError('')
@@ -211,11 +211,11 @@ export default function ReservationForm({ phone }) {
 
   const handleStripeCheckout = async () => {
     if (!form.firstName || !form.lastName || !form.email || !form.phone) {
-      setSubmitError('Remplissez tous les champs obligatoires')
+      setSubmitError(t('form_fill_required'))
       return
     }
     if (form.delivery === 'delivery' && !selectedAddress) {
-      setSubmitError('Sélectionnez votre adresse dans les suggestions')
+      setSubmitError(t('form_select_address'))
       return
     }
 
@@ -266,7 +266,7 @@ export default function ReservationForm({ phone }) {
           .single()
         if (insertError) {
           console.error('Erreur insert order:', insertError)
-          throw new Error('Impossible de créer la réservation : ' + insertError.message)
+          throw new Error(t('form_cannot_create') + ' ' + insertError.message)
         }
 
         // Si livraison express : crée la course liée
@@ -310,14 +310,14 @@ export default function ReservationForm({ phone }) {
 
       const { url, error } = await res.json()
       if (error) throw new Error(error)
-      if (!url) throw new Error('URL de paiement manquante')
+      if (!url) throw new Error(t('form_missing_payment_url'))
 
       // 3. Redirige vers Stripe Checkout
       console.log('Redirection vers Stripe Checkout:', url)
       window.location.href = url
     } catch (err) {
       console.error('Checkout error:', err)
-      setSubmitError('Erreur : ' + err.message)
+      setSubmitError(t('form_error_prefix') + ' ' + err.message)
       setLoading(false)
     }
   }
@@ -371,7 +371,7 @@ export default function ReservationForm({ phone }) {
 
         if (error) {
           console.error('6. ERREUR INSERT:', error)
-          setSubmitError('Erreur lors de la réservation : ' + error.message)
+          setSubmitError(t('form_resa_error') + ' ' + error.message)
           setLoading(false)
           return
         }
@@ -386,7 +386,7 @@ export default function ReservationForm({ phone }) {
       }
 
       console.log('8. Envoi email...');
-      const packLabel = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.label || 'Aucun'
+      const packLabel = ACCESSORY_PACKS.find((p) => p.id === selectedPack)?.label || t('form_none')
       const emailResult = await sendConfirmationEmail({
         clientEmail:      form.email,
         clientName,
@@ -401,7 +401,7 @@ export default function ReservationForm({ phone }) {
         magasinId:        magasinFinal,
         pickupDate:       form.pickupDate,
         deliveryAddress:  selectedAddress?.full || '',
-        accessoryPack:    selectedPack !== 'none' ? packLabel : 'Aucun',
+        accessoryPack:    selectedPack !== 'none' ? packLabel : t('form_none'),
         batteryReplace:   batteryReplace && batteryEligible,
         accessoriesTotal: packPrice + batteryPrice,
       })
@@ -449,7 +449,7 @@ export default function ReservationForm({ phone }) {
     >
       {proPriceApplies && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-2 text-xs text-blue-700 font-bold text-center">
-          💼 Prix professionnel appliqué
+          {t('form_pro_price')}
         </div>
       )}
 
@@ -520,7 +520,7 @@ export default function ReservationForm({ phone }) {
               {/* Batterie */}
               {battery && (
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <span className="text-[10px] text-gray-500">Batterie</span>
+                  <span className="text-[10px] text-gray-500">{t('form_battery')}</span>
                   <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                     <div className={`h-full ${batteryColor} rounded-full`} style={{ width: `${battery}%` }} />
                   </div>
@@ -530,7 +530,7 @@ export default function ReservationForm({ phone }) {
 
               {/* Pièces remplacées */}
               {phone?.condition === 'neuf' ? (
-                <p className="text-[10px] text-blue-700 font-medium mb-1.5">Neuf sous scellé</p>
+                <p className="text-[10px] text-blue-700 font-medium mb-1.5">{t('resacmd_sealed')}</p>
               ) : phone?.condition === 'occasion' ? (
                 allParts.length > 0 ? (
                   <div className="flex flex-col gap-0.5 mb-1.5">
@@ -566,9 +566,9 @@ export default function ReservationForm({ phone }) {
                 )}
                 {(packPrice > 0 || batteryPrice > 0) && !discount && (
                   <span className="text-[10px] text-[#555]">
-                    {packPrice > 0 && `pack +${packPrice}€`}
+                    {packPrice > 0 && `${t('form_pack_low')} +${packPrice}€`}
                     {packPrice > 0 && batteryPrice > 0 && ' · '}
-                    {batteryPrice > 0 && `batterie +${batteryPrice}€`}
+                    {batteryPrice > 0 && `${t('form_battery_low')} +${batteryPrice}€`}
                   </span>
                 )}
               </div>
@@ -624,8 +624,8 @@ export default function ReservationForm({ phone }) {
         </h3>
         <div className="grid grid-cols-2 gap-3 mb-4">
           {[
-            { value: 'collect',  Icon: Store, label: t('reservation_collect'), sub: 'Retrait en magasin' },
-            { value: 'delivery', Icon: Truck, label: t('reservation_delivery'), sub: 'À domicile' },
+            { value: 'collect',  Icon: Store, label: t('reservation_collect'), sub: t('form_pickup_store') },
+            { value: 'delivery', Icon: Truck, label: t('reservation_delivery'), sub: t('form_at_home') },
           ].map(({ value, Icon, label, sub }) => (
             <button key={value} type="button"
               onClick={() => setForm((p) => ({ ...p, delivery: value }))}
@@ -671,7 +671,7 @@ export default function ReservationForm({ phone }) {
                             <p className="text-xs text-gray-500">{mag.adresse}</p>
                           )}
                           <p className="text-xs text-orange-600 mt-0.5">
-                            ⏱ Disponible sous {phone?.delai_commande || '1h à 72h'}
+                            ⏱ {t('form_available_in')} {phone?.delai_commande || '1h à 72h'}
                           </p>
                         </div>
                       </label>
@@ -726,7 +726,7 @@ export default function ReservationForm({ phone }) {
               <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <span className="text-amber-600 text-sm">⏰</span>
                 <p className="text-xs text-amber-700 font-medium">
-                  Retrait en magasin disponible uniquement jusqu'à 20h
+                  {t('form_pickup_until')}
                 </p>
               </div>
             )}
@@ -758,7 +758,7 @@ export default function ReservationForm({ phone }) {
                   setSelectedAddress(null)
                   setDeliveryPrice(null)
                 }}
-                placeholder="Commencez à taper votre adresse..."
+                placeholder={t('form_address_placeholder')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] focus:ring-2 focus:ring-cyan-100 transition-all" />
               {suggestions.length > 0 && (
                 <div className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto">
@@ -776,10 +776,10 @@ export default function ReservationForm({ phone }) {
             {selectedAddress && (
               <div className="bg-green-50 border border-green-200 rounded-xl p-3 mt-3">
                 <p className="text-sm font-bold text-green-800">
-                  ✓ Adresse confirmée
+                  {t('form_address_confirmed')}
                 </p>
                 <p className="text-xs text-green-700 mt-1">
-                  {selectedAddress.zip} {selectedAddress.city} · à {distance}km de Bruxelles
+                  {selectedAddress.zip} {selectedAddress.city} · {distance}{t('form_km_from_brussels')}
                 </p>
               </div>
             )}
@@ -791,8 +791,8 @@ export default function ReservationForm({ phone }) {
                   onChange={(e) => setIsExpress(e.target.checked)}
                   className="w-4 h-4" />
                 <label htmlFor="express" className="cursor-pointer">
-                  <p className="text-sm font-bold text-orange-800">🚗 Livraison express jour même</p>
-                  <p className="text-xs text-orange-600">Bruxelles 10€ · +30km 25€ (calcul auto)</p>
+                  <p className="text-sm font-bold text-orange-800">{t('form_express_delivery')}</p>
+                  <p className="text-xs text-orange-600">{t('form_express_pricing')}</p>
                 </label>
               </div>
 
@@ -800,13 +800,13 @@ export default function ReservationForm({ phone }) {
                 <div className="space-y-3">
                   <div className="bg-green-50 border border-green-200 rounded-xl p-3">
                     <p className="text-sm font-bold text-green-800">
-                      Frais de livraison : {deliveryPrice}€
+                      {t('form_delivery_fee')} {deliveryPrice}€
                     </p>
                   </div>
 
                   <div>
                     <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
-                      Créneau de livraison
+                      {t('form_delivery_slot')}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       {[
@@ -829,7 +829,7 @@ export default function ReservationForm({ phone }) {
 
               {isExpress && !selectedAddress && (
                 <p className="text-xs text-amber-600 font-medium">
-                  ⚠️ Sélectionnez une adresse ci-dessus pour calculer le tarif express.
+                  {t('form_select_addr_express')}
                 </p>
               )}
             </div>
@@ -1024,7 +1024,7 @@ export default function ReservationForm({ phone }) {
         {loading ? (
           <span className="flex items-center justify-center gap-2">
             <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-            Préparation du paiement...
+            {t('form_preparing_payment')}
           </span>
         ) : paymentMode === 'acompte' ? (
           t('form_reserve_btn')
