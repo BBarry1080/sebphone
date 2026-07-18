@@ -3,10 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import ReservationForm from '../components/reservation/ReservationForm'
 import { getSurCommandeColors, getSurCommandeStorages } from '../utils/surCommandeColors'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function ReservationCommande() {
   const { state } = useLocation()
   const navigate = useNavigate()
+  const { t } = useLanguage()
 
   useEffect(() => {
     if (!state) navigate('/boutique', { replace: true })
@@ -57,25 +59,25 @@ export default function ReservationCommande() {
         className="flex items-center gap-2 text-[#555555] hover:text-[#00B4CC] text-sm mb-6 transition-colors cursor-pointer"
       >
         <ArrowLeft size={16} />
-        Retour
+        {t('reservation_back')}
       </button>
 
       <div className="mb-8">
         <span className="bg-orange-100 text-orange-700 text-xs font-bold px-3 py-1 rounded-full inline-block mb-2">
-          📦 Sur commande
+          📦 {t('filter_on_order')}
         </span>
         <h1 className="font-poppins font-bold text-3xl text-[#1B2A4A] mb-1">
-          Réserver <span className="text-[#00B4CC]">{model}</span>
+          {t('resacmd_reserve')} <span className="text-[#00B4CC]">{model}</span>
         </h1>
         <p className="text-[#555555] text-sm">
-          {selectedColor} · {selectedStorage} · Neuf sous scellé · Délai {delai}
+          {selectedColor} · {selectedStorage} · {t('resacmd_sealed')} · {t('resacmd_delay')} {delai}
         </p>
       </div>
 
       <div className="mb-6 space-y-4">
         <div>
           <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
-            Couleur souhaitée
+            {t('resacmd_color_label')}
           </label>
           <div className="flex flex-wrap gap-2">
             {availableColors.map((color) => (
@@ -95,7 +97,7 @@ export default function ReservationCommande() {
 
         <div>
           <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
-            Stockage souhaité
+            {t('resacmd_storage_label')}
           </label>
           <div className="flex flex-wrap gap-2">
             {availableStorages.map((s) => (
