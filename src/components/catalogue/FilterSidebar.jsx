@@ -5,14 +5,14 @@ import { useLanguage } from '../../contexts/LanguageContext';
 
 const SORT_OPTIONS = [
   { value: 'recent',      label: 'Plus récents',          labelKey: 'sort_newest' },
-  { value: 'featured',    label: 'En vedette' },
-  { value: 'best_seller', label: 'Meilleures ventes' },
+  { value: 'featured',    label: 'En vedette',            labelKey: 'sort_featured' },
+  { value: 'best_seller', label: 'Meilleures ventes',     labelKey: 'sort_best_seller' },
   { value: 'alpha_asc',   label: 'Alphabétique, A à Z',   labelKey: 'sort_alpha' },
-  { value: 'alpha_desc',  label: 'Alphabétique, Z à A' },
+  { value: 'alpha_desc',  label: 'Alphabétique, Z à A',   labelKey: 'sort_alpha_desc' },
   { value: 'price_asc',   label: 'Prix : faible à élevé', labelKey: 'sort_price_asc' },
   { value: 'price_desc',  label: 'Prix : élevé à faible', labelKey: 'sort_price_desc' },
-  { value: 'date_asc',    label: 'Date, plus ancienne' },
-  { value: 'date_desc',   label: 'Date, plus récente' },
+  { value: 'date_asc',    label: 'Date, plus ancienne',   labelKey: 'sort_date_asc' },
+  { value: 'date_desc',   label: 'Date, plus récente',    labelKey: 'sort_date_desc' },
 ];
 
 function Section({ title, children, defaultOpen = true }) {
@@ -97,10 +97,10 @@ function SidebarContent({
   ].filter((s) => s.count > 0);
 
   const gradesList = [
-    { value: 'Comme neuf',    label: 'Comme neuf',    count: count((p) => p.grade === 'Comme neuf') },
-    { value: 'Très bon état', label: 'Très bon état', count: count((p) => p.grade === 'Très bon état') },
-    { value: 'Bon état',      label: 'Bon état',      count: count((p) => p.grade === 'Bon état') },
-    { value: 'Neuf',          label: 'Neuf',          count: count((p) => p.grade === 'Neuf') },
+    { value: 'Comme neuf',    label: t('grade_like_new'),  count: count((p) => p.grade === 'Comme neuf') },
+    { value: 'Très bon état', label: t('grade_very_good'), count: count((p) => p.grade === 'Très bon état') },
+    { value: 'Bon état',      label: t('grade_good'),      count: count((p) => p.grade === 'Bon état') },
+    { value: 'Neuf',          label: t('condition_new'),   count: count((p) => p.grade === 'Neuf') },
   ].filter((g) => g.count > 0);
 
   const magasins = MAGASINS_LIST

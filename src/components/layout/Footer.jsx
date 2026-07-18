@@ -43,8 +43,7 @@ export default function Footer() {
             <p className="text-xs text-gray-400 mt-1">{t('footer_slogan')}</p>
           </div>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Votre boutique de confiance pour téléphones neufs, reconditionnés et occasions en Belgique.
-            Qualité certifiée, garantie incluse.
+            {t('footer_desc')}
           </p>
         </div>
 
@@ -132,7 +131,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto px-6 py-5 flex flex-col items-center gap-2">
           <div className="text-xs text-gray-400 text-center">
             <p className="font-medium text-gray-300">Slt Group (SRL)</p>
-            <p>N° TVA : BE 1028.764.677</p>
+            <p>{t('footer_vat')} BE 1028.764.677</p>
             <p>Chaussée de Mons 711, 1070 Anderlecht</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-1 mt-1">

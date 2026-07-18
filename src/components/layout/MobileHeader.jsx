@@ -71,31 +71,31 @@ export default function MobileHeader() {
   const closeMenu = () => setOpen(false)
 
   const smartphonesItems = [
-    { href: '/boutique', label: 'Tous les smartphones' },
+    { href: '/boutique', label: t('menu_all_smartphones') },
     { href: '/iphone', label: 'Apple iPhone' },
     { href: '/samsung', label: 'Samsung' },
-    { href: '/occasions', label: 'Occasions' },
-    { href: '/reconditiones', label: 'Reconditionnés' },
+    { href: '/occasions', label: t('nav_occasions') },
+    { href: '/reconditiones', label: t('nav_reconditionnes') },
   ]
   const tabletteItems = [
-    { href: '/catalogue/tablette', label: 'Toutes les tablettes' },
+    { href: '/catalogue/tablette', label: t('menu_all_tablets') },
     { href: '/catalogue/tablette?brand=Apple', label: 'Apple iPad' },
     { href: '/catalogue/tablette?brand=Samsung', label: 'Samsung Galaxy Tab' },
   ]
   const ordinateurItems = [
-    { href: '/catalogue/ordinateur', label: 'Tous les ordinateurs' },
+    { href: '/catalogue/ordinateur', label: t('menu_all_computers') },
     { href: '/catalogue/ordinateur?brand=Apple', label: 'Apple MacBook' },
     { href: '/catalogue/ordinateur?brand=Dell', label: 'Dell' },
     { href: '/catalogue/ordinateur?brand=HP', label: 'HP' },
     { href: '/catalogue/ordinateur?brand=Lenovo', label: 'Lenovo' },
   ]
   const montreItems = [
-    { href: '/catalogue/montre', label: 'Toutes les montres' },
+    { href: '/catalogue/montre', label: t('menu_all_watches') },
     { href: '/catalogue/montre?brand=Apple', label: 'Apple Watch' },
     { href: '/catalogue/montre?brand=Samsung', label: 'Samsung Galaxy Watch' },
   ]
   const ecouteurItems = [
-    { href: '/catalogue/ecouteur', label: 'Tous les écouteurs' },
+    { href: '/catalogue/ecouteur', label: t('menu_all_earphones') },
     { href: '/catalogue/ecouteur?brand=Apple', label: 'Apple AirPods' },
     { href: '/catalogue/ecouteur?brand=Samsung', label: 'Samsung Galaxy Buds' },
     { href: '/catalogue/ecouteur?brand=Sony', label: 'Sony' },
