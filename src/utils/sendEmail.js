@@ -38,7 +38,7 @@ export async function sendConfirmationEmail(params) {
     },
     "rue-neuve": {
       nom: "Seb Telecom — Rue Neuve",
-      adresse: "Pass. du N 23, 1000 Bruxelles"
+      adresse: "Rue du Finistère 12, 1000 Bruxelles"
     },
     "louise": {
       nom: "Seb Telecom — Louise",

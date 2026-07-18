@@ -5,7 +5,7 @@ const STORES = [
   { name: "Seb Telecom — Anderlecht", address: "Chaussée de Mons 711, 1070 Anderlecht", active: true },
   { name: "Seb Telecom — Molenbeek", address: "Rue de l'Église Sainte-Anne 93, 1081 Molenbeek", active: true },
   { name: "Seb Telecom — Louise", address: "Rue du Bailli 22, 1000 Bruxelles", active: true },
-  { name: "Seb Telecom — Rue Neuve", address: "Pass. du Nord 23, 1000 Bruxelles", active: true },
+  { name: "Seb Telecom — Rue Neuve", address: "Rue du Finistère 12, 1000 Bruxelles", active: true },
   { name: "Seb Telecom — Tubize", address: "Rue de Bruxelles 18, 1400 Tubize", active: true },
   { name: "Seb Telecom — Saint-Gilles", address: "Chaussée de Forest 26, Saint-Gilles", active: true },
   { name: "Seb Telecom — Enghien", address: "Rue d'Hérinnes 38, 7850 Enghien", active: false, label: "Bientôt" },
