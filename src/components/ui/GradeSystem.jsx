@@ -50,10 +50,10 @@ function GradeCard({ grade }) {
             {grade.number}
           </span>
           <h3 className="font-poppins font-bold text-[#1B2A4A] text-xl">
-            GRADE {grade.number} : {grade.name}
+            {t('grade_word')} {grade.number} : {grade.name}
           </h3>
         </div>
-        <p className="font-bold text-sm text-[#1B2A4A] ml-8">Garantie {grade.warranty}.</p>
+        <p className="font-bold text-sm text-[#1B2A4A] ml-8">{t('warranty_word')} {grade.warranty}.</p>
       </div>
 
       {/* Features */}

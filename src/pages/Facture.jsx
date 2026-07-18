@@ -144,7 +144,7 @@ export default function Facture() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
         <p className="text-xl font-bold text-[#1B2A4A] mb-2">{t('invoice_not_found')}</p>
-        <p className="text-gray-500 text-sm">Vérifiez le lien ou contactez SebPhone</p>
+        <p className="text-gray-500 text-sm">{t('fact_check_link')}</p>
       </div>
     </div>
   )
@@ -159,7 +159,7 @@ export default function Facture() {
         <div className="bg-[#1B2A4A] rounded-2xl p-6 mb-6 text-center">
           <span className="text-2xl font-black text-[#00B4CC]">SEB</span>
           <span className="text-2xl font-black text-white">PHONE</span>
-          <p className="text-gray-400 text-sm mt-1">Facture de vente</p>
+          <p className="text-gray-400 text-sm mt-1">{t('fact_sale_invoice')}</p>
         </div>
 
         <div className="bg-white rounded-2xl p-6 mb-4 border border-gray-100 shadow-sm text-center">
@@ -193,7 +193,7 @@ export default function Facture() {
           <p className="text-sm text-green-600">
             Valable jusqu'au <strong>{warrantyExpiry.toLocaleDateString('fr-BE')}</strong>
           </p>
-          <p className="text-xs text-green-500 mt-1">Conservez cette page comme preuve de garantie</p>
+          <p className="text-xs text-green-500 mt-1">{t('fact_keep_page')}</p>
         </div>
 
         <button

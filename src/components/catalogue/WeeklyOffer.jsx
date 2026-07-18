@@ -185,7 +185,7 @@ export default function WeeklyOffer() {
                 <div className="absolute inset-0 flex items-center justify-center z-10 rounded-2xl bg-white/60 backdrop-blur-[1px]">
                   <p className="text-center text-sm font-bold text-gray-600 px-4">
                     {t('weekly_end_of_stock')}<br />
-                    <span className="font-normal text-xs text-gray-400">Revenez la semaine prochaine</span>
+                    <span className="font-normal text-xs text-gray-400">{t('weekly_come_back')}</span>
                   </p>
                 </div>
               )}
@@ -262,7 +262,7 @@ export default function WeeklyOffer() {
                   disabled
                   className="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-full text-sm cursor-not-allowed"
                 >
-                  Fin de stock — Revenez la semaine prochaine
+                  {t('weekly_out_of_stock')}
                 </button>
               ) : (
                 <button

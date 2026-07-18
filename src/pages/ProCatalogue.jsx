@@ -81,7 +81,7 @@ export default function ProCatalogue() {
                 ? 'bg-[#1B2A4A] text-white'
                 : 'bg-white text-gray-600 border border-gray-200'
             }`}>
-            {mode === 'pro' ? '💼 Prix Pro' : '👤 Prix particulier'}
+            {mode === 'pro' ? t('pro_price_pro_tab') : t('pro_price_private')}
           </button>
         ))}
       </div>
@@ -151,7 +151,7 @@ export default function ProCatalogue() {
                   )}
                   {priceMode === 'public' && phone.price_pro && (
                     <p className="text-xs text-blue-500 font-medium">
-                      💼 Prix Pro : {phone.price_pro}€
+                      {t('pro_price_pro_tab')} : {phone.price_pro}€
                     </p>
                   )}
                 </div>
@@ -159,7 +159,7 @@ export default function ProCatalogue() {
                   onClick={() => navigate(`/reservation/${phone.id}`)}
                   className="mt-3 w-full text-center py-2 bg-[#1B2A4A] hover:bg-[#243a64] text-white text-sm font-bold rounded-xl transition-colors"
                 >
-                  Réserver / Commander
+                  {t('pro_reserve_order')}
                 </button>
               </div>
             )

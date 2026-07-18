@@ -69,9 +69,9 @@ export default function DetailCommande() {
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">🔍</p>
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('detail_not_found')}</h1>
-        <p className="text-[#555] mb-6">Le code <span className="font-mono font-bold">{code}</span> ne correspond à aucune réservation.</p>
+        <p className="text-[#555] mb-6">{t('det_code_label')} <span className="font-mono font-bold">{code}</span> {t('det_not_found')}</p>
         <button onClick={() => navigate('/mes-reservations')} className="px-6 py-3 bg-[#1B2A4A] text-white font-bold rounded-xl cursor-pointer">
-          Mes réservations
+          {t('det_my_resa')}
         </button>
       </main>
     )
@@ -99,14 +99,14 @@ export default function DetailCommande() {
         className="flex items-center gap-2 text-sm text-[#555] hover:text-[#1B2A4A] transition-colors cursor-pointer mb-2"
       >
         <ArrowLeft size={16} />
-        Retour
+        {t('det_back')}
       </button>
 
       {/* Titre + code */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">Ma commande</h1>
-          <p className="text-sm text-[#888] mt-0.5">Code : <span className="font-mono font-bold text-[#1B2A4A] tracking-widest">{order.reservation_code}</span></p>
+          <h1 className="font-poppins font-bold text-2xl text-[#1B2A4A]">{t('det_my_order')}</h1>
+          <p className="text-sm text-[#888] mt-0.5">{t('det_code_label')} <span className="font-mono font-bold text-[#1B2A4A] tracking-widest">{order.reservation_code}</span></p>
         </div>
         <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border ${statusCfg.color}`}>
           {statusCfg.labelKey ? t(statusCfg.labelKey) : order.status}
@@ -137,7 +137,7 @@ export default function DetailCommande() {
             {(order.phone_condition === 'neuf' || order.phone_condition === 'reconditionne') && (
               <p className="text-xs text-emerald-600 font-medium mt-1.5 flex items-center gap-1">
                 <CheckCircle size={11} />
-                Garantie {order.phone_condition === 'neuf' ? '12' : '24'} mois SebPhone
+                {order.phone_condition === 'neuf' ? t('resa_warranty_12') : t('resa_warranty_24')}
               </p>
             )}
           </div>
@@ -150,17 +150,17 @@ export default function DetailCommande() {
           <ul className="space-y-2">
             {order.phone_condition === 'reconditionne' ? (
               <>
-                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> Contrôle complet 72 points</li>
-                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> Batterie testée et certifiée</li>
-                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> Nettoyage complet</li>
-                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> Tests fonctionnels validés</li>
-                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> Garantie 24 mois SebPhone</li>
+                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> {t('resa_checklist_72')}</li>
+                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> {t('resa_checklist_bat')}</li>
+                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> {t('resa_checklist_clean')}</li>
+                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> {t('resa_checklist_tests')}</li>
+                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> {t('resa_warranty_24')}</li>
               </>
             ) : (
               <>
-                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> Contrôle complet effectué</li>
-                {order.battery_health && <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> Batterie : {order.battery_health}%</li>}
-                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> Garantie 6 mois SebPhone</li>
+                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> {t('resa_check_done')}</li>
+                {order.battery_health && <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> {t('resa_battery_prefix')} {order.battery_health}%</li>}
+                <li className="text-sm text-[#555] flex items-center gap-2"><CheckCircle size={15} className="text-green-500 flex-shrink-0" /> {t('resa_warranty_6')}</li>
               </>
             )}
           </ul>
@@ -180,7 +180,7 @@ export default function DetailCommande() {
           </div>
           {isRecupere ? (
             <div className="flex justify-between border-t border-gray-100 pt-2 mt-1">
-              <span className="font-semibold text-[#1B2A4A]">Payé en magasin</span>
+              <span className="font-semibold text-[#1B2A4A]">{t('det_paid_store')}</span>
               <span className="font-bold text-emerald-700">{remaining}€ ✓</span>
             </div>
           ) : (
@@ -190,7 +190,7 @@ export default function DetailCommande() {
             </div>
           )}
           {encaisseDate && (
-            <p className="text-xs text-[#888] pt-1">Encaissé le {fmtDate(encaisseDate)}</p>
+            <p className="text-xs text-[#888] pt-1">{t('det_cashed_on')} {fmtDate(encaisseDate)}</p>
           )}
         </div>
       </Section>
@@ -211,7 +211,7 @@ export default function DetailCommande() {
       )}
 
       {/* Section 5 — Magasin / Livraison */}
-      <Section title={order.delivery_mode === 'delivery' ? t('detail_delivery') : 'Magasin de retrait'}>
+      <Section title={order.delivery_mode === 'delivery' ? t('detail_delivery') : t('det_pickup_store')}>
         {magasin ? (
           <div className="space-y-2">
             <div className="flex items-start gap-2">

@@ -70,7 +70,7 @@ function BestSellerCard({ phone }) {
         }}
         className="mt-2 text-xs text-[#00B4CC] hover:underline font-medium"
       >
-        Voir sur le site →
+        {t('bs_see_on_site')}
       </button>
     </div>
   );

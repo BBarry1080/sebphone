@@ -142,7 +142,7 @@ export default function Hero() {
               {[
                 { value: '5000+', label: t('hero_stat_phones') },
                 { value: '24 mois', label: t('hero_stat_guarantee') },
-                { value: '1h-24h max', label: 'Livraison' },
+                { value: '1h-24h max', label: t('hero_stat_delivery') },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <p className="text-white font-bold text-xl">{stat.value}</p>
