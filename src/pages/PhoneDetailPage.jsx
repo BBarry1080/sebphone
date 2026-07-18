@@ -22,10 +22,10 @@ const COLORS_BY_PHONE = {
 };
 
 const GRADES_CONFIG = [
-  { id: 'bon_etat',      label: 'Bon état',      warranty: '24 mois', priceAdj: -80, desc: 'Traces visibles, batterie origine' },
-  { id: 'tres_bon_etat', label: 'Très bon état', warranty: '24 mois', priceAdj: -40, desc: 'Peu de traces, batterie origine' },
-  { id: 'comme_neuf',    label: 'Comme neuf',    warranty: '24 mois', priceAdj: 0,   desc: 'Aucune trace visible, batterie origine' },
-  { id: 'neuf',          label: 'Neuf',          warranty: '24 mois', priceAdj: 50,  desc: 'Aucune trace — comme sorti de boîte' },
+  { id: 'bon_etat',      label: 'Bon état',      labelKey: 'grade_good',      descKey: 'pdp_grade_bon_desc',  warranty: '24 mois', priceAdj: -80 },
+  { id: 'tres_bon_etat', label: 'Très bon état', labelKey: 'grade_very_good', descKey: 'pdp_grade_tbe_desc',  warranty: '24 mois', priceAdj: -40 },
+  { id: 'comme_neuf',    label: 'Comme neuf',    labelKey: 'grade_like_new',  descKey: 'pdp_grade_cn_desc',   warranty: '24 mois', priceAdj: 0 },
+  { id: 'neuf',          label: 'Neuf',          labelKey: 'condition_new',   descKey: 'pdp_grade_neuf_desc', warranty: '24 mois', priceAdj: 50 },
 ];
 
 const STORAGES_CONFIG = [
@@ -36,8 +36,8 @@ const STORAGES_CONFIG = [
 ];
 
 const BATTERY_OPTIONS = [
-  { id: 'standard', label: 'Batterie standard', detail: '+85%, garantie 12 mois', priceAdj: 0, suffix: 'Inclus' },
-  { id: 'new',      label: 'Batterie neuve 100%', detail: 'Garantie 12 mois',      priceAdj: 50, suffix: '+50€' },
+  { id: 'standard', label: 'Batterie standard',   labelKey: 'pdp_battery_std', detailKey: 'pdp_battery_std_detail', priceAdj: 0,  suffixKey: 'pdp_included' },
+  { id: 'new',      label: 'Batterie neuve 100%', labelKey: 'pdp_battery_new', detailKey: 'pdp_battery_new_detail', priceAdj: 50, suffix: '+50€' },
 ];
 
 export default function PhoneDetailPage() {
@@ -72,7 +72,7 @@ export default function PhoneDetailPage() {
   if (loading) {
     return (
       <main className="max-w-xl mx-auto px-4 py-20">
-        <Spinner message="Chargement du téléphone..." />
+        <Spinner message={t('pdp_loading')} />
       </main>
     );
   }
@@ -83,7 +83,7 @@ export default function PhoneDetailPage() {
         <p className="text-4xl mb-4">📱</p>
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('phone_not_found')}</h1>
         <button onClick={() => navigate('/boutique')} className="px-6 py-3 bg-[#00B4CC] text-white rounded-xl font-bold">
-          Retour boutique
+          {t('pdp_back_shop')}
         </button>
       </main>
     );
@@ -192,9 +192,9 @@ export default function PhoneDetailPage() {
           {/* Info badges */}
           <div className="flex flex-col gap-2.5">
             {[
-              { Icon: Truck,     text: 'Livraison 1h-24h max', color: 'text-[#00B4CC]' },
-              { Icon: RotateCcw, text: 'Retour gratuit sous 30 jours. Garantie jusqu\'à 24 mois.', color: 'text-[#166534]' },
-              { Icon: Store,     text: 'Click & Collect disponible en magasin', color: 'text-[#555555]' },
+              { Icon: Truck,     text: t('pdp_delivery_badge'), color: 'text-[#00B4CC]' },
+              { Icon: RotateCcw, text: t('pdp_return_badge'), color: 'text-[#166534]' },
+              { Icon: Store,     text: t('pdp_collect_badge'), color: 'text-[#555555]' },
             ].map(({ Icon, text, color }) => (
               <div key={text} className="flex items-start gap-2 text-sm text-[#555555]">
                 <Icon size={16} className={`${color} flex-shrink-0 mt-0.5`} />
@@ -260,12 +260,12 @@ export default function PhoneDetailPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
-                      <span className="font-semibold text-sm text-[#1B2A4A]">{g.label}</span>
+                      <span className="font-semibold text-sm text-[#1B2A4A]">{t(g.labelKey)}</span>
                       <span className="text-xs text-[#00B4CC] font-medium">
                         {g.priceAdj > 0 ? `+${g.priceAdj}€` : g.priceAdj < 0 ? `${g.priceAdj}€` : ''}
                       </span>
                     </div>
-                    <p className="text-xs text-[#555555]">{g.desc}</p>
+                    <p className="text-xs text-[#555555]">{t(g.descKey)}</p>
                     <p className="text-xs text-[#166534] mt-1 font-medium">✓ {g.warranty}</p>
                   </button>
                 ))}
@@ -311,12 +311,12 @@ export default function PhoneDetailPage() {
                   <div className="flex items-start gap-2">
                     <Battery size={16} className="text-[#00B4CC] mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-semibold text-[#1B2A4A]">{b.label}</p>
-                      <p className="text-xs text-[#555555]">{b.detail}</p>
+                      <p className="text-sm font-semibold text-[#1B2A4A]">{t(b.labelKey)}</p>
+                      <p className="text-xs text-[#555555]">{t(b.detailKey)}</p>
                     </div>
                   </div>
                   <span className={`text-sm font-bold flex-shrink-0 ${b.priceAdj > 0 ? 'text-[#1B2A4A]' : 'text-[#166534]'}`}>
-                    {b.suffix}
+                    {b.suffixKey ? t(b.suffixKey) : b.suffix}
                   </span>
                 </button>
               ))}
@@ -332,7 +332,7 @@ export default function PhoneDetailPage() {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#1B2A4A] text-sm leading-tight">{phone.name}</p>
                 <p className="text-xs text-[#555555]">
-                  {translateColor(colors[activeColor].name, t)} · {GRADES_CONFIG[activeGrade].label} · {storages[activeStorage].label}
+                  {translateColor(colors[activeColor].name, t)} · {t(GRADES_CONFIG[activeGrade].labelKey)} · {storages[activeStorage].label}
                 </p>
               </div>
               <div className="text-right flex-shrink-0">
@@ -359,7 +359,7 @@ export default function PhoneDetailPage() {
 
             <div className="flex justify-around text-xs text-[#555555]">
               <span className="flex items-center gap-1"><CheckCircle size={12} className="text-[#166534]" /> {t('phone_return')}</span>
-              <span className="flex items-center gap-1"><CheckCircle size={12} className="text-[#166534]" /> Garantie {GRADES_CONFIG[activeGrade].warranty}</span>
+              <span className="flex items-center gap-1"><CheckCircle size={12} className="text-[#166534]" /> {t('pdp_warranty_prefix')} {GRADES_CONFIG[activeGrade].warranty}</span>
             </div>
           </div>
 

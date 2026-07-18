@@ -15,6 +15,7 @@ import { getStartingPrice } from '../data/startingPrices'
 import { charmPrice } from '../utils/charmPrice'
 
 const PRIORITY_PARTS = ['Vitre arrière', 'Batterie', 'Écran']
+// Ces valeurs servent au matching sur les données ; l'affichage passe par translateRepair().
 
 const getPublicParts = (parts) => {
   if (!parts || parts.length === 0) return []
@@ -75,6 +76,9 @@ const translateRepair = (name, t) => {
     'speaker': t('repair_speaker'),
     'connecteur': t('repair_charging'),
     'charging': t('repair_charging'),
+    'vitre arrière': t('part_back_glass'),
+    'vitre arriere': t('part_back_glass'),
+    'back glass': t('part_back_glass'),
   }
   return map[name?.toLowerCase()] || name
 }
@@ -414,8 +418,8 @@ export default function ModelDetailPage() {
   const surCommandeModel    = surCommandePhones[0]?.name || surCommandePhones[0]?.model || modelName
   const canonicalSurCommande = getCanonicalModel(surCommandeModel)
   const isWatch = modelName.toLowerCase().includes('watch')
-  const storageLabel = isWatch ? 'Taille' : t('phone_capacity')
-  const surCommandeStorageLabel = isWatch ? 'Taille' : t('model_capacity')
+  const storageLabel = isWatch ? t('model_size_label') : t('phone_capacity')
+  const surCommandeStorageLabel = isWatch ? t('model_size_label') : t('model_capacity')
   const surCommandeColors = canonicalSurCommande?.colors
     ? Object.keys(canonicalSurCommande.colors)
     : getSurCommandeColors(surCommandeModel)
@@ -463,12 +467,12 @@ export default function ModelDetailPage() {
         <div className="text-center py-20">
           <p className="text-4xl mb-4">📱</p>
           <p className="text-[#1B2A4A] font-semibold text-lg">{t('model_not_found')}</p>
-          <p className="text-[#555] text-sm mt-1">Ce modèle n'est plus disponible ou n'existe pas.</p>
+          <p className="text-[#555] text-sm mt-1">{t('model_not_available')}</p>
           <button
             onClick={() => navigate('/boutique')}
             className="mt-6 px-5 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold cursor-pointer"
           >
-            Voir tous les téléphones
+            {t('model_see_all_phones')}
           </button>
         </div>
       ) : (
@@ -531,7 +535,7 @@ export default function ModelDetailPage() {
                                 : 'bg-white text-gray-400 border-dashed border-gray-300 hover:border-orange-400'
                             }`}
                           title={!available
-                            ? `${s} sur commande${filterColor ? ` en ${translateColor(filterColor, t)}` : ''}`
+                            ? `${s} — ${t('filter_on_order')}${filterColor ? ` (${translateColor(filterColor, t)})` : ''}`
                             : s}
                         >
                           {s}
@@ -592,7 +596,7 @@ export default function ModelDetailPage() {
                             style={{ background: colorToHex(c, modelName) }}
                             title={available
                               ? translateColor(c, t)
-                              : `${translateColor(c, t)} — sur commande`}
+                              : `${translateColor(c, t)} ${t('model_on_order_suffix')}`}
                           />
                           {filterColor === c && (
                             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#1B2A4A] rounded-full" />
@@ -608,13 +612,13 @@ export default function ModelDetailPage() {
                 <div className="mt-4 bg-orange-50 border border-orange-200
                                 rounded-2xl p-4">
                   <p className="text-sm font-bold text-orange-700 mb-1">
-                    ⏳ Cette combinaison n'est pas disponible immédiatement
+                    {t('model_combo_unavailable')}
                   </p>
                   <p className="text-xs text-orange-600 mb-3">
-                    {filterColor && `Couleur : ${translateColor(filterColor, t)}`}
+                    {filterColor && `${t('model_colour_prefix')} ${translateColor(filterColor, t)}`}
                     {filterColor && filterStorage && ' · '}
-                    {filterStorage && `Stockage : ${filterStorage}`}
-                    {' '}— disponible sur commande, délai 24h à 5 jours.
+                    {filterStorage && `${t('model_storage_prefix')} ${filterStorage}`}
+                    {' '}{t('model_order_delay_note')}
                   </p>
                   <button
                     onClick={() => {
@@ -640,7 +644,7 @@ export default function ModelDetailPage() {
                     className="w-full py-2.5 bg-orange-500 text-white rounded-xl
                                text-sm font-bold hover:bg-orange-600
                                transition-all">
-                    Passer une commande →
+                    {t('model_place_order')}
                   </button>
                 </div>
               )}
@@ -709,7 +713,7 @@ export default function ModelDetailPage() {
 
             {filtered.length === 0 ? (
               <div className="text-center py-12 text-[#888] text-sm">
-                Aucun appareil disponible pour cette sélection
+                {t('model_no_device_sel')}
               </div>
             ) : (
               <>
@@ -793,7 +797,7 @@ export default function ModelDetailPage() {
                                   return (
                                     <div>
                                       <p className="text-xs font-bold text-gray-500 uppercase mb-1">
-                                        Pièces remplacées
+                                        {t('model_parts_replaced')}
                                       </p>
                                       <div className="flex flex-wrap gap-1">
                                         {publicParts.map((part) => (
@@ -835,7 +839,7 @@ export default function ModelDetailPage() {
                                       ? 'bg-green-50 border-green-200 text-green-600'
                                       : 'border-gray-200 text-gray-500 hover:border-[#00B4CC] hover:text-[#00B4CC]'
                                   }`}
-                                  title={isInCart(phone.id) ? 'Déjà dans le panier' : 'Ajouter au panier'}
+                                  title={isInCart(phone.id) ? t('model_already_in_cart') : t('model_add_to_cart')}
                                 >
                                   {isInCart(phone.id) ? <Check size={18} /> : <ShoppingCart size={18} />}
                                 </button>
@@ -905,13 +909,13 @@ export default function ModelDetailPage() {
                           {(() => {
                             const publicParts = getPublicParts(allParts)
                             if (phone.condition === 'neuf') {
-                              return <p className="text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>
+                              return <p className="text-blue-700 font-medium">{t('model_sealed_warranty')}</p>
                             }
                             if (publicParts.length > 0) {
                               return (
                                 <div>
                                   <p className="text-xs font-bold text-gray-500 uppercase mb-1">
-                                    Pièces remplacées
+                                    {t('model_parts_replaced')}
                                   </p>
                                   <div className="flex flex-wrap gap-1">
                                     {publicParts.map((part) => (
@@ -967,7 +971,7 @@ export default function ModelDetailPage() {
                                 ? 'bg-green-50 border-green-200 text-green-600'
                                 : 'border-gray-200 text-gray-500 hover:border-[#00B4CC] hover:text-[#00B4CC]'
                             }`}
-                            title={isInCart(phone.id) ? 'Déjà dans le panier' : 'Ajouter au panier'}
+                            title={isInCart(phone.id) ? t('model_already_in_cart') : t('model_add_to_cart')}
                           >
                             {isInCart(phone.id) ? <Check size={18} /> : <ShoppingCart size={18} />}
                           </button>
@@ -995,7 +999,7 @@ export default function ModelDetailPage() {
 
               {showStock && (
                 <h3 className="text-lg font-bold text-[#1B2A4A] mb-4">
-                  📦 Aussi disponible sur commande
+                  {t('model_also_on_order')}
                 </h3>
               )}
 
@@ -1005,7 +1009,7 @@ export default function ModelDetailPage() {
                   ✨ Neuf
                 </span>
                 <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-xl font-bold">
-                  ⏱ Délai : {surCommandePhones[0]?.delai_commande || '1h à 72h'}
+                  {t('model_delay_prefix')} {surCommandePhones[0]?.delai_commande || '1h à 72h'}
                 </span>
                 <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-xl font-bold">
                   🔋 80-99% selon stock
@@ -1079,7 +1083,7 @@ export default function ModelDetailPage() {
                     {surCommandePhones[0]?.price}€
                   </p>
                   <p className="text-xs text-gray-500">
-                    Acompte 50€ à la réservation
+                    {t('model_deposit_note')}
                   </p>
                 </div>
                 <button
@@ -1101,7 +1105,7 @@ export default function ModelDetailPage() {
 
               {/* Note */}
               <p className="text-xs text-gray-400 text-center">
-                📦 Disponible chez notre fournisseur — livraison sous {surCommandePhones[0]?.delai_commande || '1h à 72h'}
+                {t('model_supplier_note')} {surCommandePhones[0]?.delai_commande || '1h à 72h'}
               </p>
             </div>
           )}
@@ -1109,17 +1113,15 @@ export default function ModelDetailPage() {
           {stockPhones.length === 0 && surCommandePhones.length === 0 && (
             <div className="mt-6 bg-blue-50 border border-blue-200 rounded-2xl p-6">
               <h3 className="font-bold text-[#1B2A4A] mb-1">
-                M'avertir quand disponible
+                {t('model_alert_title')}
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                Laissez votre email et nous vous préviendrons dès que
-                ce modèle arrive en stock.
+                {t('model_alert_desc')}
               </p>
 
               {alertStatus === 'success' ? (
                 <div className="bg-green-100 border border-green-300 rounded-xl px-4 py-3 text-green-700 text-sm font-medium">
-                  ✓ Inscription enregistrée ! Nous vous contacterons
-                  dès que le modèle est disponible.
+                  {t('model_alert_success')}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1127,19 +1129,19 @@ export default function ModelDetailPage() {
                     type="email"
                     value={alertEmail}
                     onChange={(e) => { setAlertEmail(e.target.value); setAlertStatus(null) }}
-                    placeholder="votre@email.com *"
+                    placeholder={t('model_alert_email_ph')}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                   />
                   <input
                     type="tel"
                     value={alertPhone}
                     onChange={(e) => setAlertPhone(e.target.value)}
-                    placeholder="Téléphone (optionnel)"
+                    placeholder={t('model_alert_phone_ph')}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                   />
                   {alertStatus === 'error' && (
                     <p className="text-red-500 text-xs">
-                      Email invalide. Vérifiez et réessayez.
+                      {t('model_alert_bad_email')}
                     </p>
                   )}
                   <button
@@ -1147,7 +1149,7 @@ export default function ModelDetailPage() {
                     disabled={alertLoading}
                     className="w-full py-2.5 bg-[#1B2A4A] text-white rounded-xl font-bold text-sm hover:bg-[#00B4CC] transition-all disabled:opacity-50"
                   >
-                    {alertLoading ? 'Enregistrement...' : "M'avertir par email"}
+                    {alertLoading ? t('model_alert_saving') : t('model_alert_cta')}
                   </button>
                 </div>
               )}

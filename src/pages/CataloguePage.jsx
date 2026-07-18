@@ -198,7 +198,7 @@ export default function CataloguePage() {
               <p className="text-gray-300 mt-1">{config.description}</p>
               {brandParam && (
                 <p className="text-sm text-[#00B4CC] mt-1">
-                  Marque : <strong>{brandParam}</strong>
+                  {t('cat_brand_label')} <strong>{brandParam}</strong>
                 </p>
               )}
             </div>
@@ -238,7 +238,7 @@ export default function CataloguePage() {
               <div className="text-center py-12">
                 <span className="text-5xl">{config.emoji}</span>
                 <p className="text-gray-500 mt-3">
-                  Aucun {config.titre?.toLowerCase()} disponible pour le moment
+                  {t('cat_none_prefix')} {config.titre?.toLowerCase()} {t('cat_none_available')}
                 </p>
                 <p className="text-sm text-gray-400 mt-1">
                   {t('cat_empty_desc')}
@@ -295,7 +295,7 @@ export default function CataloguePage() {
                           </p>
                         ) : (
                           <p className="text-gray-400 text-sm italic">
-                            Sur commande
+                            {t('filter_on_order')}
                           </p>
                         )}
                         <button
@@ -303,7 +303,7 @@ export default function CataloguePage() {
                           className="text-xs bg-[#1B2A4A] text-white
                                      px-3 py-1.5 rounded-lg
                                      hover:bg-[#00B4CC] transition-all font-bold">
-                          Choisir →
+                          {t('model_choose_btn')}
                         </button>
                       </div>
                     </div>
