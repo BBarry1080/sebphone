@@ -92,7 +92,7 @@ function OrderCard({ order }) {
 
           {/* Date récupération */}
           {isRecupere && encaisseDateFormatted && (
-            <p className="text-xs text-emerald-700 font-medium mt-0.5">Récupéré le {encaisseDateFormatted}</p>
+            <p className="text-xs text-emerald-700 font-medium mt-0.5">{t('resa_collected_on')} {encaisseDateFormatted}</p>
           )}
         </div>
       </div>
@@ -108,13 +108,13 @@ function OrderCard({ order }) {
         {pickupDateFormatted && !isRecupere && (
           <div className="flex items-center gap-2 text-xs text-[#555]">
             <Calendar size={13} className="text-[#00B4CC] flex-shrink-0" />
-            <span className="capitalize">Passage prévu : {pickupDateFormatted}</span>
+            <span className="capitalize">{t('resa_planned_on')} {pickupDateFormatted}</span>
           </div>
         )}
         {pack && pack.id !== 'none' && pack.items.length > 0 && (
           <div className="flex items-start gap-2 text-xs text-[#555]">
             <Package size={13} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
-            <span>{pack.label} inclus : {pack.items.join(', ')}</span>
+            <span>{pack.label} {t('resa_pack_included')} {pack.items.join(', ')}</span>
           </div>
         )}
       </div>
@@ -126,17 +126,17 @@ function OrderCard({ order }) {
           <ul className="space-y-1">
             {order.phone_condition === 'reconditionne' ? (
               <>
-                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> Contrôle complet 72 points</li>
-                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> Batterie testée et certifiée</li>
-                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> Nettoyage complet</li>
-                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> Tests fonctionnels validés</li>
-                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> Garantie 24 mois SebPhone</li>
+                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> {t('resa_checklist_72')}</li>
+                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> {t('resa_checklist_bat')}</li>
+                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> {t('resa_checklist_clean')}</li>
+                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> {t('resa_checklist_tests')}</li>
+                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> {t('resa_warranty_24')}</li>
               </>
             ) : (
               <>
-                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> Contrôle complet effectué</li>
-                {order.battery_health && <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> Batterie : {order.battery_health}%</li>}
-                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> Garantie 6 mois SebPhone</li>
+                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> {t('resa_check_done')}</li>
+                {order.battery_health && <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> {t('resa_battery_prefix')} {order.battery_health}%</li>}
+                <li className="text-xs text-[#555] flex items-center gap-1.5"><CheckCircle size={11} className="text-green-500" /> {t('resa_warranty_6')}</li>
               </>
             )}
           </ul>
@@ -186,7 +186,7 @@ export default function MesReservations() {
       .order('created_at', { ascending: false })
 
     if (sbErr) {
-      setError('Erreur lors de la recherche. Réessayez.')
+      setError(t('resa_search_error'))
     } else {
       setOrders(data || [])
     }
@@ -200,7 +200,7 @@ export default function MesReservations() {
         <h1 className="font-poppins font-bold text-3xl text-[#00B4CC] mb-1">
           {t('my_resa_title')}
         </h1>
-        <p className="text-[#555] text-sm">Entrez votre email pour retrouver vos commandes</p>
+        <p className="text-[#555] text-sm">{t('resa_enter_email')}</p>
       </div>
 
       {/* Formulaire email */}
@@ -222,7 +222,7 @@ export default function MesReservations() {
           className="px-5 py-3 bg-[#1B2A4A] hover:bg-[#243a64] text-white font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-40 flex items-center gap-2 text-sm"
         >
           <Search size={16} />
-          Rechercher
+          {t('resa_search_btn')}
         </button>
       </form>
 
@@ -244,7 +244,7 @@ export default function MesReservations() {
           <div className="text-center py-16">
             <AlertCircle size={40} className="text-gray-300 mx-auto mb-3" />
             <p className="font-semibold text-[#1B2A4A]">{t('my_resa_empty')}</p>
-            <p className="text-sm text-[#888] mt-1">Vérifiez l'email utilisé lors de la réservation</p>
+            <p className="text-sm text-[#888] mt-1">{t('resa_check_email')}</p>
           </div>
         ) : (
           <div className="space-y-4">

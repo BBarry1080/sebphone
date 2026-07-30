@@ -25,9 +25,16 @@ export function useInventory(filters = {}) {
     let query = supabase
       .from('phones')
       .select('*')
-      .in('status', ['disponible', 'sur_commande'])
       .or('visible_on_site.eq.true,visible_on_site.is.null')
       .order('created_at', { ascending: false })
+
+    // Si un status spécifique est demandé, filtre dessus
+    // Sinon garde le comportement par défaut (disponible + sur_commande)
+    if (filters.status) {
+      query = query.eq('status', filters.status)
+    } else {
+      query = query.in('status', ['disponible', 'sur_commande'])
+    }
 
     if (filters.condition) query = query.eq('condition', filters.condition)
     if (filters.brand)     query = query.eq('brand', filters.brand)

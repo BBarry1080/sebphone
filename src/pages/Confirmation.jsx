@@ -144,7 +144,7 @@ export default function Confirmation() {
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">🔍</p>
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('confirm_not_found')}</h1>
-        <p className="text-[#555] mb-6">Aucune réservation à afficher.</p>
+        <p className="text-[#555] mb-6">{t('confirm_none_to_show')}</p>
         <button onClick={() => navigate('/')} className="px-6 py-3 bg-[#1B2A4A] text-white font-bold rounded-xl cursor-pointer">
           {t('confirmation_back')}
         </button>
@@ -175,23 +175,23 @@ export default function Confirmation() {
         </div>
         <h1 className="font-poppins font-bold text-3xl text-[#1B2A4A] mb-1">{t('confirmation_title')}</h1>
         <p className="text-[#555] text-sm">
-          Un email de confirmation a été envoyé à{' '}
+          {t('confirm_email_sent_to')}{' '}
           <span className="font-semibold text-[#1B2A4A]">{clientEmail}</span>
         </p>
 
         <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-left">
           <p className="font-semibold text-yellow-800 mb-2">
-            📧 Vous n'avez pas reçu l'email ?
+            {t('confirm_no_email')}
           </p>
           <ol className="text-yellow-700 space-y-1 list-decimal list-inside">
-            <li>Vérifiez votre boite de réception</li>
+            <li>{t('confirm_check_inbox')}</li>
             <li>
               <span className="text-red-600 font-bold">
-                Vérifiez vos SPAMS / Indésirables
+                {t('confirm_check_spam')}
               </span>
             </li>
             <li className="text-green-700 font-medium">
-              Si l'email est dans les spams → cliquez sur "Pas du spam" ou "Ce n'est pas un indésirable" pour nous ajouter à vos contacts de confiance ✅
+              {t('confirm_spam_tip')}
             </li>
           </ol>
         </div>
@@ -212,7 +212,7 @@ export default function Confirmation() {
             </span>
           ))}
         </div>
-        <p className="text-xs text-[#888]">Présentez ce code en magasin lors du retrait</p>
+        <p className="text-xs text-[#888]">{t('confirm_show_code')}</p>
       </div>
 
       {/* Récapitulatif */}
@@ -227,7 +227,7 @@ export default function Confirmation() {
             <div>
               <p className="font-semibold text-[#1B2A4A]">{phoneName}</p>
               <p className="text-xs text-[#888]">
-                {[phoneColor, phoneStorage, grade ? `Grade ${grade}` : ''].filter(Boolean).join(' · ')}
+                {[phoneColor, phoneStorage, grade ? `${t('grade_label')} ${grade}` : ''].filter(Boolean).join(' · ')}
               </p>
             </div>
             <span className="font-bold text-[#1B2A4A]">{totalPrice}€</span>
@@ -269,7 +269,7 @@ export default function Confirmation() {
                 <div className="flex items-center gap-2">
                   <Calendar size={15} className="text-[#00B4CC] flex-shrink-0" />
                   <div>
-                    <span className="text-xs text-[#555]">Date de passage : </span>
+                    <span className="text-xs text-[#555]">{t('confirm_pickup_date')} </span>
                     <span className="text-xs font-semibold text-[#1B2A4A] capitalize">{pickupDateFormatted}</span>
                   </div>
                 </div>
@@ -279,7 +279,7 @@ export default function Confirmation() {
             <div className="flex items-start gap-2">
               <Home size={15} className="text-[#00B4CC] flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-[#1B2A4A] text-xs">Livraison à domicile</p>
+                <p className="font-semibold text-[#1B2A4A] text-xs">{t('confirm_card_home_delivery')}</p>
                 <p className="text-xs text-[#888]">{deliveryAddress}</p>
               </div>
             </div>

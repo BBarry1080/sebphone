@@ -75,10 +75,10 @@ export default function ProLogin() {
         navigate('/pro/accueil')
         return
       }
-      setError('Statut de compte inconnu')
+      setError(t('prologin_unknown'))
     } catch (err) {
       console.error('Pro login error:', err)
-      setError('Une erreur est survenue')
+      setError(t('prologin_error'))
     } finally {
       setLoading(false)
     }
@@ -94,7 +94,7 @@ export default function ProLogin() {
       return
     }
     if (form.password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères')
+      setError(t('prologin_pwd_len'))
       return
     }
     setLoading(true)
@@ -108,7 +108,7 @@ export default function ProLogin() {
         .maybeSingle()
 
       if (existing) {
-        setError('Un compte existe déjà avec cet email')
+        setError(t('prologin_exists'))
         return
       }
 
@@ -153,7 +153,7 @@ export default function ProLogin() {
       setTab('login')
     } catch (err) {
       console.error('Pro register error:', err)
-      setError('Une erreur est survenue lors de l\'inscription')
+      setError(t('prologin_signup_err'))
     } finally {
       setLoading(false)
     }

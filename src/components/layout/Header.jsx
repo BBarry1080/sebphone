@@ -84,31 +84,31 @@ export default function Header() {
   };
 
   const smartphonesItems = [
-    { href: '/boutique', label: 'Tous les smartphones' },
+    { href: '/boutique', label: t('menu_all_smartphones') },
     { href: '/iphone', label: 'Apple iPhone' },
     { href: '/samsung', label: 'Samsung' },
-    { href: '/occasions', label: 'Occasions', sub: 'Testés et garantis' },
-    { href: '/reconditiones', label: 'Reconditionnés', sub: 'Remis à neuf' },
+    { href: '/occasions', label: t('nav_occasions'), sub: t('menu_tested_guaranteed') },
+    { href: '/reconditiones', label: t('nav_reconditionnes'), sub: t('menu_refurbished_sub') },
   ]
   const tabletteItems = [
-    { href: '/catalogue/tablette', label: 'Toutes les tablettes' },
+    { href: '/catalogue/tablette', label: t('menu_all_tablets') },
     { href: '/catalogue/tablette?brand=Apple', label: 'Apple iPad', sub: 'iPad, iPad Pro, iPad Air' },
     { href: '/catalogue/tablette?brand=Samsung', label: 'Samsung Galaxy Tab' },
   ]
   const ordinateurItems = [
-    { href: '/catalogue/ordinateur', label: 'Tous les ordinateurs' },
+    { href: '/catalogue/ordinateur', label: t('menu_all_computers') },
     { href: '/catalogue/ordinateur?brand=Apple', label: 'Apple MacBook' },
     { href: '/catalogue/ordinateur?brand=Dell', label: 'Dell' },
     { href: '/catalogue/ordinateur?brand=HP', label: 'HP' },
     { href: '/catalogue/ordinateur?brand=Lenovo', label: 'Lenovo' },
   ]
   const montreItems = [
-    { href: '/catalogue/montre', label: 'Toutes les montres' },
+    { href: '/catalogue/montre', label: t('menu_all_watches') },
     { href: '/catalogue/montre?brand=Apple', label: 'Apple Watch' },
     { href: '/catalogue/montre?brand=Samsung', label: 'Samsung Galaxy Watch' },
   ]
   const ecouteurItems = [
-    { href: '/catalogue/ecouteur', label: 'Tous les écouteurs' },
+    { href: '/catalogue/ecouteur', label: t('menu_all_earphones') },
     { href: '/catalogue/ecouteur?brand=Apple', label: 'Apple AirPods' },
     { href: '/catalogue/ecouteur?brand=Samsung', label: 'Samsung Galaxy Buds' },
     { href: '/catalogue/ecouteur?brand=Sony', label: 'Sony' },
@@ -149,7 +149,7 @@ export default function Header() {
           >
             <span className="flex items-center gap-1.5">
               <Home size={15} />
-              {t('nav_home') || 'Accueil'}
+              {t('nav_home')}
             </span>
           </NavLink>
 

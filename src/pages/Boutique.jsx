@@ -84,9 +84,9 @@ export default function Boutique({ defaultBrand = null }) {
   const setFilterStatus    = (val) => updateParam('status', val)
 
   // Synchronise URL → hook (le hook drive le fetch/filter des phones)
-  useEffect(() => { hookSetSearch(search) }, [search])
-  useEffect(() => { hookSetFilterCondition(filterCondition) }, [filterCondition])
-  useEffect(() => { hookSetFilterStatus(filterStatus) }, [filterStatus])
+  useEffect(() => { hookSetSearch(search) }, [search, hookSetSearch])
+  useEffect(() => { hookSetFilterCondition(filterCondition) }, [filterCondition, hookSetFilterCondition])
+  useEffect(() => { hookSetFilterStatus(filterStatus) }, [filterStatus, hookSetFilterStatus])
 
   useEffect(() => {
     setFilterBrand(defaultBrand || null)
@@ -160,13 +160,6 @@ export default function Boutique({ defaultBrand = null }) {
     )
   }
 
-  const getModelSurCommande = (modelName) => {
-    return phones.filter((p) =>
-      p.model?.toLowerCase() === modelName.toLowerCase() &&
-      p.status === 'sur_commande'
-    )
-  }
-
   return (
     <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 pb-24 md:pb-12">
       <div className="mb-6">
@@ -190,7 +183,9 @@ export default function Boutique({ defaultBrand = null }) {
         sortBy={sortBy} setSortBy={setSortBy}
         total={totalPhones}
         phones={phones}
-        hideBrandFilter={!!defaultBrand}
+        canonicalModels={allCanonicalModels}
+        hideBrandFilter={!!defaultBrand && allCanonicalModels.length > 0
+          && new Set(allCanonicalModels.map(m => m.brand)).size <= 1}
       />
 
       <div className="flex gap-8 items-start">
@@ -203,7 +198,9 @@ export default function Boutique({ defaultBrand = null }) {
           sortBy={sortBy} setSortBy={setSortBy}
           total={totalPhones}
           phones={phones}
-          hideBrandFilter={!!defaultBrand}
+          canonicalModels={allCanonicalModels}
+          hideBrandFilter={!!defaultBrand && allCanonicalModels.length > 0
+            && new Set(allCanonicalModels.map(m => m.brand)).size <= 1}
         />
 
         <div className="flex-1 min-w-0 w-full">
@@ -226,17 +223,53 @@ export default function Boutique({ defaultBrand = null }) {
             <Spinner />
           ) : allCanonicalModels.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {allCanonicalModels
+              {[...allCanonicalModels]
                 .filter((canonicalModel) => {
                   if (search && !canonicalModel.model
                     .toLowerCase().includes(search.toLowerCase())) return false
+
+                  if (filterBrand &&
+                      canonicalModel.brand?.toLowerCase() !== filterBrand.toLowerCase())
+                    return false
+
+                  const modelStock = getModelStock(canonicalModel.model)
+
+                  if (filterCondition) {
+                    const hasCondition = modelStock.some(
+                      p => p.condition === filterCondition
+                    )
+                    if (!hasCondition) return false
+                  }
+
                   if (filterStatus === 'disponible') {
-                    return getModelStock(canonicalModel.model).length > 0
+                    return modelStock.length > 0
                   }
                   if (filterStatus === 'sur_commande') {
-                    return getModelStock(canonicalModel.model).length === 0
+                    return modelStock.length === 0
                   }
                   return true
+                })
+                .sort((a, b) => {
+                  switch (sortBy) {
+                    case 'price_asc': {
+                      const pa = getModelStock(a.model)[0]?.price || Infinity
+                      const pb = getModelStock(b.model)[0]?.price || Infinity
+                      return pa - pb
+                    }
+                    case 'price_desc': {
+                      const pa = getModelStock(a.model)[0]?.price || 0
+                      const pb = getModelStock(b.model)[0]?.price || 0
+                      return pb - pa
+                    }
+                    case 'alpha_asc':
+                      return a.model.localeCompare(b.model)
+                    case 'alpha_desc':
+                      return b.model.localeCompare(a.model)
+                    case 'newest':
+                    case 'featured':
+                    default:
+                      return 0
+                  }
                 })
                 .map((canonicalModel) => {
                   const slug = canonicalModel.model

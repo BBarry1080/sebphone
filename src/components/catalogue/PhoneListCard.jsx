@@ -7,7 +7,90 @@ import { charmPrice } from '../../utils/charmPrice'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { translateColor } from '../../utils/translateColor'
 
-export const colorToHex = (colorName) => {
+const AIRPODS_MAX_COLORS = {
+  'Lumière stellaire': '#E9DFD3',
+  'Lumiere stellaire': '#E9DFD3',
+  'Minuit':            '#2B3336',
+  'Bleu':              '#AABFCA',
+  'Violet':            '#C8C0D5',
+  'Orange':            '#FEC2A0',
+}
+
+const SAMSUNG_COLORS = {
+  // S21
+  'Phantom Gray':    '#6B6B6B',
+  'Phantom White':   '#F5F5F0',
+  'Phantom Violet':  '#C9B8D8',
+  'Phantom Silver':  '#D4D4D4',
+  'Phantom Black':   '#1C1C1C',
+  'Phantom Brown':   '#8B6914',
+  'Phantom Navy':    '#1B2A4A',
+  'Phantom Titanium':'#8C8C8C',
+  // S22
+  'Graphite':        '#4A4A4A',
+  'Pink Gold':       '#E8B4A0',
+  'Sky Blue':        '#A8C8E8',
+  'Bora Purple':     '#9B8EC4',
+  'Burgundy':        '#6B1F2A',
+  // S23
+  'Cream':           '#F5F0E8',
+  'Lavender':        '#C8BFD8',
+  // S24
+  'Onyx Black':      '#1A1A1A',
+  'Marble Gray':     '#C8C8C8',
+  'Cobalt Violet':   '#4A4080',
+  'Amber Yellow':    '#E8C84A',
+  'Titanium Black':  '#2C2C2C',
+  'Titanium Gray':   '#8C8C8C',
+  'Titanium Violet': '#6B5B8C',
+  'Titanium Yellow': '#D4B84A',
+  // S25
+  'Icyblue':         '#B8D4E8',
+  'Mint':            '#A8D8C8',
+  'Navy':            '#1B2A4A',
+  'Silver Shadow':   '#9A9A9A',
+  'Titanium Whitesilver': '#E8E8E8',
+  'Titanium Silverblue':  '#B0C4D8',
+  // S25 Edge
+  'Titanium Silver': '#D0D0D0',
+  'Titanium Jetblack':'#1A1A1A',
+  // S26
+  'Titanium White':  '#F0F0F0',
+  // A Series
+  'Vert':            '#4A8C5C',
+  'Bleu clair':      '#A8C8E8',
+  'Lime':            '#B8D84A',
+  'Indigo':          '#3A3A8C',
+  'Tangerine':       '#E87A3A',
+  'Khaki':           '#8C8C5C',
+  // Z Flip / Fold
+  'Graygreen':       '#6B8C6B',
+  'Beige':           '#E8D8C4',
+  'Icy Blue':        '#B8D4E8',
+  // Génériques EN / FR
+  'White':         '#F5F5F0',
+  'Green':         '#4A8C5C',
+  'Blue':          '#2E5CA8',
+  'Yellow':        '#F5D76E',
+  'Pink':          '#F4C2C2',
+  'Gray':          '#8C8C8C',
+  'Olive':         '#808000',
+  'Peach':         '#FFCBA4',
+  'Crafted Black': '#1A1A1A',
+  'Phantom Green': '#3A5A40',
+  'Silver':        '#C0C0C0',
+  'Black':         '#1C1C1C',
+  'Noir':          '#1C1C1C',
+  'Blanc':         '#F5F5F0',
+  'Bleu':          '#2E5CA8',
+  'Jaune':         '#F5D76E',
+  'Violet':        '#7B5EA7',
+  'Phantom Pink':  '#F4C2C2',
+  'Rouge':         '#C0392B',
+}
+
+// Map générale (renommée en fonction interne) — inchangée
+const generalColorToHex = (colorName) => {
   const map = {
     'Noir': '#1C1C1E', 'Minuit': '#1C1C1E', 'Noir de jais': '#0A0A0A', 'Noir spatial': '#1C1C1E',
     'Blanc': '#F5F5F0', 'Lumière stellaire': '#F5F0E8', 'Argent': '#C0C0C0',
@@ -25,7 +108,26 @@ export const colorToHex = (colorName) => {
     'Corail': '#FF7F50', 'Orange cosmique': '#FF6B35',
     'Gris sidéral': '#4A4A4A',
   }
-  return map[colorName] || '#9CA3AF'
+  return map[colorName] || null
+}
+
+export const colorToHex = (colorName, modelName = '') => {
+  if (!colorName) return '#9CA3AF'
+
+  // Table dédiée AirPods Max
+  if (modelName?.toLowerCase().includes('airpods max')) {
+    return AIRPODS_MAX_COLORS[colorName] || '#9CA3AF'
+  }
+
+  // Table dédiée Samsung
+  if (modelName?.toLowerCase().includes('samsung') ||
+      modelName?.toLowerCase().includes('galaxy')) {
+    return SAMSUNG_COLORS[colorName]
+      || generalColorToHex(colorName)
+      || '#9CA3AF'
+  }
+
+  return generalColorToHex(colorName) || '#9CA3AF'
 }
 
 function modelToSlug(name) {
@@ -36,7 +138,6 @@ function modelToSlug(name) {
     .replace(/\s+/g, '-')
 }
 
-const conditionLabel = { neuf: 'Neuf', reconditionne: 'Reconditionné', occasion: 'Occasion' }
 const conditionKey = { neuf: 'condition_new', reconditionne: 'condition_refurbished', occasion: 'condition_used' }
 const conditionColor = {
   neuf:          'bg-green-100 text-green-700',
@@ -188,7 +289,7 @@ function PhoneCard({ phone, onClick }) {
       <div className="flex-1 min-w-0">
         <div className="mb-1.5 flex items-center gap-1.5">
           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${conditionColor[phone.condition] || 'bg-gray-100 text-gray-600'}`}>
-            {conditionKey[phone.condition] ? t(conditionKey[phone.condition]) : (conditionLabel[phone.condition] || phone.condition)}
+            {conditionKey[phone.condition] ? t(conditionKey[phone.condition]) : phone.condition}
           </span>
           {phone.has_esim && (
             <span className="text-xs font-bold bg-[#1B2A4A] text-white px-2 py-0.5 rounded-lg">

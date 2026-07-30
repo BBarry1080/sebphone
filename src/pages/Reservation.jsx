@@ -22,7 +22,7 @@ export default function Reservation() {
   useEffect(() => {
     if (!id) {
       console.error('Pas d\'ID dans l\'URL');
-      setError('Téléphone introuvable');
+      setError(t('reservation_not_found'));
       setLoading(false);
       return;
     }
@@ -34,7 +34,7 @@ export default function Reservation() {
         const mock = phonesMock.find((p) => String(p.id) === String(id));
         console.log('Mode hors ligne — mock trouvé:', mock);
         if (mock) setPhone(mock);
-        else setError('Téléphone introuvable (mode hors ligne) — ID: ' + id);
+        else setError(t('reservation_not_found') + ' — ID: ' + id);
         setLoading(false);
         return;
       }
@@ -50,7 +50,7 @@ export default function Reservation() {
       console.log('phone.magasins valeur:', data?.magasins);
 
       if (sbError || !data) {
-        setError('Téléphone introuvable — ID: ' + id);
+        setError(t('reservation_not_found') + ' — ID: ' + id);
         setLoading(false);
         return;
       }
@@ -85,7 +85,7 @@ export default function Reservation() {
         <p className="text-4xl mb-4">📱</p>
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('reservation_not_found')}</h1>
         <p className="text-red-500 text-sm mb-1">{error}</p>
-        <p className="text-gray-400 text-xs mb-6">ID recherché : {id}</p>
+        <p className="text-gray-400 text-xs mb-6">{t('reservation_id_searched')} {id}</p>
         <div className="flex flex-col gap-3 items-center">
           <button
             onClick={() => navigate(-1)}
@@ -94,7 +94,7 @@ export default function Reservation() {
             ← {t('reservation_back')}
           </button>
           <Button variant="primary" size="md" onClick={() => navigate('/boutique')}>
-            Retour à la boutique
+            {t('reservation_back_shop')}
           </Button>
         </div>
       </main>
@@ -106,9 +106,9 @@ export default function Reservation() {
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <p className="text-4xl mb-4">😔</p>
         <h1 className="font-poppins font-bold text-[#1B2A4A] text-2xl mb-2">{t('reservation_sold')}</h1>
-        <p className="text-[#555555] mb-6">Ce téléphone n'est plus disponible à la réservation.</p>
+        <p className="text-[#555555] mb-6">{t('reservation_sold_msg')}</p>
         <Button variant="primary" size="md" onClick={() => navigate('/boutique')}>
-          Voir d'autres offres
+          {t('reservation_other_offers')}
         </Button>
       </main>
     );

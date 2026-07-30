@@ -24,8 +24,8 @@ export default function ConfirmationCard({ phone, form }) {
         {t('confirm_card_title')}
       </h2>
       <p className="text-[#555555] text-sm mb-6 max-w-sm">
-        {t('confirm_card_thanks')} <strong>{form.firstName}</strong> ! Votre réservation pour le{' '}
-        <strong>{phone?.name}</strong> a bien été enregistrée.
+        {t('confirm_card_thanks')} <strong>{form.firstName}</strong> ! {t('confirm_card_resa_for')}{' '}
+        <strong>{phone?.name}</strong> {t('confirm_card_registered')}
       </p>
 
       {/* Details card */}
@@ -33,21 +33,21 @@ export default function ConfirmationCard({ phone, form }) {
         <h3 className="font-semibold text-[#1B2A4A] text-sm mb-4">{t('confirm_card_summary')}</h3>
         <ul className="flex flex-col gap-2 text-sm">
           <li className="flex justify-between">
-            <span className="text-[#555555]">Téléphone</span>
+            <span className="text-[#555555]">{t('confirm_card_phone_label')}</span>
             <span className="font-medium text-[#1B2A4A]">{phone?.name}</span>
           </li>
           <li className="flex justify-between">
-            <span className="text-[#555555]">Prix total</span>
+            <span className="text-[#555555]">{t('detail_total')}</span>
             <span className="font-bold text-[#00B4CC]">{phone?.price}€</span>
           </li>
           <li className="flex justify-between">
-            <span className="text-[#555555]">Acompte</span>
+            <span className="text-[#555555]">{t('confirm_card_deposit')}</span>
             <span className="font-bold text-[#1B2A4A]">50€</span>
           </li>
           <li className="flex justify-between">
-            <span className="text-[#555555]">Mode</span>
+            <span className="text-[#555555]">{t('confirm_card_mode')}</span>
             <span className="font-medium text-[#1B2A4A]">
-              {form.delivery === 'collect' ? 'Click & Collect' : 'Livraison à domicile'}
+              {form.delivery === 'collect' ? t('reservation_collect') : t('confirm_card_home_delivery')}
             </span>
           </li>
         </ul>
@@ -58,11 +58,11 @@ export default function ConfirmationCard({ phone, form }) {
         <p className="font-semibold text-[#00B4CC] text-sm mb-3">{t('confirm_card_next')}</p>
         <ol className="flex flex-col gap-2">
           {[
-            'Notre équipe vous contacte sous 2h pour confirmer la disponibilité',
-            'Paiement de l\'acompte de 50€ pour sécuriser le téléphone',
+            t('confirm_card_step1'),
+            t('confirm_card_step2'),
             form.delivery === 'collect'
-              ? 'Venez récupérer votre téléphone en magasin'
-              : 'Livraison à votre adresse sous 24-48h',
+              ? t('confirm_card_step3_collect')
+              : t('confirm_card_step3_deliv'),
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-[#555555]">
               <span className="w-5 h-5 rounded-full bg-[#00B4CC] text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -91,7 +91,7 @@ export default function ConfirmationCard({ phone, form }) {
           className="flex items-center gap-2 text-[#00B4CC] font-medium text-sm hover:underline"
         >
           <Mail size={16} />
-          Email
+          {t('form_email')}
         </a>
       </div>
 

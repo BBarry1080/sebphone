@@ -5,14 +5,14 @@ import { useLanguage } from '../../contexts/LanguageContext';
 
 const SORT_OPTIONS = [
   { value: 'recent',      label: 'Plus récents',          labelKey: 'sort_newest' },
-  { value: 'featured',    label: 'En vedette' },
-  { value: 'best_seller', label: 'Meilleures ventes' },
+  { value: 'featured',    label: 'En vedette',            labelKey: 'sort_featured' },
+  { value: 'best_seller', label: 'Meilleures ventes',     labelKey: 'sort_best_seller' },
   { value: 'alpha_asc',   label: 'Alphabétique, A à Z',   labelKey: 'sort_alpha' },
-  { value: 'alpha_desc',  label: 'Alphabétique, Z à A' },
+  { value: 'alpha_desc',  label: 'Alphabétique, Z à A',   labelKey: 'sort_alpha_desc' },
   { value: 'price_asc',   label: 'Prix : faible à élevé', labelKey: 'sort_price_asc' },
   { value: 'price_desc',  label: 'Prix : élevé à faible', labelKey: 'sort_price_desc' },
-  { value: 'date_asc',    label: 'Date, plus ancienne' },
-  { value: 'date_desc',   label: 'Date, plus récente' },
+  { value: 'date_asc',    label: 'Date, plus ancienne',   labelKey: 'sort_date_asc' },
+  { value: 'date_desc',   label: 'Date, plus récente',    labelKey: 'sort_date_desc' },
 ];
 
 function Section({ title, children, defaultOpen = true }) {
@@ -60,14 +60,29 @@ function SidebarContent({
   hideBrandFilter = false,
   onReset,
   phones = [],
+  canonicalModels = [],
 }) {
   const { t } = useLanguage();
   const count = (fn) => phones.filter(fn).length;
 
+  // Compte depuis canonicalModels si disponible, sinon fallback sur phones[]
+  const canonicalApple = canonicalModels.filter(
+    m => m.brand === 'Apple'
+  ).length
+  const canonicalSamsung = canonicalModels.filter(
+    m => m.brand === 'Samsung'
+  ).length
+
   const brands = [
-    { value: 'Apple',   label: 'Apple',   count: count((p) => p.brand === 'Apple') },
-    { value: 'Samsung', label: 'Samsung', count: count((p) => p.brand === 'Samsung') },
-  ].filter((b) => b.count > 0);
+    {
+      value: 'Apple', label: 'Apple',
+      count: canonicalApple || count(p => p.brand === 'Apple')
+    },
+    {
+      value: 'Samsung', label: 'Samsung',
+      count: canonicalSamsung || count(p => p.brand === 'Samsung')
+    },
+  ].filter(b => b.count > 0);
 
   const conditions = [
     { value: 'neuf',          label: t('condition_new'),         count: count((p) => p.condition === 'neuf') },
@@ -82,10 +97,10 @@ function SidebarContent({
   ].filter((s) => s.count > 0);
 
   const gradesList = [
-    { value: 'Comme neuf',    label: 'Comme neuf',    count: count((p) => p.grade === 'Comme neuf') },
-    { value: 'Très bon état', label: 'Très bon état', count: count((p) => p.grade === 'Très bon état') },
-    { value: 'Bon état',      label: 'Bon état',      count: count((p) => p.grade === 'Bon état') },
-    { value: 'Neuf',          label: 'Neuf',          count: count((p) => p.grade === 'Neuf') },
+    { value: 'Comme neuf',    label: t('grade_like_new'),  count: count((p) => p.grade === 'Comme neuf') },
+    { value: 'Très bon état', label: t('grade_very_good'), count: count((p) => p.grade === 'Très bon état') },
+    { value: 'Bon état',      label: t('grade_good'),      count: count((p) => p.grade === 'Bon état') },
+    { value: 'Neuf',          label: t('condition_new'),   count: count((p) => p.grade === 'Neuf') },
   ].filter((g) => g.count > 0);
 
   const magasins = MAGASINS_LIST
@@ -206,6 +221,7 @@ export function MobileFilterBar({
   total,
   hideBrandFilter = false,
   phones = [],
+  canonicalModels = [],
 }) {
   const { t } = useLanguage();
   const [priceRange, setPriceRange] = useState([0, 1500]);
@@ -295,6 +311,7 @@ export function MobileFilterBar({
             hideBrandFilter={hideBrandFilter}
             onReset={onReset}
             phones={phones}
+            canonicalModels={canonicalModels}
           />
         </div>
         <div className="p-5 border-t border-gray-100 bg-white">
@@ -323,6 +340,7 @@ export default function FilterSidebar({
   search, setSearch,
   hideBrandFilter = false,
   phones = [],
+  canonicalModels = [],
 }) {
   const { t } = useLanguage();
   const [priceRange, setPriceRange] = useState([0, 1500]);
@@ -364,6 +382,7 @@ export default function FilterSidebar({
         hideBrandFilter={hideBrandFilter}
         onReset={onReset}
         phones={phones}
+        canonicalModels={canonicalModels}
       />
     </aside>
   );

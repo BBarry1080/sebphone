@@ -8,7 +8,7 @@ const STORES = [
   { name: "Anderlecht", address: "Chaussée de Mons 711, 1070 Anderlecht", maps: "https://maps.google.com/?q=Chaussée+de+Mons+711+Anderlecht" },
   { name: "Molenbeek", address: "Rue de l'Église Sainte-Anne 93, 1081 Molenbeek", maps: "https://maps.google.com/?q=Rue+Eglise+Sainte+Anne+93+Molenbeek" },
   { name: "Louise", address: "Rue du Bailli 22, 1000 Bruxelles", maps: "https://maps.google.com/?q=Rue+du+Bailli+22+Bruxelles" },
-  { name: "Rue Neuve", address: "Pass. du Nord 23, 1000 Bruxelles", maps: "https://maps.google.com/?q=Passage+du+Nord+23+Bruxelles" },
+  { name: "Rue Neuve", address: "Rue du Finistère 12, 1000 Bruxelles", maps: "https://maps.google.com/?q=Rue+du+Finistere+12+Bruxelles" },
   { name: "Tubize", address: "Rue de Bruxelles 18, 1400 Tubize", maps: "https://maps.google.com/?q=Rue+de+Bruxelles+18+Tubize" },
   { name: "Saint-Gilles", address: "Chaussée de Forest 26, Saint-Gilles", maps: "https://maps.google.com/?q=Chaussée+de+Forest+26+Saint-Gilles" },
 ]
@@ -142,7 +142,7 @@ export default function Hero() {
               {[
                 { value: '5000+', label: t('hero_stat_phones') },
                 { value: '24 mois', label: t('hero_stat_guarantee') },
-                { value: '1h-24h max', label: 'Livraison' },
+                { value: '1h-24h max', label: t('hero_stat_delivery') },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <p className="text-white font-bold text-xl">{stat.value}</p>

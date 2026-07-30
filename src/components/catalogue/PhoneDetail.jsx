@@ -7,10 +7,10 @@ import GradeTag from '../ui/GradeTag';
 import Button from '../ui/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-const conditionLabel = {
-  neuf: 'Neuf',
-  reconditionne: 'Reconditionné',
-  occasion: 'Occasion',
+const conditionKey = {
+  neuf: 'condition_new',
+  reconditionne: 'condition_refurbished',
+  occasion: 'condition_used',
 };
 
 export default function PhoneDetail({ phone, onClose }) {
@@ -68,7 +68,7 @@ export default function PhoneDetail({ phone, onClose }) {
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <GradeTag grade={phone.grade} />
                   <span className="text-xs text-[#555555] uppercase tracking-wide">
-                    {conditionLabel[phone.condition]}
+                    {conditionKey[phone.condition] ? t(conditionKey[phone.condition]) : phone.condition}
                   </span>
                 </div>
                 <p className="text-3xl font-bold text-[#00B4CC]">{phone.price}€</p>
@@ -85,7 +85,7 @@ export default function PhoneDetail({ phone, onClose }) {
             {/* Pièces remplacées */}
             {phone.condition === 'reconditionne' && phone.parts?.length > 0 && (
               <div className="bg-[#F5F5F5] rounded-xl p-4">
-                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">Pièces remplacées / vérifiées</h3>
+                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">{t('pd_parts_checked')}</h3>
                 <ul className="flex flex-col gap-2">
                   {phone.parts.map((part, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-[#333333]">
@@ -104,7 +104,7 @@ export default function PhoneDetail({ phone, onClose }) {
             {/* Mode de réception */}
             {phone.status !== 'vendu' && (
               <div>
-                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">Mode de réception</h3>
+                <h3 className="font-semibold text-[#1B2A4A] text-sm mb-3">{t('pd_reception_mode')}</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setDelivery('collect')}
@@ -114,8 +114,8 @@ export default function PhoneDetail({ phone, onClose }) {
                         : 'border-gray-200 text-[#555555] hover:border-[#00B4CC]'}`}
                   >
                     <Store size={24} />
-                    <span className="text-sm font-medium">Click & Collect</span>
-                    <span className="text-xs opacity-70">Retrait en magasin</span>
+                    <span className="text-sm font-medium">{t('reservation_collect')}</span>
+                    <span className="text-xs opacity-70">{t('form_pickup_store')}</span>
                   </button>
                   <button
                     onClick={() => setDelivery('delivery')}
@@ -125,8 +125,8 @@ export default function PhoneDetail({ phone, onClose }) {
                         : 'border-gray-200 text-[#555555] hover:border-[#00B4CC]'}`}
                   >
                     <Truck size={24} />
-                    <span className="text-sm font-medium">Livraison</span>
-                    <span className="text-xs opacity-70">À domicile</span>
+                    <span className="text-sm font-medium">{t('pd_delivery')}</span>
+                    <span className="text-xs opacity-70">{t('form_at_home')}</span>
                   </button>
                 </div>
               </div>
@@ -140,17 +140,17 @@ export default function PhoneDetail({ phone, onClose }) {
                 onClick={() => { onClose(); navigate(`/reservation/${phone.id}`); }}
                 className="text-base font-bold"
               >
-                Réserver — Acompte 50€
+                {t('pd_reserve_50')}
               </Button>
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-                <p className="text-[#EF4444] font-semibold">Ce téléphone a été vendu</p>
-                <p className="text-sm text-[#555555] mt-1">Consultez nos autres offres disponibles</p>
+                <p className="text-[#EF4444] font-semibold">{t('pd_sold')}</p>
+                <p className="text-sm text-[#555555] mt-1">{t('pd_sold_desc')}</p>
               </div>
             )}
 
             <Button variant="ghost" size="full" onClick={onClose}>
-              Fermer
+              {t('pd_close')}
             </Button>
           </div>
         </motion.div>

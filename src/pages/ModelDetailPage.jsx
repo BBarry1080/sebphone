@@ -10,10 +10,12 @@ import { phonesMock } from '../data/phonesMock'
 import Spinner from '../components/ui/Spinner'
 import { colorToHex } from '../components/catalogue/PhoneListCard'
 import { getPhoneImage, PLACEHOLDER } from '../utils/phoneImage'
+import { getCanonicalModel, getCanonicalImage, colorsMatch } from '../data/canonicalCatalog'
 import { getStartingPrice } from '../data/startingPrices'
 import { charmPrice } from '../utils/charmPrice'
 
 const PRIORITY_PARTS = ['Vitre arrière', 'Batterie', 'Écran']
+// Ces valeurs servent au matching sur les données ; l'affichage passe par translateRepair().
 
 const getPublicParts = (parts) => {
   if (!parts || parts.length === 0) return []
@@ -46,10 +48,10 @@ const CONDITION_STYLE = {
   'reconditionne': 'bg-cyan-50 text-cyan-700 border-cyan-200',
   'occasion':      'bg-blue-50 text-blue-700 border-blue-200',
 }
-const CONDITION_LABEL = {
-  'neuf':          'Neuf',
-  'reconditionne': 'Reconditionné',
-  'occasion':      'Occasion',
+const CONDITION_KEY = {
+  'neuf':          'condition_new',
+  'reconditionne': 'condition_refurbished',
+  'occasion':      'condition_used',
 }
 
 import { MAGASINS } from '../utils/magasins'
@@ -74,6 +76,9 @@ const translateRepair = (name, t) => {
     'speaker': t('repair_speaker'),
     'connecteur': t('repair_charging'),
     'charging': t('repair_charging'),
+    'vitre arrière': t('part_back_glass'),
+    'vitre arriere': t('part_back_glass'),
+    'back glass': t('part_back_glass'),
   }
   return map[name?.toLowerCase()] || name
 }
@@ -181,7 +186,7 @@ export default function ModelDetailPage() {
         setAlertEmail('')
         setAlertPhone('')
       }
-    } catch (e) {
+    } catch {
       setAlertStatus('error')
     }
     setAlertLoading(false)
@@ -242,17 +247,24 @@ export default function ModelDetailPage() {
       const canonicalOther = Object.values(PHONES_DATABASE)
         .flat()
         .find((p) => p.model.toLowerCase() === decodedModel.toLowerCase())
-      const canonical = canonicalIphone || canonicalLegacy || canonicalOther
+      const canonicalFromCatalog = getCanonicalModel(decodedModel)
+
+      const canonical = canonicalIphone || canonicalLegacy ||
+        canonicalOther || canonicalFromCatalog
 
       if (canonical && (!data || data.length === 0)) {
         setPhones([{
           id:          null,
-          name:        canonical.model,
-          model:       canonical.model,
+          name:        canonical.model || decodedModel,
+          model:       decodedModel,
+          brand:       'Apple',
           status:      'sur_commande',
           surCommande: true,
-          storages:    canonical.storages,
-          colors:      canonical.colors,
+          storages:    canonical.storages ||
+            Object.values(canonical.colors || {}).map(() => '').filter(Boolean),
+          colors:      Array.isArray(canonical.colors)
+            ? canonical.colors
+            : (canonical.colors ? Object.keys(canonical.colors) : []),
           price:       0,
           categorie:   'telephone',
         }])
@@ -299,30 +311,70 @@ export default function ModelDetailPage() {
     ? (typeof phones[0].model === 'string' ? phones[0].model : phones[0].model?.name) || phones[0].name
     : modelSlug.replace(/-/g, ' ')
 
-  const canonicalForVariants =
-    IPHONE_ON_DEMAND.find((i) => i.model.toLowerCase() === modelName.toLowerCase()) ||
-    IPHONE_DATABASE.find((i) => i.model.toLowerCase() === modelName.toLowerCase()) ||
-    Object.values(PHONES_DATABASE).flat().find((p) => p.model.toLowerCase() === modelName.toLowerCase())
+  const canonicalModelData2 = getCanonicalModel(modelName)
 
-  const allColors = canonicalForVariants?.colors?.length
-    ? canonicalForVariants.colors
-    : [...new Set(stockPhones.map((p) => p.color).filter(Boolean))]
+  const allColors = canonicalModelData2
+    ? Object.keys(canonicalModelData2.colors)
+    : (() => {
+        const fallback =
+          IPHONE_ON_DEMAND.find(i =>
+            i.model.toLowerCase() === modelName.toLowerCase()
+          ) ||
+          IPHONE_DATABASE.find(i =>
+            i.model.toLowerCase() === modelName.toLowerCase()
+          ) ||
+          Object.values(PHONES_DATABASE).flat().find(p =>
+            p.model.toLowerCase() === modelName.toLowerCase()
+          )
+        return fallback?.colors?.length
+          ? fallback.colors
+          : [...new Set(stockPhones.map(p => p.color).filter(Boolean))]
+      })()
 
-  const allStorages = canonicalForVariants?.storages?.length
-    ? canonicalForVariants.storages
-    : [...new Set(stockPhones.map((p) => p.storage).filter(Boolean))]
+  const allStorages = canonicalModelData2
+    ? canonicalModelData2.storages
+    : (() => {
+        const fallback =
+          IPHONE_ON_DEMAND.find(i =>
+            i.model.toLowerCase() === modelName.toLowerCase()
+          ) ||
+          IPHONE_DATABASE.find(i =>
+            i.model.toLowerCase() === modelName.toLowerCase()
+          ) ||
+          Object.values(PHONES_DATABASE).flat().find(p =>
+            p.model.toLowerCase() === modelName.toLowerCase()
+          )
+        return fallback?.storages?.length
+          ? fallback.storages
+          : [...new Set(stockPhones.map(p => p.storage).filter(Boolean))]
+      })()
 
-  const inStockStorages = new Set(stockPhones.map((p) => p.storage).filter(Boolean))
-  const inStockColors   = new Set(stockPhones.map((p) => p.color).filter(Boolean))
+  const inStockStorages = new Set(
+    stockPhones.map(p => p.storage).filter(Boolean)
+  )
 
   const storages = allStorages
-  const colors   = allColors
+  const colors = allColors
 
   const filtered = stockPhones.filter((p) => {
     if (filterStorage && p.storage !== filterStorage) return false
-    if (filterColor   && p.color   !== filterColor)   return false
+    if (filterColor && !colorsMatch(p.color, filterColor, modelName))
+      return false
     return true
   })
+
+  // La combinaison exacte choisie par le client est-elle
+  // en stock physique ?
+  const isCurrentSelectionInStock = stockPhones.some(p =>
+    (!filterStorage || p.storage === filterStorage) &&
+    (!filterColor || colorsMatch(p.color, filterColor, modelName))
+  )
+
+  // Si rien en stock direct mais des options sont sélectionnées
+  // → mode "Sur commande" pour cette combinaison précise
+  const isOnDemand = hasStock
+    && !isCurrentSelectionInStock
+    && (filterColor || filterStorage)
 
   const bestPhone = filtered.reduce((best, p) => {
     if (!best) return p
@@ -331,27 +383,26 @@ export default function ModelDetailPage() {
     return scoreP > scoreBest ? p : best
   }, null)
 
-  const selectedCombinationExists = !filterColor && !filterStorage
-    ? true
-    : filtered.length > 0
-
   const isStorageAvailable = (storage) => {
     if (!hasStock) return false
     if (!filterColor) return inStockStorages.has(storage)
-    return stockPhones.some((p) => p.color === filterColor && p.storage === storage)
+    return stockPhones.some(
+      (p) => p.color?.toLowerCase() === filterColor.toLowerCase() && p.storage === storage
+    )
   }
 
   const isColorAvailable = (color) => {
     if (!hasStock) return false
-    if (!filterStorage) return inStockColors.has(color)
-    return stockPhones.some((p) => p.storage === filterStorage && p.color === color)
+    if (!filterStorage) {
+      return stockPhones.some(p =>
+        colorsMatch(p.color, color, modelName)
+      )
+    }
+    return stockPhones.some(
+      p => p.storage === filterStorage &&
+      colorsMatch(p.color, color, modelName)
+    )
   }
-
-  const canonicalPhone = IPHONE_ON_DEMAND.find(
-    (i) => i.model.toLowerCase() === (phones[0]?.model || '').toLowerCase()
-  ) || Object.values(PHONES_DATABASE).flat().find(
-    (p) => p.model.toLowerCase() === (phones[0]?.model || '').toLowerCase()
-  )
 
   // Tous les magasins où ce modèle est disponible
   const availableMagasins = [...new Set(
@@ -365,15 +416,29 @@ export default function ModelDetailPage() {
   const refPrice = isAllReconditionne ? getStartingPrice(modelName) : null
 
   const surCommandeModel    = surCommandePhones[0]?.name || surCommandePhones[0]?.model || modelName
-  const surCommandeColors   = getSurCommandeColors(surCommandeModel)
-  const surCommandeStorages = getSurCommandeStorages(surCommandeModel)
+  const canonicalSurCommande = getCanonicalModel(surCommandeModel)
+  const isWatch = modelName.toLowerCase().includes('watch')
+  const storageLabel = isWatch ? t('model_size_label') : t('phone_capacity')
+  const surCommandeStorageLabel = isWatch ? t('model_size_label') : t('model_capacity')
+  const surCommandeColors = canonicalSurCommande?.colors
+    ? Object.keys(canonicalSurCommande.colors)
+    : getSurCommandeColors(surCommandeModel)
+  const surCommandeStorages = canonicalSurCommande?.storages?.length >= 0
+    ? canonicalSurCommande.storages
+    : getSurCommandeStorages(surCommandeModel)
   const surCommandeDisplayImage = selectedSurCommandeColor
     ? getPhoneImage(surCommandeModel, selectedSurCommandeColor)
     : getPhoneImage(surCommandeModel, surCommandeColors[0])
 
+  const canonicalModelData = getCanonicalModel(modelName)
+
   const imageUrl = !showStock && showSurCommande
     ? surCommandeDisplayImage
-    : getPhoneImage(modelName, filterColor || bestPhone?.color)
+    : (canonicalModelData
+        ? getCanonicalImage(modelName, filterColor)
+          || getCanonicalImage(modelName, bestPhone?.color)
+          || getPhoneImage(modelName, filterColor || bestPhone?.color)
+        : getPhoneImage(modelName, filterColor || bestPhone?.color))
 
   const handleSurCommandeColorClick = (color) => {
     setSelectedSurCommandeColor(color)
@@ -402,12 +467,12 @@ export default function ModelDetailPage() {
         <div className="text-center py-20">
           <p className="text-4xl mb-4">📱</p>
           <p className="text-[#1B2A4A] font-semibold text-lg">{t('model_not_found')}</p>
-          <p className="text-[#555] text-sm mt-1">Ce modèle n'est plus disponible ou n'existe pas.</p>
+          <p className="text-[#555] text-sm mt-1">{t('model_not_available')}</p>
           <button
             onClick={() => navigate('/boutique')}
             className="mt-6 px-5 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold cursor-pointer"
           >
-            Voir tous les téléphones
+            {t('model_see_all_phones')}
           </button>
         </div>
       ) : (
@@ -443,10 +508,11 @@ export default function ModelDetailPage() {
               )}
 
               {/* Filtre stockage */}
-              {showStock && storages.length >= 1 && (
+              {showStock && storages.length >= 1 &&
+               storages.some(s => s && s.trim() !== '') && (
                 <div className="mb-4">
                   <p className="text-xs font-semibold text-[#888] uppercase tracking-wide mb-2">
-                    {t('phone_capacity')}
+                    {storageLabel}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <FilterPill
@@ -459,22 +525,20 @@ export default function ModelDetailPage() {
                       return (
                         <button
                           key={s}
-                          onClick={() => available && setFilterStorage(filterStorage === s ? null : s)}
-                          disabled={!available}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all relative
+                          onClick={() => setFilterStorage(filterStorage === s ? null : s)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold
+                                      border-2 transition-all cursor-pointer
                             ${filterStorage === s
                               ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
                               : available
-                                ? 'bg-white text-[#1B2A4A] border-gray-200 hover:border-[#1B2A4A] cursor-pointer'
-                                : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
+                                ? 'bg-white text-[#1B2A4A] border-gray-200 hover:border-[#1B2A4A]'
+                                : 'bg-white text-gray-400 border-dashed border-gray-300 hover:border-orange-400'
                             }`}
-                          title={!available ? `${s} indisponible en ${filterColor}` : s}
+                          title={!available
+                            ? `${s} — ${t('filter_on_order')}${filterColor ? ` (${translateColor(filterColor, t)})` : ''}`
+                            : s}
                         >
-                          {!available ? (
-                            <span className="relative">
-                              <span className="line-through opacity-50">{s}</span>
-                            </span>
-                          ) : s}
+                          {s}
                         </button>
                       )
                     })}
@@ -510,34 +574,30 @@ export default function ModelDetailPage() {
                         <div key={c} className="relative">
                           <button
                             onClick={() => {
-                              if (!available) return
                               const newColor = filterColor === c ? null : c
                               setFilterColor(newColor)
                               if (newColor && filterStorage) {
                                 const storageStillAvailable = stockPhones.some(
-                                  (p) => p.color === newColor && p.storage === filterStorage
+                                  p => p.color === newColor && p.storage === filterStorage
                                 )
-                                if (!storageStillAvailable) setFilterStorage(null)
+                                if (!storageStillAvailable) {
+                                  // Garde le storage sélectionné — le mode "sur commande"
+                                  // va s'activer automatiquement, ne reset plus
+                                }
                               }
                             }}
-                            disabled={!available}
-                            className={`w-8 h-8 rounded-full border-2 transition-all relative
+                            className={`w-8 h-8 rounded-full border-2 transition-all cursor-pointer
                               ${filterColor === c
                                 ? 'border-[#1B2A4A] scale-110'
                                 : available
-                                  ? 'border-gray-300 hover:border-gray-400 cursor-pointer'
-                                  : 'border-gray-100 cursor-not-allowed opacity-40'
+                                  ? 'border-gray-300 hover:border-gray-400'
+                                  : 'border-dashed border-gray-300 hover:border-orange-400'
                               }`}
-                            style={{ background: colorToHex(c) }}
+                            style={{ background: colorToHex(c, modelName) }}
                             title={available
                               ? translateColor(c, t)
-                              : `${translateColor(c, t)} — indisponible en ${filterStorage}`}
+                              : `${translateColor(c, t)} ${t('model_on_order_suffix')}`}
                           />
-                          {!available && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="w-full h-0.5 bg-gray-400 rotate-45 rounded-full" />
-                            </div>
-                          )}
                           {filterColor === c && (
                             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#1B2A4A] rounded-full" />
                           )}
@@ -548,40 +608,43 @@ export default function ModelDetailPage() {
                 </div>
               )}
 
-              {showStock && (filterColor || filterStorage) &&
-               !selectedCombinationExists && canonicalPhone && (
-                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-2xl p-4">
-                  <p className="text-sm font-bold text-[#1B2A4A] mb-1">
-                    Cette combinaison n'est pas en stock
+              {showStock && isOnDemand && (
+                <div className="mt-4 bg-orange-50 border border-orange-200
+                                rounded-2xl p-4">
+                  <p className="text-sm font-bold text-orange-700 mb-1">
+                    {t('model_combo_unavailable')}
                   </p>
-                  <p className="text-xs text-gray-500 mb-3">
-                    {filterColor && `Couleur : ${filterColor}`}
+                  <p className="text-xs text-orange-600 mb-3">
+                    {filterColor && `${t('model_colour_prefix')} ${translateColor(filterColor, t)}`}
                     {filterColor && filterStorage && ' · '}
-                    {filterStorage && `Stockage : ${filterStorage}`}
-                    {' '}n'est pas disponible actuellement.
-                    Vous pouvez la commander — délai 24h à 5 jours.
+                    {filterStorage && `${t('model_storage_prefix')} ${filterStorage}`}
+                    {' '}{t('model_order_delay_note')}
                   </p>
                   <button
-                    onClick={() => navigate('/reservation-commande', {
-                      state: {
-                        phone: {
-                          id:          null,
-                          name:        phones[0]?.name || phones[0]?.model,
-                          model:       phones[0]?.model,
-                          brand:       phones[0]?.brand || 'Apple',
-                          status:      'sur_commande',
-                          surCommande: true,
-                          storages:    canonicalPhone.storages,
-                          colors:      canonicalPhone.colors,
-                          price:       0,
-                          categorie:   'telephone',
-                        },
-                        selectedColor:   filterColor,
-                        selectedStorage: filterStorage,
-                      },
-                    })}
-                    className="w-full py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC] transition-all">
-                    Commander sur commande →
+                    onClick={() => {
+                      navigate('/reservation-commande', {
+                        state: {
+                          phone: {
+                            id: null,
+                            name: modelName,
+                            model: modelName,
+                            brand: phones[0]?.brand || 'Apple',
+                            status: 'sur_commande',
+                            surCommande: true,
+                            storages: storages,
+                            colors: colors,
+                            price: 0,
+                            categorie: 'telephone',
+                          },
+                          selectedColor: filterColor,
+                          selectedStorage: filterStorage,
+                        }
+                      })
+                    }}
+                    className="w-full py-2.5 bg-orange-500 text-white rounded-xl
+                               text-sm font-bold hover:bg-orange-600
+                               transition-all">
+                    {t('model_place_order')}
                   </button>
                 </div>
               )}
@@ -650,7 +713,7 @@ export default function ModelDetailPage() {
 
             {filtered.length === 0 ? (
               <div className="text-center py-12 text-[#888] text-sm">
-                Aucun appareil disponible pour cette sélection
+                {t('model_no_device_sel')}
               </div>
             ) : (
               <>
@@ -681,7 +744,7 @@ export default function ModelDetailPage() {
                             <td className="px-4 py-3">
                               <div className="flex flex-col gap-1.5">
                                 <span className={`px-2 py-0.5 rounded border text-xs font-semibold w-fit ${CONDITION_STYLE[phone.condition] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                                  {CONDITION_LABEL[phone.condition] || phone.condition}
+                                  {CONDITION_KEY[phone.condition] ? t(CONDITION_KEY[phone.condition]) : phone.condition}
                                 </span>
                                 {phone.grade && (
                                   <span className={`px-2 py-0.5 rounded border text-xs font-bold w-fit ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
@@ -700,7 +763,7 @@ export default function ModelDetailPage() {
                                 <span className="text-sm italic text-gray-400">
                                   {t('model_battery_range')}
                                 </span>
-                              ) : phone.battery_health ? (
+                              ) : phone.condition !== 'neuf' && phone.battery_health ? (
                                 <div className="flex items-center gap-2">
                                   <div className="w-20 bg-gray-100 rounded-full h-2 overflow-hidden">
                                     <div
@@ -734,7 +797,7 @@ export default function ModelDetailPage() {
                                   return (
                                     <div>
                                       <p className="text-xs font-bold text-gray-500 uppercase mb-1">
-                                        Pièces remplacées
+                                        {t('model_parts_replaced')}
                                       </p>
                                       <div className="flex flex-wrap gap-1">
                                         {publicParts.map((part) => (
@@ -776,7 +839,7 @@ export default function ModelDetailPage() {
                                       ? 'bg-green-50 border-green-200 text-green-600'
                                       : 'border-gray-200 text-gray-500 hover:border-[#00B4CC] hover:text-[#00B4CC]'
                                   }`}
-                                  title={isInCart(phone.id) ? 'Déjà dans le panier' : 'Ajouter au panier'}
+                                  title={isInCart(phone.id) ? t('model_already_in_cart') : t('model_add_to_cart')}
                                 >
                                   {isInCart(phone.id) ? <Check size={18} /> : <ShoppingCart size={18} />}
                                 </button>
@@ -818,7 +881,7 @@ export default function ModelDetailPage() {
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex flex-col gap-1.5">
                             <span className={`px-2.5 py-0.5 rounded border text-xs font-semibold w-fit ${CONDITION_STYLE[phone.condition] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                              {CONDITION_LABEL[phone.condition] || phone.condition}
+                              {CONDITION_KEY[phone.condition] ? t(CONDITION_KEY[phone.condition]) : phone.condition}
                             </span>
                             {phone.grade && (
                               <span className={`px-2.5 py-0.5 rounded border text-xs font-bold w-fit ${GRADE_STYLE[phone.grade] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
@@ -846,13 +909,13 @@ export default function ModelDetailPage() {
                           {(() => {
                             const publicParts = getPublicParts(allParts)
                             if (phone.condition === 'neuf') {
-                              return <p className="text-blue-700 font-medium">Sous scellé · Garantie 1 an Apple · Garantie 2 ans SebPhone</p>
+                              return <p className="text-blue-700 font-medium">{t('model_sealed_warranty')}</p>
                             }
                             if (publicParts.length > 0) {
                               return (
                                 <div>
                                   <p className="text-xs font-bold text-gray-500 uppercase mb-1">
-                                    Pièces remplacées
+                                    {t('model_parts_replaced')}
                                   </p>
                                   <div className="flex flex-wrap gap-1">
                                     {publicParts.map((part) => (
@@ -874,7 +937,7 @@ export default function ModelDetailPage() {
                             <span className="text-xs italic text-gray-400">
                               {t('model_battery_range')}
                             </span>
-                          ) : phone.battery_health ? (
+                          ) : phone.condition !== 'neuf' && phone.battery_health ? (
                             <div className="flex items-center gap-2">
                               <div className="w-20 bg-gray-100 rounded-full h-2 overflow-hidden">
                                 <div
@@ -908,7 +971,7 @@ export default function ModelDetailPage() {
                                 ? 'bg-green-50 border-green-200 text-green-600'
                                 : 'border-gray-200 text-gray-500 hover:border-[#00B4CC] hover:text-[#00B4CC]'
                             }`}
-                            title={isInCart(phone.id) ? 'Déjà dans le panier' : 'Ajouter au panier'}
+                            title={isInCart(phone.id) ? t('model_already_in_cart') : t('model_add_to_cart')}
                           >
                             {isInCart(phone.id) ? <Check size={18} /> : <ShoppingCart size={18} />}
                           </button>
@@ -936,7 +999,7 @@ export default function ModelDetailPage() {
 
               {showStock && (
                 <h3 className="text-lg font-bold text-[#1B2A4A] mb-4">
-                  📦 Aussi disponible sur commande
+                  {t('model_also_on_order')}
                 </h3>
               )}
 
@@ -946,7 +1009,7 @@ export default function ModelDetailPage() {
                   ✨ Neuf
                 </span>
                 <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-xl font-bold">
-                  ⏱ Délai : {surCommandePhones[0]?.delai_commande || '1h à 72h'}
+                  {t('model_delay_prefix')} {surCommandePhones[0]?.delai_commande || '1h à 72h'}
                 </span>
                 <span className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded-xl font-bold">
                   🔋 80-99% selon stock
@@ -973,7 +1036,7 @@ export default function ModelDetailPage() {
                         ${selectedSurCommandeColor === color
                           ? 'border-[#1B2A4A] scale-110 shadow-md'
                           : 'border-gray-200 hover:border-gray-400'}`}
-                      style={{ backgroundColor: COLOR_HEX[color] || '#d1d5db' }}>
+                      style={{ backgroundColor: colorToHex(color, surCommandeModel) }}>
                       {selectedSurCommandeColor === color && (
                         <span className="absolute inset-0 flex items-center justify-center text-xs font-bold"
                           style={{
@@ -991,9 +1054,11 @@ export default function ModelDetailPage() {
               </div>
 
               {/* Sélecteur stockage */}
+              {surCommandeStorages.length > 0 &&
+               surCommandeStorages.some(s => s && s.trim() !== '') && (
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase mb-2">
-                  {t('model_capacity')}
+                  {surCommandeStorageLabel}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {surCommandeStorages.map((s) => (
@@ -1009,6 +1074,7 @@ export default function ModelDetailPage() {
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Prix + Bouton */}
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
@@ -1017,7 +1083,7 @@ export default function ModelDetailPage() {
                     {surCommandePhones[0]?.price}€
                   </p>
                   <p className="text-xs text-gray-500">
-                    Acompte 50€ à la réservation
+                    {t('model_deposit_note')}
                   </p>
                 </div>
                 <button
@@ -1039,7 +1105,7 @@ export default function ModelDetailPage() {
 
               {/* Note */}
               <p className="text-xs text-gray-400 text-center">
-                📦 Disponible chez notre fournisseur — livraison sous {surCommandePhones[0]?.delai_commande || '1h à 72h'}
+                {t('model_supplier_note')} {surCommandePhones[0]?.delai_commande || '1h à 72h'}
               </p>
             </div>
           )}
@@ -1047,17 +1113,15 @@ export default function ModelDetailPage() {
           {stockPhones.length === 0 && surCommandePhones.length === 0 && (
             <div className="mt-6 bg-blue-50 border border-blue-200 rounded-2xl p-6">
               <h3 className="font-bold text-[#1B2A4A] mb-1">
-                M'avertir quand disponible
+                {t('model_alert_title')}
               </h3>
               <p className="text-sm text-gray-500 mb-4">
-                Laissez votre email et nous vous préviendrons dès que
-                ce modèle arrive en stock.
+                {t('model_alert_desc')}
               </p>
 
               {alertStatus === 'success' ? (
                 <div className="bg-green-100 border border-green-300 rounded-xl px-4 py-3 text-green-700 text-sm font-medium">
-                  ✓ Inscription enregistrée ! Nous vous contacterons
-                  dès que le modèle est disponible.
+                  {t('model_alert_success')}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1065,19 +1129,19 @@ export default function ModelDetailPage() {
                     type="email"
                     value={alertEmail}
                     onChange={(e) => { setAlertEmail(e.target.value); setAlertStatus(null) }}
-                    placeholder="votre@email.com *"
+                    placeholder={t('model_alert_email_ph')}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                   />
                   <input
                     type="tel"
                     value={alertPhone}
                     onChange={(e) => setAlertPhone(e.target.value)}
-                    placeholder="Téléphone (optionnel)"
+                    placeholder={t('model_alert_phone_ph')}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
                   />
                   {alertStatus === 'error' && (
                     <p className="text-red-500 text-xs">
-                      Email invalide. Vérifiez et réessayez.
+                      {t('model_alert_bad_email')}
                     </p>
                   )}
                   <button
@@ -1085,7 +1149,7 @@ export default function ModelDetailPage() {
                     disabled={alertLoading}
                     className="w-full py-2.5 bg-[#1B2A4A] text-white rounded-xl font-bold text-sm hover:bg-[#00B4CC] transition-all disabled:opacity-50"
                   >
-                    {alertLoading ? 'Enregistrement...' : "M'avertir par email"}
+                    {alertLoading ? t('model_alert_saving') : t('model_alert_cta')}
                   </button>
                 </div>
               )}

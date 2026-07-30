@@ -16,9 +16,9 @@ export const MAGASINS = {
   'rue-neuve': {
     id:      'rue-neuve',
     nom:     'Seb Telecom — Rue Neuve',
-    adresse: 'Pass. du N 23, 1000 Bruxelles',
+    adresse: 'Rue du Finistère 12, 1000 Bruxelles',
     tel:     '+32(0)492 40.54.57',
-    gmaps:   'https://maps.google.com/?q=Passage+du+Nord+23+Bruxelles',
+    gmaps:   'https://maps.google.com/?q=Rue+du+Finistere+12+Bruxelles',
   },
   louise: {
     id:      'louise',

@@ -13,7 +13,7 @@ const IMAGE_MAP = {
     "argent":  "/images/iphones/iphone-7-argent.png",
     "or":      "/images/iphones/iphone-7-or.png",
     "or rose": "/images/iphones/iphone-7-rose.png",
-    "rouge":   "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7-red-select-2017?wid=400&hei=400&fmt=jpeg",
+    "rouge":   "/images/iphones/iphone-7-rouge.png",
   },
 
   // ── iPhone 7 Plus — fichiers locaux ───────────────────────────────────────
@@ -24,7 +24,7 @@ const IMAGE_MAP = {
     "argent":       "/images/iphones/iphone-7-plus-argent.png",
     "or":           "/images/iphones/iphone-7-plus-or.png",
     "or rose":      "/images/iphones/iphone-7-plus-or-rose.png",
-    "rouge":        "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone7plus-red-select-2017?wid=400&hei=400&fmt=jpeg",
+    "rouge":        "/images/iphones/iphone-7-plus-noir-de-jais.png",
   },
 
   // ── iPhone 8 — fichiers locaux ────────────────────────────────────────────
@@ -111,7 +111,7 @@ const IMAGE_MAP = {
   "iphone 11 pro max": {
     default:       "/images/iphones/iphone-11-pro-max-argent.png",
     "argent":      "/images/iphones/iphone-11-pro-max-argent.png",
-    "or":          "https://store.storeimages.cdn-apple.com/4668/as-images.apple.com/is/iphone11promax-gold-select?wid=400&hei=400&fmt=jpeg",
+    "or":          "/images/iphones/iphone-11-pro-max-argent.png",
     "gris sideral":"/images/iphones/iphone-11-pro-max-gris-sideral.png",
     "vert nuit":   "/images/iphones/iphone-11-pro-max-vert-nuit.png",
   },
@@ -429,105 +429,318 @@ const IMAGE_MAP = {
   },
 
   // ── iPADS ───────────────────────────────────────────────────────────────
-  "ipad 11 a16 2025 wifi": {
-    default: "/images/ipads/ipad-11-a16-argent.png",
-    "argent": "/images/ipads/ipad-11-a16-argent.png",
-    "noir":   "/images/ipads/ipad-11-a16-noir.png",
-    "bleu":   "/images/ipads/ipad-11-a16-bleu.png",
-    "rose":   "/images/ipads/ipad-11-a16-rose.png",
+  "ipad 11": {
+    default: "/images/ipads/ipad-11-default.webp",
+    "bleu": "/images/ipads/ipad-11-bleu.webp",
   },
-  "ipad air 11 2025 wifi": {
-    default:            "/images/ipads/ipad-air-11-2025-bleu-ciel.png",
-    "bleu ciel":        "/images/ipads/ipad-air-11-2025-bleu-ciel.png",
-    "lumiere stellaire":"/images/ipads/ipad-air-11-2025-lumiere-stellaire.png",
-    "violet":           "/images/ipads/ipad-air-11-2025-violet.png",
-    "rose":             "/images/ipads/ipad-air-11-2025-rose.png",
+  "ipad air 11": {
+    default: "/images/ipads/ipad-air-11-default.webp",
+    "gris sideral": "/images/ipads/ipad-air-11-gris-sideral.webp",
   },
-  "ipad pro 11 m4 wifi": {
-    default:       "/images/ipads/ipad-pro-11-m4-argent.png",
-    "argent":      "/images/ipads/ipad-pro-11-m4-argent.png",
-    "noir sideral":"/images/ipads/ipad-pro-11-m4-noir-sideral.png",
+  "ipad pro 11": {
+    default: "/images/ipads/ipad-pro-11-default.webp",
+    "argent": "/images/ipads/ipad-pro-11-argent.webp",
+    "noir sideral": "/images/ipads/ipad-pro-11-noir-sideral.webp",
   },
-  "ipad pro 13 m5 wifi": {
-    default:       "/images/ipads/ipad-pro-13-m5-argent.png",
-    "argent":      "/images/ipads/ipad-pro-13-m5-argent.png",
-    "noir sideral":"/images/ipads/ipad-pro-13-m5-noir-sideral.png",
+  "ipad pro 13": {
+    default: "/images/ipads/ipad-pro-13-default.webp",
+    "argent": "/images/ipads/ipad-pro-13-argent.webp",
+    "noir sideral": "/images/ipads/ipad-pro-13-default.webp",
   },
-  "ipad pro 11 m5 wifi": {
-    default:       "/images/ipads/ipad-pro-11-m5-argent.png",
-    "argent":      "/images/ipads/ipad-pro-11-m5-argent.png",
-    "noir sideral":"/images/ipads/ipad-pro-11-m5-noir-sideral.png",
+  "ipad pro 11 m5": {
+    default: "/images/ipads/ipad-pro-11-m5-default.webp",
+    "noir sideral": "/images/ipads/ipad-pro-11-m5-noir-sideral.webp",
   },
-  "ipad 7e generation wifi": {
-    default:       "/images/ipads/ipad-7-argent.png",
-    "argent":      "/images/ipads/ipad-7-argent.png",
-    "or":          "/images/ipads/ipad-7-or.png",
-    "gris sideral":"/images/ipads/ipad-7-gris-sideral.png",
+  "ipad 7e generation": {
+    default: "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
+    "argent": "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
+    "or": "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
+    "gris sideral": "https://static.fnac-static.com/multimedia/Images/FR/MDM/41/e0/d7/14147649/1505-1/tsp20251121172455/iPad-10-2-32-Go-Wi-Fi-Gris-sideral-7eme-generation-2019.jpg",
   },
-  "ipad 6e generation wifi": {
-    default:       "/images/ipads/ipad-6-argent.png",
-    "argent":      "/images/ipads/ipad-6-argent.png",
-    "or":          "/images/ipads/ipad-6-or.png",
-    "gris sideral":"/images/ipads/ipad-6-gris-sideral.png",
+  "ipad 6e generation": {
+    default: "https://media.ldlc.com/r1600/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "argent": "https://media.ldlc.com/r1600/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "or": "https://media.ldlc.com/r1600/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "gris sideral": "https://media.ldlc.com/r1600/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
   },
-  "ipad air 2 wifi": {
+  "ipad air 2": {
+    default: "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
+    "or": "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
+    "argent": "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
+    "gris sideral": "https://www.electrodepot.be/media/catalog/product/cache/d2f480444d575aedb0567d54dd7c2db2/P10018823.jpg",
+  },
+  "ipad air 2 + cellular": {
     default:       "/images/ipads/ipad-air-2-argent.png",
     "argent":      "/images/ipads/ipad-air-2-argent.png",
     "or":          "/images/ipads/ipad-air-2-or.png",
     "gris sideral":"/images/ipads/ipad-air-2-gris-sideral.png",
   },
-  "ipad air 2 wifi + cellular": {
-    default:       "/images/ipads/ipad-air-2-argent.png",
-    "argent":      "/images/ipads/ipad-air-2-argent.png",
-    "or":          "/images/ipads/ipad-air-2-or.png",
-    "gris sideral":"/images/ipads/ipad-air-2-gris-sideral.png",
-  },
-  "ipad 3 wifi": {
-    default: "/images/ipads/ipad-3-argent.png",
-    "argent":"/images/ipads/ipad-3-argent.png",
-    "noir":  "/images/ipads/ipad-3-noir.png",
+  "ipad 3": {
+    default: "https://media.ldlc.com/r705/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "argent": "https://media.ldlc.com/r705/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
+    "noir": "https://media.ldlc.com/r705/mktp/product/productImage/210224/23/e1bf196235ae46d7a85f8c274323ba06.webp",
   },
 
   // ── AirPODS ─────────────────────────────────────────────────────────────
-  "airpods 3":     { default: "/images/airpods/airpods-3-blanc.png",     "blanc": "/images/airpods/airpods-3-blanc.png" },
-  "airpods 4":     { default: "/images/airpods/airpods-4-blanc.png",     "blanc": "/images/airpods/airpods-4-blanc.png" },
-  "airpods 4 anc": { default: "/images/airpods/airpods-4-anc-blanc.png", "blanc": "/images/airpods/airpods-4-anc-blanc.png" },
-  "airpods pro 2": { default: "/images/airpods/airpods-pro-2-blanc.png", "blanc": "/images/airpods/airpods-pro-2-blanc.png" },
-  "airpods pro 3": { default: "/images/airpods/airpods-pro-3-blanc.png", "blanc": "/images/airpods/airpods-pro-3-blanc.png" },
+  "airpods 3": {
+    default: "/images/airpods/airpods-3-default.png",
+    "blanc": "/images/airpods/airpods-3-blanc.png",
+  },
+  "airpods 4": {
+    default: "/images/airpods/airpods-4-default.jpg",
+    "blanc": "/images/airpods/airpods-4-blanc.jpg",
+  },
+  "airpods 4 anc": {
+    default: "/images/airpods/airpods-4-anc-default.jpg",
+    "blanc": "/images/airpods/airpods-4-anc-blanc.jpg",
+  },
+  "airpods pro 2": {
+    default: "/images/airpods/airpods-pro-2-default.jpg",
+    "blanc": "/images/airpods/airpods-pro-2-blanc.jpg",
+  },
+  "airpods pro 3": {
+    default: "/images/airpods/airpods-pro-3-default.jpg",
+    "blanc": "/images/airpods/airpods-pro-3-blanc.jpg",
+  },
   "airpods max": {
-    default:                  "/images/airpods/airpods-max-blanc.png",
-    "blanc lumiere stellaire":"/images/airpods/airpods-max-blanc.png",
-    "noir minuit":            "/images/airpods/airpods-max-noir.png",
-    "bleu":                   "/images/airpods/airpods-max-bleu.png",
-    "orange":                 "/images/airpods/airpods-max-orange.png",
-    "violet":                 "/images/airpods/airpods-max-violet.png",
+    default: "/images/airpods/airpods-max-default.jpg",
+    "minuit": "/images/airpods/airpods-max-minuit.jpg",
+    "lumiere stellaire": "/images/airpods/airpods-max-lumiere-stellaire.jpg",
+    "bleu": "/images/airpods/airpods-max-bleu.jpg",
+    "violet": "/images/airpods/airpods-max-violet.jpg",
+    "orange": "/images/airpods/airpods-max-orange.jpg",
   },
 
   // ── APPLE WATCH ─────────────────────────────────────────────────────────
   "apple watch se 3": {
-    default:            "/images/watch/watch-se3-lumiere-stellaire.png",
-    "lumiere stellaire":"/images/watch/watch-se3-lumiere-stellaire.png",
-    "minuit":           "/images/watch/watch-se3-minuit.png",
-    "argent":           "/images/watch/watch-se3-argent.png",
+    default: "/images/watch/apple-watch-se-3-default.png",
+    "minuit": "/images/watch/apple-watch-se-3-minuit.png",
+    "lumiere stellaire": "/images/watch/apple-watch-se-3-lumiere-stellaire.png",
+    "argent": "/images/watch/apple-watch-se-3-argent.png",
   },
   "apple watch series 11 42mm": {
-    default:        "/images/watch/watch-series11-42-noir.png",
-    "noir":         "/images/watch/watch-series11-42-noir.png",
-    "argent":       "/images/watch/watch-series11-42-argent.png",
-    "or rose":      "/images/watch/watch-series11-42-or-rose.png",
-    "titane naturel":"/images/watch/watch-series11-42-titane-naturel.png",
+    default: "/images/watch/apple-watch-series-11-42mm-default.png",
+    "noir": "/images/watch/apple-watch-series-11-42mm-noir.png",
   },
   "apple watch series 11 46mm": {
-    default:        "/images/watch/watch-series11-46-noir.png",
-    "noir":         "/images/watch/watch-series11-46-noir.png",
-    "argent":       "/images/watch/watch-series11-46-argent.png",
-    "or rose":      "/images/watch/watch-series11-46-or-rose.png",
-    "titane naturel":"/images/watch/watch-series11-46-titane-naturel.png",
+    default: "/images/watch/apple-watch-series-11-46mm-default.png",
+    "noir": "/images/watch/apple-watch-series-11-46mm-noir.png",
   },
   "apple watch ultra 3": {
-    default:        "/images/watch/watch-ultra3-titane-naturel.png",
-    "titane naturel":"/images/watch/watch-ultra3-titane-naturel.png",
-    "titane noir":  "/images/watch/watch-ultra3-titane-noir.png",
+    default: "/images/watch/apple-watch-ultra-3-default.png",
+    "titane noir": "/images/watch/apple-watch-ultra-3-titane-noir.png",
+  },
+
+  // ── SAMSUNG — URLs officielles/CDN ───────────────────────────────────────
+  "samsung galaxy s21": {
+    default: "/images/samsung/samsung-galaxy-s21-default.png",
+    "phantom gray": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_GRIS_ALL_8592.webp",
+    "phantom white": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_BLANC_ALL_6c8a.webp",
+    "phantom violet": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_VIOLET_ALL_c77b.webp",
+    "phantom silver": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_ROSE_ALL_f867.webp",
+  },
+  "samsung galaxy s21+": {
+    default: "/images/samsung/samsung-galaxy-s21-plus-default.png",
+    "phantom black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21PLUS_NOIR_ALL_8dce.webp",
+    "phantom white": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21PLUS_WHITE_ALL_713e.webp",
+    "phantom silver": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21PLUS_GRIS_ALL_aa72.webp",
+    "phantom violet": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21PLUS_VIOLET_ALL_0f4d.webp",
+  },
+  "samsung galaxy s21 ultra": {
+    default: "/images/samsung/samsung-galaxy-s21-ultra-default.png",
+    "phantom black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_ULTRA_NOIR_ALL_090e.webp",
+    "phantom brown": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_ULTRA_MARRON_ALL_d79f.webp",
+    "phantom navy": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_ULTRA_BLEU_ALL_c71a.webp",
+    "phantom silver": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_ULTRA_BLANC_ALL_ef88.webp",
+    "phantom titanium": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_ULTRA_GRIS_ALL_3a7b.webp",
+  },
+  "samsung galaxy s21 fe": {
+    default: "/images/samsung/samsung-galaxy-s21-fe-default.png",
+    "graphite": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_FE_5G_BLACK_ALL_e4fe.webp",
+    "white": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_FE_5G_WHITE_ALL_82d5.webp",
+    "lavender": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_FE_5G_VIOLET_ALL_ccd1.webp",
+    "olive": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S21_FE_5G_GREEN_ALL_3f01.webp",
+  },
+  "samsung galaxy s22": {
+    default: "/images/samsung/samsung-galaxy-s22-default.png",
+    "phantom black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_NOIR_ALL_a873.webp",
+    "white": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_BLANC_ALL_4666.webp",
+    "green": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_VERT_ALL_f941.webp",
+    "pink gold": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ROSE_ALL_b520.webp",
+    "graphite": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_GRIS_ALL_30a6.webp",
+    "sky blue": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_BLEU_ALL_40e4.webp",
+    "violet": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_VIOLET_ALL_4c20.webp",
+  },
+  "samsung galaxy s22+": {
+    default: "/images/samsung/samsung-galaxy-s22-plus-default.png",
+    "phantom black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_NOIR_ALL_bb10.webp",
+    "white": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_BLANC_ALL_310b.webp",
+    "green": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_VERT_ALL_f95c.webp",
+    "pink gold": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_ROSE_ALL_d6b8.webp",
+    "graphite": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_GRIS_ALL_bd39.webp",
+    "sky blue": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_BLEU_ALL_fa22.webp",
+    "violet": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_PLUS_VIOLET_ALL_4324.webp",
+  },
+  "samsung galaxy s22 ultra": {
+    default: "/images/samsung/samsung-galaxy-s22-ultra-default.png",
+    "phantom black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_NOIR_ALL_8ba0.webp",
+    "white": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_BLANC_ALL_1852.webp",
+    "green": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_VERT_ALL_38ad.webp",
+    "burgundy": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_MARRON_ALL_8962.webp",
+    "graphite": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_GRIS_ALL_8762.webp",
+    "sky blue": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_BLEU_ALL_df95.webp",
+    "violet": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S22_ULTRA_ROUGE_ALL_a9c6.webp",
+  },
+  "samsung galaxy s23": {
+    default: "/images/samsung/samsung-galaxy-s23-default.png",
+    "phantom black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_BLACK_ALL_b78b.webp",
+    "cream": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_WHITE_ALL_911c.webp",
+    "green": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_GREEN_ALL_32be.webp",
+    "lavender": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_VIOLET_ALL_225b.webp",
+  },
+  "samsung galaxy s23+": {
+    default: "/images/samsung/samsung-galaxy-s23-plus-default.png",
+    "phantom black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_PLUS_BLACK_ALL_3c41.webp",
+    "cream": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_PLUS_BLANC_ALL_fc16.webp",
+    "green": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_PLUS_GREEN_ALL_c808.webp",
+    "lavender": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_PLUS_VIOLET_ALL_8037.webp",
+  },
+  "samsung galaxy s23 ultra": {
+    default: "/images/samsung/samsung-galaxy-s23-ultra-default.png",
+    "phantom black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_ULTRA_BLACK_ALL_1cbe.webp",
+    "cream": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_ULTRA_WHITE_ALL_9d49.webp",
+    "green": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_ULTRA_GREEN_ALL_7f7f.webp",
+    "lavender": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/A/GALAXY_S23_ULTRA_VIOLET_ALL_09eb.webp",
+  },
+  "samsung galaxy s23 fe": {
+    default: "/images/samsung/samsung-galaxy-s23-fe-default.png",
+    "graphite": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/a/f/africa_fr_galaxy_s23_fe_s711_sm_s711bzacafa_538426425_7671.webp",
+    "mint": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/a/f/africa_fr_galaxy_s23_fe_s711_sm_s711blgcafa_538426379_64fe.webp",
+    "cream": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/a/f/africa_fr_galaxy_s23_fe_s711_sm_s711bzwcafa_538426542_f87a.webp",
+    "indigo": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/f/r/fr_galaxy_s23_fe_s711_486691_sm_s711bzbgeub_539169999_103a.webp",
+    "tangerine": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/f/r/fr_galaxy_s23_fe_s711_486691_sm_s711bzogeub_539170037_1d45.webp",
+  },
+  "samsung galaxy s24": {
+    default: "/images/samsung/samsung-galaxy-s24-default.png",
+    "onyx black": "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzkgeub-539429847?imbypass=true",
+    "marble gray": "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzageub-539429801?imbypass=true",
+    "cobalt violet": "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzvgeub-539429887?imbypass=true",
+    "amber yellow": "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzygeub-539429931?imbypass=true",
+  },
+  "samsung galaxy s24+": {
+    default: "/images/samsung/samsung-galaxy-s24-plus-default.png",
+    "onyx black": "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzkgeub-539429847?imbypass=true",
+    "marble gray": "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzageub-539429801?imbypass=true",
+    "cobalt violet": "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzvgeub-539429887?imbypass=true",
+    "amber yellow": "https://images.samsung.com/is/image/samsung/p6pim/be/2401/gallery/be-galaxy-s24-sm-s921bzygeub-539429931?imbypass=true",
+  },
+  "samsung galaxy s24 ultra": {
+    default: "/images/samsung/samsung-galaxy-s24-ultra-default.png",
+    "titanium black": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_S24_Ultra_Noir_1_e267.webp",
+    "titanium gray": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_S24_Ultra_gris_1_cc9a.webp",
+    "titanium violet": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_S24_Ultra_Purple_Full_54fc.webp",
+    "titanium yellow": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/G/a/Galaxy_S24_Ultra_or_1_c17f.webp",
+  },
+  "samsung galaxy s24 fe": {
+    default: "/images/samsung/samsung-galaxy-s24-fe-default.png",
+    "blue": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/S/a/Samsung_Galaxy_S24_FE_bleu_all_8d08.webp",
+    "mint": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/S/a/Samsung_Galaxy_S24_FE_vert_all_c279.webp",
+    "graphite": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/S/a/Samsung_S24_FE_gris_All_d140.webp",
+    "yellow": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/S/a/Samsung_Galaxy_S24_FE_jaune_all_93f6.webp",
+    "pink": "https://dphtbnmpp0f6d.cloudfront.net/media/catalog/product/cache/b40488bd01a4e3ef64104ffa50fb0b7d/S/a/Samsung_Galaxy_S24_FE_noir_all_3c14.webp",
+  },
+  "samsung galaxy s25": {
+    default: "/images/samsung/samsung-galaxy-s25-default.png",
+    "icyblue": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s931-sm-s931blbdeub-544679719?imbypass=true",
+    "mint": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s931-sm-s931blgdeub-544679783?imbypass=true",
+    "navy": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s931-sm-s931bdbdeub-544679659?imbypass=true",
+    "silver shadow": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s931-sm-s931bzsdeub-544679846?imbypass=true",
+  },
+  "samsung galaxy s25+": {
+    default: "/images/samsung/samsung-galaxy-s25-plus-default.png",
+    "icyblue": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s936-sm-s936blbdeub-544684265?imbypass=true",
+    "mint": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s936-sm-s936blgdeub-544684305?imbypass=true",
+    "navy": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s936-sm-s936bdbdeub-544684226?imbypass=true",
+    "silver shadow": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s936-sm-s936bzsdeub-544684343?imbypass=true",
+  },
+  "samsung galaxy s25 ultra": {
+    default: "/images/samsung/samsung-galaxy-s25-ultra-default.png",
+    "titanium black": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s938-sm-s938bzkgeub-544721837?imbypass=true",
+    "titanium gray": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s938-sm-s938bztgeub-544722123?imbypass=true",
+    "titanium whitesilver": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s938-sm-s938bzsgeub-544721952?imbypass=true",
+    "titanium silverblue": "https://images.samsung.com/is/image/samsung/p6pim/be/2501/gallery/be-galaxy-s25-s938-sm-s938bzbgeub-544721724?imbypass=true",
+  },
+  "samsung galaxy s25 edge": {
+    default: "/images/samsung/samsung-galaxy-s25-edge-default.png",
+    "titanium silver": "https://images.samsung.com/is/image/samsung/p6pim/be/ps_2504/gallery/be-galaxy-s25-s937-sm-s937bzsgeub-546081984?imbypass=true",
+    "titanium jetblack": "https://images.samsung.com/is/image/samsung/p6pim/be/ps_2504/gallery/be-galaxy-s25-s937-sm-s937bzkgeub-546081946?imbypass=true",
+  },
+  "samsung galaxy s26": {
+    default: "/images/samsung/samsung-galaxy-s26-default.png",
+  },
+  "samsung galaxy s26+": {
+    default: "/images/samsung/samsung-galaxy-s26-plus-default.png",
+  },
+  "samsung galaxy s26 ultra": {
+    default: "/images/samsung/samsung-galaxy-s26-ultra-default.png",
+  },
+  "samsung galaxy a14": {
+    default: "/images/samsung/samsung-galaxy-a14-default.png",
+    "noir": "/images/samsung/samsung-galaxy-a14-noir.png",
+  },
+  "samsung galaxy a15": {
+    default: "/images/samsung/samsung-galaxy-a15-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-a15-bleu.png",
+  },
+  "samsung galaxy a25": {
+    default: "/images/samsung/samsung-galaxy-a25-default.png",
+    "noir": "/images/samsung/samsung-galaxy-a25-noir.png",
+  },
+  "samsung galaxy a34": {
+    default: "/images/samsung/samsung-galaxy-a34-default.png",
+    "blanc": "/images/samsung/samsung-galaxy-a34-blanc.png",
+  },
+  "samsung galaxy a35": {
+    default: "/images/samsung/samsung-galaxy-a35-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-a35-bleu.png",
+  },
+  "samsung galaxy a54": {
+    default: "/images/samsung/samsung-galaxy-a54-default.png",
+    "noir": "/images/samsung/samsung-galaxy-a54-noir.png",
+  },
+  "samsung galaxy a55": {
+    default: "/images/samsung/samsung-galaxy-a55-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-a55-bleu.png",
+  },
+  "samsung galaxy z flip 3": {
+    default: "/images/samsung/samsung-galaxy-z-flip-3-default.png",
+    "vert": "/images/samsung/samsung-galaxy-z-flip-3-vert.png",
+  },
+  "samsung galaxy z flip 4": {
+    default: "/images/samsung/samsung-galaxy-z-flip-4-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-z-flip-4-bleu.png",
+  },
+  "samsung galaxy z flip 5": {
+    default: "/images/samsung/samsung-galaxy-z-flip-5-default.png",
+  },
+  "samsung galaxy z flip 6": {
+    default: "/images/samsung/samsung-galaxy-z-flip-6-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-z-flip-6-bleu.png",
+  },
+  "samsung galaxy z fold 3": {
+    default: "/images/samsung/samsung-galaxy-z-fold-3-default.png",
+    "vert": "/images/samsung/samsung-galaxy-z-fold-3-vert.png",
+  },
+  "samsung galaxy z fold 4": {
+    default: "/images/samsung/samsung-galaxy-z-fold-4-default.png",
+    "blanc": "/images/samsung/samsung-galaxy-z-fold-4-blanc.png",
+  },
+  "samsung galaxy z fold 5": {
+    default: "/images/samsung/samsung-galaxy-z-fold-5-default.png",
+  },
+  "samsung galaxy z fold 6": {
+    default: "/images/samsung/samsung-galaxy-z-fold-6-default.png",
+    "bleu": "/images/samsung/samsung-galaxy-z-fold-6-bleu.png",
   },
 }
 
@@ -632,4 +845,4 @@ export function getPublicModelIndex(modelName) {
   return idx === -1 ? 999 : idx
 }
 
-export { PLACEHOLDER }
+export { PLACEHOLDER, IMAGE_MAP }

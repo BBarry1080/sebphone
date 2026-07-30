@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
 import { Trash2, ShoppingCart } from 'lucide-react'
 import { getPhoneImage } from '../utils/phoneImage'
+import { useLanguage } from '../contexts/LanguageContext'
 
 export default function Panier() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const { cart, removeFromCart, clearCart } = useCart()
   const [selected, setSelected] = useState(cart.map((p) => p.id))
 
@@ -36,14 +38,14 @@ export default function Panier() {
     <div className="max-w-3xl mx-auto px-4 py-16 text-center">
       <ShoppingCart size={48} className="mx-auto text-gray-300 mb-4" />
       <h1 className="text-2xl font-bold text-[#1B2A4A] mb-2">
-        Votre panier est vide
+        {t('panier_empty_title')}
       </h1>
       <p className="text-gray-500 mb-6">
-        Parcourez nos téléphones et ajoutez vos favoris au panier.
+        {t('panier_empty_desc')}
       </p>
       <button onClick={() => navigate('/boutique')}
         className="bg-[#1B2A4A] text-white px-6 py-3 rounded-xl font-bold hover:bg-[#00B4CC] transition-all">
-        Voir la boutique
+        {t('hero_cta_shop')}
       </button>
     </div>
   )
@@ -52,11 +54,11 @@ export default function Panier() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[#1B2A4A]">
-          Mon panier ({cart.length})
+          {t('panier_title')} ({cart.length})
         </h1>
         <button onClick={clearCart}
           className="text-sm text-red-500 hover:text-red-700">
-          Vider le panier
+          {t('panier_clear')}
         </button>
       </div>
 
@@ -93,22 +95,21 @@ export default function Panier() {
       <div className="bg-gray-50 rounded-2xl p-6">
         <div className="flex justify-between mb-2">
           <span className="text-gray-600">
-            Articles sélectionnés ({selectedItems.length})
+            {t('panier_selected')} ({selectedItems.length})
           </span>
           <span className="font-bold text-[#1B2A4A]">{total}€</span>
         </div>
         <p className="text-xs text-gray-400 mb-4">
-          Frais de livraison calculés à l'étape suivante
+          {t('panier_shipping_note')}
         </p>
         <button onClick={handleCheckout}
           disabled={selectedItems.length === 0}
           className="w-full py-3 bg-[#1B2A4A] text-white rounded-xl font-bold hover:bg-[#00B4CC] transition-all disabled:opacity-50">
-          Passer à la commande →
+          {t('panier_checkout')}
         </button>
         {selectedItems.length > 1 && (
           <p className="text-xs text-amber-600 mt-2 text-center">
-            La réservation se fait appareil par appareil.
-            Commencez par le premier, les autres restent dans votre panier.
+            {t('panier_one_by_one')}
           </p>
         )}
       </div>
