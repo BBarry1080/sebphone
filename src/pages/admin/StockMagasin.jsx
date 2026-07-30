@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
-         AlertTriangle, Package, Tag, Check } from 'lucide-react'
+         AlertTriangle, Package, Tag } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 
@@ -335,6 +335,11 @@ export default function StockMagasin() {
       localStorage.getItem('sebphone_user') || '{}'
     )?.nom || 'Staff'
 
+    const { count: ticketNumber } = await supabase
+      .from('shop_sales')
+      .select('*', { count: 'exact', head: true })
+      .eq('magasin_id', magasin)
+
     const { data: sale, error: saleErr } = await supabase
       .from('shop_sales')
       .insert({
@@ -373,7 +378,11 @@ export default function StockMagasin() {
       }
     }
 
-    setLastSale({ ...sale, items: cart })
+    setLastSale({
+      ...sale,
+      items: cart,
+      ticketNumber: (ticketNumber || 0) + 1,
+    })
     setShowTicket(true)
     setCart([])
     setPaymentMethod('cash')
@@ -1594,40 +1603,73 @@ export default function StockMagasin() {
         </div>
       )}
 
-      {/* MODAL TICKET après encaissement */}
+      {/* MODAL TICKET après encaissement — format professionnel */}
       {showTicket && lastSale && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <div className="text-center mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                <Check size={24} className="text-green-600"/>
-              </div>
-              <p className="font-bold text-[#1B2A4A]">Vente encaissée</p>
-            </div>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto">
+            <div className="p-4 font-mono text-[11px] leading-relaxed">
 
-            <div className="border-y border-dashed border-gray-200 py-3 my-3 space-y-1">
+              <div className="text-center mb-1">
+                <p className="font-bold text-[13px]">SLT GROUP (SRL)</p>
+              </div>
+              <div className="flex justify-between">
+                <span>TVA: BE 1028.764.677</span>
+                <span>Caisse n°: {magasin}</span>
+              </div>
+              <div>Date: {new Date(lastSale.created_at || Date.now()).toLocaleString('fr-BE')}</div>
+              <div>Ticket n°: {String(lastSale.ticketNumber).padStart(7, '0')}</div>
+
+              {sep('-')}
+
               {lastSale.items.map(c => (
-                <div key={c.item_id}
-                  className="flex justify-between text-sm">
-                  <span>{c.item_name} ×{c.quantity}</span>
+                <div key={c.item_id} className="flex justify-between">
+                  <span>{c.item_name} x{c.quantity}</span>
                   <span>{(c.unit_price * c.quantity).toFixed(2)}€</span>
                 </div>
               ))}
+
+              {sep('-')}
+
+              <div className="flex justify-between font-bold text-[13px]">
+                <span>TOTAL:</span>
+                <span>{Number(lastSale.total_amount).toFixed(2)}€</span>
+              </div>
+
+              {sep('-')}
+
+              <div>TVA:</div>
+              <div className="flex justify-between text-gray-500">
+                <span></span><span>Base:</span><span>Total:</span>
+              </div>
+              <div className="flex justify-between">
+                <span>A 21%:</span>
+                <span>{(Number(lastSale.total_amount) / 1.21).toFixed(2)}€</span>
+                <span>{Number(lastSale.total_amount).toFixed(2)}€</span>
+              </div>
+
+              {sep('-')}
+
+              <div className="flex justify-between">
+                <span>Reglement: {
+                  lastSale.payment_method === 'cash' ? 'Cash' :
+                  lastSale.payment_method === 'bancontact' ? 'Bancontact' : 'Virement'
+                }</span>
+                <span>{Number(lastSale.total_amount).toFixed(2)}€</span>
+              </div>
+
+              {sep('-')}
+
+              <div className="text-center text-gray-500">Merci de votre visite</div>
             </div>
 
-            <div className="flex justify-between font-bold text-lg mb-4">
-              <span>Total</span>
-              <span>{Number(lastSale.total_amount).toFixed(2)}€</span>
-            </div>
-
-            <div className="flex gap-3">
+            <div className="flex gap-3 p-4 pt-0">
               <button onClick={() => setShowTicket(false)}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
                 Fermer
               </button>
               <button onClick={() => window.print()}
                 className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold">
-                🖨️ Imprimer
+                Imprimer
               </button>
             </div>
           </div>
