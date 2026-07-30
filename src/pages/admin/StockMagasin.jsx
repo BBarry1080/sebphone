@@ -218,6 +218,11 @@ export default function StockMagasin() {
     }
     const payload = {
       ...itemForm,
+      quantity:       itemForm.quantity || 0,
+      purchase_price: itemForm.purchase_price || null,
+      quantity_alert: itemForm.quantity_alert || 0,
+      barcode:        itemForm.barcode || null,
+      reference:      itemForm.reference || null,
       magasin_id: magasin,
       updated_at: new Date().toISOString(),
     }
@@ -1095,34 +1100,37 @@ export default function StockMagasin() {
                              rounded-xl text-sm"/>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-500
-                                   uppercase mb-1 block">
-                    Référence
-                  </label>
-                  <input value={itemForm.reference}
-                    onChange={e => setItemForm(f => ({
-                      ...f, reference: e.target.value
-                    }))}
-                    placeholder="EC-IP13P"
-                    className="w-full px-3 py-2 border border-gray-200
-                               rounded-xl text-sm"/>
+              {/* MASQUÉ TEMPORAIREMENT - Référence + Code-barres */}
+              {false && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500
+                                     uppercase mb-1 block">
+                      Référence
+                    </label>
+                    <input value={itemForm.reference}
+                      onChange={e => setItemForm(f => ({
+                        ...f, reference: e.target.value
+                      }))}
+                      placeholder="EC-IP13P"
+                      className="w-full px-3 py-2 border border-gray-200
+                                 rounded-xl text-sm"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500
+                                     uppercase mb-1 block">
+                      Code-barres
+                    </label>
+                    <input value={itemForm.barcode}
+                      onChange={e => setItemForm(f => ({
+                        ...f, barcode: e.target.value
+                      }))}
+                      placeholder="8712345678901"
+                      className="w-full px-3 py-2 border border-gray-200
+                                 rounded-xl text-sm font-mono"/>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500
-                                   uppercase mb-1 block">
-                    Code-barres
-                  </label>
-                  <input value={itemForm.barcode}
-                    onChange={e => setItemForm(f => ({
-                      ...f, barcode: e.target.value
-                    }))}
-                    placeholder="8712345678901"
-                    className="w-full px-3 py-2 border border-gray-200
-                               rounded-xl text-sm font-mono"/>
-                </div>
-              </div>
+              )}
 
               <div>
                 <label className="text-xs font-bold text-gray-500
@@ -1144,46 +1152,52 @@ export default function StockMagasin() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-500
-                                   uppercase mb-1 block">
-                    Quantité
-                  </label>
-                  <input type="number" value={itemForm.quantity}
-                    onChange={e => setItemForm(f => ({
-                      ...f, quantity: Number(e.target.value)
-                    }))}
-                    className="w-full px-3 py-2 border border-gray-200
-                               rounded-xl text-sm"/>
+              {/* MASQUÉ TEMPORAIREMENT - Quantité + Alerte stock bas */}
+              {false && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500
+                                     uppercase mb-1 block">
+                      Quantité
+                    </label>
+                    <input type="number" value={itemForm.quantity}
+                      onChange={e => setItemForm(f => ({
+                        ...f, quantity: Number(e.target.value)
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-200
+                                 rounded-xl text-sm"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-amber-600
+                                     uppercase mb-1 block">
+                      Alerte stock bas (qté)
+                    </label>
+                    <input type="number" value={itemForm.quantity_alert}
+                      onChange={e => setItemForm(f => ({
+                        ...f, quantity_alert: Number(e.target.value)
+                      }))}
+                      className="w-full px-3 py-2 border border-amber-200
+                                 rounded-xl text-sm"/>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-amber-600
-                                   uppercase mb-1 block">
-                    Alerte stock bas (qté)
-                  </label>
-                  <input type="number" value={itemForm.quantity_alert}
-                    onChange={e => setItemForm(f => ({
-                      ...f, quantity_alert: Number(e.target.value)
-                    }))}
-                    className="w-full px-3 py-2 border border-amber-200
-                               rounded-xl text-sm"/>
-                </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-500
-                                   uppercase mb-1 block">
-                    Prix d'achat (€)
-                  </label>
-                  <input type="number" value={itemForm.purchase_price}
-                    onChange={e => setItemForm(f => ({
-                      ...f, purchase_price: Number(e.target.value)
-                    }))}
-                    className="w-full px-3 py-2 border border-gray-200
-                               rounded-xl text-sm"/>
-                </div>
+                {/* MASQUÉ TEMPORAIREMENT - Prix d'achat */}
+                {false && (
+                  <div>
+                    <label className="text-xs font-bold text-gray-500
+                                     uppercase mb-1 block">
+                      Prix d'achat (€)
+                    </label>
+                    <input type="number" value={itemForm.purchase_price}
+                      onChange={e => setItemForm(f => ({
+                        ...f, purchase_price: Number(e.target.value)
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-200
+                                 rounded-xl text-sm"/>
+                  </div>
+                )}
                 <div>
                   <label className="text-xs font-bold text-gray-500
                                    uppercase mb-1 block">
