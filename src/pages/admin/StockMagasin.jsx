@@ -41,7 +41,11 @@ export default function StockMagasin() {
   // Caisse
   const [cart, setCart] = useState([])
   const [cartSearch, setCartSearch] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [paymentSplits, setPaymentSplits] = useState([])
+  const [currentPaymentMethod, setCurrentPaymentMethod] = useState('cash')
+  const [currentPaymentAmount, setCurrentPaymentAmount] = useState('')
+  const [showChangeConfirm, setShowChangeConfirm] = useState(false)
+  const [pendingSaleData, setPendingSaleData] = useState(null)
   const [showTicket, setShowTicket] = useState(false)
   const [lastSale, setLastSale] = useState(null)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
@@ -134,11 +138,10 @@ export default function StockMagasin() {
     const rows = data || []
     setSalesToday(rows)
     const totals = rows.reduce((acc, s) => {
-      const amount = Number(s.total_amount) || 0
-      acc.total += amount
-      if (s.payment_method === 'cash')       acc.cash += amount
-      else if (s.payment_method === 'bancontact') acc.bancontact += amount
-      else if (s.payment_method === 'virement')   acc.virement += amount
+      acc.total += Number(s.total_amount) || 0
+      acc.cash += Number(s.cash_amount) || 0
+      acc.bancontact += Number(s.bancontact_amount) || 0
+      acc.virement += Number(s.virement_amount) || 0
       return acc
     }, { cash: 0, bancontact: 0, virement: 0, total: 0 })
     setCaisseTotals(totals)
@@ -291,11 +294,9 @@ export default function StockMagasin() {
     : []
 
   const addToCart = (item) => {
-    if ((item.quantity || 0) <= 0) return
     setCart(prev => {
       const existing = prev.find(c => c.item_id === item.id)
       if (existing) {
-        if (existing.quantity >= existing.max_quantity) return prev
         return prev.map(c => c.item_id === item.id
           ? { ...c, quantity: c.quantity + 1 }
           : c)
@@ -305,7 +306,6 @@ export default function StockMagasin() {
         item_name: item.name,
         quantity: 1,
         unit_price: item.sale_price || 0,
-        max_quantity: item.quantity,
       }]
     })
     setCartSearch('')
@@ -314,7 +314,7 @@ export default function StockMagasin() {
   const updateCartQty = (itemId, delta) => {
     setCart(prev => prev.map(c => {
       if (c.item_id !== itemId) return c
-      const newQty = Math.max(1, Math.min(c.max_quantity, c.quantity + delta))
+      const newQty = Math.max(1, Math.min(99, c.quantity + delta))
       return { ...c, quantity: newQty }
     }))
   }
@@ -327,13 +327,48 @@ export default function StockMagasin() {
     (sum, c) => sum + (c.unit_price * c.quantity), 0
   )
 
+  const amountPaidSoFar = paymentSplits.reduce((s, p) => s + p.amount, 0)
+  const remainingToPay = Math.max(0, cartTotal - amountPaidSoFar)
+  const changeToGive = Math.max(0, amountPaidSoFar - cartTotal)
+  const isFullyPaid = amountPaidSoFar >= cartTotal && cartTotal > 0
+
+  const addPaymentSplit = () => {
+    const amt = Number(currentPaymentAmount)
+    if (!amt || amt <= 0) {
+      alert('Montant invalide')
+      return
+    }
+    setPaymentSplits(prev => [...prev, {
+      method: currentPaymentMethod,
+      amount: amt,
+    }])
+    setCurrentPaymentAmount('')
+  }
+
+  const removePaymentSplit = (idx) => {
+    setPaymentSplits(prev => prev.filter((_, i) => i !== idx))
+  }
+
   const handleCheckout = async () => {
-    if (cart.length === 0) return
+    if (cart.length === 0 || !isFullyPaid) return
     setCheckoutLoading(true)
 
     const staffName = JSON.parse(
       localStorage.getItem('sebphone_user') || '{}'
     )?.nom || 'Staff'
+
+    const cashRaw = paymentSplits
+      .filter(p => p.method === 'cash')
+      .reduce((s, p) => s + p.amount, 0)
+    const bancontactAmount = paymentSplits
+      .filter(p => p.method === 'bancontact')
+      .reduce((s, p) => s + p.amount, 0)
+    const virementAmount = paymentSplits
+      .filter(p => p.method === 'virement')
+      .reduce((s, p) => s + p.amount, 0)
+
+    const currentChange = changeToGive
+    const cashNet = Math.max(0, cashRaw - currentChange)
 
     const { count: ticketNumber } = await supabase
       .from('shop_sales')
@@ -346,7 +381,12 @@ export default function StockMagasin() {
         magasin_id: magasin,
         staff_name: staffName,
         total_amount: cartTotal,
-        payment_method: paymentMethod,
+        payment_method: paymentSplits.length > 1 ? 'mixed' : paymentSplits[0]?.method || 'cash',
+        cash_amount: cashNet,
+        bancontact_amount: bancontactAmount,
+        virement_amount: virementAmount,
+        change_amount: currentChange,
+        change_confirmed: currentChange > 0 ? false : true,
       })
       .select()
       .single()
@@ -368,27 +408,40 @@ export default function StockMagasin() {
 
     await supabase.from('shop_sale_items').insert(saleItems)
 
-    for (const c of cart) {
-      const currentItem = items.find(i => i.id === c.item_id)
-      if (currentItem) {
-        await supabase
-          .from('shop_items')
-          .update({ quantity: Math.max(0, currentItem.quantity - c.quantity) })
-          .eq('id', c.item_id)
-      }
-    }
-
-    setLastSale({
+    const saleWithTicket = {
       ...sale,
       items: cart,
       ticketNumber: (ticketNumber || 0) + 1,
-    })
-    setShowTicket(true)
+      changeToGive: currentChange,
+    }
+
     setCart([])
-    setPaymentMethod('cash')
+    setPaymentSplits([])
+    setCurrentPaymentAmount('')
     fetchItems()
     fetchCaisseToday()
     setCheckoutLoading(false)
+
+    if (currentChange > 0) {
+      setPendingSaleData(saleWithTicket)
+      setShowChangeConfirm(true)
+    } else {
+      setLastSale(saleWithTicket)
+      setShowTicket(true)
+    }
+  }
+
+  const confirmChangeGiven = async () => {
+    if (pendingSaleData) {
+      await supabase
+        .from('shop_sales')
+        .update({ change_confirmed: true })
+        .eq('id', pendingSaleData.id)
+    }
+    setShowChangeConfirm(false)
+    setLastSale(pendingSaleData)
+    setShowTicket(true)
+    setPendingSaleData(null)
   }
 
   const handlePrintDailyRecap = () => {
@@ -468,15 +521,9 @@ export default function StockMagasin() {
     const ticketCount = salesList.length
     const ticketMoyen = ticketCount > 0 ? caTotal / ticketCount : 0
 
-    const cashTotal = salesList
-      .filter((s) => s.payment_method === 'cash')
-      .reduce((s, v) => s + Number(v.total_amount || 0), 0)
-    const bancontactTotal = salesList
-      .filter((s) => s.payment_method === 'bancontact')
-      .reduce((s, v) => s + Number(v.total_amount || 0), 0)
-    const virementTotal = salesList
-      .filter((s) => s.payment_method === 'virement')
-      .reduce((s, v) => s + Number(v.total_amount || 0), 0)
+    const cashTotal = salesList.reduce((s, v) => s + Number(v.cash_amount || 0), 0)
+    const bancontactTotal = salesList.reduce((s, v) => s + Number(v.bancontact_amount || 0), 0)
+    const virementTotal = salesList.reduce((s, v) => s + Number(v.virement_amount || 0), 0)
 
     const categoryTotals = {}
     salesList.forEach((sale) => {
@@ -687,15 +734,16 @@ export default function StockMagasin() {
                 {cartSearchResults.map(item => (
                   <button key={item.id}
                     onClick={() => addToCart(item)}
-                    disabled={item.quantity <= 0}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between disabled:opacity-40">
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between">
                     <div>
                       <p className="font-bold text-sm text-[#1B2A4A]">
                         {item.name}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        Stock: {item.quantity} · Réf: {item.reference || '—'}
-                      </p>
+                      {item.reference && (
+                        <p className="text-xs text-gray-400">
+                          Réf: {item.reference}
+                        </p>
+                      )}
                     </div>
                     <span className="font-bold text-[#00B4CC]">
                       {item.sale_price}€
@@ -798,26 +846,74 @@ export default function StockMagasin() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {[
-                    { value: 'cash', label: '💵 Cash' },
-                    { value: 'bancontact', label: '💳 Bancontact' },
-                    { value: 'virement', label: '🏦 Virement' },
-                  ].map(m => (
-                    <button key={m.value}
-                      onClick={() => setPaymentMethod(m.value)}
-                      className={`py-2 rounded-xl text-xs font-bold border-2 transition-all
-                        ${paymentMethod === m.value
-                          ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                          : 'bg-white text-gray-600 border-gray-200'}`}>
-                      {m.label}
-                    </button>
-                  ))}
+                <div className="mb-3">
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="text-gray-500">Reste à payer</span>
+                    <span className="font-bold text-[#1B2A4A]">
+                      {remainingToPay.toFixed(2)}€
+                    </span>
+                  </div>
+
+                  {paymentSplits.length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {paymentSplits.map((p, idx) => (
+                        <div key={idx}
+                          className="flex items-center justify-between bg-gray-50 rounded-lg px-2 py-1 text-xs">
+                          <span>
+                            {p.method === 'cash' ? 'Cash' :
+                             p.method === 'bancontact' ? 'Bancontact' : 'Virement'}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">{p.amount.toFixed(2)}€</span>
+                            <button onClick={() => removePaymentSplit(idx)}
+                              className="text-red-400 hover:text-red-600">✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {changeToGive > 0 && (
+                    <div className="bg-amber-50 text-amber-700 rounded-lg px-2 py-1.5 text-xs font-bold mb-2 text-center">
+                      À rendre : {changeToGive.toFixed(2)}€
+                    </div>
+                  )}
+
+                  {!isFullyPaid && (
+                    <>
+                      <div className="grid grid-cols-3 gap-1 mb-2">
+                        {[
+                          { value: 'cash', label: 'Cash' },
+                          { value: 'bancontact', label: 'Bancontact' },
+                          { value: 'virement', label: 'Virement' },
+                        ].map(m => (
+                          <button key={m.value}
+                            onClick={() => setCurrentPaymentMethod(m.value)}
+                            className={`py-1.5 rounded-lg text-xs font-bold border-2
+                              ${currentPaymentMethod === m.value
+                                ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                                : 'bg-white text-gray-600 border-gray-200'}`}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input type="number" value={currentPaymentAmount}
+                          onChange={e => setCurrentPaymentAmount(e.target.value)}
+                          placeholder={remainingToPay.toFixed(2)}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                        <button onClick={addPaymentSplit}
+                          className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-200">
+                          Ajouter
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <button onClick={handleCheckout}
-                  disabled={checkoutLoading}
-                  className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50">
+                  disabled={checkoutLoading || !isFullyPaid}
+                  className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                   {checkoutLoading ? 'Encaissement...' : 'Encaisser →'}
                 </button>
               </>
@@ -1597,6 +1693,33 @@ export default function StockMagasin() {
                 disabled={closureLoading}
                 className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold disabled:opacity-50">
                 {closureLoading ? '...' : 'Clôturer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMATION MONNAIE À RENDRE */}
+      {showChangeConfirm && pendingSaleData && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center">
+            <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="text-amber-600 font-bold text-lg">€</span>
+            </div>
+            <p className="font-bold text-[#1B2A4A] text-lg mb-1">
+              {Number(pendingSaleData.changeToGive || 0).toFixed(2)}€ à rendre
+            </p>
+            <p className="text-xs text-gray-500 mb-5">
+              Confirme que le client a bien reçu sa monnaie
+            </p>
+            <div className="flex flex-col gap-2">
+              <button onClick={confirmChangeGiven}
+                className="w-full py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold">
+                OK — monnaie rendue
+              </button>
+              <button onClick={confirmChangeGiven}
+                className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
+                Bon d'achat
               </button>
             </div>
           </div>
