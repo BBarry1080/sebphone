@@ -62,6 +62,7 @@ export default function StockMagasin() {
   const [closureData, setClosureData] = useState(null)
   const [closureLoading, setClosureLoading] = useState(false)
   const [prelevementAmount, setPrelevementAmount] = useState('')
+  const [selectedCategoryView, setSelectedCategoryView] = useState(null)
 
   const barcodeRef = useRef(null)
 
@@ -254,7 +255,7 @@ export default function StockMagasin() {
     if (!catForm.name) {
       alert('Nom obligatoire'); return
     }
-    const payload = { ...catForm, magasin_id: magasin }
+    const payload = { ...catForm, color: 'gray', magasin_id: magasin }
     if (editCat) {
       await supabase.from('shop_categories')
         .update(payload).eq('id', editCat.id)
@@ -587,7 +588,8 @@ export default function StockMagasin() {
         {[
           { label: 'Total articles', value: stats.total },
           { label: 'Catégories', value: stats.categories },
-          {
+          // MASQUÉ TEMPORAIREMENT - Stock bas
+          false && {
             label: 'Stock bas',
             value: stats.lowStock,
             warn: stats.lowStock > 0
@@ -596,7 +598,7 @@ export default function StockMagasin() {
             label: 'Valeur stock',
             value: `${Math.round(stats.valeur)}€`
           },
-        ].map(s => (
+        ].filter(Boolean).map(s => (
           <div key={s.label}
             className={`rounded-2xl p-4 text-center
               ${s.warn
@@ -614,8 +616,8 @@ export default function StockMagasin() {
         ))}
       </div>
 
-      {/* Alertes stock bas */}
-      {lowStockItems.length > 0 && (
+      {/* MASQUÉ TEMPORAIREMENT - Alertes stock bas */}
+      {false && lowStockItems.length > 0 && (
         <div className="bg-amber-50 border border-amber-200
                         rounded-2xl p-4 mb-6">
           <div className="flex items-center gap-2 mb-2">
@@ -848,23 +850,18 @@ export default function StockMagasin() {
                   : 'bg-white border border-gray-200'}`}>
               Tout
             </button>
-            {categories.map(cat => {
-              const c = getColor(cat.color)
-              return (
-                <button key={cat.id}
-                  onClick={() => setFilterCategory(
-                    filterCategory === cat.id ? null : cat.id
-                  )}
-                  style={filterCategory === cat.id ? {
-                    background: c.bg, color: c.text,
-                    borderColor: c.text,
-                  } : {}}
-                  className="px-3 py-2 rounded-xl text-xs font-bold
-                             border border-gray-200 bg-white">
-                  {cat.name}
-                </button>
-              )
-            })}
+            {categories.map(cat => (
+              <button key={cat.id}
+                onClick={() => setFilterCategory(
+                  filterCategory === cat.id ? null : cat.id
+                )}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all
+                  ${filterCategory === cat.id
+                    ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-[#1B2A4A]'}`}>
+                {cat.name}
+              </button>
+            ))}
           </div>
 
           {/* Tableau */}
@@ -881,10 +878,13 @@ export default function StockMagasin() {
                                  text-gray-500 text-xs uppercase">
                     Catégorie
                   </th>
-                  <th className="text-center px-4 py-3 font-bold
-                                 text-gray-500 text-xs uppercase">
-                    Qté
-                  </th>
+                  {/* MASQUÉ TEMPORAIREMENT - Qté */}
+                  {false && (
+                    <th className="text-center px-4 py-3 font-bold
+                                   text-gray-500 text-xs uppercase">
+                      Qté
+                    </th>
+                  )}
                   <th className="text-right px-4 py-3 font-bold
                                  text-gray-500 text-xs uppercase">
                     Achat
@@ -906,27 +906,24 @@ export default function StockMagasin() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7}
+                    <td colSpan={6}
                         className="text-center py-8 text-gray-400">
                       Chargement...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7}
+                    <td colSpan={6}
                         className="text-center py-8 text-gray-400">
                       Aucun article trouvé
                     </td>
                   </tr>
                 ) : filtered.map(item => {
-                  const isLow = item.quantity <= item.quantity_alert
                   const cat = item.shop_categories
-                  const c = cat ? getColor(cat.color) : null
                   return (
                     <tr key={item.id}
-                      className={`border-b border-gray-50
-                        hover:bg-gray-50 transition-colors
-                        ${isLow ? 'bg-amber-50/30' : ''}`}>
+                      className="border-b border-gray-50
+                        hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <p className="font-bold text-[#1B2A4A] text-sm">
                           {item.name}
@@ -938,29 +935,31 @@ export default function StockMagasin() {
                         </p>
                       </td>
                       <td className="px-4 py-3">
-                        {cat && c && (
+                        {cat && (
                           <span className="text-xs font-bold px-2 py-1
-                                          rounded-lg"
-                            style={{ background: c.bg, color: c.text }}>
+                                          rounded-lg bg-gray-100 text-gray-600">
                             {cat.name}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center
-                                        justify-center gap-1">
-                          {isLow && (
-                            <AlertTriangle size={12}
-                              className="text-amber-500"/>
-                          )}
-                          <span className={`font-bold
-                            ${isLow
-                              ? 'text-amber-600'
-                              : 'text-[#1B2A4A]'}`}>
-                            {item.quantity}
-                          </span>
-                        </div>
-                      </td>
+                      {/* MASQUÉ TEMPORAIREMENT - Qté cellule */}
+                      {false && (
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center
+                                          justify-center gap-1">
+                            {item.quantity <= item.quantity_alert && (
+                              <AlertTriangle size={12}
+                                className="text-amber-500"/>
+                            )}
+                            <span className={`font-bold
+                              ${item.quantity <= item.quantity_alert
+                                ? 'text-amber-600'
+                                : 'text-[#1B2A4A]'}`}>
+                              {item.quantity}
+                            </span>
+                          </div>
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right
                                      text-gray-500 text-xs">
                         {item.purchase_price}€
@@ -1019,22 +1018,25 @@ export default function StockMagasin() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {categories.map(cat => {
-                const c = getColor(cat.color)
                 const count = items.filter(
                   i => i.category_id === cat.id
                 ).length
+                const isSelected = selectedCategoryView?.id === cat.id
                 return (
                   <div key={cat.id}
-                    className="bg-white rounded-2xl border
-                               border-gray-100 p-4 flex items-center
-                               justify-between">
+                    onClick={() => setSelectedCategoryView(cat)}
+                    className={`bg-white rounded-2xl border
+                               p-4 flex items-center
+                               justify-between cursor-pointer
+                               transition-all
+                               ${isSelected
+                                 ? 'border-[#1B2A4A] shadow-md'
+                                 : 'border-gray-100 hover:border-[#00B4CC]'}`}>
                     <div className="flex items-center gap-3">
                       <span className="w-8 h-8 rounded-xl flex
                                        items-center justify-center
-                                       text-sm font-bold"
-                        style={{
-                          background: c.bg, color: c.text
-                        }}>
+                                       text-sm font-bold
+                                       bg-gray-100 text-gray-600">
                         <Tag size={14}/>
                       </span>
                       <div>
@@ -1046,7 +1048,7 @@ export default function StockMagasin() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => openCatModal(cat)}
                         className="p-1.5 hover:bg-blue-50 rounded-lg
                                    text-blue-400 hover:text-blue-600">
@@ -1061,6 +1063,48 @@ export default function StockMagasin() {
                   </div>
                 )
               })}
+            </div>
+          )}
+
+          {selectedCategoryView && (
+            <div className="mt-4 bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-[#1B2A4A]">
+                  Articles — {selectedCategoryView.name}
+                </h3>
+                <button onClick={() => setSelectedCategoryView(null)}
+                  className="text-gray-400 hover:text-[#1B2A4A]">
+                  ✕
+                </button>
+              </div>
+              {items.filter(i => i.category_id === selectedCategoryView.id).length === 0 ? (
+                <p className="text-center text-gray-400 py-4 text-sm">
+                  Aucun article dans cette catégorie
+                </p>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {items
+                    .filter(i => i.category_id === selectedCategoryView.id)
+                    .map(item => (
+                      <div key={item.id}
+                        className="flex items-center justify-between py-2">
+                        <div>
+                          <p className="font-bold text-sm text-[#1B2A4A]">
+                            {item.name}
+                          </p>
+                          {item.description && (
+                            <p className="text-xs text-gray-400">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                        <span className="font-bold text-[#00B4CC]">
+                          {item.sale_price}€
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1298,28 +1342,31 @@ export default function StockMagasin() {
                   className="w-full px-3 py-2 border border-gray-200
                              rounded-xl text-sm"/>
               </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500
-                                 uppercase mb-1 block">
-                  Couleur
-                </label>
-                <div className="flex gap-2 flex-wrap">
-                  {COLORS.map(c => (
-                    <button key={c.value}
-                      onClick={() => setCatForm(f => ({
-                        ...f, color: c.value
-                      }))}
-                      style={{ background: c.bg, color: c.text }}
-                      className={`px-3 py-1.5 rounded-xl text-xs
-                                  font-bold border-2 transition-all
-                        ${catForm.color === c.value
-                          ? 'border-gray-800'
-                          : 'border-transparent'}`}>
-                      {c.label}
-                    </button>
-                  ))}
+              {/* MASQUÉ TEMPORAIREMENT - Sélecteur couleur catégorie */}
+              {false && (
+                <div>
+                  <label className="text-xs font-bold text-gray-500
+                                   uppercase mb-1 block">
+                    Couleur
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {COLORS.map(c => (
+                      <button key={c.value}
+                        onClick={() => setCatForm(f => ({
+                          ...f, color: c.value
+                        }))}
+                        style={{ background: c.bg, color: c.text }}
+                        className={`px-3 py-1.5 rounded-xl text-xs
+                                    font-bold border-2 transition-all
+                          ${catForm.color === c.value
+                            ? 'border-gray-800'
+                            : 'border-transparent'}`}>
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowCatModal(false)}
                   className="flex-1 py-2.5 border border-gray-200
