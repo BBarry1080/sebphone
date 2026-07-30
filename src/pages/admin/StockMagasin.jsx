@@ -5,6 +5,13 @@ import { Plus, X, Pencil, Trash2, Search,
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 
+const POS_CATEGORIES = [
+  'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
+  'Carte mémoire', 'Ordinateur', 'Tablette', 'PlayStation',
+  'Écran', 'Caméra', 'Batterie', 'Vitre arrière',
+  'Autre téléphone', 'Écran Samsung',
+]
+
 export default function StockMagasin() {
   const isAdmin = useIsAdmin()
   const hasPermission = usePermission('stock_magasin')
@@ -67,6 +74,7 @@ export default function StockMagasin() {
   const [closureLoading, setClosureLoading] = useState(false)
   const [prelevementAmount, setPrelevementAmount] = useState('')
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
+  const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
 
   const barcodeRef = useRef(null)
 
@@ -93,7 +101,7 @@ export default function StockMagasin() {
 
   useEffect(() => {
     if (magasin) {
-      fetchCategories()
+      fetchCategories().then(() => ensurePosCategories())
       fetchItems()
       fetchCaisseToday()
       fetchLastClosure().then((closure) => {
@@ -101,6 +109,21 @@ export default function StockMagasin() {
       })
     }
   }, [magasin])
+
+  const ensurePosCategories = async () => {
+    const { data: existing } = await supabase
+      .from('shop_categories')
+      .select('name')
+      .eq('magasin_id', magasin)
+    const existingNames = (existing || []).map((c) => c.name)
+    const missing = POS_CATEGORIES.filter((n) => !existingNames.includes(n))
+    if (missing.length > 0) {
+      await supabase.from('shop_categories').insert(
+        missing.map((name) => ({ name, color: 'gray', magasin_id: magasin }))
+      )
+      fetchCategories()
+    }
+  }
 
   const fetchLastClosure = async () => {
     const { data } = await supabase
@@ -321,6 +344,14 @@ export default function StockMagasin() {
 
   const removeFromCart = (itemId) => {
     setCart(prev => prev.filter(c => c.item_id !== itemId))
+  }
+
+  const updateCartPrice = (itemId, newPrice) => {
+    setCart(prev => prev.map(c =>
+      c.item_id === itemId
+        ? { ...c, unit_price: Number(newPrice) || 0 }
+        : c
+    ))
   }
 
   const cartTotal = cart.reduce(
@@ -713,131 +744,136 @@ export default function StockMagasin() {
         ))}
       </div>
 
-      {/* TAB CAISSE */}
+      {/* TAB CAISSE — layout POS 3 colonnes */}
       {activeTab === 'caisse' && (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-220px)]">
 
-          {/* Colonne gauche : recherche + ajout */}
-          <div>
+          {/* COLONNE GAUCHE — Catégories */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-2">
+            <button onClick={() => setSelectedPosCategory('Tout')}
+              className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all
+                ${selectedPosCategory === 'Tout'
+                  ? 'bg-[#1B2A4A] text-white'
+                  : 'text-gray-600 hover:bg-gray-50'}`}>
+              Tout
+            </button>
+            {POS_CATEGORIES.map((catName) => (
+              <button key={catName}
+                onClick={() => setSelectedPosCategory(catName)}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all
+                  ${selectedPosCategory === catName
+                    ? 'bg-[#1B2A4A] text-white'
+                    : 'text-gray-600 hover:bg-gray-50'}`}>
+                {catName}
+              </button>
+            ))}
+          </div>
+
+          {/* COLONNE CENTRE — Grille articles */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-4">
+            <div className="flex gap-2 mb-3">
+              <button onClick={() => { setMovementType('depot'); setShowMovementModal(true) }}
+                className="flex-1 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:border-[#1B2A4A]">
+                + Dépôt
+              </button>
+              <button onClick={() => { setMovementType('retrait'); setShowMovementModal(true) }}
+                className="flex-1 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:border-[#1B2A4A]">
+                − Retrait
+              </button>
+            </div>
+
             <div className="relative mb-4">
               <Search size={14}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
               <input type="text" value={cartSearch}
-                onChange={e => setCartSearch(e.target.value)}
-                placeholder="Scanner ou rechercher un article..."
-                autoFocus
-                className="w-full pl-8 pr-3 py-3 border border-gray-200 rounded-xl text-sm"/>
+                onChange={(e) => setCartSearch(e.target.value)}
+                placeholder="Rechercher un article..."
+                className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm"/>
             </div>
 
-            {cartSearchResults.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 mb-4">
-                {cartSearchResults.map(item => (
-                  <button key={item.id}
-                    onClick={() => addToCart(item)}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-sm text-[#1B2A4A]">
+            {(() => {
+              const posFiltered = items.filter((item) => {
+                if (cartSearch.length >= 2) {
+                  return item.name?.toLowerCase().includes(cartSearch.toLowerCase()) ||
+                         item.reference?.toLowerCase().includes(cartSearch.toLowerCase())
+                }
+                if (selectedPosCategory === 'Tout') return true
+                const cat = categories.find((c) => c.name === selectedPosCategory)
+                return cat && item.category_id === cat.id
+              })
+              return posFiltered.length === 0 ? (
+                <p className="text-center text-gray-400 py-8 text-sm">
+                  Aucun article dans cette catégorie
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {posFiltered.map((item) => (
+                    <button key={item.id}
+                      onClick={() => addToCart(item)}
+                      className="text-left bg-gray-50 hover:bg-gray-100 rounded-xl p-3 transition-all border border-transparent hover:border-[#1B2A4A]">
+                      <p className="font-bold text-xs text-[#1B2A4A] mb-1 line-clamp-2">
                         {item.name}
                       </p>
-                      {item.reference && (
-                        <p className="text-xs text-gray-400">
-                          Réf: {item.reference}
-                        </p>
-                      )}
-                    </div>
-                    <span className="font-bold text-[#00B4CC]">
-                      {item.sale_price}€
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <button onClick={() => setActiveTab('stock')}
-              className="text-xs text-gray-400 hover:text-[#1B2A4A]">
-              + Voir tout le stock
-            </button>
-
-            {/* Totaux caisse jour */}
-            <div className="mt-6 bg-gray-50 rounded-2xl p-4">
-              <p className="text-xs font-bold text-gray-500 uppercase mb-2">
-                Caisse du jour
-              </p>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between text-gray-600">
-                  <span>💵 Cash</span><span>{caisseTotals.cash.toFixed(2)}€</span>
+                      <p className="text-sm font-bold text-[#00B4CC]">
+                        {item.sale_price}€
+                      </p>
+                    </button>
+                  ))}
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>💳 Bancontact</span><span>{caisseTotals.bancontact.toFixed(2)}€</span>
-                </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>🏦 Virement</span><span>{caisseTotals.virement.toFixed(2)}€</span>
-                </div>
-                <div className="flex justify-between font-bold text-[#1B2A4A] border-t border-gray-200 pt-1 mt-1">
-                  <span>Total ({salesToday.length} vente{salesToday.length > 1 ? 's' : ''})</span>
-                  <span>{caisseTotals.total.toFixed(2)}€</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 mt-3">
-                <button onClick={() => { setMovementType('depot'); setShowMovementModal(true) }}
-                  className="py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:border-[#1B2A4A]">
-                  + Dépôt de caisse
-                </button>
-                <button onClick={() => { setMovementType('retrait'); setShowMovementModal(true) }}
-                  className="py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:border-[#1B2A4A]">
-                  − Retrait de caisse
-                </button>
-              </div>
-            </div>
+              )
+            })()}
           </div>
 
-          {/* Colonne droite : panier */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 sticky top-4 h-fit">
-            <h3 className="font-bold text-[#1B2A4A] mb-4">
-              Panier ({cart.length})
+          {/* COLONNE DROITE — Ticket / Panier */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 overflow-y-auto flex flex-col">
+            <h3 className="font-bold text-[#1B2A4A] mb-3">
+              Ticket ({cart.length})
             </h3>
 
             {cart.length === 0 ? (
-              <p className="text-center text-gray-400 py-8 text-sm">
-                Panier vide — recherchez un article
+              <p className="text-center text-gray-400 py-8 text-sm flex-1">
+                Sélectionnez des articles
               </p>
             ) : (
               <>
-                <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
-                  {cart.map(c => (
+                <div className="space-y-2 mb-4 flex-1 overflow-y-auto">
+                  {cart.map((c) => (
                     <div key={c.item_id}
-                      className="flex items-center justify-between bg-gray-50 rounded-xl p-2">
-                      <div className="flex-1">
-                        <p className="text-xs font-bold text-[#1B2A4A]">
+                      className="bg-gray-50 rounded-xl p-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold text-[#1B2A4A] flex-1 line-clamp-1">
                           {c.item_name}
                         </p>
-                        <p className="text-xs text-gray-400">
-                          {c.unit_price}€ × {c.quantity}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => updateCartQty(c.item_id, -1)}
-                          className="w-6 h-6 rounded-lg bg-white border border-gray-200 text-xs">
-                          −
-                        </button>
-                        <span className="w-6 text-center text-xs font-bold">
-                          {c.quantity}
-                        </span>
-                        <button onClick={() => updateCartQty(c.item_id, 1)}
-                          className="w-6 h-6 rounded-lg bg-white border border-gray-200 text-xs">
-                          +
-                        </button>
                         <button onClick={() => removeFromCart(c.item_id)}
-                          className="ml-1 text-red-400 hover:text-red-600">
-                          <Trash2 size={14}/>
+                          className="text-red-400 hover:text-red-600 ml-2">
+                          <Trash2 size={13}/>
                         </button>
                       </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => updateCartQty(c.item_id, -1)}
+                            className="w-5 h-5 rounded bg-white border border-gray-200 text-xs">−</button>
+                          <span className="w-5 text-center text-xs font-bold">
+                            {c.quantity}
+                          </span>
+                          <button onClick={() => updateCartQty(c.item_id, 1)}
+                            className="w-5 h-5 rounded bg-white border border-gray-200 text-xs">+</button>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <input type="number" value={c.unit_price}
+                            onChange={(e) => updateCartPrice(c.item_id, e.target.value)}
+                            className="w-16 px-1.5 py-1 border border-gray-200 rounded-lg text-xs text-right font-bold"/>
+                          <span className="text-xs text-gray-400">€</span>
+                        </div>
+                      </div>
+                      <p className="text-right text-xs text-gray-400 mt-1">
+                        = {(c.unit_price * c.quantity).toFixed(2)}€
+                      </p>
                     </div>
                   ))}
                 </div>
 
-                <div className="border-t border-gray-100 pt-3 mb-4">
+                <div className="border-t border-gray-100 pt-3 mb-3">
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
                     <span className="text-[#00B4CC]">
@@ -886,7 +922,7 @@ export default function StockMagasin() {
                           { value: 'cash', label: 'Cash' },
                           { value: 'bancontact', label: 'Bancontact' },
                           { value: 'virement', label: 'Virement' },
-                        ].map(m => (
+                        ].map((m) => (
                           <button key={m.value}
                             onClick={() => setCurrentPaymentMethod(m.value)}
                             className={`py-1.5 rounded-lg text-xs font-bold border-2
@@ -899,7 +935,7 @@ export default function StockMagasin() {
                       </div>
                       <div className="flex gap-2">
                         <input type="number" value={currentPaymentAmount}
-                          onChange={e => setCurrentPaymentAmount(e.target.value)}
+                          onChange={(e) => setCurrentPaymentAmount(e.target.value)}
                           placeholder={remainingToPay.toFixed(2)}
                           className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
                         <button onClick={addPaymentSplit}
@@ -914,16 +950,15 @@ export default function StockMagasin() {
                 <button onClick={handleCheckout}
                   disabled={checkoutLoading || !isFullyPaid}
                   className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                  {checkoutLoading ? 'Encaissement...' : 'Encaisser →'}
+                  {checkoutLoading ? 'Encaissement...' : 'Ticket →'}
                 </button>
               </>
             )}
 
             <button onClick={handlePrintDailyRecap}
-              className="w-full mt-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:border-[#1B2A4A]">
-              🖨️ Imprimer récap du jour
+              className="w-full mt-2 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:border-[#1B2A4A]">
+              Imprimer récap du jour
             </button>
-
             <button onClick={openClosureModal}
               className="w-full mt-2 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-xs font-bold hover:opacity-90">
               Clôturer la caisse
