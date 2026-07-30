@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
-         AlertTriangle, Package, Tag } from 'lucide-react'
+         AlertTriangle, Package, Tag,
+         Menu, Lock, Unlock } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 
@@ -22,7 +23,7 @@ export default function StockMagasin() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState(null)
-  const [activeTab, setActiveTab] = useState('caisse') // caisse | stock | categories
+  const [activeTab, setActiveTab] = useState('stock') // stock | categories (dans posScreen='gestion')
 
   // Modals
   const [showItemModal, setShowItemModal] = useState(false)
@@ -75,6 +76,11 @@ export default function StockMagasin() {
   const [prelevementAmount, setPrelevementAmount] = useState('')
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
+  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture
+  const [showMovementMenu, setShowMovementMenu] = useState(false)
+  const [discountMenuItemId, setDiscountMenuItemId] = useState(null)
+  const [showGlobalDiscount, setShowGlobalDiscount] = useState(false)
+  const [globalDiscountValue, setGlobalDiscountValue] = useState('')
 
   const barcodeRef = useRef(null)
 
@@ -329,9 +335,38 @@ export default function StockMagasin() {
         item_name: item.name,
         quantity: 1,
         unit_price: item.sale_price || 0,
+        discount: 0,
+        discountType: null,
       }]
     })
     setCartSearch('')
+  }
+
+  const applyItemDiscount = (itemId, type, value) => {
+    setCart(prev => prev.map(c => {
+      if (c.item_id !== itemId) return c
+      if (type === 'article_offert') {
+        return { ...c, discountType: 'article_offert', discount: c.unit_price * c.quantity }
+      }
+      return { ...c, discountType: type, discount: Number(value) || 0 }
+    }))
+    setDiscountMenuItemId(null)
+  }
+
+  const removeItemDiscount = (itemId) => {
+    setCart(prev => prev.map(c =>
+      c.item_id === itemId ? { ...c, discountType: null, discount: 0 } : c
+    ))
+    setDiscountMenuItemId(null)
+  }
+
+  const lineTotal = (c) => {
+    const base = c.unit_price * c.quantity
+    if (c.discountType === 'article_offert') return 0
+    if (c.discountType === 'remise_pct') return base * (1 - (c.discount / 100))
+    if (c.discountType === 'remise_montant' || c.discountType === 'rabais')
+      return Math.max(0, base - c.discount)
+    return base
   }
 
   const updateCartQty = (itemId, delta) => {
@@ -354,9 +389,11 @@ export default function StockMagasin() {
     ))
   }
 
-  const cartTotal = cart.reduce(
-    (sum, c) => sum + (c.unit_price * c.quantity), 0
-  )
+  const cartSubtotal = cart.reduce((sum, c) => sum + lineTotal(c), 0)
+  const globalDiscountAmount = globalDiscountValue
+    ? cartSubtotal * (Number(globalDiscountValue) / 100)
+    : 0
+  const cartTotal = Math.max(0, cartSubtotal - globalDiscountAmount)
 
   const amountPaidSoFar = paymentSplits.reduce((s, p) => s + p.amount, 0)
   const remainingToPay = Math.max(0, cartTotal - amountPaidSoFar)
@@ -418,6 +455,7 @@ export default function StockMagasin() {
         virement_amount: virementAmount,
         change_amount: currentChange,
         change_confirmed: currentChange > 0 ? false : true,
+        global_discount: globalDiscountAmount,
       })
       .select()
       .single()
@@ -434,7 +472,9 @@ export default function StockMagasin() {
       item_name: c.item_name,
       quantity: c.quantity,
       unit_price: c.unit_price,
-      total_price: c.unit_price * c.quantity,
+      total_price: lineTotal(c),
+      discount_type: c.discountType || null,
+      discount_value: c.discount || 0,
     }))
 
     await supabase.from('shop_sale_items').insert(saleItems)
@@ -449,6 +489,7 @@ export default function StockMagasin() {
     setCart([])
     setPaymentSplits([])
     setCurrentPaymentAmount('')
+    setGlobalDiscountValue('')
     fetchItems()
     fetchCaisseToday()
     setCheckoutLoading(false)
@@ -650,8 +691,8 @@ export default function StockMagasin() {
             Gérez l'inventaire de votre boutique
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {isAdmin && (
+        <div className="flex gap-2 flex-wrap items-center">
+          {isAdmin ? (
             <select value={magasin}
               onChange={e => setMagasin(e.target.value)}
               className="px-3 py-2 border border-gray-200
@@ -660,20 +701,28 @@ export default function StockMagasin() {
                 <option key={m.id} value={m.id}>{m.nom}</option>
               ))}
             </select>
+          ) : (
+            <span className="px-3 py-2 text-sm text-gray-500 font-medium">
+              {MAGASINS_LIST.find(m => m.id === magasin)?.nom || magasin}
+            </span>
           )}
-          <button onClick={() => openItemModal()}
-            className="flex items-center gap-2 bg-[#1B2A4A]
-                       text-white px-4 py-2 rounded-xl
-                       text-sm font-bold hover:bg-[#00B4CC]">
-            <Plus size={16}/> Ajouter un article
-          </button>
+          {/* MASQUÉ TEMPORAIREMENT - bouton Ajouter un article (déplacé dans la vue Catégorie) */}
+          {false && (
+            <button onClick={() => openItemModal()}
+              className="flex items-center gap-2 bg-[#1B2A4A]
+                         text-white px-4 py-2 rounded-xl
+                         text-sm font-bold hover:bg-[#00B4CC]">
+              <Plus size={16}/> Ajouter un article
+            </button>
+          )}
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Total articles', value: stats.total },
+          // MASQUÉ TEMPORAIREMENT - Total articles
+          false && { label: 'Total articles', value: stats.total },
           { label: 'Catégories', value: stats.categories },
           // MASQUÉ TEMPORAIREMENT - Stock bas
           false && {
@@ -681,7 +730,8 @@ export default function StockMagasin() {
             value: stats.lowStock,
             warn: stats.lowStock > 0
           },
-          {
+          // MASQUÉ TEMPORAIREMENT - Valeur stock
+          false && {
             label: 'Valeur stock',
             value: `${Math.round(stats.valeur)}€`
           },
@@ -725,27 +775,135 @@ export default function StockMagasin() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-4">
-        {[
-          { key: 'caisse', label: 'Caisse' },
-          { key: 'stock', label: 'Stock' },
-          { key: 'categories', label: 'Catégories' },
-        ].map(tab => (
-          <button key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold
-                        transition-all
-              ${activeTab === tab.key
-                ? 'bg-[#1B2A4A] text-white'
-                : 'bg-white border border-gray-200 text-gray-600'}`}>
-            {tab.label}
+      {/* ÉCRAN ACCUEIL */}
+      {posScreen === 'accueil' && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">CA du jour</p>
+                <p className="text-xl font-bold text-[#1B2A4A]">
+                  {(caisseTotals?.total || 0).toFixed(2)}€
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Tickets créés</p>
+                <p className="text-xl font-bold text-[#1B2A4A]">
+                  {salesToday?.length || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <button onClick={() => setPosScreen('caisse')}
+              className="bg-white rounded-2xl border border-gray-100 p-5 text-center hover:border-[#1B2A4A] transition-all">
+              <p className="font-bold text-[#1B2A4A] text-sm">Vente caisse</p>
+            </button>
+            <button onClick={() => { setPosScreen('gestion'); setActiveTab('stock') }}
+              className="bg-white rounded-2xl border border-gray-100 p-5 text-center hover:border-[#1B2A4A] transition-all">
+              <p className="font-bold text-[#1B2A4A] text-sm">Gestion</p>
+            </button>
+            <button onClick={() => setPosScreen('cloture')}
+              className="bg-white rounded-2xl border border-gray-100 p-5 text-center hover:border-[#1B2A4A] transition-all">
+              <p className="font-bold text-[#1B2A4A] text-sm">Clôture</p>
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <p className="text-xs text-gray-500 mb-1">Dernière clôture</p>
+            {lastClosure ? (
+              <p className="font-bold text-[#1B2A4A] text-sm">
+                {new Date(lastClosure.period_end).toLocaleString('fr-BE')}
+              </p>
+            ) : (
+              <p className="text-gray-400 text-sm">Aucune clôture pour l'instant</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tabs — visible uniquement dans l'écran Gestion */}
+      {posScreen === 'gestion' && (
+        <>
+          <button onClick={() => setPosScreen('accueil')}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
           </button>
-        ))}
-      </div>
+          <div className="flex gap-2 mb-4">
+            {[
+              { key: 'stock', label: 'Stock' },
+              { key: 'categories', label: 'Catégories' },
+            ].map(tab => (
+              <button key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold
+                            transition-all
+                  ${activeTab === tab.key
+                    ? 'bg-[#1B2A4A] text-white'
+                    : 'bg-white border border-gray-200 text-gray-600'}`}>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Bouton retour pour Caisse */}
+      {posScreen === 'caisse' && (
+        <button onClick={() => setPosScreen('accueil')}
+          className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+          ← Retour à l'accueil
+        </button>
+      )}
+
+      {/* ÉCRAN CLÔTURE */}
+      {posScreen === 'cloture' && (
+        <div className="max-w-2xl mx-auto">
+          <button onClick={() => setPosScreen('accueil')}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
+          </button>
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
+            <p className="text-xs font-bold text-gray-500 uppercase mb-3">
+              Résumé de la journée
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>💵 Cash</span><span>{caisseTotals.cash.toFixed(2)}€</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>💳 Bancontact</span><span>{caisseTotals.bancontact.toFixed(2)}€</span>
+              </div>
+              <div className="flex justify-between text-gray-600">
+                <span>🏦 Virement</span><span>{caisseTotals.virement.toFixed(2)}€</span>
+              </div>
+              <div className="flex justify-between font-bold text-[#1B2A4A] border-t border-gray-200 pt-2 mt-2">
+                <span>Total ({salesToday.length} vente{salesToday.length > 1 ? 's' : ''})</span>
+                <span>{caisseTotals.total.toFixed(2)}€</span>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={handlePrintDailyRecap}
+              className="py-3 border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-[#1B2A4A]">
+              Imprimer récap du jour
+            </button>
+            <button onClick={openClosureModal}
+              className="py-3 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:opacity-90">
+              Clôturer la caisse
+            </button>
+          </div>
+          {lastClosure && (
+            <p className="text-xs text-gray-400 mt-4 text-center">
+              Dernière clôture : {new Date(lastClosure.period_end).toLocaleString('fr-BE')}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* TAB CAISSE — layout POS 3 colonnes */}
-      {activeTab === 'caisse' && (
+      {posScreen === 'caisse' && (
         <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-220px)]">
 
           {/* COLONNE GAUCHE — Catégories */}
@@ -771,15 +929,31 @@ export default function StockMagasin() {
 
           {/* COLONNE CENTRE — Grille articles */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-4">
-            <div className="flex gap-2 mb-3">
-              <button onClick={() => { setMovementType('depot'); setShowMovementModal(true) }}
-                className="flex-1 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:border-[#1B2A4A]">
-                + Dépôt
+            <div className="relative mb-3">
+              <button onClick={() => setShowMovementMenu(!showMovementMenu)}
+                className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:border-[#1B2A4A]">
+                <Menu size={18} className="text-gray-500"/>
               </button>
-              <button onClick={() => { setMovementType('retrait'); setShowMovementModal(true) }}
-                className="flex-1 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:border-[#1B2A4A]">
-                − Retrait
-              </button>
+              {showMovementMenu && (
+                <div className="absolute top-11 left-0 bg-white rounded-2xl border border-gray-100 shadow-lg p-2 w-48 z-20">
+                  <button onClick={() => {
+                      setMovementType('depot')
+                      setShowMovementModal(true)
+                      setShowMovementMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-700 hover:bg-gray-50">
+                    <Lock size={16} className="text-gray-400"/> Dépôt
+                  </button>
+                  <button onClick={() => {
+                      setMovementType('retrait')
+                      setShowMovementModal(true)
+                      setShowMovementMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-700 hover:bg-gray-50">
+                    <Unlock size={16} className="text-gray-400"/> Retrait de caisse
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="relative mb-4">
@@ -846,7 +1020,7 @@ export default function StockMagasin() {
                         </p>
                         <button onClick={() => removeFromCart(c.item_id)}
                           className="text-red-400 hover:text-red-600 ml-2">
-                          <Trash2 size={13}/>
+                          <X size={13}/>
                         </button>
                       </div>
                       <div className="flex items-center justify-between gap-2">
@@ -866,9 +1040,70 @@ export default function StockMagasin() {
                           <span className="text-xs text-gray-400">€</span>
                         </div>
                       </div>
-                      <p className="text-right text-xs text-gray-400 mt-1">
-                        = {(c.unit_price * c.quantity).toFixed(2)}€
-                      </p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <div className="relative">
+                          <button onClick={() => setDiscountMenuItemId(
+                              discountMenuItemId === c.item_id ? null : c.item_id
+                            )}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold
+                              ${c.discountType
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-gray-100 text-gray-500'}`}>
+                            % Remise
+                          </button>
+                          {discountMenuItemId === c.item_id && (
+                            <div className="absolute top-7 left-0 bg-white rounded-xl border border-gray-100 shadow-lg p-1.5 w-44 z-20">
+                              <button onClick={() => {
+                                  const pct = prompt('Remise en % :')
+                                  if (pct) applyItemDiscount(c.item_id, 'remise_pct', pct)
+                                }}
+                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
+                                Remise article
+                              </button>
+                              <button onClick={() => {
+                                  setShowGlobalDiscount(true)
+                                  setDiscountMenuItemId(null)
+                                }}
+                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
+                                Remise globale
+                              </button>
+                              <button onClick={() => applyItemDiscount(c.item_id, 'article_offert', 0)}
+                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
+                                Article offert
+                              </button>
+                              <button onClick={() => {
+                                  const amt = prompt('Rabais en € :')
+                                  if (amt) applyItemDiscount(c.item_id, 'rabais', amt)
+                                }}
+                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
+                                Rabais (€)
+                              </button>
+                              {c.discountType && (
+                                <button onClick={() => removeItemDiscount(c.item_id)}
+                                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 mt-1 border-t border-gray-100">
+                                  Retirer la remise
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-right text-xs">
+                          {c.discountType ? (
+                            <>
+                              <span className="line-through text-gray-400 mr-1">
+                                {(c.unit_price * c.quantity).toFixed(2)}€
+                              </span>
+                              <span className="font-bold text-amber-600">
+                                {lineTotal(c).toFixed(2)}€
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-gray-400">
+                              = {lineTotal(c).toFixed(2)}€
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -968,7 +1203,7 @@ export default function StockMagasin() {
       )}
 
       {/* TAB STOCK */}
-      {activeTab === 'stock' && (
+      {posScreen === 'gestion' && activeTab === 'stock' && (
         <>
           {/* Filtres */}
           <div className="flex gap-2 mb-4 flex-wrap items-center">
@@ -1140,7 +1375,7 @@ export default function StockMagasin() {
       )}
 
       {/* TAB CATEGORIES */}
-      {activeTab === 'categories' && (
+      {posScreen === 'gestion' && activeTab === 'categories' && (
         <div>
           <div className="flex justify-end mb-4">
             <button onClick={() => openCatModal()}
@@ -1217,6 +1452,14 @@ export default function StockMagasin() {
                   ✕
                 </button>
               </div>
+              <button
+                onClick={() => {
+                  openItemModal()
+                  setItemForm((f) => ({ ...f, category_id: selectedCategoryView.id }))
+                }}
+                className="mb-3 flex items-center gap-1.5 bg-[#1B2A4A] text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#00B4CC]">
+                <Plus size={14}/> Ajouter un article
+              </button>
               {items.filter(i => i.category_id === selectedCategoryView.id).length === 0 ? (
                 <p className="text-center text-gray-400 py-4 text-sm">
                   Aucun article dans cette catégorie
@@ -1728,6 +1971,34 @@ export default function StockMagasin() {
                 disabled={closureLoading}
                 className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold disabled:opacity-50">
                 {closureLoading ? '...' : 'Clôturer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REMISE GLOBALE */}
+      {showGlobalDiscount && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-5">
+            <h3 className="font-bold text-[#1B2A4A] mb-3">
+              Remise globale (%)
+            </h3>
+            <input type="number" value={globalDiscountValue}
+              onChange={(e) => setGlobalDiscountValue(e.target.value)}
+              placeholder="10"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-4"/>
+            <div className="flex gap-2">
+              <button onClick={() => {
+                  setGlobalDiscountValue('')
+                  setShowGlobalDiscount(false)
+                }}
+                className="flex-1 py-2 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Annuler
+              </button>
+              <button onClick={() => setShowGlobalDiscount(false)}
+                className="flex-1 py-2 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold">
+                Appliquer
               </button>
             </div>
           </div>
