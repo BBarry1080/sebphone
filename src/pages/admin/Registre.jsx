@@ -12,7 +12,39 @@ import {
 } from 'lucide-react'
 import { useCurrentUser, useIsAdmin } from '../../hooks/usePermissions'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
+import { CONSOLE_BRANDS, CONSOLE_CATALOG } from '../../data/consoleCatalog'
+import { LAPTOP_BRANDS, LAPTOP_MODELS, LAPTOP_STORAGES } from '../../data/laptopCatalog'
+import { IPAD_CATALOG, WATCH_CATALOG } from '../../data/catalogDevices'
 import { FOURNISSEURS_LIST } from '../../utils/fournisseurs'
+
+const DEVICE_CATEGORIES = [
+  { value: 'telephone',   label: '📱 Téléphone' },
+  { value: 'tablette',    label: '📟 Tablette' },
+  { value: 'console',     label: '🎮 Console' },
+  { value: 'ordinateur',  label: '💻 Ordinateur portable' },
+  { value: 'montre',      label: '⌚ Montre connectée' },
+  { value: 'autre',       label: '📦 Autre appareil' },
+]
+
+const getBrandsForCategory = (categorie) => {
+  switch (categorie) {
+    case 'telephone':
+      return ['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'Autre']
+    case 'tablette':
+      return ['Apple', 'Samsung', 'Autre']
+    case 'console':
+      return CONSOLE_BRANDS
+    case 'ordinateur':
+      return LAPTOP_BRANDS
+    case 'montre':
+      return ['Apple', 'Samsung', 'Autre']
+    case 'autre':
+    default:
+      return ['Autre']
+  }
+}
+
+const usesImei = (categorie) => categorie === 'telephone'
 
 export default function Registre() {
   const currentUser = useCurrentUser()
@@ -96,6 +128,7 @@ export default function Registre() {
   const [form, setForm] = useState(initialForm())
 
   const emptyPhone = () => ({
+    categorie: 'telephone',
     brand: 'Apple',
     model: '',
     color: '',
@@ -215,7 +248,7 @@ export default function Registre() {
         parts_replaced:   [],
         battery_health:   stockEntry.battery_health || null,
         face_id_status:   stockEntry.face_id_status || null,
-        categorie:        'telephone',
+        categorie:        stockEntry.categorie || 'telephone',
       })
       .select()
       .single()
@@ -315,12 +348,14 @@ export default function Registre() {
 
     for (let i = 0; i < phones.length; i++) {
       const p = phones[i]
-      if (!p.imei) { setError(`Téléphone ${i + 1} : IMEI obligatoire`); return }
-      if (!p.model) { setError(`Téléphone ${i + 1} : modèle obligatoire`); return }
-      if (!p.purchase_price || parseFloat(p.purchase_price) <= 0) {
-        setError(`Téléphone ${i + 1} : prix d'achat obligatoire`); return
+      if (usesImei(p.categorie) && !p.imei) {
+        setError(`Appareil ${i + 1} : IMEI obligatoire`); return
       }
-      if (!p.payment_method) { setError(`Téléphone ${i + 1} : mode de paiement obligatoire`); return }
+      if (!p.model) { setError(`Appareil ${i + 1} : modèle obligatoire`); return }
+      if (!p.purchase_price || parseFloat(p.purchase_price) <= 0) {
+        setError(`Appareil ${i + 1} : prix d'achat obligatoire`); return
+      }
+      if (!p.payment_method) { setError(`Appareil ${i + 1} : mode de paiement obligatoire`); return }
     }
 
     console.log('Nb téléphones à insérer:', phones.length, phones)
@@ -350,6 +385,7 @@ export default function Registre() {
           : (form.notes || null)
         const payload = {
           ...sharedSeller,
+          categorie:        p.categorie || 'telephone',
           brand:            p.brand,
           model:            p.model,
           color:            p.color || '',
@@ -377,6 +413,7 @@ export default function Registre() {
           return {
             ...sharedSeller,
             added_by:         currentUser?.name || 'Admin',
+            categorie:        p.categorie || 'telephone',
             brand:            p.brand,
             model:            p.model,
             color:            p.color || '',
@@ -1009,32 +1046,63 @@ export default function Registre() {
 
                 {phones.map((phone, index) => {
                   const phoneSuggestions = (() => {
-                    if (phone.brand !== 'Apple' || phone.model.length === 0) return []
+                    if (phone.model.length === 0) return []
                     const q = phone.model.toLowerCase()
-                    return IPHONE_ON_DEMAND
-                      .filter((i) => i.model.toLowerCase().includes(q))
+
+                    let source = []
+                    if (phone.categorie === 'telephone' && phone.brand === 'Apple') {
+                      source = IPHONE_ON_DEMAND.map((i) => i.model)
+                    } else if (phone.categorie === 'tablette' && phone.brand === 'Apple') {
+                      source = IPAD_CATALOG.map((i) => i.model)
+                    } else if (phone.categorie === 'montre' && phone.brand === 'Apple') {
+                      source = WATCH_CATALOG.map((i) => i.model)
+                    } else if (phone.categorie === 'console') {
+                      source = CONSOLE_CATALOG
+                        .filter((c) => c.brand === phone.brand)
+                        .map((c) => c.model)
+                    } else if (phone.categorie === 'ordinateur') {
+                      source = LAPTOP_MODELS[phone.brand] || []
+                    } else {
+                      return []
+                    }
+
+                    return source
+                      .filter((m) => m.toLowerCase().includes(q))
                       .sort((a, b) => {
-                        const aExact = a.model.toLowerCase() === q
-                        const bExact = b.model.toLowerCase() === q
+                        const aExact = a.toLowerCase() === q
+                        const bExact = b.toLowerCase() === q
                         if (aExact && !bExact) return -1
                         if (!aExact && bExact) return 1
-                        const aStarts = a.model.toLowerCase().startsWith(q)
-                        const bStarts = b.model.toLowerCase().startsWith(q)
+                        const aStarts = a.toLowerCase().startsWith(q)
+                        const bStarts = b.toLowerCase().startsWith(q)
                         if (aStarts && !bStarts) return -1
                         if (!aStarts && bStarts) return 1
-                        return a.model.length - b.model.length
+                        return a.length - b.length
                       })
                       .slice(0, 8)
+                      .map((m) => ({ model: m }))
                   })()
-                  const phoneColors = phone.brand === 'Apple'
-                    ? (IPHONE_ON_DEMAND.find((i) => i.model === phone.model)?.colors || [])
-                    : []
+                  const phoneColors = (() => {
+                    if (phone.categorie === 'telephone' && phone.brand === 'Apple') {
+                      return IPHONE_ON_DEMAND.find((i) => i.model === phone.model)?.colors || []
+                    }
+                    if (phone.categorie === 'tablette' && phone.brand === 'Apple') {
+                      return IPAD_CATALOG.find((i) => i.model === phone.model)?.colors || []
+                    }
+                    if (phone.categorie === 'montre' && phone.brand === 'Apple') {
+                      return WATCH_CATALOG.find((i) => i.model === phone.model)?.colors || []
+                    }
+                    if (phone.categorie === 'console') {
+                      return CONSOLE_CATALOG.find((c) => c.brand === phone.brand && c.model === phone.model)?.colors || []
+                    }
+                    return []
+                  })()
                   const isMixte = phone.payment_method?.includes('+')
 
                   return (
                     <div key={index} className="border-2 border-gray-100 rounded-xl p-4 mb-3 relative">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-gray-500 uppercase">Téléphone {index + 1}</span>
+                        <span className="text-xs font-bold text-gray-500 uppercase">Appareil {index + 1}</span>
                         {phones.length > 1 && (
                           <button
                             type="button"
@@ -1044,6 +1112,36 @@ export default function Registre() {
                             <X size={16} />
                           </button>
                         )}
+                      </div>
+
+                      {/* Type d'appareil */}
+                      <div className="mb-3">
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Type d'appareil</p>
+                        <div className="flex flex-wrap gap-2">
+                          {DEVICE_CATEGORIES.map((cat) => (
+                            <button
+                              key={cat.value}
+                              type="button"
+                              onClick={() => {
+                                setPhones((prev) => prev.map((p, i) =>
+                                  i === index ? {
+                                    ...p,
+                                    categorie: cat.value,
+                                    brand: getBrandsForCategory(cat.value)[0],
+                                    model: '',
+                                    imei: '',
+                                  } : p
+                                ))
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                                ${phone.categorie === cat.value
+                                  ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}
+                            >
+                              {cat.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       {/* État */}
@@ -1100,7 +1198,7 @@ export default function Registre() {
                             }}
                             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                           >
-                            {['Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'Autre'].map((b) => (
+                            {getBrandsForCategory(phone.categorie).map((b) => (
                               <option key={b} value={b}>{b}</option>
                             ))}
                           </select>
@@ -1114,7 +1212,10 @@ export default function Registre() {
                             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none"
                           >
                             <option value="">—</option>
-                            {['16Go','32Go','64Go','128Go','256Go','512Go','1To'].map((s) => (
+                            {(phone.categorie === 'ordinateur'
+                              ? LAPTOP_STORAGES
+                              : ['16Go','32Go','64Go','128Go','256Go','512Go','1To','2To']
+                            ).map((s) => (
                               <option key={s} value={s}>{s}</option>
                             ))}
                           </select>
@@ -1187,16 +1288,18 @@ export default function Registre() {
                         </div>
 
                         <div className="col-span-2">
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">IMEI *</label>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">
+                            {usesImei(phone.categorie) ? 'IMEI *' : 'Numéro de série'}
+                          </label>
                           <input
                             type="text"
                             value={phone.imei}
                             onChange={(e) => updatePhone(index, 'imei', e.target.value.replace(/\s/g, ''))}
                             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none font-mono"
-                            placeholder="352999XXXXXXXXX"
-                            maxLength={20}
+                            placeholder={usesImei(phone.categorie) ? '15 chiffres — 352999XXXXXXXXX' : 'Numéro de série (alphanumérique)'}
+                            maxLength={usesImei(phone.categorie) ? 20 : 40}
                           />
-                          {phone.imei.length === 15 && (
+                          {usesImei(phone.categorie) && phone.imei.length === 15 && (
                             <p className={`text-xs mt-1 ${validateIMEI(phone.imei) ? 'text-green-600' : 'text-red-500'}`}>
                               {validateIMEI(phone.imei) ? '✅ IMEI valide' : '⚠️ IMEI invalide (Luhn)'}
                             </p>

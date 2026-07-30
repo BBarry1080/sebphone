@@ -29,11 +29,21 @@
       "Bash(grep -E \"no-undef|react/jsx-no-undef|is not defined|Parsing error|^\\\\S.*\\\\.jsx$|^\\\\S.*\\\\.js$\")",
       "Bash(grep -vE \"^\\\\s*$\")",
       "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies.jsbarcode || 'NOT FOUND'\\)\")",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(php --version)",
+      "Bash(composer --version)",
+      "Bash(cd \"C:\\\\Users\\\\Aliou\\\\Downloads\\\\reservation-plugin\" && find . -type f -not -path './vendor/*' -not -path './node_modules/*' -not -path './.git/*' | sort)",
+      "Read(//c/Users/Aliou/Downloads/reservation-plugin/**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Aliou\\Desktop\\Transport\\Site\\assets",
-      "C:\\Users\\Aliou\\Desktop\\Transport\\Site"
+      "C:\\Users\\Aliou\\Desktop\\Transport\\Site",
+      "C:\\Users\\Aliou\\Desktop\\private-booking",
+      "C:\\Users\\Aliou\\Downloads\\reservation-plugin\\reservation-plugin\\includes",
+      "C:\\Users\\Aliou\\Downloads\\reservation-plugin\\reservation-plugin\\public\\views",
+      "C:\\Users\\Aliou\\Downloads\\reservation-plugin\\reservation-plugin\\public\\js",
+      "C:\\Users\\Aliou\\Downloads\\reservation-plugin\\reservation-plugin\\public",
+      "C:\\Users\\Aliou\\Downloads\\reservation-plugin\\reservation-plugin\\admin\\views"
     ]
   }
 }
