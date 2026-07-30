@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
-         AlertTriangle, Package, Tag } from 'lucide-react'
+         AlertTriangle, Package, Tag, Check } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 
@@ -15,7 +15,7 @@ export default function StockMagasin() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState(null)
-  const [activeTab, setActiveTab] = useState('stock') // stock | categories
+  const [activeTab, setActiveTab] = useState('caisse') // caisse | stock | categories
 
   // Modals
   const [showItemModal, setShowItemModal] = useState(false)
@@ -36,6 +36,18 @@ export default function StockMagasin() {
   // Form catégorie
   const [catForm, setCatForm] = useState({
     name: '', color: 'blue',
+  })
+
+  // Caisse
+  const [cart, setCart] = useState([])
+  const [cartSearch, setCartSearch] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [showTicket, setShowTicket] = useState(false)
+  const [lastSale, setLastSale] = useState(null)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [salesToday, setSalesToday] = useState([])
+  const [caisseTotals, setCaisseTotals] = useState({
+    cash: 0, bancontact: 0, virement: 0, total: 0,
   })
 
   const barcodeRef = useRef(null)
@@ -65,8 +77,32 @@ export default function StockMagasin() {
     if (magasin) {
       fetchCategories()
       fetchItems()
+      fetchCaisseToday()
     }
   }, [magasin])
+
+  const fetchCaisseToday = async () => {
+    if (!magasin) return
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+    const { data } = await supabase
+      .from('shop_sales')
+      .select('*')
+      .eq('magasin_id', magasin)
+      .gte('created_at', startOfDay.toISOString())
+      .order('created_at', { ascending: false })
+    const rows = data || []
+    setSalesToday(rows)
+    const totals = rows.reduce((acc, s) => {
+      const amount = Number(s.total_amount) || 0
+      acc.total += amount
+      if (s.payment_method === 'cash')       acc.cash += amount
+      else if (s.payment_method === 'bancontact') acc.bancontact += amount
+      else if (s.payment_method === 'virement')   acc.virement += amount
+      return acc
+    }, { cash: 0, bancontact: 0, virement: 0, total: 0 })
+    setCaisseTotals(totals)
+  }
 
   const fetchCategories = async () => {
     const { data } = await supabase
@@ -201,6 +237,138 @@ export default function StockMagasin() {
     setSearch(val)
   }
 
+  const cartSearchResults = cartSearch.length >= 2
+    ? items.filter(i =>
+        i.name?.toLowerCase().includes(cartSearch.toLowerCase()) ||
+        i.reference?.toLowerCase().includes(cartSearch.toLowerCase()) ||
+        i.barcode?.includes(cartSearch)
+      ).slice(0, 8)
+    : []
+
+  const addToCart = (item) => {
+    if ((item.quantity || 0) <= 0) return
+    setCart(prev => {
+      const existing = prev.find(c => c.item_id === item.id)
+      if (existing) {
+        if (existing.quantity >= existing.max_quantity) return prev
+        return prev.map(c => c.item_id === item.id
+          ? { ...c, quantity: c.quantity + 1 }
+          : c)
+      }
+      return [...prev, {
+        item_id: item.id,
+        item_name: item.name,
+        quantity: 1,
+        unit_price: item.sale_price || 0,
+        max_quantity: item.quantity,
+      }]
+    })
+    setCartSearch('')
+  }
+
+  const updateCartQty = (itemId, delta) => {
+    setCart(prev => prev.map(c => {
+      if (c.item_id !== itemId) return c
+      const newQty = Math.max(1, Math.min(c.max_quantity, c.quantity + delta))
+      return { ...c, quantity: newQty }
+    }))
+  }
+
+  const removeFromCart = (itemId) => {
+    setCart(prev => prev.filter(c => c.item_id !== itemId))
+  }
+
+  const cartTotal = cart.reduce(
+    (sum, c) => sum + (c.unit_price * c.quantity), 0
+  )
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return
+    setCheckoutLoading(true)
+
+    const staffName = JSON.parse(
+      localStorage.getItem('sebphone_user') || '{}'
+    )?.nom || 'Staff'
+
+    const { data: sale, error: saleErr } = await supabase
+      .from('shop_sales')
+      .insert({
+        magasin_id: magasin,
+        staff_name: staffName,
+        total_amount: cartTotal,
+        payment_method: paymentMethod,
+      })
+      .select()
+      .single()
+
+    if (saleErr) {
+      alert('Erreur : ' + saleErr.message)
+      setCheckoutLoading(false)
+      return
+    }
+
+    const saleItems = cart.map(c => ({
+      sale_id: sale.id,
+      item_id: c.item_id,
+      item_name: c.item_name,
+      quantity: c.quantity,
+      unit_price: c.unit_price,
+      total_price: c.unit_price * c.quantity,
+    }))
+
+    await supabase.from('shop_sale_items').insert(saleItems)
+
+    for (const c of cart) {
+      const currentItem = items.find(i => i.id === c.item_id)
+      if (currentItem) {
+        await supabase
+          .from('shop_items')
+          .update({ quantity: Math.max(0, currentItem.quantity - c.quantity) })
+          .eq('id', c.item_id)
+      }
+    }
+
+    setLastSale({ ...sale, items: cart })
+    setShowTicket(true)
+    setCart([])
+    setPaymentMethod('cash')
+    fetchItems()
+    fetchCaisseToday()
+    setCheckoutLoading(false)
+  }
+
+  const handlePrintDailyRecap = () => {
+    const today = new Date().toLocaleDateString('fr-BE')
+    const magasinLabel = MAGASINS_LIST.find(m => m.id === magasin)?.nom || magasin
+    const recapWindow = window.open('', '_blank')
+    recapWindow.document.write(`
+      <html>
+      <head><title>Récapitulatif caisse ${today}</title>
+      <style>
+        body { font-family: monospace; padding: 20px; max-width: 400px; }
+        h2 { text-align: center; }
+        .line { display: flex; justify-content: space-between;
+                padding: 4px 0; border-bottom: 1px dashed #ccc; }
+        .total { font-weight: bold; font-size: 18px; margin-top: 12px; }
+      </style>
+      </head>
+      <body>
+        <h2>SebPhone — Récapitulatif du ${today}</h2>
+        <p>Magasin : ${magasinLabel}</p>
+        <div class="line"><span>Cash</span><span>${(caisseTotals?.cash || 0).toFixed(2)}€</span></div>
+        <div class="line"><span>Bancontact</span><span>${(caisseTotals?.bancontact || 0).toFixed(2)}€</span></div>
+        <div class="line"><span>Virement</span><span>${(caisseTotals?.virement || 0).toFixed(2)}€</span></div>
+        <div class="line total"><span>TOTAL</span><span>${(caisseTotals?.total || 0).toFixed(2)}€</span></div>
+        <p style="margin-top:20px; font-size:12px;">
+          ${salesToday?.length || 0} vente(s) aujourd'hui
+        </p>
+      </body>
+      </html>
+    `)
+    recapWindow.document.close()
+    recapWindow.print()
+  }
+
   if (!isAdmin && !hasPermission) {
     return (
       <div className="p-8 text-center text-gray-400">
@@ -300,6 +468,7 @@ export default function StockMagasin() {
       {/* Tabs */}
       <div className="flex gap-2 mb-4">
         {[
+          { key: 'caisse', label: 'Caisse' },
           { key: 'stock', label: 'Stock' },
           { key: 'categories', label: 'Catégories' },
         ].map(tab => (
@@ -314,6 +483,160 @@ export default function StockMagasin() {
           </button>
         ))}
       </div>
+
+      {/* TAB CAISSE */}
+      {activeTab === 'caisse' && (
+        <div className="grid md:grid-cols-2 gap-6">
+
+          {/* Colonne gauche : recherche + ajout */}
+          <div>
+            <div className="relative mb-4">
+              <Search size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+              <input type="text" value={cartSearch}
+                onChange={e => setCartSearch(e.target.value)}
+                placeholder="Scanner ou rechercher un article..."
+                autoFocus
+                className="w-full pl-8 pr-3 py-3 border border-gray-200 rounded-xl text-sm"/>
+            </div>
+
+            {cartSearchResults.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50 mb-4">
+                {cartSearchResults.map(item => (
+                  <button key={item.id}
+                    onClick={() => addToCart(item)}
+                    disabled={item.quantity <= 0}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between disabled:opacity-40">
+                    <div>
+                      <p className="font-bold text-sm text-[#1B2A4A]">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Stock: {item.quantity} · Réf: {item.reference || '—'}
+                      </p>
+                    </div>
+                    <span className="font-bold text-[#00B4CC]">
+                      {item.sale_price}€
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => setActiveTab('stock')}
+              className="text-xs text-gray-400 hover:text-[#1B2A4A]">
+              + Voir tout le stock
+            </button>
+
+            {/* Totaux caisse jour */}
+            <div className="mt-6 bg-gray-50 rounded-2xl p-4">
+              <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                Caisse du jour
+              </p>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>💵 Cash</span><span>{caisseTotals.cash.toFixed(2)}€</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>💳 Bancontact</span><span>{caisseTotals.bancontact.toFixed(2)}€</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>🏦 Virement</span><span>{caisseTotals.virement.toFixed(2)}€</span>
+                </div>
+                <div className="flex justify-between font-bold text-[#1B2A4A] border-t border-gray-200 pt-1 mt-1">
+                  <span>Total ({salesToday.length} vente{salesToday.length > 1 ? 's' : ''})</span>
+                  <span>{caisseTotals.total.toFixed(2)}€</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Colonne droite : panier */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 sticky top-4 h-fit">
+            <h3 className="font-bold text-[#1B2A4A] mb-4">
+              Panier ({cart.length})
+            </h3>
+
+            {cart.length === 0 ? (
+              <p className="text-center text-gray-400 py-8 text-sm">
+                Panier vide — recherchez un article
+              </p>
+            ) : (
+              <>
+                <div className="space-y-2 mb-4 max-h-64 overflow-y-auto">
+                  {cart.map(c => (
+                    <div key={c.item_id}
+                      className="flex items-center justify-between bg-gray-50 rounded-xl p-2">
+                      <div className="flex-1">
+                        <p className="text-xs font-bold text-[#1B2A4A]">
+                          {c.item_name}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {c.unit_price}€ × {c.quantity}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => updateCartQty(c.item_id, -1)}
+                          className="w-6 h-6 rounded-lg bg-white border border-gray-200 text-xs">
+                          −
+                        </button>
+                        <span className="w-6 text-center text-xs font-bold">
+                          {c.quantity}
+                        </span>
+                        <button onClick={() => updateCartQty(c.item_id, 1)}
+                          className="w-6 h-6 rounded-lg bg-white border border-gray-200 text-xs">
+                          +
+                        </button>
+                        <button onClick={() => removeFromCart(c.item_id)}
+                          className="ml-1 text-red-400 hover:text-red-600">
+                          <Trash2 size={14}/>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-gray-100 pt-3 mb-4">
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>Total</span>
+                    <span className="text-[#00B4CC]">
+                      {cartTotal.toFixed(2)}€
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {[
+                    { value: 'cash', label: '💵 Cash' },
+                    { value: 'bancontact', label: '💳 Bancontact' },
+                    { value: 'virement', label: '🏦 Virement' },
+                  ].map(m => (
+                    <button key={m.value}
+                      onClick={() => setPaymentMethod(m.value)}
+                      className={`py-2 rounded-xl text-xs font-bold border-2 transition-all
+                        ${paymentMethod === m.value
+                          ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                          : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
+                <button onClick={handleCheckout}
+                  disabled={checkoutLoading}
+                  className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50">
+                  {checkoutLoading ? 'Encaissement...' : 'Encaisser →'}
+                </button>
+              </>
+            )}
+
+            <button onClick={handlePrintDailyRecap}
+              className="w-full mt-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:border-[#1B2A4A]">
+              🖨️ Imprimer récap du jour
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TAB STOCK */}
       {activeTab === 'stock' && (
@@ -814,6 +1137,46 @@ export default function StockMagasin() {
                   {editCat ? 'Modifier' : 'Créer'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL TICKET après encaissement */}
+      {showTicket && lastSale && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <Check size={24} className="text-green-600"/>
+              </div>
+              <p className="font-bold text-[#1B2A4A]">Vente encaissée</p>
+            </div>
+
+            <div className="border-y border-dashed border-gray-200 py-3 my-3 space-y-1">
+              {lastSale.items.map(c => (
+                <div key={c.item_id}
+                  className="flex justify-between text-sm">
+                  <span>{c.item_name} ×{c.quantity}</span>
+                  <span>{(c.unit_price * c.quantity).toFixed(2)}€</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between font-bold text-lg mb-4">
+              <span>Total</span>
+              <span>{Number(lastSale.total_amount).toFixed(2)}€</span>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => setShowTicket(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Fermer
+              </button>
+              <button onClick={() => window.print()}
+                className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold">
+                🖨️ Imprimer
+              </button>
             </div>
           </div>
         </div>
