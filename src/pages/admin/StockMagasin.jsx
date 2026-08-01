@@ -81,6 +81,7 @@ export default function StockMagasin() {
   const [discountMenuItemId, setDiscountMenuItemId] = useState(null)
   const [showGlobalDiscount, setShowGlobalDiscount] = useState(false)
   const [globalDiscountValue, setGlobalDiscountValue] = useState('')
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
 
   const barcodeRef = useRef(null)
 
@@ -678,19 +679,24 @@ export default function StockMagasin() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className={posScreen === 'caisse'
+      ? 'p-2 max-w-none mx-auto'
+      : 'p-4 md:p-8 max-w-7xl mx-auto'}>
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6
                       flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1B2A4A]">
-            Stock magasin
-          </h1>
-          <p className="text-sm text-gray-500">
-            Gérez l'inventaire de votre boutique
-          </p>
-        </div>
+        {/* MASQUÉ TEMPORAIREMENT - Titre + sous-titre */}
+        {false && (
+          <div>
+            <h1 className="text-2xl font-bold text-[#1B2A4A]">
+              Stock magasin
+            </h1>
+            <p className="text-sm text-gray-500">
+              Gérez l'inventaire de votre boutique
+            </p>
+          </div>
+        )}
         <div className="flex gap-2 flex-wrap items-center">
           {isAdmin ? (
             <select value={magasin}
@@ -904,7 +910,7 @@ export default function StockMagasin() {
 
       {/* TAB CAISSE — layout POS 3 colonnes */}
       {posScreen === 'caisse' && (
-        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-220px)]">
+        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-100px)]">
 
           {/* COLONNE GAUCHE — Catégories */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-2">
@@ -1052,7 +1058,7 @@ export default function StockMagasin() {
                             % Remise
                           </button>
                           {discountMenuItemId === c.item_id && (
-                            <div className="absolute top-7 left-0 bg-white rounded-xl border border-gray-100 shadow-lg p-1.5 w-44 z-20">
+                            <div className="absolute right-full top-0 mr-2 bg-white rounded-xl border border-gray-100 shadow-lg p-1.5 w-44 z-30">
                               <button onClick={() => {
                                   const pct = prompt('Remise en % :')
                                   if (pct) applyItemDiscount(c.item_id, 'remise_pct', pct)
@@ -1117,75 +1123,10 @@ export default function StockMagasin() {
                   </div>
                 </div>
 
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="text-gray-500">Reste à payer</span>
-                    <span className="font-bold text-[#1B2A4A]">
-                      {remainingToPay.toFixed(2)}€
-                    </span>
-                  </div>
-
-                  {paymentSplits.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                      {paymentSplits.map((p, idx) => (
-                        <div key={idx}
-                          className="flex items-center justify-between bg-gray-50 rounded-lg px-2 py-1 text-xs">
-                          <span>
-                            {p.method === 'cash' ? 'Cash' :
-                             p.method === 'bancontact' ? 'Bancontact' : 'Virement'}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold">{p.amount.toFixed(2)}€</span>
-                            <button onClick={() => removePaymentSplit(idx)}
-                              className="text-red-400 hover:text-red-600">✕</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {changeToGive > 0 && (
-                    <div className="bg-amber-50 text-amber-700 rounded-lg px-2 py-1.5 text-xs font-bold mb-2 text-center">
-                      À rendre : {changeToGive.toFixed(2)}€
-                    </div>
-                  )}
-
-                  {!isFullyPaid && (
-                    <>
-                      <div className="grid grid-cols-3 gap-1 mb-2">
-                        {[
-                          { value: 'cash', label: 'Cash' },
-                          { value: 'bancontact', label: 'Bancontact' },
-                          { value: 'virement', label: 'Virement' },
-                        ].map((m) => (
-                          <button key={m.value}
-                            onClick={() => setCurrentPaymentMethod(m.value)}
-                            className={`py-1.5 rounded-lg text-xs font-bold border-2
-                              ${currentPaymentMethod === m.value
-                                ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                                : 'bg-white text-gray-600 border-gray-200'}`}>
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        <input type="number" value={currentPaymentAmount}
-                          onChange={(e) => setCurrentPaymentAmount(e.target.value)}
-                          placeholder={remainingToPay.toFixed(2)}
-                          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-                        <button onClick={addPaymentSplit}
-                          className="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-200">
-                          Ajouter
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <button onClick={handleCheckout}
-                  disabled={checkoutLoading || !isFullyPaid}
+                <button onClick={() => setShowPaymentModal(true)}
+                  disabled={cart.length === 0}
                   className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                  {checkoutLoading ? 'Encaissement...' : 'Ticket →'}
+                  Ticket →
                 </button>
               </>
             )}
@@ -1973,6 +1914,110 @@ export default function StockMagasin() {
                 {closureLoading ? '...' : 'Clôturer'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PAIEMENT */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#1B2A4A]">Paiement</h3>
+              <button onClick={() => setShowPaymentModal(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={18}/>
+              </button>
+            </div>
+
+            <div className="text-center mb-4">
+              <p className="text-xs text-gray-500 mb-1">Reste à payer</p>
+              <button onClick={() => setCurrentPaymentAmount(String(remainingToPay))}
+                className="text-3xl font-bold text-[#00B4CC] hover:opacity-70 transition-opacity">
+                {remainingToPay.toFixed(2)}€
+              </button>
+            </div>
+
+            {paymentSplits.length > 0 && (
+              <div className="space-y-1 mb-3">
+                {paymentSplits.map((p, idx) => (
+                  <div key={idx}
+                    className="flex items-center justify-between bg-gray-50 rounded-lg px-2 py-1.5 text-xs">
+                    <span>
+                      {p.method === 'cash' ? 'Cash' :
+                       p.method === 'bancontact' ? 'Bancontact' : 'Virement'}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold">{p.amount.toFixed(2)}€</span>
+                      <button onClick={() => removePaymentSplit(idx)}
+                        className="text-red-400 hover:text-red-600">
+                        <X size={13}/>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {changeToGive > 0 && (
+              <div className="bg-amber-50 text-amber-700 rounded-lg px-3 py-2 text-sm font-bold mb-3 text-center">
+                À rendre : {changeToGive.toFixed(2)}€
+              </div>
+            )}
+
+            {!isFullyPaid && (
+              <>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {[
+                    { value: 'cash', label: 'Cash' },
+                    { value: 'bancontact', label: 'Bancontact' },
+                    { value: 'virement', label: 'Virement' },
+                  ].map((m) => (
+                    <button key={m.value}
+                      onClick={() => setCurrentPaymentMethod(m.value)}
+                      className={`py-2 rounded-xl text-xs font-bold border-2
+                        ${currentPaymentMethod === m.value
+                          ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                          : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
+                <input type="number" value={currentPaymentAmount}
+                  onChange={(e) => setCurrentPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-lg font-bold text-center mb-2"/>
+
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {[10, 20, 50].map((amt) => (
+                    <button key={amt}
+                      onClick={() => setCurrentPaymentAmount(
+                        String((Number(currentPaymentAmount) || 0) + amt)
+                      )}
+                      className="py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-[#1B2A4A]">
+                      +{amt}
+                    </button>
+                  ))}
+                </div>
+
+                <button onClick={addPaymentSplit}
+                  className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 mb-2">
+                  Enregistrer
+                </button>
+              </>
+            )}
+
+            {isFullyPaid && (
+              <button onClick={async () => {
+                  await handleCheckout()
+                  setShowPaymentModal(false)
+                }}
+                disabled={checkoutLoading}
+                className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                {checkoutLoading ? 'Encaissement...' : 'Confirmer et imprimer'}
+              </button>
+            )}
           </div>
         </div>
       )}
