@@ -6,6 +6,7 @@ import { Plus, X, Pencil, Trash2, Search,
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import ReceiptTicket from '../../components/admin/ReceiptTicket'
+import ZFinancierReport from '../../components/admin/ZFinancierReport'
 
 const POS_CATEGORIES = [
   'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
@@ -624,11 +625,41 @@ export default function StockMagasin() {
     const totalCaisseCash = cashTotal + depotsTotal - retraitsTotal
     const totalCompte = bancontactTotal + virementTotal
 
+    const tvaRows = [
+      {
+        code: 'A', rate: 21,
+        base: tvaBase21,
+        tva: caTotal - tvaBase21,
+        total: caTotal,
+      },
+    ]
+
+    const reglementsArr = [
+      ...(bancontactTotal > 0 ? [{ method: 'BANCONTACT', montant: bancontactTotal }] : []),
+      ...(cashTotal > 0 ? [{ method: 'CASH', montant: cashTotal }] : []),
+      ...(virementTotal > 0 ? [{ method: 'VIREMENT', montant: virementTotal }] : []),
+    ]
+
+    const categoriesArr = Object.entries(categoryTotals).map(([name, montant]) => ({
+      name: name.toUpperCase(),
+      montant,
+      count: 1,
+    }))
+
+    const retraitsArr = movs
+      .filter((m) => m.type === 'retrait')
+      .map((m) => ({
+        note: m.reason?.toUpperCase() || '',
+        montant: m.amount,
+        method: (m.payment_method || 'cash').toUpperCase(),
+      }))
+
     setClosureData({
       periodStart, periodEnd, caTotal, ticketCount, ticketMoyen,
       cashTotal, bancontactTotal, virementTotal, categoryTotals,
       tvaBase21, tvaMontant21, movements: movs,
       depotsTotal, retraitsTotal, totalCaisseCash, totalCompte,
+      tvaRows, reglementsArr, categoriesArr, retraitsArr,
     })
     setPrelevementAmount('')
     setShowClosureModal(true)
@@ -1801,140 +1832,39 @@ export default function StockMagasin() {
 
       {/* MODAL CLOTURE Z */}
       {showClosureModal && closureData && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] overflow-y-auto">
-            <div className="p-4 font-mono text-[11px] leading-relaxed">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
+            <ZFinancierReport
+              reportNumber={(lastClosure ? 1 : 0) + 1}
+              caisse={magasin}
+              dateTime={new Date(closureData.periodEnd)}
+              periodStart={new Date(closureData.periodStart)}
+              periodEnd={new Date(closureData.periodEnd)}
+              ventes={{ montant: closureData.caTotal, count: closureData.ticketCount }}
+              retours={{ montant: 0, count: 0 }}
+              tvaRows={closureData.tvaRows}
+              reglements={closureData.reglementsArr}
+              ventesFacturees={{ factures: 0, notesCredit: 0 }}
+              remisesSurVentes={{ montant: 0, count: 0 }}
+              categories={closureData.categoriesArr}
+              proformats={{ bonsLivraison: 0, commandesClient: 0 }}
+              retraits={closureData.retraitsArr}
+              totalCashEnCaisse={closureData.totalCaisseCash}
+              totalCompte={Number(prelevementAmount) || closureData.totalCaisseCash}
+              paperWidth="80mm"
+            />
 
-              <div className="text-center mb-1">
-                <p className="font-bold text-[13px]">SLT GROUP (SRL)</p>
-              </div>
-              <div className="flex justify-between">
-                <span>TVA: BE 1028.764.677</span>
-                <span>Caisse n°: {magasin}</span>
-              </div>
-              <div>Date: {new Date(closureData.periodEnd).toLocaleString('fr-BE')}</div>
-
-              {sep('-')}
-
-              <div>PERIODE:</div>
-              <div>
-                {new Date(closureData.periodStart).toLocaleString('fr-BE')} {'>'} {new Date(closureData.periodEnd).toLocaleString('fr-BE')}
-              </div>
-
-              {sep('*')}
-              <div>TICKETS DE CAISSE:</div>
-              {sep('*')}
-
-              <div className="flex justify-between">
-                <span>Ventes:</span><span>{closureData.caTotal.toFixed(2)}€</span>
-                <span>{closureData.ticketCount}#</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Retour:</span><span>0,00€</span><span>0#</span>
-              </div>
-
-              {sep('-')}
-
-              <div>CA TOTAL:</div>
-              <div className="flex justify-between font-bold">
-                <span>{closureData.caTotal.toFixed(2)}€</span>
-                <span>Ticket moyen: {closureData.ticketMoyen.toFixed(2)}€</span>
-              </div>
-
-              {sep('-')}
-
-              <div>TVA:</div>
-              <div className="flex justify-between text-gray-500">
-                <span></span><span>Base:</span><span>Total:</span>
-              </div>
-              <div className="flex justify-between">
-                <span>A 21%:</span>
-                <span>{closureData.tvaBase21.toFixed(2)}€</span>
-                <span>{closureData.caTotal.toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between">
-                <span>D 0%:</span><span>0,00€</span><span>0,00€</span>
-              </div>
-
-              {sep('-')}
-
-              <div>REGLEMENTS:</div>
-              <div className="flex justify-between">
-                <span>Cash:</span><span>{closureData.cashTotal.toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Bancontact:</span><span>{closureData.bancontactTotal.toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Virement:</span><span>{closureData.virementTotal.toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between font-bold">
-                <span>Total:</span><span>{closureData.caTotal.toFixed(2)}€</span>
-              </div>
-
-              {sep('-')}
-
-              <div>VENTES PAR CATEGORIE:</div>
-              {Object.entries(closureData.categoryTotals).map(([cat, total]) => (
-                <div key={cat} className="flex justify-between">
-                  <span>{cat}:</span><span>{total.toFixed(2)}€</span>
-                </div>
-              ))}
-
-              {sep('-')}
-
-              <div>PROFORMATS:</div>
-              <div className="flex justify-between">
-                <span>Bons de livraison:</span><span>0</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Commandes client:</span><span>0</span>
-              </div>
-
-              {sep('-')}
-
-              <div>DEPOTS / RETRAITS DE CAISSE:</div>
-              {closureData.movements.length === 0 ? (
-                <p className="text-gray-400">Aucun mouvement</p>
-              ) : closureData.movements.map((m) => (
-                <div key={m.id} className="mt-1">
-                  <div className="flex justify-between">
-                    <span>
-                      {new Date(m.created_at).toLocaleTimeString('fr-BE')} {m.type === 'depot' ? 'Depot' : 'Retrait de caisse'}:
-                    </span>
-                    <span>{m.type === 'depot' ? '+' : '-'}{Number(m.amount).toFixed(2)}€</span>
-                  </div>
-                  <p className="text-gray-500">{m.reason} — {m.payment_method}</p>
-                </div>
-              ))}
-
-              {sep('-')}
-
-              <div>RESUME:</div>
-              <div className="flex justify-between font-bold">
-                <span>CA total:</span><span>{closureData.caTotal.toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total en caisse (cash):</span>
-                <span>{closureData.totalCaisseCash.toFixed(2)}€</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Total en compte:</span>
-                <span>{closureData.totalCompte.toFixed(2)}€</span>
-              </div>
-
-              {sep('-')}
-
-              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block mt-2">
-                Prélèvement en clôture
+            <div className="mt-3">
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                Montant compté en caisse
               </label>
               <input type="number" value={prelevementAmount}
                 onChange={(e) => setPrelevementAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-2"/>
+                placeholder="0"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-3"/>
             </div>
 
-            <div className="flex gap-3 p-4 pt-0">
+            <div className="flex gap-3">
               <button onClick={() => setShowClosureModal(false)}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
                 Annuler
