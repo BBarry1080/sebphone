@@ -82,6 +82,7 @@ export default function StockMagasin() {
   const [showGlobalDiscount, setShowGlobalDiscount] = useState(false)
   const [globalDiscountValue, setGlobalDiscountValue] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [selectedCartItemId, setSelectedCartItemId] = useState(null)
 
   const barcodeRef = useRef(null)
 
@@ -679,7 +680,7 @@ export default function StockMagasin() {
   }
 
   return (
-    <div className={posScreen === 'caisse'
+    <div className={(posScreen === 'caisse' || posScreen === 'gestion')
       ? 'p-2 max-w-none mx-auto'
       : 'p-4 md:p-8 max-w-7xl mx-auto'}>
 
@@ -698,7 +699,7 @@ export default function StockMagasin() {
           </div>
         )}
         <div className="flex gap-2 flex-wrap items-center">
-          {isAdmin ? (
+          {isAdmin && (
             <select value={magasin}
               onChange={e => setMagasin(e.target.value)}
               className="px-3 py-2 border border-gray-200
@@ -707,7 +708,9 @@ export default function StockMagasin() {
                 <option key={m.id} value={m.id}>{m.nom}</option>
               ))}
             </select>
-          ) : (
+          )}
+          {/* MASQUÉ TEMPORAIREMENT - Nom magasin en lecture seule pour non-admins */}
+          {false && !isAdmin && (
             <span className="px-3 py-2 text-sm text-gray-500 font-medium">
               {MAGASINS_LIST.find(m => m.id === magasin)?.nom || magasin}
             </span>
@@ -729,7 +732,8 @@ export default function StockMagasin() {
         {[
           // MASQUÉ TEMPORAIREMENT - Total articles
           false && { label: 'Total articles', value: stats.total },
-          { label: 'Catégories', value: stats.categories },
+          // MASQUÉ TEMPORAIREMENT - Catégories
+          false && { label: 'Catégories', value: stats.categories },
           // MASQUÉ TEMPORAIREMENT - Stock bas
           false && {
             label: 'Stock bas',
@@ -1019,97 +1023,57 @@ export default function StockMagasin() {
                 <div className="space-y-2 mb-4 flex-1 overflow-y-auto">
                   {cart.map((c) => (
                     <div key={c.item_id}
-                      className="bg-gray-50 rounded-xl p-2">
+                      onClick={() => setSelectedCartItemId(c.item_id)}
+                      className={`bg-gray-50 rounded-xl p-2 cursor-pointer border-2 transition-all
+                        ${selectedCartItemId === c.item_id
+                          ? 'border-[#00B4CC]'
+                          : 'border-transparent'}`}>
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-xs font-bold text-[#1B2A4A] flex-1 line-clamp-1">
                           {c.item_name}
                         </p>
-                        <button onClick={() => removeFromCart(c.item_id)}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeFromCart(c.item_id) }}
                           className="text-red-400 hover:text-red-600 ml-2">
                           <X size={13}/>
                         </button>
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => updateCartQty(c.item_id, -1)}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); updateCartQty(c.item_id, -1) }}
                             className="w-5 h-5 rounded bg-white border border-gray-200 text-xs">−</button>
                           <span className="w-5 text-center text-xs font-bold">
                             {c.quantity}
                           </span>
-                          <button onClick={() => updateCartQty(c.item_id, 1)}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); updateCartQty(c.item_id, 1) }}
                             className="w-5 h-5 rounded bg-white border border-gray-200 text-xs">+</button>
                         </div>
                         <div className="flex items-center gap-1">
                           <input type="number" value={c.unit_price}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={(e) => updateCartPrice(c.item_id, e.target.value)}
                             className="w-16 px-1.5 py-1 border border-gray-200 rounded-lg text-xs text-right font-bold"/>
                           <span className="text-xs text-gray-400">€</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <div className="relative">
-                          <button onClick={() => setDiscountMenuItemId(
-                              discountMenuItemId === c.item_id ? null : c.item_id
-                            )}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold
-                              ${c.discountType
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-gray-100 text-gray-500'}`}>
-                            % Remise
-                          </button>
-                          {discountMenuItemId === c.item_id && (
-                            <div className="absolute right-full top-0 mr-2 bg-white rounded-xl border border-gray-100 shadow-lg p-1.5 w-44 z-30">
-                              <button onClick={() => {
-                                  const pct = prompt('Remise en % :')
-                                  if (pct) applyItemDiscount(c.item_id, 'remise_pct', pct)
-                                }}
-                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
-                                Remise article
-                              </button>
-                              <button onClick={() => {
-                                  setShowGlobalDiscount(true)
-                                  setDiscountMenuItemId(null)
-                                }}
-                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
-                                Remise globale
-                              </button>
-                              <button onClick={() => applyItemDiscount(c.item_id, 'article_offert', 0)}
-                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
-                                Article offert
-                              </button>
-                              <button onClick={() => {
-                                  const amt = prompt('Rabais en € :')
-                                  if (amt) applyItemDiscount(c.item_id, 'rabais', amt)
-                                }}
-                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
-                                Rabais (€)
-                              </button>
-                              {c.discountType && (
-                                <button onClick={() => removeItemDiscount(c.item_id)}
-                                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 mt-1 border-t border-gray-100">
-                                  Retirer la remise
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-right text-xs">
-                          {c.discountType ? (
-                            <>
-                              <span className="line-through text-gray-400 mr-1">
-                                {(c.unit_price * c.quantity).toFixed(2)}€
-                              </span>
-                              <span className="font-bold text-amber-600">
-                                {lineTotal(c).toFixed(2)}€
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-gray-400">
-                              = {lineTotal(c).toFixed(2)}€
+                      <p className="text-right text-xs mt-1.5">
+                        {c.discountType ? (
+                          <>
+                            <span className="line-through text-gray-400 mr-1">
+                              {(c.unit_price * c.quantity).toFixed(2)}€
                             </span>
-                          )}
-                        </p>
-                      </div>
+                            <span className="font-bold text-amber-600">
+                              {lineTotal(c).toFixed(2)}€
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-gray-400">
+                            = {lineTotal(c).toFixed(2)}€
+                          </span>
+                        )}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -1123,11 +1087,79 @@ export default function StockMagasin() {
                   </div>
                 </div>
 
-                <button onClick={() => setShowPaymentModal(true)}
-                  disabled={cart.length === 0}
-                  className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                  Ticket →
-                </button>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        if (!selectedCartItemId) {
+                          alert('Sélectionne un article dans le panier d\'abord')
+                          return
+                        }
+                        setDiscountMenuItemId(
+                          discountMenuItemId === selectedCartItemId
+                            ? null
+                            : selectedCartItemId
+                        )
+                      }}
+                      className={`w-full py-2.5 rounded-xl text-sm font-bold border-2
+                        ${selectedCartItemId && cart.find(c => c.item_id === selectedCartItemId)?.discountType
+                          ? 'bg-amber-100 text-amber-700 border-amber-200'
+                          : 'bg-white text-gray-600 border-gray-200'}`}>
+                      % Remise
+                    </button>
+
+                    {discountMenuItemId && discountMenuItemId === selectedCartItemId && (
+                      <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl border border-gray-100 shadow-lg p-1.5 w-full z-30">
+                        <button onClick={() => {
+                            const pct = prompt('Remise en % :')
+                            if (pct) applyItemDiscount(selectedCartItemId, 'remise_pct', pct)
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
+                          Remise article
+                        </button>
+                        <button onClick={() => {
+                            setShowGlobalDiscount(true)
+                            setDiscountMenuItemId(null)
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
+                          Remise globale
+                        </button>
+                        <button onClick={() => applyItemDiscount(selectedCartItemId, 'article_offert', 0)}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
+                          Article offert
+                        </button>
+                        <button onClick={() => {
+                            const amt = prompt('Rabais en € :')
+                            if (amt) applyItemDiscount(selectedCartItemId, 'rabais', amt)
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-gray-50">
+                          Rabais (€)
+                        </button>
+                        {cart.find(c => c.item_id === selectedCartItemId)?.discountType && (
+                          <button onClick={() => removeItemDiscount(selectedCartItemId)}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-red-500 hover:bg-red-50 mt-1 border-t border-gray-100">
+                            Retirer la remise
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <button onClick={() => setShowPaymentModal(true)}
+                    disabled={cart.length === 0}
+                    className="py-2.5 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50">
+                    Ticket →
+                  </button>
+                </div>
+
+                {/* Ancien bouton Ticket masqué (remplacé par la rangée à 2 colonnes) */}
+                {false && (
+                  <button onClick={() => setShowPaymentModal(true)}
+                    disabled={cart.length === 0}
+                    className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    Ticket →
+                  </button>
+                )}
               </>
             )}
 
@@ -1989,16 +2021,31 @@ export default function StockMagasin() {
                   placeholder="0.00"
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-lg font-bold text-center mb-2"/>
 
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {[10, 20, 50].map((amt) => (
-                    <button key={amt}
-                      onClick={() => setCurrentPaymentAmount(
-                        String((Number(currentPaymentAmount) || 0) + amt)
-                      )}
-                      className="py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-[#1B2A4A]">
-                      +{amt}
-                    </button>
-                  ))}
+                <div className="mb-4">
+                  {cart.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {[...new Set(cart.map((c) => lineTotal(c)))]
+                        .filter((v) => v > 0)
+                        .map((val) => (
+                          <button key={val}
+                            onClick={() => setCurrentPaymentAmount(String(val))}
+                            className="px-3 py-1.5 border border-[#00B4CC] rounded-xl text-xs font-bold text-[#00B4CC] hover:bg-[#00B4CC] hover:text-white">
+                            {val.toFixed(2)}€
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[10, 20, 50].map((amt) => (
+                      <button key={amt}
+                        onClick={() => setCurrentPaymentAmount(
+                          String((Number(currentPaymentAmount) || 0) + amt)
+                        )}
+                        className="py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-[#1B2A4A]">
+                        +{amt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <button onClick={addPaymentSplit}
