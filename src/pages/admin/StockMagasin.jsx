@@ -694,8 +694,6 @@ export default function StockMagasin() {
     fetchCaisseToday()
   }
 
-  const handlePrintClosure = () => window.print()
-
   const printViaAgent = async (ticketData, fallbackPrint) => {
     try {
       const res = await fetch('http://localhost:4000/print', {
@@ -709,6 +707,43 @@ export default function StockMagasin() {
       if (fallbackPrint) fallbackPrint()
       else window.print()
     }
+  }
+
+  const printClosureViaAgent = async (data, fallbackPrint) => {
+    try {
+      const res = await fetch('http://localhost:4000/print-closure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error('Échec impression agent')
+    } catch (err) {
+      console.warn('Agent d\'impression indisponible, repli navigateur:', err)
+      if (fallbackPrint) fallbackPrint()
+      else window.print()
+    }
+  }
+
+  const handlePrintClosure = () => {
+    if (!closureData) return
+    printClosureViaAgent({
+      reportNumber: (lastClosure ? 1 : 0) + 1,
+      companyName: 'SLT GROUP (SRL)',
+      tva: 'BE1028.764.677',
+      caisse: magasin,
+      dateTime: new Date(closureData.periodEnd).toLocaleString('fr-BE'),
+      periodStart: new Date(closureData.periodStart).toLocaleString('fr-BE'),
+      periodEnd: new Date(closureData.periodEnd).toLocaleString('fr-BE'),
+      ventes: { montant: closureData.caTotal, count: closureData.ticketCount },
+      retours: { montant: 0, count: 0 },
+      caTotal: closureData.caTotal,
+      tvaRows: closureData.tvaRows,
+      reglements: closureData.reglementsArr,
+      categories: closureData.categoriesArr,
+      retraits: closureData.retraitsArr,
+      totalCashEnCaisse: closureData.totalCaisseCash,
+      totalCompte: Number(prelevementAmount) || closureData.totalCaisseCash,
+    }, () => window.print())
   }
 
   const sep = (char = '-') => (

@@ -88,12 +88,138 @@ async function buildAndPrint(ticket) {
   await printer.execute();
 }
 
+async function buildAndPrintClosure(data) {
+  const printer = new ThermalPrinter({
+    type: PrinterTypes.EPSON,
+    interface: `tcp://${PRINTER_IP}:${PRINTER_PORT}`,
+    removeSpecialCharacters: false,
+    lineCharacter: "*",
+  });
+
+  const isConnected = await printer.isPrinterConnected();
+  if (!isConnected) {
+    throw new Error(`Imprimante injoignable sur ${PRINTER_IP}:${PRINTER_PORT}`);
+  }
+
+  printer.alignCenter();
+  printer.bold(true);
+  printer.println(`Z FINANCIER #${data.reportNumber}`);
+  printer.println(data.companyName || "SLT GROUP");
+  printer.bold(false);
+  printer.println(data.tva || "BE1028.764.677");
+  printer.println(`Caisse : ${data.caisse}`);
+  printer.println(`Date : ${data.dateTime}`);
+  printer.drawLine();
+
+  printer.alignLeft();
+  printer.println("Periode :");
+  printer.println(`${data.periodStart} > ${data.periodEnd}`);
+  printer.drawLine("*");
+  printer.alignCenter();
+  printer.println("< TICKETS DE CAISSE >");
+  printer.alignLeft();
+  printer.drawLine("*");
+
+  printer.tableCustom([
+    { text: "< VENTES >", align: "LEFT", width: 0.5 },
+    { text: money(data.ventes.montant), align: "RIGHT", width: 0.25 },
+    { text: `${data.ventes.count} #`, align: "RIGHT", width: 0.25 },
+  ]);
+  printer.tableCustom([
+    { text: "< RETOURS >", align: "LEFT", width: 0.5 },
+    { text: money(data.retours.montant), align: "RIGHT", width: 0.25 },
+    { text: `${data.retours.count} #`, align: "RIGHT", width: 0.25 },
+  ]);
+  printer.drawLine();
+  const caTickets = data.ventes.montant - data.retours.montant;
+  const caCount = data.ventes.count - data.retours.count;
+  printer.tableCustom([
+    { text: "< CA TICKETS >", align: "LEFT", width: 0.5 },
+    { text: money(caTickets), align: "RIGHT", width: 0.25 },
+    { text: `${caCount} #`, align: "RIGHT", width: 0.25 },
+  ]);
+  printer.println(`Ticket moyen ${money(caCount > 0 ? caTickets / caCount : 0)}`);
+  printer.drawLine();
+
+  for (const r of data.tvaRows || []) {
+    printer.tableCustom([
+      { text: `(${r.code})${r.rate}%`, align: "LEFT", width: 0.25 },
+      { text: money(r.base), align: "RIGHT", width: 0.25 },
+      { text: money(r.tva), align: "RIGHT", width: 0.25 },
+      { text: money(r.total), align: "RIGHT", width: 0.25 },
+    ]);
+  }
+  printer.drawLine();
+
+  printer.println("Reglements TICKETS");
+  for (const r of data.reglements || []) {
+    printer.tableCustom([
+      { text: r.method, align: "LEFT", width: 0.6 },
+      { text: money(r.montant), align: "RIGHT", width: 0.4 },
+    ]);
+  }
+  printer.drawLine("*");
+  printer.alignCenter();
+  printer.println("< VENTES PAR CATEGORIES >");
+  printer.alignLeft();
+  printer.drawLine("*");
+
+  for (const c of data.categories || []) {
+    printer.tableCustom([
+      { text: c.name, align: "LEFT", width: 0.5 },
+      { text: money(c.montant), align: "RIGHT", width: 0.25 },
+      { text: `${c.count} #`, align: "RIGHT", width: 0.25 },
+    ]);
+  }
+  printer.drawLine("*");
+  printer.alignCenter();
+  printer.println("< DEPOTS / RETRAITS CAISSE >");
+  printer.alignLeft();
+  printer.drawLine("*");
+
+  for (const r of data.retraits || []) {
+    printer.println("->RETRAIT CAISSE");
+    printer.println(` ${r.note}`);
+    printer.println(` Montant :-${money(r.montant)} ${r.method}`);
+  }
+
+  printer.drawLine("*");
+  printer.tableCustom([
+    { text: "CA TOTAL :", align: "LEFT", width: 0.6 },
+    { text: money(data.caTotal), align: "RIGHT", width: 0.4 },
+  ]);
+  printer.tableCustom([
+    { text: "TOTAL CASH EN CAISSE :", align: "LEFT", width: 0.6 },
+    { text: money(data.totalCashEnCaisse), align: "RIGHT", width: 0.4 },
+  ]);
+  printer.tableCustom([
+    { text: "TOTAL Compte :", align: "LEFT", width: 0.6 },
+    { text: String(data.totalCompte), align: "RIGHT", width: 0.4 },
+  ]);
+  printer.drawLine("*");
+
+  printer.println(`PRELEVEMENT EN CLOTURE : ${money(-data.totalCompte)}`);
+  printer.cut();
+
+  await printer.execute();
+}
+
 app.post("/print", async (req, res) => {
   try {
     await buildAndPrint(req.body);
     res.json({ ok: true });
   } catch (err) {
     console.error("Erreur impression:", err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post("/print-closure", async (req, res) => {
+  try {
+    await buildAndPrintClosure(req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Erreur impression clôture:", err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
