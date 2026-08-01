@@ -1,4 +1,5 @@
 ﻿node_modules/
+print-agent/node_modules/
 .env.local
 .env
 dist/

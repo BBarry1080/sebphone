@@ -696,6 +696,21 @@ export default function StockMagasin() {
 
   const handlePrintClosure = () => window.print()
 
+  const printViaAgent = async (ticketData, fallbackPrint) => {
+    try {
+      const res = await fetch('http://localhost:4000/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticketData),
+      })
+      if (!res.ok) throw new Error('Échec impression agent')
+    } catch (err) {
+      console.warn('Agent d\'impression indisponible, repli navigateur:', err)
+      if (fallbackPrint) fallbackPrint()
+      else window.print()
+    }
+  }
+
   const sep = (char = '-') => (
     <div style={{
       margin: '4px 0', color: '#9CA3AF', width: '100%',
@@ -2074,7 +2089,23 @@ export default function StockMagasin() {
               changeAmount={lastSale.changeToGive || 0}
               tvaRate={21}
               paperWidth="80mm"
-              onPrint={() => window.print()}
+              onPrint={() => printViaAgent({
+                companyName: 'SLT GROUP (SRL)',
+                tva: 'BE 1028.764.677',
+                caisseNom: magasin,
+                dateTime: new Date(lastSale.created_at || Date.now()).toLocaleString('fr-BE'),
+                ticketNumber: lastSale.ticketNumber,
+                items: lastSale.items.map((c) => ({
+                  name: c.item_name,
+                  qty: c.quantity,
+                  total: lineTotal(c),
+                })),
+                reglements: (lastSale.paymentsUsed || []).map((p) => ({
+                  mode: p.type === 'cash' ? 'Cash' : p.type === 'bancontact' ? 'Bancontact' : 'Virement',
+                  montant: p.amount,
+                })),
+                tvaRate: 21,
+              }, () => window.print())}
             />
             <button onClick={() => setShowTicket(false)}
               className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
