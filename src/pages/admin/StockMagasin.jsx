@@ -7,6 +7,7 @@ import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import ReceiptTicket from '../../components/admin/ReceiptTicket'
 import ZFinancierReport from '../../components/admin/ZFinancierReport'
+import CaisseAccueil from '../../components/admin/CaisseAccueil'
 
 const POS_CATEGORIES = [
   'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
@@ -871,50 +872,15 @@ export default function StockMagasin() {
 
       {/* ÉCRAN ACCUEIL */}
       {posScreen === 'accueil' && (
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">CA du jour</p>
-                <p className="text-xl font-bold text-[#1B2A4A]">
-                  {(caisseTotals?.total || 0).toFixed(2)}€
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Tickets créés</p>
-                <p className="text-xl font-bold text-[#1B2A4A]">
-                  {salesToday?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <button onClick={() => setPosScreen('caisse')}
-              className="bg-white rounded-2xl border border-gray-100 p-5 text-center hover:border-[#1B2A4A] transition-all">
-              <p className="font-bold text-[#1B2A4A] text-sm">Vente caisse</p>
-            </button>
-            <button onClick={() => { setPosScreen('gestion'); setActiveTab('stock') }}
-              className="bg-white rounded-2xl border border-gray-100 p-5 text-center hover:border-[#1B2A4A] transition-all">
-              <p className="font-bold text-[#1B2A4A] text-sm">Gestion</p>
-            </button>
-            <button onClick={() => setPosScreen('cloture')}
-              className="bg-white rounded-2xl border border-gray-100 p-5 text-center hover:border-[#1B2A4A] transition-all">
-              <p className="font-bold text-[#1B2A4A] text-sm">Clôture</p>
-            </button>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-100 p-4">
-            <p className="text-xs text-gray-500 mb-1">Dernière clôture</p>
-            {lastClosure ? (
-              <p className="font-bold text-[#1B2A4A] text-sm">
-                {new Date(lastClosure.period_end).toLocaleString('fr-BE')}
-              </p>
-            ) : (
-              <p className="text-gray-400 text-sm">Aucune clôture pour l'instant</p>
-            )}
-          </div>
-        </div>
+        <CaisseAccueil
+          magasin={magasin}
+          magasinLabel={MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
+          caTotal={caisseTotals?.total || 0}
+          ticketCount={salesToday?.length || 0}
+          lastClosure={lastClosure}
+          onOpenCaisse={() => setPosScreen('caisse')}
+          onOpenGestion={() => { setPosScreen('gestion'); setActiveTab('stock') }}
+        />
       )}
 
       {/* Tabs — visible uniquement dans l'écran Gestion */}

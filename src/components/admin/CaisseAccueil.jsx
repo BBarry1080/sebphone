@@ -1,0 +1,586 @@
+import { useEffect, useState } from 'react'
+import { supabase } from '../../lib/supabase'
+import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
+import {
+  ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
+} from 'lucide-react'
+
+const COLORS = {
+  navy: '#15223d',
+  cyan: '#22d3ee',
+  blue: '#2563eb',
+  amber: '#f59e0b',
+  green: '#16a34a',
+  purple: '#8b5cf6',
+  pink: '#ec4899',
+  teal: '#0d9488',
+}
+
+const PANNE_OPTIONS = [
+  'Écran cassé',
+  'Batterie défectueuse',
+  'Vitre arrière',
+  'Face ID / Touch ID',
+  'Connecteur de charge',
+  'Haut-parleur / micro',
+  'Caméra',
+  'Bouton (home / power)',
+  'Réparation logicielle',
+  'Diagnostic',
+  'Autre',
+]
+
+const pad4 = (n) => String(n).padStart(4, '0')
+
+function Tile({ color, icon: Icon, title, value, subtitle, onClick, span }) {
+  return (
+    <button onClick={onClick}
+      className={`text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:-translate-y-0.5 transition-all ${
+        span === 2 ? 'md:col-span-2' : ''
+      }`}
+      style={{ minHeight: 130 }}>
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{ background: `${color}20`, color }}>
+          <Icon size={22} strokeWidth={2.2} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold uppercase text-gray-400 tracking-wide">{title}</p>
+          {value !== undefined && (
+            <p className="text-xl md:text-2xl font-bold mt-1" style={{ color: COLORS.navy }}>
+              {value}
+            </p>
+          )}
+          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+export default function CaisseAccueil({
+  magasin,
+  magasinLabel,
+  caTotal = 0,
+  ticketCount = 0,
+  lastClosure = null,
+  onOpenCaisse,
+  onOpenGestion,
+}) {
+  const [showClientModal, setShowClientModal] = useState(false)
+  const [showRepairModal, setShowRepairModal] = useState(false)
+  const [showClotureDetail, setShowClotureDetail] = useState(false)
+  const [showBonPrintable, setShowBonPrintable] = useState(false)
+  const [repairsInProgress, setRepairsInProgress] = useState(0)
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const [clientForm, setClientForm] = useState({
+    nom: '', date: today, client_number: '', magasin_id: magasin,
+    type_panne: '', prix: '', devis: false, tel: '', email: '',
+  })
+  const [repairForm, setRepairForm] = useState({
+    nom: '', date: today, imei: '', bon_number: '', client_number: '',
+    magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
+  })
+  const [lastBon, setLastBon] = useState(null)
+
+  useEffect(() => {
+    const fetchRepairsCount = async () => {
+      const { count } = await supabase
+        .from('repairs')
+        .select('*', { count: 'exact', head: true })
+        .eq('magasin_id', magasin)
+        .eq('status', 'en_attente')
+      setRepairsInProgress(count || 0)
+    }
+    if (magasin) fetchRepairsCount()
+  }, [magasin, showRepairModal])
+
+  const openClientModal = async () => {
+    const { count } = await supabase
+      .from('clients')
+      .select('*', { count: 'exact', head: true })
+      .eq('magasin_id', magasin)
+    setClientForm({
+      nom: '', date: today,
+      client_number: 'CL-' + pad4((count || 0) + 1),
+      magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
+    })
+    setShowClientModal(true)
+  }
+
+  const openRepairModal = async () => {
+    const { count: repairCount } = await supabase
+      .from('repairs')
+      .select('*', { count: 'exact', head: true })
+      .eq('magasin_id', magasin)
+    const { count: clientCount } = await supabase
+      .from('clients')
+      .select('*', { count: 'exact', head: true })
+      .eq('magasin_id', magasin)
+    setRepairForm({
+      nom: '', date: today, imei: '',
+      bon_number: 'BON-' + pad4((repairCount || 0) + 1),
+      client_number: 'CL-' + pad4((clientCount || 0) + 1),
+      magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
+    })
+    setShowRepairModal(true)
+  }
+
+  const handleSaveClient = async () => {
+    if (!clientForm.nom.trim()) { alert('Nom requis'); return }
+    const { error } = await supabase.from('clients').insert({
+      client_number: clientForm.client_number,
+      nom: clientForm.nom.trim(),
+      date: clientForm.date,
+      magasin_id: clientForm.magasin_id,
+      type_panne: clientForm.type_panne || null,
+      prix: clientForm.prix ? Number(clientForm.prix) : null,
+      devis: clientForm.devis,
+      tel: clientForm.tel || null,
+      email: clientForm.email || null,
+    })
+    if (error) { alert('Erreur : ' + error.message); return }
+    setShowClientModal(false)
+    alert(`Client ${clientForm.client_number} enregistré`)
+  }
+
+  const handleGenerateBon = async () => {
+    if (!repairForm.nom.trim()) { alert('Nom requis'); return }
+    const payload = {
+      bon_number: repairForm.bon_number,
+      client_nom: repairForm.nom.trim(),
+      client_number: repairForm.client_number,
+      magasin_id: repairForm.magasin_id,
+      date: repairForm.date,
+      imei: repairForm.imei || null,
+      type_panne: repairForm.type_panne || null,
+      prix: repairForm.prix ? Number(repairForm.prix) : null,
+      devis: repairForm.devis,
+      tel: repairForm.tel || null,
+      email: repairForm.email || null,
+      status: 'en_attente',
+    }
+    const { error } = await supabase.from('repairs').insert(payload)
+    if (error) { alert('Erreur : ' + error.message); return }
+    setLastBon(payload)
+    setShowRepairModal(false)
+    setShowBonPrintable(true)
+    setTimeout(() => window.print(), 300)
+  }
+
+  const magasinName = (id) => MAGASINS_PHYSIQUES.find((m) => m.id === id)?.nom || id
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #bon-print, #bon-print * { visibility: visible; }
+          #bon-print { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+          @page { size: A4; margin: 15mm; }
+        }
+      `}</style>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        {/* AUJOURD'HUI (feature, span 2) */}
+        <div className="md:col-span-2 rounded-2xl p-6 text-white shadow-lg"
+          style={{ background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)` }}>
+          <p className="text-xs font-bold uppercase opacity-70 tracking-wide">Aujourd'hui</p>
+          <p className="text-sm opacity-70 mt-1">{magasinLabel || magasinName(magasin)}</p>
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div>
+              <p className="text-[10px] uppercase opacity-70">CA du jour</p>
+              <p className="text-2xl font-bold mt-1">{Number(caTotal).toFixed(2)}€</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase opacity-70">Tickets créés</p>
+              <p className="text-2xl font-bold mt-1">{ticketCount}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase opacity-70">Réparations en cours</p>
+              <p className="text-2xl font-bold mt-1">{repairsInProgress}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* DERNIÈRE CLÔTURE */}
+        <Tile color={COLORS.amber} icon={ClipboardList}
+          title="Dernière clôture"
+          value={lastClosure
+            ? new Date(lastClosure.period_end).toLocaleDateString('fr-BE')
+            : 'Aucune'}
+          subtitle={lastClosure
+            ? `${Number(lastClosure.ca_total || 0).toFixed(2)}€`
+            : 'Cliquez pour détails'}
+          onClick={() => setShowClotureDetail(true)}
+        />
+
+        {/* VENTE CAISSE */}
+        <Tile color={COLORS.blue} icon={ShoppingCart}
+          title="Vente caisse"
+          subtitle="Ouvre le point de vente"
+          onClick={onOpenCaisse}
+        />
+
+        {/* CLIENTS */}
+        <Tile color={COLORS.green} icon={Users}
+          title="Clients"
+          subtitle="Enregistrer un nouveau client"
+          onClick={openClientModal}
+        />
+
+        {/* FOURNISSEURS */}
+        <Tile color={COLORS.purple} icon={Truck}
+          title="Fournisseurs"
+          subtitle="Bientôt disponible"
+          onClick={() => alert('Module Fournisseurs — bientôt disponible')}
+        />
+
+        {/* PRODUITS */}
+        <Tile color={COLORS.pink} icon={Package}
+          title="Produits"
+          subtitle="Consulter le catalogue articles"
+          onClick={onOpenGestion}
+        />
+
+        {/* GESTION DE STOCK */}
+        <Tile color={COLORS.cyan} icon={Boxes}
+          title="Gestion de stock"
+          subtitle="Catégories & inventaire"
+          onClick={onOpenGestion}
+        />
+
+        {/* RÉPARATIONS */}
+        <Tile color={COLORS.amber} icon={Wrench}
+          title="Réparations"
+          subtitle="Générer un bon de dépôt"
+          onClick={openRepairModal}
+        />
+      </div>
+
+      {/* MODAL CLIENT */}
+      {showClientModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 my-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg" style={{ color: COLORS.navy }}>
+                Nouveau client
+              </h3>
+              <button onClick={() => setShowClientModal(false)}
+                className="text-gray-400 hover:text-gray-700">
+                <X size={20}/>
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Nom / Prénom *
+                </label>
+                <input value={clientForm.nom}
+                  onChange={(e) => setClientForm((f) => ({ ...f, nom: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Date</label>
+                <input type="date" value={clientForm.date}
+                  onChange={(e) => setClientForm((f) => ({ ...f, date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  N° client
+                </label>
+                <input value={clientForm.client_number} readOnly
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 font-mono"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
+                <select value={clientForm.magasin_id}
+                  onChange={(e) => setClientForm((f) => ({ ...f, magasin_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                  {MAGASINS_PHYSIQUES.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Type de panne</label>
+                <select value={clientForm.type_panne}
+                  onChange={(e) => setClientForm((f) => ({ ...f, type_panne: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                  <option value="">—</option>
+                  {PANNE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Prix (€)</label>
+                <input type="number" value={clientForm.prix}
+                  onChange={(e) => setClientForm((f) => ({ ...f, prix: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div className="col-span-2 flex items-center gap-2">
+                <input type="checkbox" checked={clientForm.devis}
+                  onChange={(e) => setClientForm((f) => ({ ...f, devis: e.target.checked }))}
+                  className="w-4 h-4 accent-[#22d3ee]"/>
+                <label className="text-sm text-gray-700">Devis requis avant intervention</label>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Téléphone</label>
+                <input type="tel" value={clientForm.tel}
+                  onChange={(e) => setClientForm((f) => ({ ...f, tel: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Email</label>
+                <input type="email" value={clientForm.email}
+                  onChange={(e) => setClientForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowClientModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Annuler
+              </button>
+              <button onClick={handleSaveClient}
+                className="flex-1 py-2.5 text-white rounded-xl text-sm font-bold"
+                style={{ background: COLORS.navy }}>
+                Enregistrer le client
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL RÉPARATION */}
+      {showRepairModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 my-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg" style={{ color: COLORS.navy }}>
+                Nouvelle réparation
+              </h3>
+              <button onClick={() => setShowRepairModal(false)}
+                className="text-gray-400 hover:text-gray-700">
+                <X size={20}/>
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Nom / Prénom *
+                </label>
+                <input value={repairForm.nom}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, nom: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Date</label>
+                <input type="date" value={repairForm.date}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">IMEI / N° série</label>
+                <input value={repairForm.imei}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, imei: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">N° client</label>
+                <input value={repairForm.client_number} readOnly
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-gray-50 font-mono"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
+                <select value={repairForm.magasin_id}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, magasin_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                  {MAGASINS_PHYSIQUES.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Type de panne</label>
+                <select value={repairForm.type_panne}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, type_panne: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                  <option value="">—</option>
+                  {PANNE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Prix (€)</label>
+                <input type="number" value={repairForm.prix}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, prix: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div className="col-span-2 flex items-center gap-2">
+                <input type="checkbox" checked={repairForm.devis}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, devis: e.target.checked }))}
+                  className="w-4 h-4 accent-[#22d3ee]"/>
+                <label className="text-sm text-gray-700">Devis requis avant intervention</label>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Téléphone</label>
+                <input type="tel" value={repairForm.tel}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, tel: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Email</label>
+                <input type="email" value={repairForm.email}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowRepairModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Annuler
+              </button>
+              <button onClick={handleGenerateBon}
+                className="flex-1 py-2.5 text-white rounded-xl text-sm font-bold"
+                style={{ background: COLORS.navy }}>
+                Générer le bon
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP DÉTAIL DERNIÈRE CLÔTURE */}
+      {showClotureDetail && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg" style={{ color: COLORS.navy }}>
+                Dernière clôture
+              </h3>
+              <button onClick={() => setShowClotureDetail(false)}
+                className="text-gray-400 hover:text-gray-700">
+                <X size={20}/>
+              </button>
+            </div>
+            {lastClosure ? (
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <span>Date</span>
+                  <span className="font-bold" style={{ color: COLORS.navy }}>
+                    {new Date(lastClosure.period_end).toLocaleString('fr-BE')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>CA total</span>
+                  <span className="font-bold" style={{ color: COLORS.navy }}>
+                    {Number(lastClosure.ca_total || 0).toFixed(2)}€
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Tickets</span>
+                  <span className="font-bold" style={{ color: COLORS.navy }}>
+                    {lastClosure.ticket_count || 0}
+                  </span>
+                </div>
+                <div className="border-t border-gray-100 pt-2 mt-2 space-y-1">
+                  <div className="flex justify-between text-gray-600">
+                    <span>💵 Cash</span>
+                    <span>{Number(lastClosure.cash_total || 0).toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>💳 Bancontact</span>
+                    <span>{Number(lastClosure.bancontact_total || 0).toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>🏦 Virement</span>
+                    <span>{Number(lastClosure.virement_total || 0).toFixed(2)}€</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-center text-gray-400 py-6 text-sm">
+                Aucune clôture enregistrée pour l'instant
+              </p>
+            )}
+            <button onClick={() => setShowClotureDetail(false)}
+              className="w-full mt-5 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* BON DE RÉPARATION IMPRIMABLE (visible seulement en @media print) */}
+      {showBonPrintable && lastBon && (
+        <div id="bon-print" style={{ display: 'none' }} className="print:!block">
+          <style>{`@media print { #bon-print { display: block !important; } }`}</style>
+          <div style={{ fontFamily: 'Arial, sans-serif', color: '#000', maxWidth: 720, margin: '0 auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '2px solid #15223d' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: `linear-gradient(135deg, ${COLORS.navy}, ${COLORS.teal})`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 18 }}>
+                  SP
+                </div>
+                <div>
+                  <div style={{ fontWeight: 'bold', fontSize: 20, color: COLORS.navy }}>SEBPHONE</div>
+                  <div style={{ fontSize: 11, color: '#666' }}>Réparation & vente de smartphones</div>
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: '#666' }}>Bon n°</div>
+                <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 16, color: COLORS.navy }}>{lastBon.bon_number}</div>
+                <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{new Date(lastBon.date).toLocaleDateString('fr-BE')}</div>
+              </div>
+            </div>
+
+            <h1 style={{ fontSize: 18, fontWeight: 'bold', color: COLORS.navy, margin: '16px 0 8px' }}>
+              Bon de prise en charge — Réparation
+            </h1>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Client</div><div>{lastBon.client_nom}</div></div>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>N° client</div><div style={{ fontFamily: 'monospace' }}>{lastBon.client_number}</div></div>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Magasin</div><div>{magasinName(lastBon.magasin_id)}</div></div>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Date de dépôt</div><div>{new Date(lastBon.date).toLocaleDateString('fr-BE')}</div></div>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>IMEI / N° série</div><div style={{ fontFamily: 'monospace' }}>{lastBon.imei || '—'}</div></div>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Type de panne</div><div>{lastBon.type_panne || '—'}</div></div>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Prix estimé</div><div style={{ fontWeight: 'bold' }}>{lastBon.prix != null ? `${Number(lastBon.prix).toFixed(2)}€` : '—'}</div></div>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Contact</div><div style={{ fontSize: 12 }}>{lastBon.tel || '—'}<br/>{lastBon.email || '—'}</div></div>
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              {lastBon.devis ? (
+                <span style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 999, background: '#fff7ed', color: '#9a3412', fontSize: 12, fontWeight: 'bold', border: '1px solid #fed7aa' }}>
+                  Devis requis avant intervention
+                </span>
+              ) : (
+                <span style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 999, background: '#f0fdf4', color: '#166534', fontSize: 12, fontWeight: 'bold', border: '1px solid #bbf7d0' }}>
+                  Intervention directe autorisée
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginTop: 32 }}>
+              <div>
+                <div style={{ borderTop: '1px solid #000', paddingTop: 4, fontSize: 11, color: '#666' }}>Signature client</div>
+              </div>
+              <div>
+                <div style={{ borderTop: '1px solid #000', paddingTop: 4, fontSize: 11, color: '#666' }}>Signature technicien</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 24, fontSize: 9, color: '#666', lineHeight: 1.5, borderTop: '1px solid #eee', paddingTop: 8 }}>
+              SLT GROUP (SRL) — TVA BE 1028.764.677 — RUE DU BAILLI 22, 1000 Bruxelles — Tel : 0492/40.54.57.
+              Ce bon atteste du dépôt d'un appareil en atelier. Les appareils non récupérés sous 90 jours après notification
+              seront considérés comme abandonnés. Le prix mentionné est indicatif ; en cas de dépassement, un devis
+              complémentaire sera soumis pour accord avant intervention.
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
