@@ -426,9 +426,13 @@ export default function StockMagasin() {
     if (cart.length === 0 || !isFullyPaid) return
     setCheckoutLoading(true)
 
-    const staffName = JSON.parse(
+    const currentSebUser = JSON.parse(
       localStorage.getItem('sebphone_user') || '{}'
-    )?.nom || 'Staff'
+    )
+    const staffName = currentSebUser?.name || 'Staff'
+    const staffId = currentSebUser?.role === 'employe'
+      ? currentSebUser?.id
+      : null
 
     const cashRaw = paymentSplits
       .filter(p => p.method === 'cash')
@@ -452,6 +456,7 @@ export default function StockMagasin() {
       .from('shop_sales')
       .insert({
         magasin_id: magasin,
+        staff_id: staffId,
         staff_name: staffName,
         total_amount: cartTotal,
         payment_method: paymentSplits.length > 1 ? 'mixed' : paymentSplits[0]?.method || 'cash',
@@ -483,6 +488,35 @@ export default function StockMagasin() {
     }))
 
     await supabase.from('shop_sale_items').insert(saleItems)
+
+    if (staffId) {
+      const { data: itemCats } = await supabase
+        .from('shop_items')
+        .select('id, shop_categories(name)')
+        .in('id', cart.map((c) => c.item_id))
+
+      const commissionRows = cart
+        .map((c) => {
+          const cat = itemCats?.find((ic) => ic.id === c.item_id)
+          const catName = cat?.shop_categories?.name
+          if (catName !== 'Vitre de protection') return null
+          const base = lineTotal(c)
+          return {
+            staff_id: staffId,
+            sale_id: sale.id,
+            item_name: c.item_name,
+            category: catName,
+            base_amount: base,
+            rate: 20,
+            commission_amount: Math.round(base * 0.20 * 100) / 100,
+          }
+        })
+        .filter(Boolean)
+
+      if (commissionRows.length > 0) {
+        await supabase.from('staff_commissions').insert(commissionRows)
+      }
+    }
 
     const saleWithTicket = {
       ...sale,

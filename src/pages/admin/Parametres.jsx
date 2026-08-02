@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
-import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History, BarChart2 } from 'lucide-react'
 import { ALL_PERMISSIONS, useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import { logActivity } from '../../lib/logActivity'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
@@ -89,6 +89,7 @@ const PERMISSION_GROUPS = [
     icon: '⚙️',
     perms: [
       { key: 'registre_achats', label: "Registre d'achats" },
+      { key: 'voir_suivi_staff', label: 'Voir le suivi des employés (ventes/fautes/commissions)' },
       { key: 'gerer_utilisateurs', label: 'Gérer les utilisateurs' },
     ],
   },
@@ -494,6 +495,142 @@ export default function Parametres() {
     return 'bg-gray-100 text-gray-600'
   }
 
+  // Suivi employés
+  const canSeeSuivi = usePermission('voir_suivi_staff')
+  const canManageStaff = usePermission('gerer_utilisateurs')
+  const showSuiviTab = isAdmin || canSeeSuivi || canManageStaff
+
+  const [suiviData, setSuiviData]             = useState([])
+  const [loadingSuivi, setLoadingSuivi]       = useState(false)
+  const [showStaffDetail, setShowStaffDetail] = useState(null)
+  const [staffDetailData, setStaffDetailData] = useState(null)
+  const [loadingDetail, setLoadingDetail]     = useState(false)
+  const [showIncidentForm, setShowIncidentForm] = useState(false)
+  const [incidentForm, setIncidentForm]       = useState({
+    type: 'Erreur de caisse',
+    gravite: 'mineure',
+    description: '',
+    date: new Date().toISOString().split('T')[0],
+  })
+
+  const fetchSuiviData = async () => {
+    setLoadingSuivi(true)
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
+    const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0)
+
+    const activeStaff = staff.filter((s) => s.active)
+    const rows = await Promise.all(activeStaff.map(async (emp) => {
+      const [jour, mois, comms, fautes] = await Promise.all([
+        supabase.from('shop_sales')
+          .select('total_amount')
+          .eq('staff_id', emp.id)
+          .gte('created_at', startOfDay.toISOString()),
+        supabase.from('shop_sales')
+          .select('total_amount')
+          .eq('staff_id', emp.id)
+          .gte('created_at', startOfMonth.toISOString()),
+        supabase.from('staff_commissions')
+          .select('commission_amount')
+          .eq('staff_id', emp.id),
+        supabase.from('staff_incidents')
+          .select('id', { count: 'exact', head: true })
+          .eq('staff_id', emp.id),
+      ])
+      const sumJour = (jour.data || []).reduce((s, r) => s + Number(r.total_amount || 0), 0)
+      const sumMois = (mois.data || []).reduce((s, r) => s + Number(r.total_amount || 0), 0)
+      const sumComms = (comms.data || []).reduce((s, r) => s + Number(r.commission_amount || 0), 0)
+      return {
+        emp,
+        ventesJour:  { count: (jour.data || []).length, sum: sumJour },
+        ventesMois:  { count: (mois.data || []).length, sum: sumMois },
+        commissions: sumComms,
+        fautes:      fautes.count || 0,
+      }
+    }))
+    setSuiviData(rows)
+    setLoadingSuivi(false)
+  }
+
+  useEffect(() => {
+    if (tab === 'suivi' && staff.length > 0) fetchSuiviData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, staff])
+
+  const openStaffDetail = async (empId) => {
+    setShowStaffDetail(empId)
+    setLoadingDetail(true)
+    setShowIncidentForm(false)
+    const [ventes, incidents, commissions] = await Promise.all([
+      supabase.from('shop_sales')
+        .select('id, created_at, total_amount, payment_method')
+        .eq('staff_id', empId)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase.from('staff_incidents')
+        .select('*')
+        .eq('staff_id', empId)
+        .order('date', { ascending: false }),
+      supabase.from('staff_commissions')
+        .select('*')
+        .eq('staff_id', empId)
+        .order('created_at', { ascending: false }),
+    ])
+    setStaffDetailData({
+      ventes: ventes.data || [],
+      incidents: incidents.data || [],
+      commissions: commissions.data || [],
+    })
+    setLoadingDetail(false)
+  }
+
+  const closeStaffDetail = () => {
+    setShowStaffDetail(null)
+    setStaffDetailData(null)
+    setShowIncidentForm(false)
+  }
+
+  const currentDetailEmp = staff.find((s) => s.id === showStaffDetail)
+
+  const handleAddIncident = async () => {
+    if (!incidentForm.description.trim()) { alert('Description requise'); return }
+    if (!showStaffDetail) return
+    const raw = localStorage.getItem('sebphone_user')
+    const currentUser = raw ? JSON.parse(raw) : {}
+    const { error } = await supabase.from('staff_incidents').insert({
+      staff_id: showStaffDetail,
+      type: incidentForm.type,
+      gravite: incidentForm.gravite,
+      description: incidentForm.description.trim(),
+      date: incidentForm.date,
+      created_by: currentUser.name || 'Admin',
+    })
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('staff_incident_create', `Faute enregistrée pour ${currentDetailEmp?.name || '?'} — ${incidentForm.type}`)
+    setShowIncidentForm(false)
+    setIncidentForm({
+      type: 'Erreur de caisse',
+      gravite: 'mineure',
+      description: '',
+      date: new Date().toISOString().split('T')[0],
+    })
+    openStaffDetail(showStaffDetail)
+    fetchSuiviData()
+  }
+
+  const handleDeleteIncident = async (incidentId) => {
+    if (!window.confirm('Supprimer cette faute ?')) return
+    const { error } = await supabase.from('staff_incidents').delete().eq('id', incidentId)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('staff_incident_delete', `Faute supprimée pour ${currentDetailEmp?.name || '?'}`)
+    openStaffDetail(showStaffDetail)
+    fetchSuiviData()
+  }
+
+  const graviteBadge = (g) =>
+    g === 'grave'  ? 'bg-red-100 text-red-700'   :
+    g === 'moyenne' ? 'bg-amber-100 text-amber-700' :
+                      'bg-green-100 text-green-700'
+
   const fetchBestSellers = async () => {
     const { data: config } = await supabase
       .from('best_sellers_config')
@@ -709,6 +846,7 @@ export default function Parametres() {
           { key: 'utilisateurs', label: 'Utilisateurs' },
           { key: 'general',      label: 'Général' },
           { key: 'historique',   label: 'Historique', icon: History },
+          ...(showSuiviTab ? [{ key: 'suivi', label: 'Suivi', icon: BarChart2 }] : []),
         ].map((t) => (
           <button
             key={t.key}
@@ -1214,6 +1352,286 @@ export default function Parametres() {
             </div>
           )}
         </>
+      )}
+
+      {tab === 'suivi' && showSuiviTab && (
+        <>
+          {loadingSuivi ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : suiviData.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <BarChart2 size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Aucun employé actif</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Employé</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Ventes jour</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Ventes mois</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Commissions</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Fautes</th>
+                    <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">—</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suiviData.map((row, idx) => {
+                    const initials = row.emp.name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '??'
+                    const color = AVATAR_COLORS[idx % AVATAR_COLORS.length]
+                    const magNom = MAGASINS[row.emp.magasin_id]?.nom?.replace('Seb Telecom — ', '') || row.emp.magasin_id
+                    return (
+                      <tr key={row.emp.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-[#1B2A4A] text-sm">{row.emp.name}</p>
+                              <p className="text-xs text-gray-400">{row.emp.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{magNom}</td>
+                        <td className="px-4 py-3 text-xs">
+                          <p className="font-bold text-[#1B2A4A]">{row.ventesJour.count} vente{row.ventesJour.count > 1 ? 's' : ''}</p>
+                          <p className="text-gray-500">{row.ventesJour.sum.toFixed(2)}€</p>
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          <p className="font-bold text-[#1B2A4A]">{row.ventesMois.count} vente{row.ventesMois.count > 1 ? 's' : ''}</p>
+                          <p className="text-gray-500">{row.ventesMois.sum.toFixed(2)}€</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-bold text-[#00B4CC]">{row.commissions.toFixed(2)}€</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            row.fautes > 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'
+                          }`}>
+                            {row.fautes}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button onClick={() => openStaffDetail(row.emp.id)}
+                            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#1B2A4A] text-white hover:bg-[#00B4CC]">
+                            Détail
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {showStaffDetail && currentDetailEmp && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-[#1B2A4A] text-lg">Suivi — {currentDetailEmp.name}</h3>
+                <p className="text-xs text-gray-500">{currentDetailEmp.email}</p>
+              </div>
+              <button onClick={closeStaffDetail}>
+                <X size={18} className="text-gray-400" />
+              </button>
+            </div>
+
+            {loadingDetail || !staffDetailData ? (
+              <div className="flex items-center justify-center h-40">
+                <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="p-5 space-y-6">
+
+                {/* a) Ventes récentes */}
+                <div>
+                  <h4 className="font-bold text-[#1B2A4A] mb-3">Ventes récentes</h4>
+                  {staffDetailData.ventes.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-4">Aucune vente</p>
+                  ) : (
+                    <div className="bg-gray-50 rounded-xl overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="border-b border-gray-200">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-bold text-gray-500 text-xs uppercase">Date</th>
+                            <th className="text-right px-3 py-2 font-bold text-gray-500 text-xs uppercase">Montant</th>
+                            <th className="text-left px-3 py-2 font-bold text-gray-500 text-xs uppercase">Paiement</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {staffDetailData.ventes.map((v) => (
+                            <tr key={v.id} className="border-b border-gray-100">
+                              <td className="px-3 py-2 text-xs text-gray-600 font-mono whitespace-nowrap">
+                                {new Date(v.created_at).toLocaleString('fr-BE')}
+                              </td>
+                              <td className="px-3 py-2 text-sm font-bold text-[#1B2A4A] text-right">
+                                {Number(v.total_amount).toFixed(2)}€
+                              </td>
+                              <td className="px-3 py-2 text-xs text-gray-600">{v.payment_method}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* b) Fautes / erreurs */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-bold text-[#1B2A4A]">Fautes / erreurs</h4>
+                    {(isAdmin || canManageStaff) && !showIncidentForm && (
+                      <button onClick={() => setShowIncidentForm(true)}
+                        className="flex items-center gap-1.5 text-xs font-bold bg-[#1B2A4A] text-white px-3 py-1.5 rounded-lg hover:bg-[#00B4CC]">
+                        <Plus size={12} /> Ajouter
+                      </button>
+                    )}
+                  </div>
+
+                  {showIncidentForm && (
+                    <div className="bg-gray-50 rounded-xl p-4 mb-3 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Type</label>
+                          <select value={incidentForm.type}
+                            onChange={(e) => setIncidentForm((f) => ({ ...f, type: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                            {['Erreur de caisse','Retard','Litige client','Non-respect procédure','Autre'].map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Gravité</label>
+                          <div className="flex gap-1">
+                            {['mineure','moyenne','grave'].map((g) => (
+                              <button key={g}
+                                onClick={() => setIncidentForm((f) => ({ ...f, gravite: g }))}
+                                className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 capitalize
+                                  ${incidentForm.gravite === g
+                                    ? `${graviteBadge(g)} border-current`
+                                    : 'bg-white text-gray-500 border-gray-200'}`}>
+                                {g}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Description</label>
+                        <textarea value={incidentForm.description}
+                          onChange={(e) => setIncidentForm((f) => ({ ...f, description: e.target.value }))}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none"
+                          placeholder="Détails de la faute..." />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Date</label>
+                        <input type="date" value={incidentForm.date}
+                          onChange={(e) => setIncidentForm((f) => ({ ...f, date: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setShowIncidentForm(false)}
+                          className="flex-1 py-2 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                          Annuler
+                        </button>
+                        <button onClick={handleAddIncident}
+                          className="flex-1 py-2 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                          Enregistrer
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {staffDetailData.incidents.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-4">Aucune faute enregistrée</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {staffDetailData.incidents.map((inc) => (
+                        <div key={inc.id} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${graviteBadge(inc.gravite)}`}>
+                            {inc.gravite}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-bold text-[#1B2A4A]">{inc.type}</p>
+                              <span className="text-xs text-gray-400">
+                                {new Date(inc.date).toLocaleDateString('fr-BE')}
+                              </span>
+                              {inc.created_by && (
+                                <span className="text-[10px] text-gray-400">par {inc.created_by}</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-600 mt-1">{inc.description}</p>
+                          </div>
+                          {isAdmin && (
+                            <button onClick={() => handleDeleteIncident(inc.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* c) Commissions */}
+                <div>
+                  <h4 className="font-bold text-[#1B2A4A] mb-3">Commissions</h4>
+                  {staffDetailData.commissions.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-4">Aucune commission</p>
+                  ) : (
+                    <div className="bg-gray-50 rounded-xl overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="border-b border-gray-200">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-bold text-gray-500 text-xs uppercase">Date</th>
+                            <th className="text-left px-3 py-2 font-bold text-gray-500 text-xs uppercase">Article</th>
+                            <th className="text-right px-3 py-2 font-bold text-gray-500 text-xs uppercase">Vente</th>
+                            <th className="text-right px-3 py-2 font-bold text-gray-500 text-xs uppercase">Commission (20%)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {staffDetailData.commissions.map((c) => (
+                            <tr key={c.id} className="border-b border-gray-100">
+                              <td className="px-3 py-2 text-xs text-gray-600 font-mono whitespace-nowrap">
+                                {new Date(c.created_at).toLocaleDateString('fr-BE')}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-gray-700">{c.item_name}</td>
+                              <td className="px-3 py-2 text-xs text-gray-500 text-right">
+                                {Number(c.base_amount).toFixed(2)}€
+                              </td>
+                              <td className="px-3 py-2 text-sm font-bold text-[#00B4CC] text-right">
+                                {Number(c.commission_amount).toFixed(2)}€
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="bg-white">
+                            <td colSpan={3} className="px-3 py-2 text-xs font-bold text-right">Total :</td>
+                            <td className="px-3 py-2 text-sm font-bold text-[#00B4CC] text-right">
+                              {staffDetailData.commissions.reduce((s, c) => s + Number(c.commission_amount || 0), 0).toFixed(2)}€
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {showBSModal && (

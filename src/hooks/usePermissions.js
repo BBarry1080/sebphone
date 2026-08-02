@@ -40,6 +40,7 @@ export const ALL_PERMISSIONS = [
 
   // Administration
   'registre_achats',
+  'voir_suivi_staff',
   'gerer_utilisateurs',
 ]
 
