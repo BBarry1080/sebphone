@@ -37,6 +37,7 @@ import Comptabilite from './pages/admin/Comptabilite';
 import Parametres from './pages/admin/Parametres';
 import Registre from './pages/admin/Registre';
 import ClientsInteresses from './pages/admin/ClientsInteresses';
+import Clients from './pages/admin/Clients';
 import Confirmation from './pages/Confirmation';
 import MesReservations from './pages/MesReservations';
 import DetailCommande from './pages/DetailCommande';
@@ -179,9 +180,7 @@ export default function App() {
             <Route path="registre" element={<Registre />} />
             <Route path="livraisons" element={<Livraisons />} />
             <Route path="pro" element={<ProAdmin />} />
-            <Route path="clients" element={
-              <div className="text-center py-20 text-[#888]">Page Clients — à venir</div>
-            } />
+            <Route path="clients" element={<Clients />} />
             <Route path="clients-interesses" element={<ClientsInteresses />} />
             <Route path="parametres" element={<AdminOnlyRoute><Parametres /></AdminOnlyRoute>} />
           </Route>

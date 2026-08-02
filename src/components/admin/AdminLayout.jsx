@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History,
+  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History, Contact2,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -47,6 +47,7 @@ function SidebarContent({ onClose }) {
     { to: '/admin/verifier-code',      label: 'Vérifier code',       Icon: QrCode,          show: has('verifier_code') },
     { to: '/admin/comptabilite',       label: 'Comptabilité',        Icon: Calculator,      show: has('voir_comptabilite') },
     { to: '/admin/registre',           label: "Registre d'achats",   Icon: ClipboardList,   show: has('registre_achats') },
+    { to: '/admin/clients',            label: 'Clients',             Icon: Contact2,        show: has('voir_clients') || isAdmin },
     { to: '/admin/clients-interesses', label: 'Clients intéressés',  Icon: Users,           show: has('voir_clients_interesses') || has('voir_clients') || isAdmin },
     { to: '/admin/reconditionnement',  label: 'Reconditionnement',   Icon: Wrench,          show: has('stock_reconditionnement') },
     { to: '/admin/livraisons',         label: 'Livraisons',          Icon: Truck,           show: isAdmin },

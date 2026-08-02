@@ -25,6 +25,9 @@ export const ALL_PERMISSIONS = [
 
   // Clients & Marketing
   'voir_clients',
+  'ajouter_clients',
+  'modifier_clients',
+  'supprimer_clients',
   'voir_clients_interesses',
   'codes_promo',
 

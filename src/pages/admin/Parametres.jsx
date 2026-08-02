@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
-import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History } from 'lucide-react'
 import { ALL_PERMISSIONS, useIsAdmin, usePermission } from '../../hooks/usePermissions'
+import { logActivity } from '../../lib/logActivity'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
 import { PHONES_DATABASE } from '../../data/phonesDatabase'
@@ -68,6 +69,9 @@ const PERMISSION_GROUPS = [
     icon: '👥',
     perms: [
       { key: 'voir_clients', label: 'Voir les clients' },
+      { key: 'ajouter_clients', label: 'Ajouter un client' },
+      { key: 'modifier_clients', label: 'Modifier un client' },
+      { key: 'supprimer_clients', label: 'Supprimer un client' },
       { key: 'voir_clients_interesses', label: 'Clients intéressés' },
       { key: 'codes_promo', label: 'Gérer les codes promo' },
     ],
@@ -281,6 +285,11 @@ function EmployeeModal({ employee, onClose, onSaved }) {
 
     setSaving(false)
     if (err) { setError(err.message); return }
+    if (isEdit) {
+      logActivity('employee_update', `Modification employé ${data.name} (${data.email})`)
+    } else {
+      logActivity('employee_create', `Création employé ${data.name} (${data.email})`)
+    }
     onSaved()
     onClose()
   }
@@ -425,6 +434,65 @@ export default function Parametres() {
   const [showBSModal, setShowBSModal] = useState(false)
   const [bsSearch, setBsSearch]       = useState('')
   const [bsResults, setBsResults]     = useState([])
+
+  // Historique
+  const [logs, setLogs]                       = useState([])
+  const [loadingLogs, setLoadingLogs]         = useState(false)
+  const [filterUser, setFilterUser]           = useState('all')
+  const [filterAction, setFilterAction]       = useState('all')
+  const [filterDateStart, setFilterDateStart] = useState('')
+  const [filterDateEnd, setFilterDateEnd]     = useState('')
+
+  const fetchLogs = async () => {
+    setLoadingLogs(true)
+    let q = supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(200)
+    if (filterUser !== 'all')   q = q.eq('user_name', filterUser)
+    if (filterAction !== 'all') q = q.eq('action_type', filterAction)
+    if (filterDateStart)        q = q.gte('created_at', new Date(filterDateStart).toISOString())
+    if (filterDateEnd) {
+      const end = new Date(filterDateEnd)
+      end.setHours(23, 59, 59, 999)
+      q = q.lte('created_at', end.toISOString())
+    }
+    const { data } = await q
+    setLogs(data || [])
+    setLoadingLogs(false)
+  }
+
+  useEffect(() => {
+    if (tab === 'historique') fetchLogs()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, filterUser, filterAction, filterDateStart, filterDateEnd])
+
+  const resetLogFilters = () => {
+    setFilterUser('all')
+    setFilterAction('all')
+    setFilterDateStart('')
+    setFilterDateEnd('')
+  }
+
+  const handleDeleteLog = async (id) => {
+    if (!window.confirm('Supprimer cette entrée d\'historique ?')) return
+    const { error } = await supabase.from('activity_log').delete().eq('id', id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    setLogs((prev) => prev.filter((l) => l.id !== id))
+  }
+
+  const handleClearAllLogs = async () => {
+    if (!window.confirm('Vider tout l\'historique ? Action irréversible, continuer ?')) return
+    const { error } = await supabase.from('activity_log').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (error) { alert('Erreur : ' + error.message); return }
+    fetchLogs()
+  }
+
+  const logActionBadge = (type) => {
+    if (type?.includes('_delete'))    return 'bg-red-100 text-red-700'
+    if (type?.startsWith('vente'))    return 'bg-green-100 text-green-700'
+    if (type?.startsWith('employee')) return 'bg-blue-100 text-blue-700'
+    if (type?.startsWith('client'))   return 'bg-purple-100 text-purple-700'
+    if (type?.startsWith('stock'))    return 'bg-amber-100 text-amber-700'
+    return 'bg-gray-100 text-gray-600'
+  }
 
   const fetchBestSellers = async () => {
     const { data: config } = await supabase
@@ -611,12 +679,18 @@ export default function Parametres() {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Supprimer cet employé ?')) return
-    await supabase.from('staff').delete().eq('id', id)
+    const target = staff.find((s) => s.id === id)
+    const { error } = await supabase.from('staff').delete().eq('id', id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('employee_delete', `Suppression employé ${target?.name || id}`)
     fetchStaff()
   }
 
   const handleToggleActive = async (employee) => {
-    await supabase.from('staff').update({ active: !employee.active }).eq('id', employee.id)
+    const nextActive = !employee.active
+    const { error } = await supabase.from('staff').update({ active: nextActive }).eq('id', employee.id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('employee_toggle_active', `${employee.name} passé ${nextActive ? 'actif' : 'inactif'}`)
     fetchStaff()
   }
 
@@ -631,15 +705,20 @@ export default function Parametres() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-6">
-        {['utilisateurs', 'general'].map((t) => (
+        {[
+          { key: 'utilisateurs', label: 'Utilisateurs' },
+          { key: 'general',      label: 'Général' },
+          { key: 'historique',   label: 'Historique', icon: History },
+        ].map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer capitalize ${
-              tab === t ? 'bg-white text-[#1B2A4A] shadow-sm' : 'text-gray-500 hover:text-[#1B2A4A]'
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+              tab === t.key ? 'bg-white text-[#1B2A4A] shadow-sm' : 'text-gray-500 hover:text-[#1B2A4A]'
             }`}
           >
-            {t === 'utilisateurs' ? 'Utilisateurs' : 'Général'}
+            {t.icon && <t.icon size={14} />}
+            {t.label}
           </button>
         ))}
       </div>
@@ -1009,6 +1088,131 @@ export default function Parametres() {
             </div>
           )}
         </div>
+        </>
+      )}
+
+      {tab === 'historique' && (
+        <>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <p className="text-sm text-gray-500">
+              {logs.length} action{logs.length !== 1 ? 's' : ''} enregistrée{logs.length !== 1 ? 's' : ''}
+            </p>
+            {isAdmin && (
+              <button onClick={handleClearAllLogs}
+                className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-red-100">
+                <Trash2 size={14} />
+                Vider tout l'historique
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Utilisateur
+                </label>
+                <select value={filterUser}
+                  onChange={(e) => setFilterUser(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="all">Tous</option>
+                  {[...new Set(logs.map((l) => l.user_name).filter(Boolean))].map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Type d'action
+                </label>
+                <select value={filterAction}
+                  onChange={(e) => setFilterAction(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="all">Tous</option>
+                  {[...new Set(logs.map((l) => l.action_type).filter(Boolean))].map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Du</label>
+                <input type="date" value={filterDateStart}
+                  onChange={(e) => setFilterDateStart(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Au</label>
+                <input type="date" value={filterDateEnd}
+                  onChange={(e) => setFilterDateEnd(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div className="flex items-end">
+                <button onClick={resetLogFilters}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-[#1B2A4A]">
+                  ✕ Réinitialiser
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {loadingLogs ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <History size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Aucune action enregistrée pour l'instant.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Date / Heure</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Utilisateur</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Action</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Détail</th>
+                    {isAdmin && <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">—</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log) => {
+                    const d = new Date(log.created_at)
+                    const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+                    const magNom = log.magasin_id
+                      ? (MAGASINS[log.magasin_id]?.nom?.replace('Seb Telecom — ', '') || log.magasin_id)
+                      : '—'
+                    return (
+                      <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="px-4 py-2.5 text-xs font-mono text-gray-500 whitespace-nowrap">{dateStr}</td>
+                        <td className="px-4 py-2.5">
+                          <p className="text-sm font-medium text-[#1B2A4A]">{log.user_name || '—'}</p>
+                          {log.user_email && <p className="text-xs text-gray-400">{log.user_email}</p>}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-gray-600">{magNom}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${logActionBadge(log.action_type)}`}>
+                            {log.action_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-gray-700">{log.detail || '—'}</td>
+                        {isAdmin && (
+                          <td className="px-4 py-2.5 text-center">
+                            <button onClick={() => handleDeleteLog(log.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg">
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
 
