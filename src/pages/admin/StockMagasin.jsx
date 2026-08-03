@@ -2,13 +2,16 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
-         Menu, Lock, Unlock, LogOut } from 'lucide-react'
+         Menu, Lock, Unlock, LogOut,
+         Settings, Clock, Save } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import ReceiptTicket from '../../components/admin/ReceiptTicket'
 import ZFinancierReport from '../../components/admin/ZFinancierReport'
 import CaisseAccueil from '../../components/admin/CaisseAccueil'
 import CaissePinLock from '../../components/admin/CaissePinLock'
+import { calcSalairePeriode } from '../../lib/calcSalaire'
+import { logActivity } from '../../lib/logActivity'
 
 const POS_CATEGORIES = [
   'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
@@ -20,6 +23,8 @@ const POS_CATEGORIES = [
 export default function StockMagasin() {
   const isAdmin = useIsAdmin()
   const hasPermission = usePermission('stock_magasin')
+  const canManageStaff = usePermission('gerer_utilisateurs')
+  const canAccessParamsCaisse = isAdmin || canManageStaff
 
   const [magasin, setMagasin] = useState('')
   const [categories, setCategories] = useState([])
@@ -84,6 +89,29 @@ export default function StockMagasin() {
 
   // Verrou PIN caisse
   const [caisseSession, setCaisseSession] = useState(null)
+
+  // Paramètres caisse (PIN/horaires/salaire par employé)
+  const [staffListCaisse, setStaffListCaisse]           = useState([])
+  const [loadingStaffCaisse, setLoadingStaffCaisse]     = useState(false)
+  const [selectedStaffCaisse, setSelectedStaffCaisse]   = useState(null)
+  const [editPinCaisse, setEditPinCaisse]               = useState('')
+  const [editWageCaisse, setEditWageCaisse]             = useState('')
+  const [savingStaffCaisse, setSavingStaffCaisse]       = useState(false)
+  const [horairesCaisse, setHorairesCaisse]             = useState([])
+  const [pointageAujourdhui, setPointageAujourdhui]     = useState(null)
+  const [salaireMoisCaisse, setSalaireMoisCaisse]       = useState(null)
+  const [loadingDetailCaisse, setLoadingDetailCaisse]   = useState(false)
+  const [savingHorairesCaisse, setSavingHorairesCaisse] = useState(false)
+
+  const DAYS_CAISSE = [
+    { num: 1, label: 'Lundi' },
+    { num: 2, label: 'Mardi' },
+    { num: 3, label: 'Mercredi' },
+    { num: 4, label: 'Jeudi' },
+    { num: 5, label: 'Vendredi' },
+    { num: 6, label: 'Samedi' },
+    { num: 0, label: 'Dimanche' },
+  ]
   const [clockNow, setClockNow] = useState(() => {
     const d = new Date()
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`
@@ -166,6 +194,115 @@ export default function StockMagasin() {
     localStorage.removeItem(`sebphone_caisse_session_${magasin}`)
     setCaisseSession(null)
   }
+
+  // ─── Paramètres caisse : fetchers & handlers ───
+  const fetchStaffCaisse = async () => {
+    setLoadingStaffCaisse(true)
+    const { data } = await supabase
+      .from('staff')
+      .select('*')
+      .eq('active', true)
+      .order('name', { ascending: true })
+    setStaffListCaisse(data || [])
+    setLoadingStaffCaisse(false)
+  }
+
+  const openStaffDetailCaisse = async (staff) => {
+    setSelectedStaffCaisse(staff)
+    setEditPinCaisse(staff.pin_code || '')
+    setEditWageCaisse(staff.hourly_wage ?? '')
+    setLoadingDetailCaisse(true)
+
+    const today = new Date().toISOString().slice(0, 10)
+    const firstOfMonth = new Date()
+    firstOfMonth.setDate(1)
+    const dateStart = firstOfMonth.toISOString().slice(0, 10)
+
+    const [schedRes, pointRes, salaire] = await Promise.all([
+      supabase.from('staff_schedules').select('*').eq('staff_id', staff.id),
+      supabase.from('staff_pointages').select('*').eq('staff_id', staff.id).eq('date', today).maybeSingle(),
+      calcSalairePeriode(supabase, staff.id, staff.hourly_wage || 0, dateStart, today),
+    ])
+
+    const map = new Map((schedRes.data || []).map((s) => [s.jour_semaine, s]))
+    const filled = DAYS_CAISSE.map((d) => {
+      const existing = map.get(d.num)
+      return {
+        jour_semaine: d.num,
+        repos: existing?.repos ?? false,
+        heure_debut: existing?.heure_debut || '10:00',
+        heure_fin:   existing?.heure_fin   || '20:00',
+      }
+    })
+    setHorairesCaisse(filled)
+    setPointageAujourdhui(pointRes.data || null)
+    setSalaireMoisCaisse(salaire)
+    setLoadingDetailCaisse(false)
+  }
+
+  const handleSavePinWageCaisse = async () => {
+    if (!selectedStaffCaisse) return
+    if (editPinCaisse) {
+      if (!/^\d{4}$/.test(editPinCaisse)) {
+        alert('Le code PIN doit contenir exactement 4 chiffres')
+        return
+      }
+      const { data: dup } = await supabase
+        .from('staff')
+        .select('id')
+        .eq('pin_code', editPinCaisse)
+        .neq('id', selectedStaffCaisse.id)
+      if (dup && dup.length > 0) {
+        alert('Ce code PIN est déjà utilisé par un autre employé')
+        return
+      }
+    }
+    setSavingStaffCaisse(true)
+    const { error } = await supabase.from('staff').update({
+      pin_code: editPinCaisse || null,
+      hourly_wage: Number(editWageCaisse) || 0,
+    }).eq('id', selectedStaffCaisse.id)
+    setSavingStaffCaisse(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('staff_pin_wage_update', `PIN/salaire mis à jour pour ${selectedStaffCaisse.name}`)
+    alert('✅ Enregistré')
+    fetchStaffCaisse()
+  }
+
+  const updateHoraireCaisse = (jourNum, field, value) => {
+    setHorairesCaisse((prev) => prev.map((h) =>
+      h.jour_semaine === jourNum ? { ...h, [field]: value } : h
+    ))
+  }
+
+  const handleSaveHorairesCaisse = async () => {
+    if (!selectedStaffCaisse) return
+    setSavingHorairesCaisse(true)
+    const rows = horairesCaisse.map((h) => ({
+      staff_id: selectedStaffCaisse.id,
+      jour_semaine: h.jour_semaine,
+      repos: h.repos,
+      heure_debut: h.repos ? null : h.heure_debut,
+      heure_fin:   h.repos ? null : h.heure_fin,
+    }))
+    const { error } = await supabase.from('staff_schedules')
+      .upsert(rows, { onConflict: 'staff_id,jour_semaine' })
+    setSavingHorairesCaisse(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('staff_schedule_update', `Horaires mis à jour pour ${selectedStaffCaisse.name}`)
+    alert('✅ Horaires enregistrés')
+  }
+
+  // Redirect si l'utilisateur atteint parametres sans les droits
+  useEffect(() => {
+    if (posScreen === 'parametres' && !canAccessParamsCaisse) {
+      setPosScreen('accueil')
+    }
+    if (posScreen === 'parametres' && staffListCaisse.length === 0) {
+      fetchStaffCaisse()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posScreen, canAccessParamsCaisse])
 
   useEffect(() => {
     if (magasin) {
@@ -996,6 +1133,8 @@ export default function StockMagasin() {
           lastClosure={lastClosure}
           onOpenCaisse={() => setPosScreen('caisse')}
           onOpenGestion={() => { setPosScreen('gestion'); setActiveTab('stock') }}
+          onOpenParametresCaisse={() => { setPosScreen('parametres'); fetchStaffCaisse() }}
+          showParametresCaisseTile={canAccessParamsCaisse}
           onAcompteRecorded={fetchCaisseToday}
         />
       )}
@@ -1076,6 +1215,219 @@ export default function StockMagasin() {
               Dernière clôture : {new Date(lastClosure.period_end).toLocaleString('fr-BE')}
             </p>
           )}
+        </div>
+      )}
+
+      {/* ÉCRAN PARAMÈTRES CAISSE */}
+      {posScreen === 'parametres' && canAccessParamsCaisse && (
+        <div className="max-w-6xl mx-auto">
+          <button onClick={() => setPosScreen('accueil')}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
+          </button>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[#1B2A4A]">Paramètres caisse</h1>
+            <p className="text-sm text-gray-500 mt-1">PIN, horaires et salaires</p>
+          </div>
+
+          <div className="flex gap-4">
+            {/* Colonne gauche : liste employés */}
+            <div className="w-[300px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 p-2 max-h-[calc(100vh-220px)] overflow-y-auto">
+              {loadingStaffCaisse ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-6 h-6 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : staffListCaisse.length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-8">Aucun employé actif</p>
+              ) : (
+                staffListCaisse.map((s) => {
+                  const initials = s.name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '??'
+                  const isSel = selectedStaffCaisse?.id === s.id
+                  const magNom = MAGASINS_LIST.find((m) => m.id === s.magasin_id)?.nom || s.magasin_id
+                  return (
+                    <button key={s.id}
+                      onClick={() => openStaffDetailCaisse(s)}
+                      className={`w-full text-left p-3 rounded-xl mb-1 flex items-center gap-3 transition-all ${
+                        isSel ? 'bg-cyan-50 border-2 border-[#00B4CC]' : 'hover:bg-gray-50 border-2 border-transparent'
+                      }`}>
+                      <div className="w-9 h-9 rounded-lg bg-[#1B2A4A] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-[#1B2A4A] text-sm truncate">{s.name}</p>
+                        <p className="text-[10px] text-gray-400 truncate">{magNom}</p>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Colonne droite : détail employé */}
+            <div className="flex-1 min-w-0">
+              {!selectedStaffCaisse ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400">
+                  <Settings size={32} className="mx-auto mb-3 opacity-40" />
+                  <p className="text-sm">Sélectionnez un employé pour configurer son PIN, ses horaires et son salaire</p>
+                </div>
+              ) : loadingDetailCaisse ? (
+                <div className="flex items-center justify-center h-60">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+
+                  {/* a) Identifiants */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <h3 className="font-bold text-[#1B2A4A] mb-3">Identifiants</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                          Code PIN (pointeuse)
+                        </label>
+                        <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={4}
+                          value={editPinCaisse}
+                          onChange={(e) => setEditPinCaisse(e.target.value.replace(/\D/g, ''))}
+                          placeholder="1234"
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-mono tracking-widest" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                          Salaire horaire (€)
+                        </label>
+                        <input type="number" step="0.5" min="0"
+                          value={editWageCaisse}
+                          onChange={(e) => setEditWageCaisse(e.target.value)}
+                          placeholder="10"
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                    </div>
+                    <button onClick={handleSavePinWageCaisse}
+                      disabled={savingStaffCaisse}
+                      className="mt-3 flex items-center gap-2 bg-[#00B4CC] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-cyan-600 disabled:opacity-50">
+                      <Save size={14} /> {savingStaffCaisse ? 'Enregistrement...' : 'Enregistrer'}
+                    </button>
+                  </div>
+
+                  {/* b) Horaires semaine */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <h3 className="font-bold text-[#1B2A4A] mb-3 flex items-center gap-2">
+                      <Clock size={16} /> Horaires de la semaine
+                    </h3>
+                    <div className="space-y-2">
+                      {DAYS_CAISSE.map((d) => {
+                        const h = horairesCaisse.find((x) => x.jour_semaine === d.num)
+                        if (!h) return null
+                        return (
+                          <div key={d.num} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 flex-wrap">
+                            <div className="w-20 text-sm font-bold text-[#1B2A4A]">{d.label}</div>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" checked={h.repos}
+                                onChange={(e) => updateHoraireCaisse(d.num, 'repos', e.target.checked)}
+                                className="w-4 h-4 accent-[#00B4CC]" />
+                              <span className="text-xs font-medium text-gray-600">Repos</span>
+                            </label>
+                            <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                              <input type="time" value={h.heure_debut} disabled={h.repos}
+                                onChange={(e) => updateHoraireCaisse(d.num, 'heure_debut', e.target.value)}
+                                className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${h.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`} />
+                              <span className="text-gray-400 text-xs">→</span>
+                              <input type="time" value={h.heure_fin} disabled={h.repos}
+                                onChange={(e) => updateHoraireCaisse(d.num, 'heure_fin', e.target.value)}
+                                className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${h.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <button onClick={handleSaveHorairesCaisse}
+                      disabled={savingHorairesCaisse}
+                      className="mt-3 flex items-center gap-2 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC] disabled:opacity-50">
+                      <Save size={14} /> {savingHorairesCaisse ? 'Enregistrement...' : 'Enregistrer les horaires'}
+                    </button>
+                  </div>
+
+                  {/* c) Aujourd'hui & ce mois */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <h3 className="font-bold text-[#1B2A4A] mb-3">Aujourd'hui & ce mois</h3>
+                    <div className="bg-gray-50 rounded-xl p-3 mb-4">
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Pointage du jour</p>
+                      {pointageAujourdhui ? (
+                        <div className="text-sm space-y-1">
+                          <p>
+                            <span className="text-gray-500">Arrivée : </span>
+                            <span className="font-bold text-[#1B2A4A]">
+                              {new Date(pointageAujourdhui.heure_arrivee).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </p>
+                          <p>
+                            <span className="text-gray-500">Départ : </span>
+                            {pointageAujourdhui.heure_depart ? (
+                              <span className="font-bold text-[#1B2A4A]">
+                                {new Date(pointageAujourdhui.heure_depart).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            ) : (
+                              <span className="text-amber-600 font-bold">En cours</span>
+                            )}
+                          </p>
+                          {pointageAujourdhui.penalite_retard > 0 && (
+                            <p className="text-red-600 font-bold text-xs mt-1">
+                              Retard de {pointageAujourdhui.retard_minutes} min — pénalité -{pointageAujourdhui.penalite_retard}€
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400">Pas encore pointé aujourd'hui</p>
+                      )}
+                    </div>
+
+                    {salaireMoisCaisse && (
+                      <>
+                        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Salaire du mois en cours</p>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+                          <div className="bg-gray-50 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase">Heures</p>
+                            <p className="text-lg font-bold text-[#1B2A4A] mt-1">{salaireMoisCaisse.totalHeures.toFixed(1)}h</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase">Salaire brut</p>
+                            <p className="text-lg font-bold text-[#1B2A4A] mt-1">{salaireMoisCaisse.salaireBrut.toFixed(2)}€</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase">Pénalités retard</p>
+                            <p className={`text-lg font-bold mt-1 ${salaireMoisCaisse.penalitesRetard > 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                              {salaireMoisCaisse.penalitesRetard > 0 ? '-' : ''}{salaireMoisCaisse.penalitesRetard.toFixed(2)}€
+                            </p>
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase">Absences</p>
+                            <p className={`text-lg font-bold mt-1 ${salaireMoisCaisse.absencesCount > 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                              {salaireMoisCaisse.absencesCount} jour{salaireMoisCaisse.absencesCount !== 1 ? 's' : ''}
+                            </p>
+                            {salaireMoisCaisse.penalitesAbsence > 0 && (
+                              <p className="text-xs text-red-600 font-bold">-{salaireMoisCaisse.penalitesAbsence}€</p>
+                            )}
+                          </div>
+                          <div className="bg-gray-50 rounded-xl p-3">
+                            <p className="text-[10px] font-bold text-gray-500 uppercase">Commissions</p>
+                            <p className="text-lg font-bold text-green-600 mt-1">+{salaireMoisCaisse.commissionsTotal.toFixed(2)}€</p>
+                          </div>
+                        </div>
+                        <div className="rounded-2xl p-5 text-white shadow-md flex items-center justify-between"
+                          style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)' }}>
+                          <p className="text-xs uppercase opacity-70 font-bold">Total net (ce mois)</p>
+                          <p className={`text-3xl font-black ${salaireMoisCaisse.salaireNet < 0 ? 'text-red-300' : 'text-white'}`}>
+                            {salaireMoisCaisse.salaireNet.toFixed(2)}€
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

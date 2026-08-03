@@ -4,7 +4,7 @@ import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2,
+  Plus, Pencil, Trash2, Settings,
 } from 'lucide-react'
 
 const COLORS = {
@@ -15,6 +15,7 @@ const COLORS = {
   green: '#16a34a',
   purple: '#8b5cf6',
   pink: '#ec4899',
+  slate: '#64748b',
   teal: '#0d9488',
 }
 
@@ -69,6 +70,8 @@ export default function CaisseAccueil({
   lastClosure = null,
   onOpenCaisse,
   onOpenGestion,
+  onOpenParametresCaisse,
+  showParametresCaisseTile = false,
   onAcompteRecorded = () => {},
 }) {
   const [showClientModal, setShowClientModal] = useState(false)
@@ -488,6 +491,15 @@ export default function CaisseAccueil({
           subtitle="Catégories & inventaire"
           onClick={onOpenGestion}
         />
+
+        {/* PARAMÈTRES CAISSE */}
+        {showParametresCaisseTile && (
+          <Tile color={COLORS.slate} icon={Settings}
+            title="Paramètres"
+            subtitle="PIN, horaires, salaires"
+            onClick={onOpenParametresCaisse}
+          />
+        )}
 
         {/* RÉPARATIONS */}
         <Tile color={COLORS.amber} icon={Wrench}
