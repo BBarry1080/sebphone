@@ -85,7 +85,7 @@ export default function CaisseAccueil({
     montant_paye: '', payment_method: 'cash',
   })
   const [repairForm, setRepairForm] = useState({
-    nom: '', date: today, imei: '', bon_number: '', client_number: '',
+    nom: '', date: today, appareil: '', imei: '', bon_number: '', client_number: '',
     magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
     montant_paye: '', payment_method: 'cash',
   })
@@ -306,7 +306,7 @@ export default function CaisseAccueil({
       .select('*', { count: 'exact', head: true })
       .eq('magasin_id', magasin)
     setRepairForm({
-      nom: '', date: today, imei: '',
+      nom: '', date: today, appareil: '', imei: '',
       bon_number: 'BON-' + pad4((repairCount || 0) + 1),
       client_number: 'CL-' + pad4((clientCount || 0) + 1),
       magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
@@ -372,6 +372,7 @@ export default function CaisseAccueil({
       client_number: repairForm.client_number,
       magasin_id: repairForm.magasin_id,
       date: repairForm.date,
+      appareil: repairForm.appareil || null,
       imei: repairForm.imei || null,
       type_panne: repairForm.type_panne || null,
       prix: repairForm.prix ? Number(repairForm.prix) : null,
@@ -646,6 +647,13 @@ export default function CaisseAccueil({
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Date</label>
                 <input type="date" value={repairForm.date}
                   onChange={(e) => setRepairForm((f) => ({ ...f, date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Appareil (modèle)</label>
+                <input value={repairForm.appareil}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, appareil: e.target.value }))}
+                  placeholder="ex: iPhone 13, Samsung A54..."
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
               </div>
               <div>
@@ -1180,6 +1188,7 @@ export default function CaisseAccueil({
               <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>N° client</div><div style={{ fontFamily: 'monospace' }}>{lastBon.client_number}</div></div>
               <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Magasin</div><div>{magasinName(lastBon.magasin_id)}</div></div>
               <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Date de dépôt</div><div>{new Date(lastBon.date).toLocaleDateString('fr-BE')}</div></div>
+              <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Appareil</div><div>{lastBon.appareil || '—'}</div></div>
               <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>IMEI / N° série</div><div style={{ fontFamily: 'monospace' }}>{lastBon.imei || '—'}</div></div>
               <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Type de panne</div><div>{lastBon.type_panne || '—'}</div></div>
               <div><div style={{ fontSize: 10, textTransform: 'uppercase', color: '#888', fontWeight: 'bold' }}>Prix estimé</div><div style={{ fontWeight: 'bold' }}>{lastBon.prix != null ? `${Number(lastBon.prix).toFixed(2)}€` : '—'}</div></div>

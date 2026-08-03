@@ -4,7 +4,15 @@ import { supabase } from '../../lib/supabase'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import { logActivity } from '../../lib/logActivity'
 import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
-import { Plus, Pencil, Trash2, MapPin, Download, Mail, Search, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, MapPin, Download, Mail, Search, X, Wrench, Users } from 'lucide-react'
+
+function getGarantieInfo(dateRecup) {
+  if (!dateRecup) return null
+  const fin = new Date(dateRecup)
+  fin.setFullYear(fin.getFullYear() + 2)
+  const joursRestants = Math.ceil((fin - new Date()) / 86400000)
+  return { fin, joursRestants, expiree: joursRestants < 0 }
+}
 
 const pad4 = (n) => String(n).padStart(4, '0')
 
@@ -36,6 +44,114 @@ export default function Clients() {
   const [editingClient, setEditingClient]     = useState(null)
   const [form, setForm]                       = useState(emptyForm())
   const [saving, setSaving]                   = useState(false)
+
+  // Onglet Réparations & Garantie
+  const [tab, setTab] = useState('clients') // 'clients' | 'repairs'
+  const [repairsList, setRepairsList]         = useState([])
+  const [loadingRepairs, setLoadingRepairs]   = useState(false)
+  const [searchRepair, setSearchRepair]       = useState('')
+  const [filterStatus, setFilterStatus]       = useState('all')
+  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [editingRepair, setEditingRepair]     = useState(null)
+  const [newStatus, setNewStatus]             = useState('en_attente')
+  const [newDateRecup, setNewDateRecup]       = useState('')
+
+  const fetchRepairsRegistre = async () => {
+    setLoadingRepairs(true)
+    const [repairsRes, clientsRes] = await Promise.all([
+      supabase.from('repairs').select('*').order('created_at', { ascending: false }).limit(300),
+      supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(300),
+    ])
+    const rRows = (repairsRes.data || []).map((r) => ({
+      id: r.id,
+      source: 'repair',
+      nom: r.client_nom,
+      appareil: r.appareil || null,
+      imei: r.imei || null,
+      type_panne: r.type_panne,
+      magasin_id: r.magasin_id,
+      date: r.date,
+      client_number: r.client_number,
+      bon_number: r.bon_number || null,
+      status: r.status || null,
+      date_recuperation: r.date_recuperation || null,
+      tel: r.tel, email: r.email,
+    }))
+    const cRows = (clientsRes.data || []).map((c) => ({
+      id: c.id,
+      source: 'client',
+      nom: c.nom,
+      appareil: null,
+      imei: null,
+      type_panne: c.type_panne,
+      magasin_id: c.magasin_id,
+      date: c.date,
+      client_number: c.client_number,
+      bon_number: null,
+      status: null,
+      date_recuperation: null,
+      tel: c.tel, email: c.email,
+    }))
+    const merged = [...rRows, ...cRows].sort((a, b) => {
+      const da = a.date ? new Date(a.date).getTime() : 0
+      const db = b.date ? new Date(b.date).getTime() : 0
+      return db - da
+    })
+    setRepairsList(merged)
+    setLoadingRepairs(false)
+  }
+
+  useEffect(() => {
+    if (tab === 'repairs') fetchRepairsRegistre()
+  }, [tab])
+
+  const filteredRepairs = useMemo(() => {
+    const q = searchRepair.trim().toLowerCase()
+    return repairsList.filter((row) => {
+      if (filterStatus === 'clients') {
+        if (row.source !== 'client') return false
+      } else if (filterStatus !== 'all') {
+        if (row.status !== filterStatus) return false
+      }
+      if (!q) return true
+      const target = [row.nom, row.imei, row.client_number, row.bon_number]
+        .filter(Boolean).join(' ').toLowerCase()
+      return target.includes(q)
+    })
+  }, [repairsList, searchRepair, filterStatus])
+
+  const openStatusModal = (row) => {
+    if (row.source !== 'repair') return
+    setEditingRepair(row)
+    setNewStatus(row.status || 'en_attente')
+    setNewDateRecup(row.date_recuperation || new Date().toISOString().slice(0, 10))
+    setShowStatusModal(true)
+  }
+
+  const handleSaveStatus = async () => {
+    if (!editingRepair) return
+    const dateRecup = newStatus === 'termine' ? (newDateRecup || new Date().toISOString().slice(0, 10)) : null
+    const { error } = await supabase.from('repairs')
+      .update({ status: newStatus, date_recuperation: dateRecup })
+      .eq('id', editingRepair.id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity(
+      'repair_status_update',
+      `${editingRepair.nom} — statut changé en ${newStatus}${newStatus === 'termine' ? ' (garantie 2 ans démarrée)' : ''}`
+    )
+    setShowStatusModal(false)
+    setEditingRepair(null)
+    fetchRepairsRegistre()
+  }
+
+  const statusBadgeClass = (s) =>
+    s === 'termine'    ? 'bg-green-100 text-green-700'  :
+    s === 'en_cours'   ? 'bg-amber-100 text-amber-700'  :
+    s === 'abandonne'  ? 'bg-gray-200 text-gray-500'    :
+    s === 'en_attente' ? 'bg-blue-100 text-blue-700'    :
+                          'bg-gray-100 text-gray-500'
+
+  const magasinNom = (id) => MAGASINS_PHYSIQUES.find((m) => m.id === id)?.nom || id || '—'
 
   const fetchClients = async () => {
     setLoading(true)
@@ -204,6 +320,25 @@ export default function Clients() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
+      {/* Tab bar */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit mb-6">
+        {[
+          { key: 'clients', label: 'Clients', icon: Users },
+          { key: 'repairs', label: 'Réparations & Garantie', icon: Wrench },
+        ].map((t) => (
+          <button key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+              tab === t.key ? 'bg-white text-[#1B2A4A] shadow-sm' : 'text-gray-500 hover:text-[#1B2A4A]'
+            }`}>
+            <t.icon size={14} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'clients' && (
+        <>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#1B2A4A]">Clients</h1>
@@ -330,6 +465,129 @@ export default function Clients() {
           </button>
         </div>
       </div>
+        </>
+      )}
+
+      {tab === 'repairs' && (
+        <>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-[#1B2A4A]">Réparations & Garantie</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                {filteredRepairs.length} résultat{filteredRepairs.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="md:col-span-2">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Recherche</label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input type="text" value={searchRepair}
+                    onChange={(e) => setSearchRepair(e.target.value)}
+                    placeholder="Nom, IMEI, n° client ou bon..."
+                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Statut</label>
+                <select value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none">
+                  <option value="all">Tous</option>
+                  <option value="en_attente">En attente</option>
+                  <option value="en_cours">En cours</option>
+                  <option value="termine">Terminé</option>
+                  <option value="abandonne">Abandonné</option>
+                  <option value="clients">Clients simples</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+            {loadingRepairs ? (
+              <div className="flex items-center justify-center h-60">
+                <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : filteredRepairs.length === 0 ? (
+              <div className="text-center py-16 text-gray-400 text-sm">Aucun résultat.</div>
+            ) : (
+              <div className="overflow-x-auto max-h-[calc(100vh-320px)]">
+                <table className="w-full text-sm border-collapse">
+                  <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                    <tr>
+                      {['Nom','Appareil','N° / Bon','Magasin','Date','Statut','Garantie'].map((h) => (
+                        <th key={h} className="text-left px-3 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRepairs.map((row) => {
+                      const isRepair = row.source === 'repair'
+                      const garantie = isRepair ? getGarantieInfo(row.date_recuperation) : null
+                      return (
+                        <tr key={`${row.source}-${row.id}`}
+                          onClick={() => openStatusModal(row)}
+                          className={`border-b border-gray-100 transition-colors ${isRepair ? 'cursor-pointer hover:bg-cyan-50' : 'cursor-default hover:bg-gray-50'}`}>
+                          <td className="px-3 py-2.5 font-medium text-[#1B2A4A]">{row.nom}</td>
+                          <td className="px-3 py-2.5 text-xs">
+                            {row.appareil ? (
+                              <>
+                                <p className="text-gray-700">{row.appareil}</p>
+                                {row.imei && <p className="text-[10px] text-gray-400 font-mono mt-0.5">IMEI {row.imei}</p>}
+                              </>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs font-mono text-gray-500 whitespace-nowrap">
+                            {row.bon_number || row.client_number || '—'}
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-gray-600">{magasinNom(row.magasin_id)}</td>
+                          <td className="px-3 py-2.5 text-xs text-gray-600 whitespace-nowrap">
+                            {row.date ? new Date(row.date).toLocaleDateString('fr-BE') : '—'}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            {isRepair ? (
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBadgeClass(row.status)}`}>
+                                {row.status || '—'}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                                Client
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            {!isRepair ? (
+                              <span className="text-xs text-gray-400">—</span>
+                            ) : !row.date_recuperation ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                                Non récupéré
+                              </span>
+                            ) : garantie.expiree ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                                Expirée depuis {-garantie.joursRestants}j
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                                {garantie.joursRestants}j restants
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* MODAL Nouveau / Éditer */}
       {showModal && (
@@ -413,6 +671,60 @@ export default function Clients() {
                   {saving ? 'Enregistrement...' : (editingClient ? 'Sauvegarder' : 'Créer')}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CHANGEMENT STATUT RÉPARATION */}
+      {showStatusModal && editingRepair && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-[#1B2A4A]">Statut réparation</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{editingRepair.nom}</p>
+              </div>
+              <button onClick={() => setShowStatusModal(false)}
+                className="text-gray-400 hover:text-gray-700">
+                <X size={20}/>
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Statut</label>
+                <select value={newStatus}
+                  onChange={(e) => setNewStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="en_attente">En attente</option>
+                  <option value="en_cours">En cours</option>
+                  <option value="termine">Terminé</option>
+                  <option value="abandonne">Abandonné</option>
+                </select>
+              </div>
+              {newStatus === 'termine' && (
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                    Date de récupération
+                  </label>
+                  <input type="date" value={newDateRecup}
+                    onChange={(e) => setNewDateRecup(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    La garantie de 2 ans démarre à cette date
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowStatusModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Annuler
+              </button>
+              <button onClick={handleSaveStatus}
+                className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                Enregistrer
+              </button>
             </div>
           </div>
         </div>
