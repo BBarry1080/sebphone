@@ -1,11 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Delete, CheckCircle2, XCircle } from 'lucide-react'
-
-function calcPenalite(retardMin) {
-  if (retardMin < 15) return 0
-  return 20 * (1 + Math.floor((retardMin - 15) / 60))
-}
+import { calcPenalite } from '../../lib/calcSalaire'
 
 const pad2 = (n) => String(n).padStart(2, '0')
 
@@ -107,24 +103,32 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
       const nowISO = new Date().toISOString()
 
       if (existing) {
-        setFeedback({ type: 'welcome', firstName, heure: nowT, retardMin: 0, penalite: 0 })
+        const heureAffichee = existing.heure_arrivee
+          ? new Date(existing.heure_arrivee).toLocaleTimeString('fr-BE',
+              { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          : nowT
+        setFeedback({
+          type: 'welcome', firstName, heure: heureAffichee,
+          retardMin: existing.retard_minutes || 0,
+          penalite: existing.penalite_retard || 0,
+        })
         setTimeout(() => onUnlock(emp, existing.id, existing.heure_arrivee), 1500)
         setProcessing(false)
         return
       }
 
-      const jourSem = new Date().getDay()
-      const { data: schedule } = await supabase
-        .from('staff_schedules')
+      const todayDateStr = todayStr()
+      const { data: schedDate } = await supabase
+        .from('staff_schedule_dates')
         .select('*')
         .eq('staff_id', emp.id)
-        .eq('jour_semaine', jourSem)
+        .eq('date', todayDateStr)
         .maybeSingle()
 
       let retardMin = 0
       let penalite = 0
-      if (schedule && !schedule.repos && schedule.heure_debut) {
-        const [ph, pm] = schedule.heure_debut.split(':').map(Number)
+      if (schedDate && !schedDate.repos && schedDate.heure_debut) {
+        const [ph, pm] = schedDate.heure_debut.split(':').map(Number)
         const now = new Date()
         const plannedMinutes = ph * 60 + pm
         const actualMinutes = now.getHours() * 60 + now.getMinutes()
@@ -171,7 +175,7 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
         <p className="text-2xl font-black font-mono text-[#00B4CC] mb-2">
           {feedback.heure}
         </p>
-        {feedback.type === 'arrivee' && feedback.penalite > 0 && (
+        {(feedback.type === 'arrivee' || feedback.type === 'welcome') && feedback.penalite > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-700 text-xs font-bold">
             Retard {feedback.retardMin} min · -{feedback.penalite}€
           </div>

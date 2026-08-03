@@ -1,8 +1,15 @@
+export function calcPenalite(retardMin) {
+  if (retardMin < 15) return 0
+  return 20 * (1 + Math.floor((retardMin - 15) / 60))
+}
+
 export async function calcSalairePeriode(supabase, staffId, hourlyWage, dateStart, dateEnd) {
   const { data: schedules } = await supabase
-    .from('staff_schedules')
+    .from('staff_schedule_dates')
     .select('*')
     .eq('staff_id', staffId)
+    .gte('date', dateStart)
+    .lte('date', dateEnd)
 
   const { data: pointages } = await supabase
     .from('staff_pointages')
@@ -27,8 +34,7 @@ export async function calcSalairePeriode(supabase, staffId, hourlyWage, dateStar
   const end = new Date(dateEnd)
   while (d <= end) {
     const dateStr = d.toISOString().slice(0, 10)
-    const dow = d.getDay()
-    const schedule = schedules?.find((s) => s.jour_semaine === dow)
+    const schedule = schedules?.find((s) => s.date === dateStr)
 
     if (schedule && !schedule.repos) {
       const pointage = pointages?.find((p) => p.date === dateStr)

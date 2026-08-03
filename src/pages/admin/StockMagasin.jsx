@@ -11,6 +11,7 @@ import ReceiptTicket from '../../components/admin/ReceiptTicket'
 import ZFinancierReport from '../../components/admin/ZFinancierReport'
 import CaisseAccueil from '../../components/admin/CaisseAccueil'
 import CaissePinLock from '../../components/admin/CaissePinLock'
+import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
 import { calcSalairePeriode } from '../../lib/calcSalaire'
 import { logActivity } from '../../lib/logActivity'
 
@@ -135,21 +136,9 @@ export default function StockMagasin() {
   const [editPinCaisse, setEditPinCaisse]               = useState('')
   const [editWageCaisse, setEditWageCaisse]             = useState('')
   const [savingStaffCaisse, setSavingStaffCaisse]       = useState(false)
-  const [horairesCaisse, setHorairesCaisse]             = useState([])
   const [pointageAujourdhui, setPointageAujourdhui]     = useState(null)
   const [salaireMoisCaisse, setSalaireMoisCaisse]       = useState(null)
   const [loadingDetailCaisse, setLoadingDetailCaisse]   = useState(false)
-  const [savingHorairesCaisse, setSavingHorairesCaisse] = useState(false)
-
-  const DAYS_CAISSE = [
-    { num: 1, label: 'Lundi' },
-    { num: 2, label: 'Mardi' },
-    { num: 3, label: 'Mercredi' },
-    { num: 4, label: 'Jeudi' },
-    { num: 5, label: 'Vendredi' },
-    { num: 6, label: 'Samedi' },
-    { num: 0, label: 'Dimanche' },
-  ]
   const [clockNow, setClockNow] = useState(() => {
     const d = new Date()
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`
@@ -209,14 +198,15 @@ export default function StockMagasin() {
     setCaisseSession(null)
   }, [magasin])
 
-  const handleUnlock = (staffRecord, pointageId) => {
+  const handleUnlock = (staffRecord, pointageId, arrivalTimeISO) => {
     const session = {
       staffId: staffRecord.id,
       staffName: staffRecord.name,
       pointageId,
       dateStr: new Date().toISOString().slice(0, 10),
-      arrivalDisplay: new Date().toLocaleTimeString('fr-BE',
-        { hour: '2-digit', minute: '2-digit' }),
+      arrivalDisplay: arrivalTimeISO
+        ? new Date(arrivalTimeISO).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }),
     }
     localStorage.setItem(`sebphone_caisse_session_${magasin}`,
       JSON.stringify(session))
@@ -256,23 +246,11 @@ export default function StockMagasin() {
     firstOfMonth.setDate(1)
     const dateStart = firstOfMonth.toISOString().slice(0, 10)
 
-    const [schedRes, pointRes, salaire] = await Promise.all([
-      supabase.from('staff_schedules').select('*').eq('staff_id', staff.id),
+    const [pointRes, salaire] = await Promise.all([
       supabase.from('staff_pointages').select('*').eq('staff_id', staff.id).eq('date', today).maybeSingle(),
       calcSalairePeriode(supabase, staff.id, staff.hourly_wage || 0, dateStart, today),
     ])
 
-    const map = new Map((schedRes.data || []).map((s) => [s.jour_semaine, s]))
-    const filled = DAYS_CAISSE.map((d) => {
-      const existing = map.get(d.num)
-      return {
-        jour_semaine: d.num,
-        repos: existing?.repos ?? false,
-        heure_debut: existing?.heure_debut || '10:00',
-        heure_fin:   existing?.heure_fin   || '20:00',
-      }
-    })
-    setHorairesCaisse(filled)
     setPointageAujourdhui(pointRes.data || null)
     setSalaireMoisCaisse(salaire)
     setLoadingDetailCaisse(false)
@@ -307,29 +285,6 @@ export default function StockMagasin() {
     fetchStaffCaisse()
   }
 
-  const updateHoraireCaisse = (jourNum, field, value) => {
-    setHorairesCaisse((prev) => prev.map((h) =>
-      h.jour_semaine === jourNum ? { ...h, [field]: value } : h
-    ))
-  }
-
-  const handleSaveHorairesCaisse = async () => {
-    if (!selectedStaffCaisse) return
-    setSavingHorairesCaisse(true)
-    const rows = horairesCaisse.map((h) => ({
-      staff_id: selectedStaffCaisse.id,
-      jour_semaine: h.jour_semaine,
-      repos: h.repos,
-      heure_debut: h.repos ? null : h.heure_debut,
-      heure_fin:   h.repos ? null : h.heure_fin,
-    }))
-    const { error } = await supabase.from('staff_schedules')
-      .upsert(rows, { onConflict: 'staff_id,jour_semaine' })
-    setSavingHorairesCaisse(false)
-    if (error) { alert('Erreur : ' + error.message); return }
-    logActivity('staff_schedule_update', `Horaires mis à jour pour ${selectedStaffCaisse.name}`)
-    alert('✅ Horaires enregistrés')
-  }
 
   // Redirect si l'utilisateur atteint parametres sans les droits
   useEffect(() => {
@@ -1360,42 +1315,17 @@ export default function StockMagasin() {
                     </button>
                   </div>
 
-                  {/* b) Horaires semaine */}
+                  {/* b) Planning mensuel */}
                   <div className="bg-white rounded-2xl border border-gray-100 p-4">
                     <h3 className="font-bold text-[#1B2A4A] mb-3 flex items-center gap-2">
-                      <Clock size={16} /> Horaires de la semaine
+                      <Clock size={16} /> Planning
                     </h3>
-                    <div className="space-y-2">
-                      {DAYS_CAISSE.map((d) => {
-                        const h = horairesCaisse.find((x) => x.jour_semaine === d.num)
-                        if (!h) return null
-                        return (
-                          <div key={d.num} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 flex-wrap">
-                            <div className="w-20 text-sm font-bold text-[#1B2A4A]">{d.label}</div>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <input type="checkbox" checked={h.repos}
-                                onChange={(e) => updateHoraireCaisse(d.num, 'repos', e.target.checked)}
-                                className="w-4 h-4 accent-[#00B4CC]" />
-                              <span className="text-xs font-medium text-gray-600">Repos</span>
-                            </label>
-                            <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                              <input type="time" value={h.heure_debut} disabled={h.repos}
-                                onChange={(e) => updateHoraireCaisse(d.num, 'heure_debut', e.target.value)}
-                                className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${h.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`} />
-                              <span className="text-gray-400 text-xs">→</span>
-                              <input type="time" value={h.heure_fin} disabled={h.repos}
-                                onChange={(e) => updateHoraireCaisse(d.num, 'heure_fin', e.target.value)}
-                                className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${h.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`} />
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    <button onClick={handleSaveHorairesCaisse}
-                      disabled={savingHorairesCaisse}
-                      className="mt-3 flex items-center gap-2 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC] disabled:opacity-50">
-                      <Save size={14} /> {savingHorairesCaisse ? 'Enregistrement...' : 'Enregistrer les horaires'}
-                    </button>
+                    <StaffScheduleCalendar
+                      staffId={selectedStaffCaisse.id}
+                      staffName={selectedStaffCaisse.name}
+                      staffPhone={selectedStaffCaisse.telephone}
+                      hourlyWage={selectedStaffCaisse.hourly_wage || 0}
+                    />
                   </div>
 
                   {/* c) Aujourd'hui & ce mois */}
