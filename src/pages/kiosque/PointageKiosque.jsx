@@ -16,11 +16,9 @@ const todayStr = () => {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 }
 
-const formatDuration = (startTime, endTime) => {
-  const [sh, sm] = startTime.split(':').map(Number)
-  const [eh, em] = endTime.split(':').map(Number)
-  let mins = (eh * 60 + em) - (sh * 60 + sm)
-  if (mins < 0) mins += 24 * 60
+const formatDuration = (startISO, endISO) => {
+  const diffMs = new Date(endISO) - new Date(startISO)
+  let mins = Math.max(0, Math.floor(diffMs / 60000))
   const h = Math.floor(mins / 60)
   const m = mins % 60
   return `${h}h ${pad2(m)}min`
@@ -112,6 +110,7 @@ export default function PointageKiosque() {
 
       const firstName = (emp.name || '').split(' ')[0] || emp.name
       const nowT = nowTimeStr()
+      const nowISO = new Date().toISOString()
 
       if (!existing) {
         // Cas A — ARRIVÉE
@@ -139,7 +138,7 @@ export default function PointageKiosque() {
           staff_id: emp.id,
           magasin_id: validMagasin.id,
           date: today,
-          heure_arrivee: nowT,
+          heure_arrivee: nowISO,
           retard_minutes: retardMin,
           penalite_retard: penalite,
         })
@@ -156,7 +155,7 @@ export default function PointageKiosque() {
         // Cas B — DÉPART
         const { error: updErr } = await supabase
           .from('staff_pointages')
-          .update({ heure_depart: nowT })
+          .update({ heure_depart: nowISO })
           .eq('id', existing.id)
         if (updErr) throw updErr
 
@@ -164,15 +163,15 @@ export default function PointageKiosque() {
           type: 'depart',
           firstName,
           heure: nowT,
-          duree: formatDuration(existing.heure_arrivee, nowT),
+          duree: formatDuration(existing.heure_arrivee, nowISO),
         })
       } else {
         // Cas C — déjà terminé
         setFeedback({
           type: 'done',
           firstName,
-          heureArrivee: existing.heure_arrivee,
-          heureDepart: existing.heure_depart,
+          heureArrivee: new Date(existing.heure_arrivee).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          heureDepart: new Date(existing.heure_depart).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
         })
       }
     } catch (err) {
