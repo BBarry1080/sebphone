@@ -914,6 +914,7 @@ export default function StockMagasin() {
           lastClosure={lastClosure}
           onOpenCaisse={() => setPosScreen('caisse')}
           onOpenGestion={() => { setPosScreen('gestion'); setActiveTab('stock') }}
+          onAcompteRecorded={fetchCaisseToday}
         />
       )}
 

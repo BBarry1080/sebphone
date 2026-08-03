@@ -68,6 +68,7 @@ export default function CaisseAccueil({
   lastClosure = null,
   onOpenCaisse,
   onOpenGestion,
+  onAcompteRecorded = () => {},
 }) {
   const [showClientModal, setShowClientModal] = useState(false)
   const [showRepairModal, setShowRepairModal] = useState(false)
@@ -80,10 +81,12 @@ export default function CaisseAccueil({
   const [clientForm, setClientForm] = useState({
     nom: '', date: today, client_number: '', magasin_id: magasin,
     type_panne: '', prix: '', devis: false, tel: '', email: '',
+    montant_paye: '', payment_method: 'cash',
   })
   const [repairForm, setRepairForm] = useState({
     nom: '', date: today, imei: '', bon_number: '', client_number: '',
     magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
+    montant_paye: '', payment_method: 'cash',
   })
   const [lastBon, setLastBon] = useState(null)
 
@@ -200,6 +203,7 @@ export default function CaisseAccueil({
       nom: '', date: today,
       client_number: 'CL-' + pad4((count || 0) + 1),
       magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
+      montant_paye: '', payment_method: 'cash',
     })
     setShowClientModal(true)
   }
@@ -218,8 +222,33 @@ export default function CaisseAccueil({
       bon_number: 'BON-' + pad4((repairCount || 0) + 1),
       client_number: 'CL-' + pad4((clientCount || 0) + 1),
       magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
+      montant_paye: '', payment_method: 'cash',
     })
     setShowRepairModal(true)
+  }
+
+  const recordAcompte = async (montant, method, saleType, reference) => {
+    if (!montant || Number(montant) <= 0) return
+    const currentSebUser = JSON.parse(
+      localStorage.getItem('sebphone_user') || '{}'
+    )
+    const amount = Number(montant)
+    await supabase.from('shop_sales').insert({
+      magasin_id: magasin,
+      staff_name: currentSebUser?.name || 'Staff',
+      staff_id: currentSebUser?.role === 'employe' ? currentSebUser?.id : null,
+      total_amount: amount,
+      payment_method: method,
+      cash_amount: method === 'cash' ? amount : 0,
+      bancontact_amount: method === 'bancontact' ? amount : 0,
+      virement_amount: method === 'virement' ? amount : 0,
+      change_amount: 0,
+      change_confirmed: true,
+      global_discount: 0,
+      sale_type: saleType,
+      reference: reference,
+    })
+    onAcompteRecorded()
   }
 
   const handleSaveClient = async () => {
@@ -234,8 +263,15 @@ export default function CaisseAccueil({
       devis: clientForm.devis,
       tel: clientForm.tel || null,
       email: clientForm.email || null,
+      montant_paye: clientForm.montant_paye ? Number(clientForm.montant_paye) : 0,
     })
     if (error) { alert('Erreur : ' + error.message); return }
+    await recordAcompte(
+      clientForm.montant_paye,
+      clientForm.payment_method,
+      'acompte_client',
+      clientForm.client_number
+    )
     setShowClientModal(false)
     alert(`Client ${clientForm.client_number} enregistré`)
   }
@@ -255,9 +291,16 @@ export default function CaisseAccueil({
       tel: repairForm.tel || null,
       email: repairForm.email || null,
       status: 'en_attente',
+      montant_paye: repairForm.montant_paye ? Number(repairForm.montant_paye) : 0,
     }
     const { error } = await supabase.from('repairs').insert(payload)
     if (error) { alert('Erreur : ' + error.message); return }
+    await recordAcompte(
+      repairForm.montant_paye,
+      repairForm.payment_method,
+      'acompte_reparation',
+      repairForm.bon_number
+    )
     setLastBon(payload)
     setShowRepairModal(false)
     setShowBonPrintable(true)
@@ -415,6 +458,36 @@ export default function CaisseAccueil({
                   onChange={(e) => setClientForm((f) => ({ ...f, prix: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
               </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Montant déjà payé (€)
+                </label>
+                <input type="number" step="0.01" min="0" value={clientForm.montant_paye}
+                  onChange={(e) => setClientForm((f) => ({ ...f, montant_paye: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                {(() => {
+                  const reste = Number(clientForm.prix || 0) - Number(clientForm.montant_paye || 0)
+                  return (
+                    <p className={`text-xs mt-1 font-medium ${reste < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                      Montant restant : {reste.toFixed(2)} €
+                    </p>
+                  )
+                })()}
+              </div>
+              {Number(clientForm.montant_paye) > 0 && (
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                    Méthode de paiement
+                  </label>
+                  <select value={clientForm.payment_method}
+                    onChange={(e) => setClientForm((f) => ({ ...f, payment_method: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                    <option value="cash">Cash</option>
+                    <option value="bancontact">Bancontact</option>
+                    <option value="virement">Virement</option>
+                  </select>
+                </div>
+              )}
               <div className="col-span-2 flex items-center gap-2">
                 <input type="checkbox" checked={clientForm.devis}
                   onChange={(e) => setClientForm((f) => ({ ...f, devis: e.target.checked }))}
@@ -513,6 +586,36 @@ export default function CaisseAccueil({
                   onChange={(e) => setRepairForm((f) => ({ ...f, prix: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
               </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Montant déjà payé (€)
+                </label>
+                <input type="number" step="0.01" min="0" value={repairForm.montant_paye}
+                  onChange={(e) => setRepairForm((f) => ({ ...f, montant_paye: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                {(() => {
+                  const reste = Number(repairForm.prix || 0) - Number(repairForm.montant_paye || 0)
+                  return (
+                    <p className={`text-xs mt-1 font-medium ${reste < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                      Montant restant : {reste.toFixed(2)} €
+                    </p>
+                  )
+                })()}
+              </div>
+              {Number(repairForm.montant_paye) > 0 && (
+                <div className="col-span-2">
+                  <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                    Méthode de paiement
+                  </label>
+                  <select value={repairForm.payment_method}
+                    onChange={(e) => setRepairForm((f) => ({ ...f, payment_method: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                    <option value="cash">Cash</option>
+                    <option value="bancontact">Bancontact</option>
+                    <option value="virement">Virement</option>
+                  </select>
+                </div>
+              )}
               <div className="col-span-2 flex items-center gap-2">
                 <input type="checkbox" checked={repairForm.devis}
                   onChange={(e) => setRepairForm((f) => ({ ...f, devis: e.target.checked }))}
