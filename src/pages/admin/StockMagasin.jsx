@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
-         Menu, Lock, Unlock } from 'lucide-react'
+         Menu, Lock, Unlock, LogOut } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import ReceiptTicket from '../../components/admin/ReceiptTicket'
 import ZFinancierReport from '../../components/admin/ZFinancierReport'
 import CaisseAccueil from '../../components/admin/CaisseAccueil'
+import CaissePinLock from '../../components/admin/CaissePinLock'
 
 const POS_CATEGORIES = [
   'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
@@ -80,6 +81,20 @@ export default function StockMagasin() {
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
   const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture
+
+  // Verrou PIN caisse
+  const [caisseSession, setCaisseSession] = useState(null)
+  const [clockNow, setClockNow] = useState(() => {
+    const d = new Date()
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`
+  })
+  useEffect(() => {
+    const t = setInterval(() => {
+      const d = new Date()
+      setClockNow(`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`)
+    }, 1000)
+    return () => clearInterval(t)
+  }, [])
   const [showMovementMenu, setShowMovementMenu] = useState(false)
   const [discountMenuItemId, setDiscountMenuItemId] = useState(null)
   const [showGlobalDiscount, setShowGlobalDiscount] = useState(false)
@@ -109,6 +124,48 @@ export default function StockMagasin() {
     if (user.magasin_id) setMagasin(user.magasin_id)
     else if (MAGASINS_LIST.length > 0) setMagasin(MAGASINS_LIST[0].id)
   }, [])
+
+  // Charge la session caisse depuis localStorage à chaque changement de magasin
+  useEffect(() => {
+    if (!magasin) return
+    const key = `sebphone_caisse_session_${magasin}`
+    const raw = localStorage.getItem(key)
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        const today = new Date().toISOString().slice(0, 10)
+        if (parsed.dateStr === today) {
+          setCaisseSession(parsed)
+          return
+        }
+      } catch { /* ignore */ }
+    }
+    setCaisseSession(null)
+  }, [magasin])
+
+  const handleUnlock = (staffRecord, pointageId) => {
+    const session = {
+      staffId: staffRecord.id,
+      staffName: staffRecord.name,
+      pointageId,
+      dateStr: new Date().toISOString().slice(0, 10),
+      arrivalDisplay: new Date().toLocaleTimeString('fr-BE',
+        { hour: '2-digit', minute: '2-digit' }),
+    }
+    localStorage.setItem(`sebphone_caisse_session_${magasin}`,
+      JSON.stringify(session))
+    setCaisseSession(session)
+  }
+
+  const handleChangeUser = async () => {
+    if (!caisseSession) return
+    if (!window.confirm('Terminer votre session sur ce poste ?')) return
+    await supabase.from('staff_pointages')
+      .update({ heure_depart: new Date().toISOString() })
+      .eq('id', caisseSession.pointageId)
+    localStorage.removeItem(`sebphone_caisse_session_${magasin}`)
+    setCaisseSession(null)
+  }
 
   useEffect(() => {
     if (magasin) {
@@ -798,6 +855,16 @@ export default function StockMagasin() {
     )
   }
 
+  if (!caisseSession && magasin) {
+    return (
+      <CaissePinLock
+        magasin={magasin}
+        magasinLabel={MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
+        onUnlock={handleUnlock}
+      />
+    )
+  }
+
   return (
     <div className={(posScreen === 'caisse' || posScreen === 'gestion')
       ? 'p-2 max-w-none mx-auto'
@@ -842,6 +909,21 @@ export default function StockMagasin() {
                          text-sm font-bold hover:bg-[#00B4CC]">
               <Plus size={16}/> Ajouter un article
             </button>
+          )}
+          {/* Horloge live + badge session + bouton changer d'utilisateur */}
+          <span className="text-sm text-gray-500 font-mono">{clockNow}</span>
+          {caisseSession && (
+            <>
+              <span className="flex items-center gap-2 px-3 py-1.5 bg-cyan-50 border border-cyan-200 rounded-xl text-xs font-bold text-[#00B4CC]">
+                👤 {(caisseSession.staffName || '').split(' ')[0]}
+                <span className="text-gray-500 font-normal">· {caisseSession.arrivalDisplay}</span>
+              </span>
+              <button onClick={handleChangeUser}
+                title="Changer d'utilisateur"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
+                <LogOut size={14} /> Changer
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -997,9 +1079,27 @@ export default function StockMagasin() {
         </div>
       )}
 
+      {/* Mini bandeau session caisse plein écran */}
+      {posScreen === 'caisse' && caisseSession && (
+        <div className="flex items-center justify-between mb-2 text-xs">
+          <span className="text-gray-500 font-mono">{clockNow}</span>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-2 px-2.5 py-1 bg-cyan-50 border border-cyan-200 rounded-lg font-bold text-[#00B4CC]">
+              👤 {(caisseSession.staffName || '').split(' ')[0]}
+              <span className="text-gray-500 font-normal">· {caisseSession.arrivalDisplay}</span>
+            </span>
+            <button onClick={handleChangeUser}
+              title="Changer d'utilisateur"
+              className="flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded-lg font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
+              <LogOut size={12} /> Changer
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* TAB CAISSE — layout POS 3 colonnes */}
       {posScreen === 'caisse' && (
-        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-100px)]">
+        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-130px)]">
 
           {/* COLONNE GAUCHE — Catégories */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-2">

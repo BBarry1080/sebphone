@@ -56,7 +56,6 @@ import ProCataloguePage from './pages/pro/ProCataloguePage';
 import ProAdmin from './pages/admin/ProAdmin';
 import CataloguePage from './pages/CataloguePage';
 import Avis from './pages/Avis';
-import PointageKiosque from './pages/kiosque/PointageKiosque';
 
 function Layout({ children }) {
   return (
@@ -126,7 +125,6 @@ export default function App() {
             <Layout><DetailCommande /></Layout>
           } />
           <Route path="/facture/:code" element={<Facture />} />
-          <Route path="/kiosque/pointage" element={<PointageKiosque />} />
           <Route path="/panier" element={
             <Layout><Panier /></Layout>
           } />
