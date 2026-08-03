@@ -13,6 +13,65 @@ import { MODELS_BY_CATEGORIE } from '../../data/catalogConstants'
 
 const SALT = 'sebphone_salt_2026'
 
+async function calcSalairePeriode(supabase, staffId, hourlyWage, dateStart, dateEnd) {
+  const { data: schedules } = await supabase
+    .from('staff_schedules')
+    .select('*')
+    .eq('staff_id', staffId)
+
+  const { data: pointages } = await supabase
+    .from('staff_pointages')
+    .select('*')
+    .eq('staff_id', staffId)
+    .gte('date', dateStart)
+    .lte('date', dateEnd)
+
+  const { data: commissions } = await supabase
+    .from('staff_commissions')
+    .select('commission_amount')
+    .eq('staff_id', staffId)
+    .gte('created_at', dateStart + 'T00:00:00')
+    .lte('created_at', dateEnd + 'T23:59:59')
+
+  let totalHeures = 0
+  let salaireBrut = 0
+  let penalitesRetard = 0
+  const absences = []
+
+  const d = new Date(dateStart)
+  const end = new Date(dateEnd)
+  while (d <= end) {
+    const dateStr = d.toISOString().slice(0, 10)
+    const dow = d.getDay()
+    const schedule = schedules?.find((s) => s.jour_semaine === dow)
+
+    if (schedule && !schedule.repos) {
+      const pointage = pointages?.find((p) => p.date === dateStr)
+      if (!pointage) {
+        absences.push(dateStr)
+      } else {
+        if (pointage.heure_arrivee && pointage.heure_depart) {
+          const heures = (new Date(pointage.heure_depart) - new Date(pointage.heure_arrivee)) / 3600000
+          totalHeures += heures
+          salaireBrut += heures * hourlyWage
+        }
+        penalitesRetard += Number(pointage.penalite_retard || 0)
+      }
+    }
+    d.setDate(d.getDate() + 1)
+  }
+
+  const commissionsTotal = (commissions || []).reduce((s, c) => s + Number(c.commission_amount || 0), 0)
+  const penalitesAbsence = absences.length * 200
+  const salaireNet = salaireBrut - penalitesRetard - penalitesAbsence + commissionsTotal
+
+  return {
+    totalHeures, salaireBrut, penalitesRetard,
+    absencesCount: absences.length, absencesDates: absences,
+    penalitesAbsence, commissionsTotal, salaireNet,
+  }
+}
+
 const generateEmail = (firstName, lastName) => {
   const clean = (str) =>
     str
@@ -574,8 +633,11 @@ export default function Parametres() {
     const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0)
 
     const activeStaff = staff.filter((s) => s.active)
+    const dateStartMois = startOfMonth.toISOString().slice(0, 10)
+    const dateEndMois = new Date().toISOString().slice(0, 10)
+
     const rows = await Promise.all(activeStaff.map(async (emp) => {
-      const [jour, mois, comms, fautes] = await Promise.all([
+      const [jour, mois, comms, fautes, salaireMois] = await Promise.all([
         supabase.from('shop_sales')
           .select('total_amount')
           .eq('staff_id', emp.id)
@@ -590,6 +652,7 @@ export default function Parametres() {
         supabase.from('staff_incidents')
           .select('id', { count: 'exact', head: true })
           .eq('staff_id', emp.id),
+        calcSalairePeriode(supabase, emp.id, emp.hourly_wage || 0, dateStartMois, dateEndMois),
       ])
       const sumJour = (jour.data || []).reduce((s, r) => s + Number(r.total_amount || 0), 0)
       const sumMois = (mois.data || []).reduce((s, r) => s + Number(r.total_amount || 0), 0)
@@ -600,6 +663,7 @@ export default function Parametres() {
         ventesMois:  { count: (mois.data || []).length, sum: sumMois },
         commissions: sumComms,
         fautes:      fautes.count || 0,
+        salaireNetMois: salaireMois.salaireNet,
       }
     }))
     setSuiviData(rows)
@@ -685,6 +749,61 @@ export default function Parametres() {
     g === 'grave'  ? 'bg-red-100 text-red-700'   :
     g === 'moyenne' ? 'bg-amber-100 text-amber-700' :
                       'bg-green-100 text-green-700'
+
+  // Paie — section 4 du modal détail
+  const [periodePreset, setPeriodePreset] = useState('mois')
+  const [periodeStart, setPeriodeStart]   = useState('')
+  const [periodeEnd, setPeriodeEnd]       = useState('')
+  const [paieData, setPaieData]           = useState(null)
+  const [loadingPaie, setLoadingPaie]     = useState(false)
+
+  const computePresetDates = (preset) => {
+    const today = new Date()
+    const todayStr = today.toISOString().slice(0, 10)
+    if (preset === 'jour') return { start: todayStr, end: todayStr }
+    if (preset === 'semaine') {
+      const dow = today.getDay() // 0=dim
+      const diff = dow === 0 ? -6 : 1 - dow // recule au lundi
+      const monday = new Date(today)
+      monday.setDate(today.getDate() + diff)
+      return { start: monday.toISOString().slice(0, 10), end: todayStr }
+    }
+    if (preset === 'mois') {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1)
+      return { start: first.toISOString().slice(0, 10), end: todayStr }
+    }
+    return { start: periodeStart, end: periodeEnd }
+  }
+
+  const runPaie = async () => {
+    if (!showStaffDetail || !currentDetailEmp) return
+    const { start, end } = computePresetDates(periodePreset)
+    if (!start || !end) return
+    setPeriodeStart(start)
+    setPeriodeEnd(end)
+    setLoadingPaie(true)
+    const result = await calcSalairePeriode(
+      supabase, showStaffDetail, currentDetailEmp.hourly_wage || 0, start, end
+    )
+    setPaieData(result)
+    setLoadingPaie(false)
+  }
+
+  useEffect(() => {
+    if (showStaffDetail && currentDetailEmp && periodePreset !== 'custom') {
+      runPaie()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showStaffDetail, periodePreset])
+
+  useEffect(() => {
+    if (!showStaffDetail) {
+      setPaieData(null)
+      setPeriodePreset('mois')
+      setPeriodeStart('')
+      setPeriodeEnd('')
+    }
+  }, [showStaffDetail])
 
   // Horaires (planning hebdo)
   const [showHorairesModal, setShowHorairesModal] = useState(false)
@@ -1501,6 +1620,7 @@ export default function Parametres() {
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Ventes jour</th>
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Ventes mois</th>
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Commissions</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Salaire net (ce mois)</th>
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Fautes</th>
                     <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">—</th>
                   </tr>
@@ -1534,6 +1654,11 @@ export default function Parametres() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="font-bold text-[#00B4CC]">{row.commissions.toFixed(2)}€</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`font-bold ${row.salaireNetMois >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {row.salaireNetMois.toFixed(2)}€
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -1752,6 +1877,117 @@ export default function Parametres() {
                         </tbody>
                       </table>
                     </div>
+                  )}
+                </div>
+
+                {/* d) Paie */}
+                <div>
+                  <h4 className="font-bold text-[#1B2A4A] mb-3">Paie</h4>
+
+                  <div className="flex gap-2 mb-3 flex-wrap">
+                    {[
+                      { key: 'jour', label: 'Aujourd\'hui' },
+                      { key: 'semaine', label: 'Cette semaine' },
+                      { key: 'mois', label: 'Ce mois' },
+                      { key: 'custom', label: 'Personnalisé' },
+                    ].map((p) => (
+                      <button key={p.key}
+                        onClick={() => setPeriodePreset(p.key)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                          ${periodePreset === p.key
+                            ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {periodePreset === 'custom' && (
+                    <div className="flex gap-2 items-end mb-3 flex-wrap">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Du</label>
+                        <input type="date" value={periodeStart}
+                          onChange={(e) => setPeriodeStart(e.target.value)}
+                          className="px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Au</label>
+                        <input type="date" value={periodeEnd}
+                          onChange={(e) => setPeriodeEnd(e.target.value)}
+                          className="px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                      <button onClick={runPaie}
+                        disabled={!periodeStart || !periodeEnd || loadingPaie}
+                        className="px-4 py-2 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                        Calculer
+                      </button>
+                    </div>
+                  )}
+
+                  {loadingPaie ? (
+                    <div className="flex items-center justify-center h-24">
+                      <div className="w-6 h-6 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : paieData ? (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+                        <div className="bg-gray-50 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Heures travaillées</p>
+                          <p className="text-lg font-bold text-[#1B2A4A] mt-1">
+                            {paieData.totalHeures.toFixed(1)}h
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Salaire brut</p>
+                          <p className="text-lg font-bold text-[#1B2A4A] mt-1">
+                            {paieData.salaireBrut.toFixed(2)}€
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Pénalités retard</p>
+                          <p className={`text-lg font-bold mt-1 ${paieData.penalitesRetard > 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                            {paieData.penalitesRetard > 0 ? '-' : ''}{paieData.penalitesRetard.toFixed(2)}€
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Absences</p>
+                          <p className={`text-lg font-bold mt-1 ${paieData.absencesCount > 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                            {paieData.absencesCount} jour{paieData.absencesCount !== 1 ? 's' : ''}
+                          </p>
+                          {paieData.penalitesAbsence > 0 && (
+                            <p className="text-xs text-red-600 font-bold">-{paieData.penalitesAbsence}€</p>
+                          )}
+                          {paieData.absencesCount > 0 && (
+                            <p className="text-[9px] text-gray-400 mt-1 leading-tight">
+                              {paieData.absencesDates.map((d) => new Date(d).toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' })).join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="bg-gray-50 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase">Commissions</p>
+                          <p className="text-lg font-bold text-green-600 mt-1">
+                            +{paieData.commissionsTotal.toFixed(2)}€
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl p-5 text-white shadow-md flex items-center justify-between"
+                        style={{ background: `linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)` }}>
+                        <div>
+                          <p className="text-xs uppercase opacity-70 font-bold">Total net</p>
+                          <p className="text-xs opacity-70">
+                            {periodeStart && periodeEnd
+                              ? `${new Date(periodeStart).toLocaleDateString('fr-BE')} → ${new Date(periodeEnd).toLocaleDateString('fr-BE')}`
+                              : ''}
+                          </p>
+                        </div>
+                        <p className={`text-3xl font-black ${paieData.salaireNet < 0 ? 'text-red-300' : 'text-white'}`}>
+                          {paieData.salaireNet.toFixed(2)}€
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-400 text-center py-4">Sélectionne une période pour calculer</p>
                   )}
                 </div>
               </div>
