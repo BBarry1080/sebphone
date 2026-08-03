@@ -3,7 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
          Menu, Lock, Unlock, LogOut,
-         Settings, Clock, Save } from 'lucide-react'
+         Settings, Clock, Save,
+         Image as ImageIcon, Upload } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import ReceiptTicket from '../../components/admin/ReceiptTicket'
@@ -25,6 +26,10 @@ export default function StockMagasin() {
   const hasPermission = usePermission('stock_magasin')
   const canManageStaff = usePermission('gerer_utilisateurs')
   const canAccessParamsCaisse = isAdmin || canManageStaff
+  const canModifyPrices  = isAdmin || usePermission('modifier_prix_remises')
+  const canRappelTicket  = isAdmin || usePermission('rappel_ticket')
+  const canOpenDrawer    = isAdmin || usePermission('ouvrir_tiroir_sans_vente')
+  const canClotureLimitee = usePermission('cloture_limitee')
 
   const [magasin, setMagasin] = useState('')
   const [categories, setCategories] = useState([])
@@ -43,17 +48,50 @@ export default function StockMagasin() {
   // Form article
   const [itemForm, setItemForm] = useState({
     name: '', reference: '', barcode: '',
-    category_id: '', quantity: 0,
-    quantity_alert: 3,
+    category_id: '', sous_categorie: '',
+    quantity: 0, quantity_alert: 3,
     purchase_price: 0, sale_price: 0,
     price_min: 0, price_max: 0,
     description: '',
+    image_url: '', fournisseur_id: '',
   })
 
   // Form catégorie
   const [catForm, setCatForm] = useState({
     name: '', color: 'blue',
   })
+
+  // Fournisseurs (dropdown dans le form article) + upload image
+  const [fournisseursList, setFournisseursList] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const fetchFournisseursList = async () => {
+    const { data } = await supabase
+      .from('fournisseurs')
+      .select('id, nom')
+      .order('nom', { ascending: true })
+    setFournisseursList(data || [])
+  }
+
+  const handleImageUpload = async (file) => {
+    if (!file) return
+    setUploadingImage(true)
+    try {
+      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
+      const { error: upErr } = await supabase.storage
+        .from('shop-items')
+        .upload(fileName, file)
+      if (upErr) throw upErr
+      const { data: urlData } = supabase.storage
+        .from('shop-items')
+        .getPublicUrl(fileName)
+      setItemForm((f) => ({ ...f, image_url: urlData.publicUrl }))
+    } catch (err) {
+      alert('Erreur upload image : ' + err.message)
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   // Caisse
   const [cart, setCart] = useState([])
@@ -309,6 +347,7 @@ export default function StockMagasin() {
       fetchCategories().then(() => ensurePosCategories())
       fetchItems()
       fetchCaisseToday()
+      fetchFournisseursList()
       fetchLastClosure().then((closure) => {
         fetchMovementsSince(closure?.period_end || '1970-01-01T00:00:00Z')
       })
@@ -388,7 +427,7 @@ export default function StockMagasin() {
     setLoading(true)
     const { data } = await supabase
       .from('shop_items')
-      .select('*, shop_categories(name, color)')
+      .select('*, shop_categories(name, color), fournisseurs(nom)')
       .eq('magasin_id', magasin)
       .order('name')
     setItems(data || [])
@@ -426,6 +465,7 @@ export default function StockMagasin() {
       reference: item.reference || '',
       barcode: item.barcode || '',
       category_id: item.category_id || '',
+      sous_categorie: item.sous_categorie || '',
       quantity: item.quantity || 0,
       quantity_alert: item.quantity_alert || 3,
       purchase_price: item.purchase_price || 0,
@@ -433,13 +473,16 @@ export default function StockMagasin() {
       price_min: item.price_min || 0,
       price_max: item.price_max || 0,
       description: item.description || '',
+      image_url: item.image_url || '',
+      fournisseur_id: item.fournisseur_id || '',
     } : {
       name: '', reference: '', barcode: '',
-      category_id: categories[0]?.id || '',
+      category_id: categories[0]?.id || '', sous_categorie: '',
       quantity: 0, quantity_alert: 3,
       purchase_price: 0, sale_price: 0,
       price_min: 0, price_max: 0,
       description: '',
+      image_url: '', fournisseur_id: '',
     })
     setShowItemModal(true)
   }
@@ -455,6 +498,9 @@ export default function StockMagasin() {
       quantity_alert: itemForm.quantity_alert || 0,
       barcode:        itemForm.barcode || null,
       reference:      itemForm.reference || null,
+      sous_categorie: itemForm.sous_categorie || null,
+      image_url:      itemForm.image_url || null,
+      fournisseur_id: itemForm.fournisseur_id || null,
       magasin_id: magasin,
       updated_at: new Date().toISOString(),
     }
@@ -955,6 +1001,10 @@ export default function StockMagasin() {
 
   const handlePrintClosure = () => {
     if (!closureData) return
+    if (canClotureLimitee && !isAdmin) {
+      alert('Clôture limitée : impression du ticket désactivée pour votre profil. La clôture a bien été enregistrée en base.')
+      return
+    }
     printClosureViaAgent({
       reportNumber: (lastClosure ? 1 : 0) + 1,
       companyName: 'SLT GROUP (SRL)',
@@ -1436,11 +1486,29 @@ export default function StockMagasin() {
       {posScreen === 'caisse' && caisseSession && (
         <div className="flex items-center justify-between mb-2 text-xs">
           <span className="text-gray-500 font-mono">{clockNow}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-2 px-2.5 py-1 bg-cyan-50 border border-cyan-200 rounded-lg font-bold text-[#00B4CC]">
               👤 {(caisseSession.staffName || '').split(' ')[0]}
               <span className="text-gray-500 font-normal">· {caisseSession.arrivalDisplay}</span>
             </span>
+            {canRappelTicket && lastSale && (
+              <button onClick={() => setShowTicket(true)}
+                title="Rappel du dernier ticket"
+                className="flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded-lg font-bold text-gray-600 hover:border-[#00B4CC] hover:text-[#00B4CC]">
+                🧾 Rappel ticket
+              </button>
+            )}
+            {canOpenDrawer && (
+              <button onClick={async () => {
+                  if (!window.confirm('Ouvrir le tiroir-caisse sans vente ?')) return
+                  await logActivity('tiroir_ouvert', 'Ouverture du tiroir sans vente')
+                  alert('✅ Action enregistrée')
+                }}
+                title="Ouvrir le tiroir sans vente"
+                className="flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded-lg font-bold text-gray-600 hover:border-[#1B2A4A]">
+                🗄️ Ouvrir le tiroir
+              </button>
+            )}
             <button onClick={handleChangeUser}
               title="Changer d'utilisateur"
               className="flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded-lg font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
@@ -1592,7 +1660,9 @@ export default function StockMagasin() {
                           <input type="number" value={c.unit_price}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => updateCartPrice(c.item_id, e.target.value)}
-                            className="w-16 px-1.5 py-1 border border-gray-200 rounded-lg text-xs text-right font-bold"/>
+                            disabled={!canModifyPrices}
+                            title={!canModifyPrices ? "Vous n'avez pas le droit de modifier les prix" : undefined}
+                            className={`w-16 px-1.5 py-1 border border-gray-200 rounded-lg text-xs text-right font-bold ${!canModifyPrices ? 'opacity-50 cursor-not-allowed' : ''}`}/>
                           <span className="text-xs text-gray-400">€</span>
                         </div>
                       </div>
@@ -1628,6 +1698,8 @@ export default function StockMagasin() {
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   <div className="relative">
                     <button
+                      disabled={!canModifyPrices}
+                      title={!canModifyPrices ? "Vous n'avez pas le droit de modifier les remises" : undefined}
                       onClick={() => {
                         if (!selectedCartItemId) {
                           alert('Sélectionne un article dans le panier d\'abord')
@@ -1639,7 +1711,7 @@ export default function StockMagasin() {
                             : selectedCartItemId
                         )
                       }}
-                      className={`w-full py-2.5 rounded-xl text-sm font-bold border-2
+                      className={`${!canModifyPrices ? 'opacity-50 cursor-not-allowed ' : ''}w-full py-2.5 rounded-xl text-sm font-bold border-2
                         ${selectedCartItemId && cart.find(c => c.item_id === selectedCartItemId)?.discountType
                           ? 'bg-amber-100 text-amber-700 border-amber-200'
                           : 'bg-white text-gray-600 border-gray-200'}`}>
@@ -1751,69 +1823,52 @@ export default function StockMagasin() {
           </div>
 
           {/* Tableau */}
-          <div className="bg-white rounded-2xl border border-gray-100
-                          overflow-x-auto">
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-4 py-3 font-bold
-                                 text-gray-500 text-xs uppercase">
-                    Article
-                  </th>
-                  <th className="text-left px-4 py-3 font-bold
-                                 text-gray-500 text-xs uppercase">
-                    Catégorie
-                  </th>
-                  {/* MASQUÉ TEMPORAIREMENT - Qté */}
-                  {false && (
-                    <th className="text-center px-4 py-3 font-bold
-                                   text-gray-500 text-xs uppercase">
-                      Qté
-                    </th>
-                  )}
-                  <th className="text-right px-4 py-3 font-bold
-                                 text-gray-500 text-xs uppercase">
-                    Achat
-                  </th>
-                  <th className="text-right px-4 py-3 font-bold
-                                 text-gray-500 text-xs uppercase">
-                    Vente
-                  </th>
-                  <th className="text-right px-4 py-3 font-bold
-                                 text-gray-500 text-xs uppercase">
-                    Min / Max
-                  </th>
-                  <th className="text-center px-4 py-3 font-bold
-                                 text-gray-500 text-xs uppercase">
-                    Actions
-                  </th>
+                  <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Image</th>
+                  <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Article</th>
+                  <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Catégorie</th>
+                  <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Fournisseur</th>
+                  <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Achat</th>
+                  <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Vente</th>
+                  <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Min / Max</th>
+                  <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Stock</th>
+                  <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6}
-                        className="text-center py-8 text-gray-400">
+                    <td colSpan={9} className="text-center py-8 text-gray-400">
                       Chargement...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6}
-                        className="text-center py-8 text-gray-400">
+                    <td colSpan={9} className="text-center py-8 text-gray-400">
                       Aucun article trouvé
                     </td>
                   </tr>
                 ) : filtered.map(item => {
                   const cat = item.shop_categories
+                  const isLow = item.quantity_alert > 0 && item.quantity <= item.quantity_alert
                   return (
                     <tr key={item.id}
-                      className="border-b border-gray-50
-                        hover:bg-gray-50 transition-colors">
+                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
-                        <p className="font-bold text-[#1B2A4A] text-sm">
-                          {item.name}
-                        </p>
+                        {item.image_url ? (
+                          <img src={item.image_url} alt=""
+                            className="w-9 h-9 rounded-lg object-cover border border-gray-200" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <Package size={16} className="text-gray-400" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-[#1B2A4A] text-sm">{item.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {item.reference && `Réf: ${item.reference}`}
                           {item.reference && item.barcode && ' · '}
@@ -1822,56 +1877,43 @@ export default function StockMagasin() {
                       </td>
                       <td className="px-4 py-3">
                         {cat && (
-                          <span className="text-xs font-bold px-2 py-1
-                                          rounded-lg bg-gray-100 text-gray-600">
+                          <span className="text-xs font-bold px-2 py-1 rounded-lg bg-gray-100 text-gray-600">
                             {cat.name}
                           </span>
                         )}
+                        {item.sous_categorie && (
+                          <p className="text-[10px] text-gray-400 mt-1">{item.sous_categorie}</p>
+                        )}
                       </td>
-                      {/* MASQUÉ TEMPORAIREMENT - Qté cellule */}
-                      {false && (
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center
-                                          justify-center gap-1">
-                            {item.quantity <= item.quantity_alert && (
-                              <AlertTriangle size={12}
-                                className="text-amber-500"/>
-                            )}
-                            <span className={`font-bold
-                              ${item.quantity <= item.quantity_alert
-                                ? 'text-amber-600'
-                                : 'text-[#1B2A4A]'}`}>
-                              {item.quantity}
-                            </span>
-                          </div>
-                        </td>
-                      )}
-                      <td className="px-4 py-3 text-right
-                                     text-gray-500 text-xs">
+                      <td className="px-4 py-3 text-xs text-gray-600">
+                        {item.fournisseurs?.nom || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-500 text-xs">
                         {item.purchase_price}€
                       </td>
-                      <td className="px-4 py-3 text-right
-                                     font-bold text-[#1B2A4A]">
+                      <td className="px-4 py-3 text-right font-bold text-[#1B2A4A]">
                         {item.sale_price}€
                       </td>
-                      <td className="px-4 py-3 text-right
-                                     text-xs text-gray-400">
+                      <td className="px-4 py-3 text-right text-xs text-gray-400">
                         {item.price_min}€ / {item.price_max}€
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
+                          ${isLow
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-600'}`}>
+                          {isLow && <AlertTriangle size={11} />}
+                          {item.quantity ?? 0}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1 justify-center">
-                          <button
-                            onClick={() => openItemModal(item)}
-                            className="p-1.5 hover:bg-blue-50
-                                       rounded-lg text-blue-400
-                                       hover:text-blue-600">
+                          <button onClick={() => openItemModal(item)}
+                            className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-400 hover:text-blue-600">
                             <Pencil size={14}/>
                           </button>
-                          <button
-                            onClick={() => handleDeleteItem(item.id)}
-                            className="p-1.5 hover:bg-red-50
-                                       rounded-lg text-red-400
-                                       hover:text-red-600">
+                          <button onClick={() => handleDeleteItem(item.id)}
+                            className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600">
                             <Trash2 size={14}/>
                           </button>
                         </div>
@@ -2024,6 +2066,32 @@ export default function StockMagasin() {
             </div>
             <div className="p-6 space-y-4">
 
+              {/* Zone upload image */}
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Image
+                </label>
+                <div className="flex items-center gap-3">
+                  {itemForm.image_url ? (
+                    <img src={itemForm.image_url} alt=""
+                      className="w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <ImageIcon size={28} className="text-gray-400" />
+                    </div>
+                  )}
+                  <label className="flex-1 cursor-pointer">
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={(e) => handleImageUpload(e.target.files[0])}
+                      disabled={uploadingImage} />
+                    <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-[#00B4CC] transition-all">
+                      <Upload size={14} />
+                      {uploadingImage ? 'Envoi...' : (itemForm.image_url ? 'Remplacer l\'image' : 'Choisir une image')}
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-gray-500
                                  uppercase mb-1 block">
@@ -2088,6 +2156,16 @@ export default function StockMagasin() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Sous-catégorie
+                </label>
+                <input value={itemForm.sous_categorie}
+                  onChange={e => setItemForm(f => ({ ...f, sous_categorie: e.target.value }))}
+                  placeholder="ex: iPhone 13"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
               </div>
 
               {/* MASQUÉ TEMPORAIREMENT - Quantité + Alerte stock bas */}
@@ -2175,6 +2253,20 @@ export default function StockMagasin() {
                     className="w-full px-3 py-2 border border-gray-200
                                rounded-xl text-sm"/>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Fournisseur
+                </label>
+                <select value={itemForm.fournisseur_id}
+                  onChange={e => setItemForm(f => ({ ...f, fournisseur_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="">Aucun</option>
+                  {fournisseursList.map((f) => (
+                    <option key={f.id} value={f.id}>{f.nom}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
