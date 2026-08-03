@@ -12,7 +12,7 @@ import ZFinancierReport from '../../components/admin/ZFinancierReport'
 import CaisseAccueil from '../../components/admin/CaisseAccueil'
 import CaissePinLock from '../../components/admin/CaissePinLock'
 import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
-import { calcSalairePeriode } from '../../lib/calcSalaire'
+import { calcSalairePeriode, getWeekBounds } from '../../lib/calcSalaire'
 import { logActivity } from '../../lib/logActivity'
 
 const POS_CATEGORIES = [
@@ -138,6 +138,9 @@ export default function StockMagasin() {
   const [savingStaffCaisse, setSavingStaffCaisse]       = useState(false)
   const [pointageAujourdhui, setPointageAujourdhui]     = useState(null)
   const [salaireMoisCaisse, setSalaireMoisCaisse]       = useState(null)
+  const [salaireSemaineCaisse, setSalaireSemaineCaisse] = useState(null)
+  const [joursTravaillesSemaine, setJoursTravaillesSemaine] = useState([])
+  const [liveTick, setLiveTick] = useState(0)
   const [loadingDetailCaisse, setLoadingDetailCaisse]   = useState(false)
   const [clockNow, setClockNow] = useState(() => {
     const d = new Date()
@@ -150,6 +153,24 @@ export default function StockMagasin() {
     }, 1000)
     return () => clearInterval(t)
   }, [])
+
+  // Tick 1s pour les gains en direct — actif uniquement si pointage en cours (pas encore de départ)
+  useEffect(() => {
+    if (!pointageAujourdhui || pointageAujourdhui.heure_depart) return
+    const t = setInterval(() => setLiveTick((x) => x + 1), 1000)
+    return () => clearInterval(t)
+  }, [pointageAujourdhui])
+
+  const calcGainDirect = () => {
+    if (!pointageAujourdhui || !pointageAujourdhui.heure_arrivee) return null
+    const wage = Number(selectedStaffCaisse?.hourly_wage || 0)
+    const arr = new Date(pointageAujourdhui.heure_arrivee)
+    const end = pointageAujourdhui.heure_depart ? new Date(pointageAujourdhui.heure_depart) : new Date()
+    const heures = Math.max(0, (end - arr) / 3600000)
+    const brut = heures * wage
+    const net = brut - Number(pointageAujourdhui.penalite_retard || 0)
+    return { heures, net, enCours: !pointageAujourdhui.heure_depart }
+  }
   const [showMovementMenu, setShowMovementMenu] = useState(false)
   const [discountMenuItemId, setDiscountMenuItemId] = useState(null)
   const [showGlobalDiscount, setShowGlobalDiscount] = useState(false)
@@ -245,14 +266,37 @@ export default function StockMagasin() {
     const firstOfMonth = new Date()
     firstOfMonth.setDate(1)
     const dateStart = firstOfMonth.toISOString().slice(0, 10)
+    const { weekStart, weekEnd } = getWeekBounds()
 
-    const [pointRes, salaire] = await Promise.all([
+    const [pointRes, salaire, salaireSem, pointagesSemRes] = await Promise.all([
       supabase.from('staff_pointages').select('*').eq('staff_id', staff.id).eq('date', today).maybeSingle(),
       calcSalairePeriode(supabase, staff.id, staff.hourly_wage || 0, dateStart, today),
+      calcSalairePeriode(supabase, staff.id, staff.hourly_wage || 0, weekStart, weekEnd),
+      supabase.from('staff_pointages').select('date,heure_arrivee,heure_depart')
+        .eq('staff_id', staff.id).gte('date', weekStart).lte('date', weekEnd),
     ])
+
+    // Barres 7 jours (Lun -> Dim) avec heures travaillées
+    const monday = new Date(weekStart)
+    const dayHours = []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday)
+      d.setDate(monday.getDate() + i)
+      const dStr = d.toISOString().slice(0, 10)
+      const p = (pointagesSemRes.data || []).find((x) => x.date === dStr)
+      let hours = 0
+      if (p?.heure_arrivee && p?.heure_depart) {
+        hours = (new Date(p.heure_depart) - new Date(p.heure_arrivee)) / 3600000
+      } else if (p?.heure_arrivee && dStr === today) {
+        hours = (new Date() - new Date(p.heure_arrivee)) / 3600000
+      }
+      dayHours.push({ dateStr: dStr, hours: Math.max(0, hours) })
+    }
 
     setPointageAujourdhui(pointRes.data || null)
     setSalaireMoisCaisse(salaire)
+    setSalaireSemaineCaisse(salaireSem)
+    setJoursTravaillesSemaine(dayHours)
     setLoadingDetailCaisse(false)
   }
 
@@ -1325,6 +1369,7 @@ export default function StockMagasin() {
                       staffName={selectedStaffCaisse.name}
                       staffPhone={selectedStaffCaisse.telephone}
                       hourlyWage={selectedStaffCaisse.hourly_wage || 0}
+                      isAdmin={isAdmin}
                     />
                   </div>
 
@@ -1356,6 +1401,31 @@ export default function StockMagasin() {
                               Retard de {pointageAujourdhui.retard_minutes} min — pénalité -{pointageAujourdhui.penalite_retard}€
                             </p>
                           )}
+                          {(() => {
+                            const g = calcGainDirect()
+                            if (!g) return null
+                            const totalMin = Math.round(g.heures * 60)
+                            const h = Math.floor(totalMin / 60)
+                            const m = totalMin % 60
+                            return (
+                              <div className="mt-3 rounded-xl p-3 border border-cyan-100"
+                                style={{ background: 'linear-gradient(135deg, #ecfeff 0%, #ccfbf1 100%)' }}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[10px] font-bold uppercase text-[#1B2A4A] flex items-center gap-1">
+                                    {g.enCours
+                                      ? <><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> En direct</>
+                                      : <>Session terminée</>}
+                                  </span>
+                                  <span className="text-lg font-black text-teal-700">
+                                    {g.net.toFixed(2)}€
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-gray-500">
+                                  {h}h {String(m).padStart(2, '0')}min travaillées
+                                </p>
+                              </div>
+                            )
+                          })()}
                         </div>
                       ) : (
                         <p className="text-sm text-gray-400">Pas encore pointé aujourd'hui</p>
@@ -1401,6 +1471,50 @@ export default function StockMagasin() {
                             {salaireMoisCaisse.salaireNet.toFixed(2)}€
                           </p>
                         </div>
+
+                        {salaireSemaineCaisse && (
+                          <div className="mt-4 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <p className="text-xs font-bold text-gray-500 uppercase">Cette semaine</p>
+                                <p className="text-xl font-black text-[#1B2A4A] mt-1">
+                                  {salaireSemaineCaisse.totalHeures.toFixed(1)}h
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase">Salaire net</p>
+                                <p className="text-xl font-black text-green-600 mt-1">
+                                  {salaireSemaineCaisse.salaireNet.toFixed(2)}€
+                                </p>
+                              </div>
+                            </div>
+                            {joursTravaillesSemaine.length > 0 && (() => {
+                              const maxH = Math.max(1, ...joursTravaillesSemaine.map((d) => d.hours))
+                              const dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+                              return (
+                                <div className="flex items-end justify-between gap-1.5 h-24">
+                                  {joursTravaillesSemaine.map((d, i) => {
+                                    const pct = (d.hours / maxH) * 100
+                                    return (
+                                      <div key={d.dateStr} className="flex-1 flex flex-col items-center gap-1">
+                                        <div className="w-full flex items-end h-full">
+                                          <div
+                                            className="w-full rounded-t-md bg-gradient-to-t from-[#1B2A4A] to-[#00B4CC] transition-all"
+                                            style={{ height: `${Math.max(2, pct)}%` }}
+                                            title={`${d.hours.toFixed(1)}h`}
+                                          />
+                                        </div>
+                                        <span className="text-[9px] font-bold text-gray-500 uppercase">
+                                          {dayLabels[i]}
+                                        </span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

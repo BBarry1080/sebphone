@@ -94,7 +94,6 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
         .from('staff_pointages')
         .select('*')
         .eq('staff_id', emp.id)
-        .eq('magasin_id', magasin)
         .eq('date', today)
         .maybeSingle()
 

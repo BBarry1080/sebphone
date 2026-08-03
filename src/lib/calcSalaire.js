@@ -3,6 +3,16 @@ export function calcPenalite(retardMin) {
   return 20 * (1 + Math.floor((retardMin - 15) / 60))
 }
 
+export function getWeekBounds() {
+  const now = new Date()
+  const day = now.getDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + diffToMonday)
+  const toStr = (d) => d.toISOString().slice(0, 10)
+  return { weekStart: toStr(monday), weekEnd: toStr(now) }
+}
+
 export async function calcSalairePeriode(supabase, staffId, hourlyWage, dateStart, dateEnd) {
   const { data: schedules } = await supabase
     .from('staff_schedule_dates')

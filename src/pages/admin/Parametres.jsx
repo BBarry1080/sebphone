@@ -1910,6 +1910,7 @@ export default function Parametres() {
                 staffName={calendarEmployee.name}
                 staffPhone={calendarEmployee.telephone}
                 hourlyWage={calendarEmployee.hourly_wage || 0}
+                isAdmin={isAdmin}
               />
             </div>
           </div>
