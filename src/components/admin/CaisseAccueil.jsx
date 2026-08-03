@@ -65,6 +65,7 @@ export default function CaisseAccueil({
   magasinLabel,
   caTotal = 0,
   ticketCount = 0,
+  beneficeJour = 0,
   lastClosure = null,
   onOpenCaisse,
   onOpenGestion,
@@ -89,6 +90,93 @@ export default function CaisseAccueil({
     montant_paye: '', payment_method: 'cash',
   })
   const [lastBon, setLastBon] = useState(null)
+
+  // Détail du jour (popup)
+  const [showDetailJour, setShowDetailJour] = useState(false)
+  const [loadingDetailJour, setLoadingDetailJour] = useState(false)
+  const [detailJour, setDetailJour] = useState(null)
+
+  const fetchDetailJour = async () => {
+    setLoadingDetailJour(true)
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+    const startISO = startOfDay.toISOString()
+    const todayDate = new Date().toISOString().slice(0, 10)
+
+    const [salesRes, repairsRes, ordersRes, paymentsRes] = await Promise.all([
+      supabase.from('shop_sales').select('*')
+        .eq('magasin_id', magasin).gte('created_at', startISO)
+        .order('created_at', { ascending: false }),
+      supabase.from('repairs').select('*')
+        .eq('magasin_id', magasin).eq('date', todayDate)
+        .order('created_at', { ascending: false }),
+      supabase.from('orders').select('*, phones(purchase_price)')
+        .eq('magasin_id', magasin).gte('created_at', startISO)
+        .eq('status', 'recupere')
+        .order('created_at', { ascending: false }),
+      supabase.from('payments').select('*')
+        .eq('magasin_id', magasin).gte('created_at', startISO),
+    ])
+
+    const sales = salesRes.data || []
+    const repairsJour = repairsRes.data || []
+    const orders = ordersRes.data || []
+    const payments = paymentsRes.data || []
+
+    const saleIds = sales.map((s) => s.id)
+    let saleItems = []
+    if (saleIds.length > 0) {
+      const { data } = await supabase.from('shop_sale_items')
+        .select('*, shop_items(purchase_price)')
+        .in('sale_id', saleIds)
+      saleItems = data || []
+    }
+
+    const beneficeAccessoires = saleItems.reduce((sum, item) => {
+      const cout = Number(item.shop_items?.purchase_price) || 0
+      const vente = Number(item.unit_price) || 0
+      return sum + (vente - cout) * Number(item.quantity || 1)
+    }, 0)
+
+    const beneficePhones = orders.reduce((sum, o) => {
+      const cout = Number(o.phones?.purchase_price) || 0
+      const vente = Number(o.final_price) || 0
+      return sum + (vente - cout)
+    }, 0)
+
+    const totalCashSales = sales.reduce((s, x) => s + (Number(x.cash_amount) || 0), 0)
+    const totalBancoSales = sales.reduce((s, x) => s + (Number(x.bancontact_amount) || 0), 0)
+    const totalVirSales = sales.reduce((s, x) => s + (Number(x.virement_amount) || 0), 0)
+
+    const totalCashPhones = payments.filter((p) => p.payment_method === 'cash')
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const totalBancoPhones = payments.filter((p) => p.payment_method === 'bancontact')
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const totalVirPhones = payments.filter((p) => p.payment_method === 'virement')
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+
+    const totalCash = totalCashSales + totalCashPhones
+    const totalBancontact = totalBancoSales + totalBancoPhones
+    const totalVirement = totalVirSales + totalVirPhones
+
+    setDetailJour({
+      ticketsCaisse: sales,
+      reparationsJour: repairsJour,
+      ventesPhoneJour: orders,
+      totalCash, totalBancontact, totalVirement,
+      totalConsolide: totalCash + totalBancontact + totalVirement,
+      beneficeAccessoires, beneficePhones,
+      beneficeTotalCalcule: beneficeAccessoires + beneficePhones,
+    })
+    setLoadingDetailJour(false)
+  }
+
+  const openDetailJour = () => {
+    setShowDetailJour(true)
+    if (!detailJour) fetchDetailJour()
+  }
+
+  const beneficeAffiche = detailJour?.beneficeTotalCalcule ?? beneficeJour
 
   // Fournisseurs
   const [showFournisseurs, setShowFournisseurs] = useState(false)
@@ -322,15 +410,25 @@ export default function CaisseAccueil({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-        {/* AUJOURD'HUI (feature, span 2) */}
-        <div className="md:col-span-2 rounded-2xl p-6 text-white shadow-lg"
+        {/* AUJOURD'HUI (feature, span 2) — cliquable */}
+        <div
+          onClick={openDetailJour}
+          className="md:col-span-2 rounded-2xl p-6 text-white shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
           style={{ background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)` }}>
           <p className="text-xs font-bold uppercase opacity-70 tracking-wide">Aujourd'hui</p>
           <p className="text-sm opacity-70 mt-1">{magasinLabel || magasinName(magasin)}</p>
-          <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
             <div>
               <p className="text-[10px] uppercase opacity-70">CA du jour</p>
               <p className="text-2xl font-bold mt-1">{Number(caTotal).toFixed(2)}€</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase opacity-70">Bénéfice du jour</p>
+              <p className="text-2xl font-bold mt-1">
+                {detailJour || beneficeJour > 0
+                  ? `${Number(beneficeAffiche).toFixed(2)}€`
+                  : '—'}
+              </p>
             </div>
             <div>
               <p className="text-[10px] uppercase opacity-70">Tickets créés</p>
@@ -803,6 +901,189 @@ export default function CaisseAccueil({
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP DÉTAIL DU JOUR */}
+      {showDetailJour && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg" style={{ color: COLORS.navy }}>
+                Détail du jour
+              </h3>
+              <button onClick={() => setShowDetailJour(false)}
+                className="text-gray-400 hover:text-gray-700">
+                <X size={20}/>
+              </button>
+            </div>
+
+            {loadingDetailJour || !detailJour ? (
+              <div className="flex items-center justify-center h-40">
+                <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-5">
+
+                {/* a) Résumé haut */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase">CA total</p>
+                    <p className="text-xl font-bold mt-1" style={{ color: COLORS.navy }}>
+                      {detailJour.totalConsolide.toFixed(2)}€
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase">Bénéfice</p>
+                    <p className="text-xl font-bold text-green-600 mt-1">
+                      {detailJour.beneficeTotalCalcule.toFixed(2)}€
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase">Tickets</p>
+                    <p className="text-xl font-bold mt-1" style={{ color: COLORS.navy }}>
+                      {detailJour.ticketsCaisse.length + detailJour.reparationsJour.length + detailJour.ventesPhoneJour.length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* b) Répartition paiement */}
+                <div className="border-t border-gray-100 pt-4 space-y-1 text-sm">
+                  <div className="flex justify-between text-gray-600">
+                    <span>💵 Cash</span>
+                    <span className="font-bold">{detailJour.totalCash.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>💳 Bancontact</span>
+                    <span className="font-bold">{detailJour.totalBancontact.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>🏦 Virement</span>
+                    <span className="font-bold">{detailJour.totalVirement.toFixed(2)}€</span>
+                  </div>
+                </div>
+
+                {/* c) Tickets caisse */}
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                    Tickets caisse ({detailJour.ticketsCaisse.length})
+                  </p>
+                  {detailJour.ticketsCaisse.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-3">Aucun ticket</p>
+                  ) : (
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                      {detailJour.ticketsCaisse.map((t) => {
+                        const heure = new Date(t.created_at).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
+                        const isAcompte = t.sale_type && t.sale_type !== 'vente'
+                        return (
+                          <div key={t.id}
+                            className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-gray-500">{heure}</span>
+                              {isAcompte ? (
+                                <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  Acompte
+                                </span>
+                              ) : (
+                                <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  Vente
+                                </span>
+                              )}
+                              <span className="text-gray-500">{t.payment_method}</span>
+                            </div>
+                            <span className="font-bold" style={{ color: COLORS.navy }}>
+                              {Number(t.total_amount).toFixed(2)}€
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* d) Réparations */}
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-1">
+                    Réparations ({detailJour.reparationsJour.length})
+                  </p>
+                  <p className="text-[11px] italic text-gray-400 mb-2">
+                    Revenu informatif — non inclus dans le bénéfice (coût des pièces non suivi)
+                  </p>
+                  {detailJour.reparationsJour.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-3">Aucune réparation</p>
+                  ) : (
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                      {detailJour.reparationsJour.map((r) => {
+                        const statusColor =
+                          r.status === 'termine'   ? 'bg-green-100 text-green-700' :
+                          r.status === 'en_cours'  ? 'bg-amber-100 text-amber-700' :
+                          r.status === 'abandonne' ? 'bg-gray-200 text-gray-500' :
+                                                     'bg-blue-100 text-blue-700'
+                        return (
+                          <div key={r.id}
+                            className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                            <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                              <span className="font-semibold text-[#1B2A4A] truncate">{r.client_nom}</span>
+                              <span className="text-gray-500 truncate">{r.type_panne || '—'}</span>
+                              <span className={`${statusColor} text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap`}>
+                                {r.status}
+                              </span>
+                            </div>
+                            <span className="font-bold whitespace-nowrap" style={{ color: COLORS.navy }}>
+                              {r.prix != null ? `${Number(r.prix).toFixed(2)}€` : '—'}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* e) Ventes téléphones */}
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                    Ventes téléphones ({detailJour.ventesPhoneJour.length})
+                  </p>
+                  {detailJour.ventesPhoneJour.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-3">Aucune vente</p>
+                  ) : (
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                      {detailJour.ventesPhoneJour.map((o) => {
+                        const cout = Number(o.phones?.purchase_price) || 0
+                        const vente = Number(o.final_price) || 0
+                        const margeConnue = o.phones?.purchase_price != null && cout > 0
+                        const marge = vente - cout
+                        return (
+                          <div key={o.id}
+                            className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-[#1B2A4A] truncate">{o.phone_name}</p>
+                              {margeConnue ? (
+                                <p className={`text-[10px] ${marge >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  Marge : {marge >= 0 ? '+' : ''}{marge.toFixed(2)}€
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-gray-400">Marge inconnue</p>
+                              )}
+                            </div>
+                            <span className="font-bold whitespace-nowrap" style={{ color: COLORS.navy }}>
+                              {vente.toFixed(2)}€
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            <button onClick={() => setShowDetailJour(false)}
+              className="w-full mt-5 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+              Fermer
+            </button>
           </div>
         </div>
       )}
