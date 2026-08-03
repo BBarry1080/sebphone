@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
+import { logActivity } from '../../lib/logActivity'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
+  Plus, Pencil, Trash2,
 } from 'lucide-react'
 
 const COLORS = {
@@ -84,6 +86,98 @@ export default function CaisseAccueil({
     magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
   })
   const [lastBon, setLastBon] = useState(null)
+
+  // Fournisseurs
+  const [showFournisseurs, setShowFournisseurs] = useState(false)
+  const [fournisseurs, setFournisseurs] = useState([])
+  const [loadingFournisseurs, setLoadingFournisseurs] = useState(false)
+  const [showFournForm, setShowFournForm] = useState(false)
+  const [editingFourn, setEditingFourn] = useState(null)
+  const [savingFourn, setSavingFourn] = useState(false)
+  const [fournForm, setFournForm] = useState({
+    nom: '', contact: '', tel: '', email: '',
+    adresse: '', ville: '', cp: '', pays: 'Belgique', notes: '',
+  })
+
+  const fetchFournisseurs = async () => {
+    setLoadingFournisseurs(true)
+    const { data } = await supabase
+      .from('fournisseurs')
+      .select('*')
+      .order('nom', { ascending: true })
+    setFournisseurs(data || [])
+    setLoadingFournisseurs(false)
+  }
+
+  useEffect(() => {
+    if (showFournisseurs) fetchFournisseurs()
+  }, [showFournisseurs])
+
+  const openNewFournForm = () => {
+    setEditingFourn(null)
+    setFournForm({
+      nom: '', contact: '', tel: '', email: '',
+      adresse: '', ville: '', cp: '', pays: 'Belgique', notes: '',
+    })
+    setShowFournForm(true)
+  }
+
+  const openEditFournForm = (f) => {
+    setEditingFourn(f)
+    setFournForm({
+      nom: f.nom || '',
+      contact: f.contact || '',
+      tel: f.tel || '',
+      email: f.email || '',
+      adresse: f.adresse || '',
+      ville: f.ville || '',
+      cp: f.cp || '',
+      pays: f.pays || 'Belgique',
+      notes: f.notes || '',
+    })
+    setShowFournForm(true)
+  }
+
+  const handleSaveFourn = async () => {
+    if (!fournForm.nom.trim()) { alert('Nom requis'); return }
+    setSavingFourn(true)
+    const payload = {
+      nom: fournForm.nom.trim(),
+      contact: fournForm.contact.trim() || null,
+      tel: fournForm.tel.trim() || null,
+      email: fournForm.email.trim() || null,
+      adresse: fournForm.adresse.trim() || null,
+      ville: fournForm.ville.trim() || null,
+      cp: fournForm.cp.trim() || null,
+      pays: fournForm.pays.trim() || 'Belgique',
+      notes: fournForm.notes.trim() || null,
+    }
+    if (editingFourn) {
+      const { error } = await supabase
+        .from('fournisseurs')
+        .update(payload)
+        .eq('id', editingFourn.id)
+      setSavingFourn(false)
+      if (error) { alert('Erreur : ' + error.message); return }
+      logActivity('fournisseur_update', `Fournisseur modifié — ${payload.nom}`)
+    } else {
+      const { error } = await supabase.from('fournisseurs').insert(payload)
+      setSavingFourn(false)
+      if (error) { alert('Erreur : ' + error.message); return }
+      logActivity('fournisseur_create', `Nouveau fournisseur — ${payload.nom}`)
+    }
+    setShowFournForm(false)
+    setEditingFourn(null)
+    fetchFournisseurs()
+  }
+
+  const handleDeleteFourn = async (f) => {
+    if (!window.confirm(`Supprimer le fournisseur ${f.nom} ?`)) return
+    const { error } = await supabase.from('fournisseurs').delete().eq('id', f.id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('fournisseur_delete', `Fournisseur supprimé — ${f.nom}`)
+    fetchFournisseurs()
+  }
 
   useEffect(() => {
     const fetchRepairsCount = async () => {
@@ -235,8 +329,8 @@ export default function CaisseAccueil({
         {/* FOURNISSEURS */}
         <Tile color={COLORS.purple} icon={Truck}
           title="Fournisseurs"
-          subtitle="Bientôt disponible"
-          onClick={() => alert('Module Fournisseurs — bientôt disponible')}
+          subtitle="Gérer les fournisseurs"
+          onClick={() => setShowFournisseurs(true)}
         />
 
         {/* PRODUITS */}
@@ -448,6 +542,163 @@ export default function CaisseAccueil({
                 style={{ background: COLORS.navy }}>
                 Générer le bon
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL FOURNISSEURS */}
+      {showFournisseurs && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl my-8 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                {showFournForm && (
+                  <button onClick={() => { setShowFournForm(false); setEditingFourn(null) }}
+                    className="text-gray-400 hover:text-[#1B2A4A] text-lg">
+                    ←
+                  </button>
+                )}
+                <div>
+                  <h3 className="font-bold text-lg" style={{ color: COLORS.navy }}>
+                    {showFournForm
+                      ? (editingFourn ? 'Modifier le fournisseur' : 'Nouveau fournisseur')
+                      : 'Fournisseurs'}
+                  </h3>
+                  {!showFournForm && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {fournisseurs.length} fournisseur{fournisseurs.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {!showFournForm && (
+                  <button onClick={openNewFournForm}
+                    className="flex items-center gap-1.5 bg-[#1B2A4A] text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-[#00B4CC]">
+                    <Plus size={14} /> Nouveau fournisseur
+                  </button>
+                )}
+                <button onClick={() => { setShowFournisseurs(false); setShowFournForm(false); setEditingFourn(null) }}
+                  className="text-gray-400 hover:text-gray-700">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5">
+              {showFournForm ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Nom *</label>
+                    <input value={fournForm.nom}
+                      onChange={(e) => setFournForm((f) => ({ ...f, nom: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Personne de contact</label>
+                    <input value={fournForm.contact}
+                      onChange={(e) => setFournForm((f) => ({ ...f, contact: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Téléphone</label>
+                    <input type="tel" value={fournForm.tel}
+                      onChange={(e) => setFournForm((f) => ({ ...f, tel: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Email</label>
+                    <input type="email" value={fournForm.email}
+                      onChange={(e) => setFournForm((f) => ({ ...f, email: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Adresse</label>
+                    <input value={fournForm.adresse}
+                      onChange={(e) => setFournForm((f) => ({ ...f, adresse: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Ville</label>
+                    <input value={fournForm.ville}
+                      onChange={(e) => setFournForm((f) => ({ ...f, ville: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Code postal</label>
+                    <input value={fournForm.cp}
+                      onChange={(e) => setFournForm((f) => ({ ...f, cp: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Pays</label>
+                    <input value={fournForm.pays}
+                      onChange={(e) => setFournForm((f) => ({ ...f, pays: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Notes</label>
+                    <textarea rows={3} value={fournForm.notes}
+                      onChange={(e) => setFournForm((f) => ({ ...f, notes: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] resize-none" />
+                  </div>
+                  <div className="col-span-2 flex gap-3 mt-2">
+                    <button onClick={() => { setShowFournForm(false); setEditingFourn(null) }}
+                      className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                      Annuler
+                    </button>
+                    <button onClick={handleSaveFourn}
+                      disabled={savingFourn}
+                      className="flex-1 py-2.5 text-white rounded-xl text-sm font-bold disabled:opacity-50"
+                      style={{ background: COLORS.navy }}>
+                      {savingFourn ? 'Enregistrement...' : (editingFourn ? 'Sauvegarder' : 'Créer')}
+                    </button>
+                  </div>
+                </div>
+              ) : loadingFournisseurs ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : fournisseurs.length === 0 ? (
+                <p className="text-center text-gray-400 py-12 text-sm">
+                  Aucun fournisseur enregistré.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {fournisseurs.map((f) => (
+                    <div key={f.id}
+                      className="bg-gray-50 rounded-xl p-3 flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm" style={{ color: COLORS.navy }}>{f.nom}</p>
+                        <div className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-3">
+                          {f.contact && <span>👤 {f.contact}</span>}
+                          {f.tel && <span>📞 {f.tel}</span>}
+                          {f.email && <span>✉️ {f.email}</span>}
+                        </div>
+                        {(f.adresse || f.ville || f.cp || f.pays) && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            {[f.adresse, f.cp, f.ville, f.pays].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+                        {f.notes && (
+                          <p className="text-xs text-gray-500 mt-1 italic">{f.notes}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => openEditFournForm(f)}
+                          className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+                          <Pencil size={14} />
+                        </button>
+                        <button onClick={() => handleDeleteFourn(f)}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
