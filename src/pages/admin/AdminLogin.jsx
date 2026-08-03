@@ -63,7 +63,7 @@ export default function AdminLogin() {
             id: staffData.id,
             name: staffData.name,
             email: cleanEmail,
-            role: 'employe',
+            role: staffData.is_admin ? 'admin' : 'employe',
             magasin_id: staffData.magasin_id,
             permissions: staffData.permissions,
           }))

@@ -248,7 +248,7 @@ function Toggle({ checked, onChange }) {
   )
 }
 
-function EmployeeModal({ employee, onClose, onSaved }) {
+function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false }) {
   const isEdit = !!employee
   const [firstName, setFirstName] = useState(isEdit ? (employee.name?.split(' ')[0] || '') : '')
   const [lastName,  setLastName]  = useState(isEdit ? (employee.name?.split(' ').slice(1).join(' ') || '') : '')
@@ -258,6 +258,7 @@ function EmployeeModal({ employee, onClose, onSaved }) {
   const [hourlyWage, setHourlyWage] = useState(isEdit ? (employee.hourly_wage ?? '') : '')
   const [telephone, setTelephone] = useState(isEdit ? (employee.telephone || '') : '')
   const [perms,     setPerms]     = useState(isEdit ? { ...DEFAULT_PERMS, ...employee.permissions } : { ...DEFAULT_PERMS })
+  const [isAdminAccount, setIsAdminAccount] = useState(isEdit ? !!employee.is_admin : false)
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState(null)
 
@@ -295,6 +296,7 @@ function EmployeeModal({ employee, onClose, onSaved }) {
       hourly_wage: Number(hourlyWage) || 0,
       telephone:  telephone || null,
       permissions: perms,
+      is_admin:   isAdminAccount,
       active:     true,
     }
     if (!isEdit || password) {
@@ -435,7 +437,31 @@ function EmployeeModal({ employee, onClose, onSaved }) {
             </div>
           </div>
 
-          <div>
+          {currentUserIsAdmin && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-amber-800">Compte administrateur</p>
+                <p className="text-xs text-amber-600">Accès complet à tout SebPhone, comme un admin classique</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={isAdminAccount}
+                  onChange={(e) => setIsAdminAccount(e.target.checked)}
+                  className="sr-only peer" />
+                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-amber-500
+                                after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                                after:bg-white after:rounded-full after:h-5 after:w-5
+                                after:transition-all peer-checked:after:translate-x-5"></div>
+              </label>
+            </div>
+          )}
+
+          {isAdminAccount && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              ⚠️ Les droits individuels ci-dessous n'auront plus d'effet — ce compte aura automatiquement accès à tout.
+            </p>
+          )}
+
+          <div className={isAdminAccount ? 'opacity-40 pointer-events-none' : ''}>
             <label className="text-xs font-semibold text-[#1B2A4A] block mb-3">Droits d'accès</label>
             <div className="flex flex-col gap-4">
               {PERMISSION_GROUPS.map((group) => (
@@ -1042,6 +1068,11 @@ export default function Parametres() {
                         }`}>
                           {emp.active ? 'Actif' : 'Inactif'}
                         </span>
+                        {emp.is_admin && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            Admin
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{emp.email}</p>
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
@@ -1970,6 +2001,7 @@ export default function Parametres() {
           employee={editEmployee}
           onClose={() => setShowModal(false)}
           onSaved={fetchStaff}
+          currentUserIsAdmin={isAdmin}
         />
       )}
     </div>
