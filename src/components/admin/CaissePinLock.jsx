@@ -136,22 +136,46 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
         penalite = calcPenalite(retardMin)
       }
 
-      const { data: inserted, error: insErr } = await supabase
+      const { data: upserted, error: upsertErr } = await supabase
         .from('staff_pointages')
-        .insert({
-          staff_id: emp.id,
-          magasin_id: magasin,
-          date: today,
-          heure_arrivee: nowISO,
-          retard_minutes: retardMin,
-          penalite_retard: penalite,
-        })
+        .upsert(
+          {
+            staff_id: emp.id,
+            magasin_id: magasin,
+            date: today,
+            heure_arrivee: nowISO,
+            retard_minutes: retardMin,
+            penalite_retard: penalite,
+          },
+          { onConflict: 'staff_id,date', ignoreDuplicates: true }
+        )
         .select()
         .single()
-      if (insErr) throw insErr
 
-      setFeedback({ type: 'arrivee', firstName, heure: nowT, retardMin, penalite })
-      setTimeout(() => onUnlock(emp, inserted.id, nowISO), 1500)
+      let finalPointage = upserted
+      if (upsertErr || !upserted) {
+        const { data: refetched } = await supabase
+          .from('staff_pointages')
+          .select('*')
+          .eq('staff_id', emp.id)
+          .eq('date', today)
+          .maybeSingle()
+        finalPointage = refetched
+      }
+      if (!finalPointage) throw upsertErr || new Error('Pointage introuvable après upsert')
+
+      const heureArriveeISO = finalPointage.heure_arrivee || nowISO
+      const heureAffichee = new Date(heureArriveeISO).toLocaleTimeString('fr-BE',
+        { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
+      setFeedback({
+        type: 'arrivee',
+        firstName,
+        heure: heureAffichee,
+        retardMin: finalPointage.retard_minutes || 0,
+        penalite: finalPointage.penalite_retard || 0,
+      })
+      setTimeout(() => onUnlock(emp, finalPointage.id, heureArriveeISO), 1500)
     } catch (err) {
       setFeedback({ type: 'error', message: 'Erreur réseau, réessayez' })
     } finally {
