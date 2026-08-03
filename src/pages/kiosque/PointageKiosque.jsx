@@ -81,13 +81,20 @@ export default function PointageKiosque() {
     if (!validMagasin) return
     setProcessing(true)
     try {
-      const { data: emp } = await supabase
+      const { data: emp, error: empError } = await supabase
         .from('staff')
         .select('*')
-        .eq('magasin_id', validMagasin.id)
+        .eq('magasin_id', (validMagasin.id || '').toLowerCase())
         .eq('pin_code', submittedPin)
         .eq('active', true)
         .maybeSingle()
+
+      if (empError) {
+        console.error('Erreur requête staff pointage:', empError)
+        setFeedback({ type: 'error', message: 'Erreur réseau, réessayez' })
+        setProcessing(false)
+        return
+      }
 
       if (!emp) {
         setFeedback({ type: 'error', message: 'Code incorrect' })
