@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
-import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History, BarChart2 } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History, BarChart2, Clock } from 'lucide-react'
 import { ALL_PERMISSIONS, useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import { logActivity } from '../../lib/logActivity'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
@@ -248,6 +248,8 @@ function EmployeeModal({ employee, onClose, onSaved }) {
   const [lastName,  setLastName]  = useState(isEdit ? (employee.name?.split(' ').slice(1).join(' ') || '') : '')
   const [password,  setPassword]  = useState('')
   const [magasin,   setMagasin]   = useState(isEdit ? employee.magasin_id : (MAGASINS_LIST[0]?.id || ''))
+  const [pinCode,   setPinCode]   = useState(isEdit ? (employee.pin_code || '') : '')
+  const [hourlyWage, setHourlyWage] = useState(isEdit ? (employee.hourly_wage ?? '') : '')
   const [perms,     setPerms]     = useState(isEdit ? { ...DEFAULT_PERMS, ...employee.permissions } : { ...DEFAULT_PERMS })
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState(null)
@@ -257,6 +259,25 @@ function EmployeeModal({ employee, onClose, onSaved }) {
   const handleSave = async () => {
     if (!firstName || !lastName) { setError('Prénom et nom requis'); return }
     if (!isEdit && password.length < 8) { setError('Mot de passe min. 8 caractères'); return }
+
+    if (pinCode) {
+      if (!/^\d{4}$/.test(pinCode)) {
+        alert('Le code PIN doit contenir exactement 4 chiffres')
+        return
+      }
+      let checkQ = supabase
+        .from('staff')
+        .select('id')
+        .eq('magasin_id', magasin)
+        .eq('pin_code', pinCode)
+      if (isEdit) checkQ = checkQ.neq('id', employee.id)
+      const { data: pinDup } = await checkQ
+      if (pinDup && pinDup.length > 0) {
+        alert('Ce code PIN est déjà utilisé par un autre employé de ce magasin')
+        return
+      }
+    }
+
     setSaving(true)
     setError(null)
 
@@ -264,6 +285,8 @@ function EmployeeModal({ employee, onClose, onSaved }) {
       name:       `${firstName} ${lastName}`.trim(),
       email,
       magasin_id: magasin,
+      pin_code:   pinCode || null,
+      hourly_wage: Number(hourlyWage) || 0,
       permissions: perms,
       active:     true,
     }
@@ -360,6 +383,38 @@ function EmployeeModal({ employee, onClose, onSaved }) {
                 <option key={m.id} value={m.id}>{m.nom}</option>
               ))}
             </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-[#1B2A4A] block mb-1">
+                Code PIN (pointeuse)
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={pinCode}
+                onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="1234"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] font-mono tracking-widest"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[#1B2A4A] block mb-1">
+                Salaire horaire (€)
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                value={hourlyWage}
+                onChange={(e) => setHourlyWage(e.target.value)}
+                placeholder="10"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]"
+              />
+            </div>
           </div>
 
           <div>
@@ -630,6 +685,70 @@ export default function Parametres() {
     g === 'grave'  ? 'bg-red-100 text-red-700'   :
     g === 'moyenne' ? 'bg-amber-100 text-amber-700' :
                       'bg-green-100 text-green-700'
+
+  // Horaires (planning hebdo)
+  const [showHorairesModal, setShowHorairesModal] = useState(false)
+  const [horairesEmployee, setHorairesEmployee]   = useState(null)
+  const [horaires, setHoraires]                   = useState([])
+  const [savingHoraires, setSavingHoraires]       = useState(false)
+
+  // Ordre d'affichage : Lundi → Dimanche. jour_semaine en base : 0=dim, 1=lun...6=sam
+  const DAYS = [
+    { num: 1, label: 'Lundi' },
+    { num: 2, label: 'Mardi' },
+    { num: 3, label: 'Mercredi' },
+    { num: 4, label: 'Jeudi' },
+    { num: 5, label: 'Vendredi' },
+    { num: 6, label: 'Samedi' },
+    { num: 0, label: 'Dimanche' },
+  ]
+
+  const openHoraires = async (emp) => {
+    setHorairesEmployee(emp)
+    const { data } = await supabase
+      .from('staff_schedules')
+      .select('*')
+      .eq('staff_id', emp.id)
+    const map = new Map((data || []).map((s) => [s.jour_semaine, s]))
+    const filled = DAYS.map((d) => {
+      const existing = map.get(d.num)
+      return {
+        jour_semaine: d.num,
+        repos: existing?.repos ?? false,
+        heure_debut: existing?.heure_debut || '10:00',
+        heure_fin:   existing?.heure_fin   || '20:00',
+      }
+    })
+    setHoraires(filled)
+    setShowHorairesModal(true)
+  }
+
+  const updateHoraire = (jourNum, field, value) => {
+    setHoraires((prev) => prev.map((h) =>
+      h.jour_semaine === jourNum ? { ...h, [field]: value } : h
+    ))
+  }
+
+  const handleSaveHoraires = async () => {
+    if (!horairesEmployee) return
+    setSavingHoraires(true)
+    const rows = horaires.map((h) => ({
+      staff_id: horairesEmployee.id,
+      jour_semaine: h.jour_semaine,
+      repos: h.repos,
+      heure_debut: h.repos ? null : h.heure_debut,
+      heure_fin:   h.repos ? null : h.heure_fin,
+    }))
+    const { error } = await supabase
+      .from('staff_schedules')
+      .upsert(rows, { onConflict: 'staff_id,jour_semaine' })
+    setSavingHoraires(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('staff_schedule_update', `Horaires mis à jour pour ${horairesEmployee.name}`)
+    alert('✅ Horaires enregistrés')
+    setShowHorairesModal(false)
+    setHorairesEmployee(null)
+  }
 
   const fetchBestSellers = async () => {
     const { data: config } = await supabase
@@ -934,6 +1053,13 @@ export default function Parametres() {
                         }`}
                       >
                         {emp.active ? 'Désactiver' : 'Activer'}
+                      </button>
+                      <button
+                        onClick={() => openHoraires(emp)}
+                        title="Horaires"
+                        className="p-2 text-gray-400 hover:text-[#00B4CC] hover:bg-cyan-50 rounded-lg transition-all cursor-pointer"
+                      >
+                        <Clock size={15} />
                       </button>
                       <button
                         onClick={() => { setEditEmployee(emp); setShowModal(true) }}
@@ -1630,6 +1756,78 @@ export default function Parametres() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showHorairesModal && horairesEmployee && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-[#1B2A4A]">Horaires — {horairesEmployee.name}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Planning hebdomadaire type</p>
+              </div>
+              <button onClick={() => { setShowHorairesModal(false); setHorairesEmployee(null) }}>
+                <X size={18} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-2">
+              {DAYS.map((d) => {
+                const h = horaires.find((x) => x.jour_semaine === d.num)
+                if (!h) return null
+                return (
+                  <div key={d.num} className="bg-gray-50 rounded-xl p-3 flex items-center gap-3 flex-wrap">
+                    <div className="w-20 text-sm font-bold text-[#1B2A4A]">{d.label}</div>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={h.repos}
+                        onChange={(e) => updateHoraire(d.num, 'repos', e.target.checked)}
+                        className="w-4 h-4 accent-[#00B4CC]"
+                      />
+                      <span className="text-xs font-medium text-gray-600">Repos</span>
+                    </label>
+
+                    <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                      <input
+                        type="time"
+                        value={h.heure_debut}
+                        disabled={h.repos}
+                        onChange={(e) => updateHoraire(d.num, 'heure_debut', e.target.value)}
+                        className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${h.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`}
+                      />
+                      <span className="text-gray-400 text-xs">→</span>
+                      <input
+                        type="time"
+                        value={h.heure_fin}
+                        disabled={h.repos}
+                        onChange={(e) => updateHoraire(d.num, 'heure_fin', e.target.value)}
+                        className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${h.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="flex gap-3 p-5 pt-0">
+              <button
+                onClick={() => { setShowHorairesModal(false); setHorairesEmployee(null) }}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSaveHoraires}
+                disabled={savingHoraires}
+                className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC] disabled:opacity-50"
+              >
+                {savingHoraires ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
           </div>
         </div>
       )}
