@@ -44,6 +44,10 @@ const PERMISSION_GROUPS = [
       { key: 'offre_semaine', label: "Gérer l'offre de la semaine" },
       { key: 'stock_reconditionnement', label: 'Accès reconditionnement' },
       { key: 'stock_magasin', label: 'Stock magasin' },
+      { key: 'ouvrir_tiroir_sans_vente', label: 'Ouverture tiroir sans vente' },
+      { key: 'rappel_ticket', label: 'Rappel ticket' },
+      { key: 'modifier_prix_remises', label: 'Modifier prix et remises' },
+      { key: 'cloture_limitee', label: 'Clôture caisse limitée (ticket non imprimé)' },
     ],
   },
   {
