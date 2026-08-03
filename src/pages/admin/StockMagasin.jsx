@@ -992,20 +992,21 @@ export default function StockMagasin() {
     )
   }
 
-  if (!caisseSession && magasin) {
-    return (
-      <CaissePinLock
-        magasin={magasin}
-        magasinLabel={MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
-        onUnlock={handleUnlock}
-      />
-    )
-  }
-
   return (
     <div className={(posScreen === 'caisse' || posScreen === 'gestion')
-      ? 'p-2 max-w-none mx-auto'
-      : 'p-4 md:p-8 max-w-7xl mx-auto'}>
+      ? 'p-2 max-w-none mx-auto relative'
+      : 'p-4 md:p-8 max-w-7xl mx-auto relative'}>
+
+      {!caisseSession && magasin && (
+        <div className="fixed inset-0 z-[100] backdrop-blur-md bg-black/40 flex items-center justify-center p-4">
+          <CaissePinLock
+            magasin={magasin}
+            magasinLabel={MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
+            onUnlock={handleUnlock}
+          />
+        </div>
+      )}
+
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6

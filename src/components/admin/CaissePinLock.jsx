@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Delete, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Delete, CheckCircle2, XCircle } from 'lucide-react'
 
 function calcPenalite(retardMin) {
   if (retardMin < 15) return 0
@@ -56,11 +56,24 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
     setPin((prev) => prev.slice(0, -1))
   }
 
+  // Support clavier physique (chiffres 0-9 + Backspace)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key >= '0' && e.key <= '9') {
+        handlePress(e.key)
+      } else if (e.key === 'Backspace') {
+        handleErase()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, processing, feedback])
+
   const handlePinSubmit = async (submittedPin) => {
     if (!magasin) return
     setProcessing(true)
     try {
-      // PIN désormais unique globalement (pas de filtre magasin)
       const { data: emp, error: empError } = await supabase
         .from('staff')
         .select('*')
@@ -93,7 +106,6 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
       const nowT = nowTimeStr()
       const nowISO = new Date().toISOString()
 
-      // Cas : pointage existant (avec ou sans heure_depart) — on réutilise, pas de recréation
       if (existing) {
         setFeedback({ type: 'welcome', firstName, heure: nowT, retardMin: 0, penalite: 0 })
         setTimeout(() => onUnlock(emp, existing.id, existing.heure_arrivee), 1500)
@@ -101,7 +113,6 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
         return
       }
 
-      // Nouveau pointage arrivée — calcul du retard via schedule
       const jourSem = new Date().getDay()
       const { data: schedule } = await supabase
         .from('staff_schedules')
@@ -145,93 +156,85 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
     }
   }
 
-  // ─── FEEDBACK écrans ───
+  // ─── CARD compacte (feedback ou pavé PIN selon état) ───
+
   if (feedback?.type === 'arrivee' || feedback?.type === 'welcome') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6"
-        style={{ background: 'linear-gradient(135deg, #15223d 0%, #0f1a30 100%)' }}>
-        <div className="text-center text-white max-w-md w-full">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-green-500/20 flex items-center justify-center">
-            <CheckCircle2 size={56} className="text-green-400" />
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Bonjour {feedback.firstName} !</h1>
-          <p className="text-white/70 text-lg mb-1">Ouverture de session</p>
-          <p className="text-4xl font-black font-mono text-[#00B4CC] mb-4">{feedback.heure}</p>
-          {feedback.type === 'arrivee' && feedback.penalite > 0 && (
-            <div className="bg-amber-500/20 border border-amber-500/40 rounded-2xl px-5 py-3 text-amber-200 text-sm font-bold">
-              Retard de {feedback.retardMin} min — pénalité -{feedback.penalite}€
-            </div>
-          )}
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-[280px] text-center">
+        <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-green-100 flex items-center justify-center">
+          <CheckCircle2 size={32} className="text-green-600" />
         </div>
+        <p className="text-lg font-bold text-[#1B2A4A] mb-1">
+          Bonjour {feedback.firstName} !
+        </p>
+        <p className="text-xs text-gray-500 mb-1">Ouverture de session</p>
+        <p className="text-2xl font-black font-mono text-[#00B4CC] mb-2">
+          {feedback.heure}
+        </p>
+        {feedback.type === 'arrivee' && feedback.penalite > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-amber-700 text-xs font-bold">
+            Retard {feedback.retardMin} min · -{feedback.penalite}€
+          </div>
+        )}
       </div>
     )
   }
 
   if (feedback?.type === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6"
-        style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%)' }}>
-        <div className="text-center text-white max-w-md w-full">
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-red-500/30 flex items-center justify-center">
-            <XCircle size={56} className="text-red-300" />
-          </div>
-          <h1 className="text-3xl font-bold mb-2">{feedback.message}</h1>
-          <p className="text-white/70 text-sm">Nouvelle tentative dans un instant...</p>
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-[280px] text-center">
+        <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center">
+          <XCircle size={32} className="text-red-600" />
         </div>
+        <p className="text-lg font-bold text-red-700 mb-1">{feedback.message}</p>
+        <p className="text-xs text-gray-500">Nouvelle tentative dans un instant...</p>
       </div>
     )
   }
 
-  // ─── ÉCRAN PIN ───
   return (
-    <div className="min-h-screen flex flex-col p-4 md:p-6"
-      style={{ background: 'linear-gradient(135deg, #15223d 0%, #0f1a30 100%)' }}>
-
-      <div className="flex items-center justify-between text-white/60 text-sm">
-        <span>{magasinLabel || magasin}</span>
-        <span className="font-mono">{clockNow}</span>
+    <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-[280px]">
+      <div className="text-center mb-4">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+          {magasinLabel || magasin}
+        </p>
+        <p className="text-sm font-mono text-gray-500 mt-1">{clockNow}</p>
+        <h2 className="text-lg font-bold text-[#1B2A4A] mt-2">Code PIN</h2>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center gap-8 max-w-sm mx-auto w-full">
+      {/* 4 cercles indicateurs compacts */}
+      <div className="flex justify-center gap-3 mb-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i}
+            className={`w-3 h-3 rounded-full border-2 transition-all
+              ${pin.length > i
+                ? 'bg-[#00B4CC] border-[#00B4CC] scale-110'
+                : 'border-gray-300'}`}
+          />
+        ))}
+      </div>
 
-        <div className="text-center text-white">
-          <h1 className="text-3xl font-bold mb-1">Enregistrement caisse</h1>
-          <p className="text-white/60 text-sm">Entrez votre code à 4 chiffres pour ouvrir la session</p>
-        </div>
-
-        <div className="flex gap-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i}
-              className={`w-5 h-5 rounded-full border-2 transition-all
-                ${pin.length > i
-                  ? 'bg-[#00B4CC] border-[#00B4CC] scale-110'
-                  : 'border-white/40'}`}
-            />
-          ))}
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 w-full">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
-            <button key={d}
-              onClick={() => handlePress(d)}
-              disabled={processing}
-              className="aspect-square w-full min-h-[80px] rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white text-3xl font-light transition-all disabled:opacity-50">
-              {d}
-            </button>
-          ))}
-          <div />
-          <button onClick={() => handlePress(0)}
+      {/* Pavé numérique compact */}
+      <div className="grid grid-cols-3 gap-2">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
+          <button key={d}
+            onClick={() => handlePress(d)}
             disabled={processing}
-            className="aspect-square w-full min-h-[80px] rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white text-3xl font-light transition-all disabled:opacity-50">
-            0
+            className="aspect-square w-full min-h-[52px] rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-[#1B2A4A] text-xl font-semibold transition-all disabled:opacity-50">
+            {d}
           </button>
-          <button onClick={handleErase}
-            disabled={processing || pin.length === 0}
-            className="aspect-square w-full min-h-[80px] rounded-full bg-white/5 hover:bg-white/15 active:bg-white/25 text-white flex items-center justify-center transition-all disabled:opacity-30">
-            <Delete size={26} />
-          </button>
-        </div>
-
+        ))}
+        <div />
+        <button onClick={() => handlePress(0)}
+          disabled={processing}
+          className="aspect-square w-full min-h-[52px] rounded-full bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-[#1B2A4A] text-xl font-semibold transition-all disabled:opacity-50">
+          0
+        </button>
+        <button onClick={handleErase}
+          disabled={processing || pin.length === 0}
+          className="aspect-square w-full min-h-[52px] rounded-full bg-gray-50 hover:bg-gray-200 active:bg-gray-300 text-gray-500 flex items-center justify-center transition-all disabled:opacity-30">
+          <Delete size={20} />
+        </button>
       </div>
     </div>
   )
