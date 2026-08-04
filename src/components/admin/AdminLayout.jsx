@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History, Contact2, Calendar, Boxes,
+  Bell, Menu, X, Tag, QrCode, Calculator, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History, Contact2, Calendar, Boxes, ChevronRight,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -88,6 +88,23 @@ function SidebarContent({ onClose }) {
     },
   ]
 
+  const [expandedGroups, setExpandedGroups] = useState({})
+  const location = useLocation()
+
+  useEffect(() => {
+    const activeGroup = navGroups.find((g) =>
+      g.items.some((item) => location.pathname.startsWith(item.to.split('?')[0]))
+    )
+    if (activeGroup) {
+      setExpandedGroups((prev) => ({ ...prev, [activeGroup.label]: true }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
+
+  const toggleGroup = (label) => {
+    setExpandedGroups((prev) => ({ ...prev, [label]: !prev[label] }))
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -115,29 +132,40 @@ function SidebarContent({ onClose }) {
           if (visibleItems.length === 0) return null
           return (
             <div key={group.label} className={groupIdx === 0 ? '' : 'mt-4'}>
-              <p
-                className="text-[10px] font-bold uppercase tracking-wide px-3 mb-1"
+              <button
+                onClick={() => toggleGroup(group.label)}
+                className="w-full flex items-center justify-between px-3 py-1.5 mb-1
+                           text-[10px] font-bold uppercase tracking-wide
+                           hover:opacity-80 transition-opacity"
                 style={{ color: group.color }}
               >
-                {group.label}
-              </p>
-              {visibleItems.map(({ to, label, Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-[rgba(0,180,204,0.2)] text-[#00B4CC] border-l-4 border-[#00B4CC] pl-2'
-                        : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
-                    }`
-                  }
-                >
-                  <Icon size={18} />
-                  {label}
-                </NavLink>
-              ))}
+                <span>{group.label}</span>
+                <ChevronRight
+                  size={12}
+                  className={`transition-transform duration-200 ${expandedGroups[group.label] ? 'rotate-90' : ''}`}
+                />
+              </button>
+              {expandedGroups[group.label] && (
+                <div className="space-y-0.5">
+                  {visibleItems.map(({ to, label, Icon }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-all ${
+                          isActive
+                            ? 'bg-[rgba(0,180,204,0.2)] text-[#00B4CC] border-l-4 border-[#00B4CC] pl-2'
+                            : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+                        }`
+                      }
+                    >
+                      <Icon size={18} />
+                      {label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
