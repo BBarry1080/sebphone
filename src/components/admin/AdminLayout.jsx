@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, ClipboardList, Settings, LogOut,
   Bell, Menu, X, Tag, QrCode, Calculator, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History, Contact2, Calendar, Boxes, ChevronRight,
+  Store, Smartphone, Monitor,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -41,6 +42,7 @@ function SidebarContent({ onClose }) {
     {
       label: 'Magasins Sebtelecom',
       color: '#2563eb',
+      groupIcon: Store,
       items: [
         { to: '/admin/stock-magasin',                     label: 'Système de caisse',    Icon: ShoppingCart, show: has('stock_magasin') || isAdmin },
         { to: '/admin/stock-magasin?screen=gestion',      label: 'Stock (marchandise)',  Icon: Boxes,        show: has('stock_magasin') || isAdmin },
@@ -52,6 +54,7 @@ function SidebarContent({ onClose }) {
     {
       label: 'Téléphones',
       color: '#4f46e5',
+      groupIcon: Smartphone,
       items: [
         { to: '/admin/stock',              label: 'Stock',                 Icon: Package,       show: has('voir_stock') },
         { to: '/admin/vendus',             label: 'Historique de ventes',  Icon: History,       show: has('voir_stock') || has('ajouter_vente_directe') },
@@ -62,6 +65,7 @@ function SidebarContent({ onClose }) {
     {
       label: 'Sebphone site',
       color: '#16a34a',
+      groupIcon: Monitor,
       items: [
         { to: '/admin/commandes?origin=site',  label: 'Commandes',             Icon: ShoppingBag, show: has('voir_commandes') },
         { to: '/admin/livraisons',             label: 'Livraisons',            Icon: Truck,       show: isAdmin },
@@ -73,6 +77,7 @@ function SidebarContent({ onClose }) {
     {
       label: 'Comptabilité',
       color: '#64748b',
+      groupIcon: Calculator,
       items: [
         { to: '/admin/dashboard',    label: 'Dashboard',    Icon: LayoutDashboard, show: true },
         { to: '/admin/comptabilite', label: 'Comptabilité', Icon: Calculator,      show: has('voir_comptabilite') },
@@ -81,6 +86,7 @@ function SidebarContent({ onClose }) {
     {
       label: 'Générale',
       color: '#64748b',
+      groupIcon: Settings,
       items: [
         { to: '/admin/parametres', label: 'Paramètres',      Icon: Settings,  show: isAdmin || has('gerer_utilisateurs') },
         { to: '/admin/pro',        label: 'Espace Pro Admin', Icon: Briefcase, show: isAdmin },
@@ -135,11 +141,13 @@ function SidebarContent({ onClose }) {
               <button
                 onClick={() => toggleGroup(group.label)}
                 className="w-full flex items-center justify-between px-3 py-1.5 mb-1
-                           text-[10px] font-bold uppercase tracking-wide
-                           hover:opacity-80 transition-opacity"
-                style={{ color: group.color }}
+                           text-xs font-bold uppercase tracking-wide
+                           hover:opacity-80 transition-opacity text-[#94A3B8]"
               >
-                <span>{group.label}</span>
+                <span className="flex items-center gap-1.5">
+                  <group.groupIcon size={13} />
+                  {group.label}
+                </span>
                 <ChevronRight
                   size={12}
                   className={`transition-transform duration-200 ${expandedGroups[group.label] ? 'rotate-90' : ''}`}
