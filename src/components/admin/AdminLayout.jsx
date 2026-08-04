@@ -163,8 +163,8 @@ function SidebarContent({ onClose }) {
                       className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-all ${
                           isActive
-                            ? 'bg-[rgba(0,180,204,0.2)] text-[#00B4CC] border-l-4 border-[#00B4CC] pl-2'
-                            : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+                            ? 'bg-white text-[#1B2A4A] border-l-4 border-white pl-2'
+                            : 'bg-[rgba(37,99,235,0.25)] text-white border-l-4 border-transparent hover:bg-[rgba(37,99,235,0.4)]'
                         }`
                       }
                     >
