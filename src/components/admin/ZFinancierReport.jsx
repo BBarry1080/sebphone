@@ -25,26 +25,38 @@ function money(n) {
   return n.toFixed(2).replace(".", ",");
 }
 
-function SectionHeader({ title, cols }) {
-  const stars = "*".repeat(cols);
+function Sep({ char = "*" }) {
+  return (
+    <div style={{
+      overflow: "hidden",
+      whiteSpace: "nowrap",
+      height: "1em",
+      letterSpacing: "1px",
+    }}>
+      {char.repeat(80)}
+    </div>
+  );
+}
+
+function SectionHeader({ title }) {
   return (
     <>
-      <div style={{ whiteSpace: "pre" }}>{stars}</div>
+      <Sep />
       <div className="text-center">&lt; {title} &gt;</div>
-      <div style={{ whiteSpace: "pre" }}>{stars}</div>
+      <Sep />
     </>
   );
 }
 
-function Dashes({ cols }) {
-  return <div style={{ whiteSpace: "pre" }}>{"-".repeat(cols)}</div>;
+function Dashes() {
+  return <Sep char="-" />;
 }
 
 function Row3({ label, montant, count }) {
   return (
     <div className="flex justify-between">
       <span>{label}</span>
-      <span style={{ display: "flex", gap: "16px" }}>
+      <span style={{ display: "flex", gap: "16px", whiteSpace: "nowrap", flexShrink: 0, marginLeft: "8px" }}>
         {montant !== undefined && <span>{typeof montant === "number" ? money(montant) : montant}</span>}
         {count !== undefined && <span>{count} #</span>}
       </span>
@@ -72,7 +84,6 @@ export default function ZFinancierReport({
   paperWidth = "80mm",
   onPrint,
 }) {
-  const cols = paperWidth === "58mm" ? 32 : 42;
   const boxWidth = paperWidth === "58mm" ? "220px" : "300px";
 
   const caTickets = ventes.montant - retours.montant;
@@ -115,7 +126,7 @@ export default function ZFinancierReport({
           background: "white",
           color: "black",
           fontFamily: "'Courier New', Courier, monospace",
-          fontSize: "11px",
+          fontSize: "10.5px",
           lineHeight: "1.5",
           padding: "10px",
         }}
@@ -135,43 +146,55 @@ export default function ZFinancierReport({
           {formatDateTime(periodStart)} &gt; {formatDateTime(periodEnd)}
         </div>
 
-        <SectionHeader title="TICKETS DE CAISSE" cols={cols} />
+        <SectionHeader title="TICKETS DE CAISSE" />
         <div style={{ marginTop: "4px" }}>
           <Row3 label="< VENTES >" montant={ventes.montant} count={ventes.count} />
           <Row3 label="< RETOURS >" montant={retours.montant} count={retours.count} />
-          <Dashes cols={cols} />
+          <Dashes />
           <Row3 label="< CA TICKETS >" montant={caTickets} count={caCount} />
           <Row3 label="Ticket moyen" montant={ticketMoyen} />
         </div>
 
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "8px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "8px", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "27%" }} />
+            <col style={{ width: "27%" }} />
+            <col style={{ width: "28%" }} />
+          </colgroup>
           <thead>
             <tr>
               <th></th>
-              <th className="text-right">BASE</th>
-              <th className="text-right">TVA</th>
-              <th className="text-right">TOTAL</th>
+              <th className="text-right" style={{ whiteSpace: "nowrap" }}>BASE</th>
+              <th className="text-right" style={{ whiteSpace: "nowrap" }}>TVA</th>
+              <th className="text-right" style={{ whiteSpace: "nowrap" }}>TOTAL</th>
             </tr>
           </thead>
           <tbody>
             {tvaRows.map((r, i) => (
               <tr key={i}>
-                <td>({r.code}){r.rate}%</td>
-                <td className="text-right">{money(r.base)}</td>
-                <td className="text-right">{money(r.tva)}</td>
-                <td className="text-right">{money(r.total)}</td>
+                <td style={{ whiteSpace: "nowrap" }}>({r.code}){r.rate}%</td>
+                <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(r.base)}</td>
+                <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(r.tva)}</td>
+                <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(r.total)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <Dashes cols={cols} />
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <Dashes />
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "27%" }} />
+            <col style={{ width: "27%" }} />
+            <col style={{ width: "28%" }} />
+          </colgroup>
           <tbody>
             <tr>
               <td></td>
-              <td className="text-right">{money(sumBase)}</td>
-              <td className="text-right">{money(sumTva)}</td>
-              <td className="text-right">{money(sumTotal)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(sumBase)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(sumTva)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(sumTotal)}</td>
             </tr>
           </tbody>
         </table>
@@ -181,32 +204,32 @@ export default function ZFinancierReport({
           {reglements.map((r, i) => (
             <div className="flex justify-between" key={i}>
               <span>{r.method}</span>
-              <span>{money(r.montant)}</span>
+              <span style={{ whiteSpace: "nowrap", flexShrink: 0, marginLeft: "8px" }}>{money(r.montant)}</span>
             </div>
           ))}
         </div>
 
-        <SectionHeader title="VENTES FACTUREES" cols={cols} />
+        <SectionHeader title="VENTES FACTUREES" />
         <Row3 label="< FACTURES >" count={ventesFacturees.factures} />
         <Row3 label="< NOTES DE CREDIT >" count={ventesFacturees.notesCredit} />
 
-        <SectionHeader title="REMISES SUR VENTES" cols={cols} />
+        <SectionHeader title="REMISES SUR VENTES" />
         <div style={{ marginTop: "4px" }}>
           <Row3 label="" montant={remisesSurVentes.montant} count={remisesSurVentes.count} />
         </div>
 
-        <SectionHeader title="VENTES PAR CATEGORIES" cols={cols} />
+        <SectionHeader title="VENTES PAR CATEGORIES" />
         <div style={{ marginTop: "4px" }}>
           {categories.map((c, i) => (
             <Row3 key={i} label={c.name} montant={c.montant} count={c.count} />
           ))}
         </div>
 
-        <SectionHeader title="PROFORMATS" cols={cols} />
+        <SectionHeader title="PROFORMATS" />
         <Row3 label="< BONS DE LIVRAISON >" count={proformats.bonsLivraison} />
         <Row3 label="< COMMANDES CLIENT >" count={proformats.commandesClient} />
 
-        <SectionHeader title="DEPOTS / RETRAITS CAISSE" cols={cols} />
+        <SectionHeader title="DEPOTS / RETRAITS CAISSE" />
         <div style={{ marginTop: "4px" }}>
           {retraits.map((r, i) => (
             <div key={i} style={{ marginBottom: "4px" }}>
@@ -219,22 +242,22 @@ export default function ZFinancierReport({
           ))}
         </div>
 
-        <div style={{ whiteSpace: "pre", marginTop: "4px" }}>{"*".repeat(cols)}</div>
+        <div style={{ marginTop: "4px" }}><Sep /></div>
         <div style={{ marginTop: "4px" }}>
           <div className="flex justify-between">
             <span>CA TOTAL :</span>
-            <span>{money(sumTotal)} &euro;</span>
+            <span style={{ whiteSpace: "nowrap", flexShrink: 0, marginLeft: "8px" }}>{money(sumTotal)} &euro;</span>
           </div>
           <div className="flex justify-between">
             <span>TOTAL CASH EN CAISSE :</span>
-            <span>{money(totalCashEnCaisse)} &euro;</span>
+            <span style={{ whiteSpace: "nowrap", flexShrink: 0, marginLeft: "8px" }}>{money(totalCashEnCaisse)} &euro;</span>
           </div>
           <div className="flex justify-between">
             <span>TOTAL Compt&eacute; :</span>
-            <span>{totalCompte}</span>
+            <span style={{ whiteSpace: "nowrap", flexShrink: 0, marginLeft: "8px" }}>{totalCompte}</span>
           </div>
         </div>
-        <div style={{ whiteSpace: "pre", marginTop: "4px" }}>{"*".repeat(cols)}</div>
+        <div style={{ marginTop: "4px" }}><Sep /></div>
 
         <div style={{ marginTop: "8px" }}>
           PRELEVEMENT EN CLOTURE : {money(prelevementCloture)}
