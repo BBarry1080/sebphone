@@ -122,6 +122,7 @@ export default function StockMagasin() {
   const [movementPayment, setMovementPayment] = useState('cash')
   const [movements, setMovements] = useState([])
   const [lastClosure, setLastClosure] = useState(null)
+  const [todaysClosure, setTodaysClosure] = useState(null)
   const [showClosureModal, setShowClosureModal] = useState(false)
   const [closureData, setClosureData] = useState(null)
   const [closureLoading, setClosureLoading] = useState(false)
@@ -1379,6 +1380,7 @@ export default function StockMagasin() {
       fetchLastClosure().then((closure) => {
         fetchMovementsSince(closure?.period_end || '1970-01-01T00:00:00Z')
       })
+      fetchTodaysClosure()
     }
   }, [magasin])
 
@@ -1406,6 +1408,18 @@ export default function StockMagasin() {
       .limit(1)
       .maybeSingle()
     setLastClosure(data || null)
+    return data
+  }
+
+  const fetchTodaysClosure = async () => {
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Brussels' })
+    const { data } = await supabase
+      .from('cash_closures')
+      .select('*')
+      .eq('magasin_id', magasin)
+      .eq('closure_date', todayStr)
+      .maybeSingle()
+    setTodaysClosure(data || null)
     return data
   }
 
@@ -2052,7 +2066,12 @@ export default function StockMagasin() {
       .single()
 
     if (closureErr) {
-      alert('Erreur : ' + closureErr.message)
+      if (closureErr.code === '23505') {
+        alert('Caisse déjà clôturée aujourd\'hui pour ce magasin. Une seule clôture par jour est autorisée.')
+        await fetchTodaysClosure()
+      } else {
+        alert('Erreur : ' + closureErr.message)
+      }
       setClosureLoading(false)
       return
     }
@@ -2088,6 +2107,15 @@ export default function StockMagasin() {
         created_by: staffName,
       })
     }
+    if (treasoRows.length === 0) {
+      treasoRows.push({
+        type: 'entree', source: 'cloture', payment_method: 'cash',
+        magasin_id: magasin, holder: holderDefaut, amount: 0,
+        reference_id: newClosure.id,
+        description: `Clôture caisse (aucun encaissement) — ${dateLabel}`,
+        created_by: staffName,
+      })
+    }
     if (treasoRows.length > 0) {
       await supabase.from('tresorerie_mouvements').insert(treasoRows)
     }
@@ -2096,6 +2124,7 @@ export default function StockMagasin() {
     setClosureData(null)
     setClosureLoading(false)
     fetchLastClosure()
+    fetchTodaysClosure()
     fetchCaisseToday()
   }
 
@@ -2399,10 +2428,25 @@ export default function StockMagasin() {
               className="py-3 border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-[#1B2A4A]">
               Imprimer récap du jour
             </button>
-            <button onClick={openClosureModal}
-              className="py-3 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:opacity-90">
-              Clôturer la caisse
-            </button>
+            {todaysClosure ? (
+              <div className="bg-gray-100 border border-gray-200 rounded-2xl p-4 text-center">
+                <p className="text-gray-500 text-sm mb-1">
+                  🔒 Caisse déjà clôturée aujourd'hui
+                </p>
+                <p className="text-[#1B2A4A] font-bold">
+                  Par {todaysClosure.staff_name || 'Admin'} à{' '}
+                  {new Date(todaysClosure.period_end).toLocaleTimeString('fr-BE')}
+                </p>
+                <p className="text-[#00B4CC] font-bold text-lg mt-1">
+                  CA {Number(todaysClosure.ca_total).toFixed(2)}€
+                </p>
+              </div>
+            ) : (
+              <button onClick={openClosureModal}
+                className="py-3 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:opacity-90">
+                Clôturer la caisse
+              </button>
+            )}
           </div>
           {lastClosure && (
             <p className="text-xs text-gray-400 mt-4 text-center">
