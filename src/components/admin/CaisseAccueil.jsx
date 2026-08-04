@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
+import ReceiptTicket from './ReceiptTicket'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
   Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Percent, Tag,
@@ -119,6 +120,13 @@ export default function CaisseAccueil({
   const [showDetailJour, setShowDetailJour] = useState(false)
   const [loadingDetailJour, setLoadingDetailJour] = useState(false)
   const [detailJour, setDetailJour] = useState(null)
+  const [showFactureModal, setShowFactureModal] = useState(false)
+  const [factureToShow, setFactureToShow] = useState(null)
+
+  const openFacture = (t) => {
+    setFactureToShow(t)
+    setShowFactureModal(true)
+  }
 
   const fetchDetailJour = async () => {
     setLoadingDetailJour(true)
@@ -183,8 +191,13 @@ export default function CaisseAccueil({
     const totalBancontact = totalBancoSales + totalBancoPhones
     const totalVirement = totalVirSales + totalVirPhones
 
+    const salesWithItems = sales.map((s) => ({
+      ...s,
+      items: saleItems.filter((si) => si.sale_id === s.id),
+    }))
+
     setDetailJour({
-      ticketsCaisse: sales,
+      ticketsCaisse: salesWithItems,
       reparationsJour: repairsJour,
       ventesPhoneJour: orders,
       totalCash, totalBancontact, totalVirement,
@@ -995,6 +1008,36 @@ export default function CaisseAccueil({
         </div>
       )}
 
+      {/* MODAL FACTURE INDIVIDUELLE */}
+      {showFactureModal && factureToShow && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
+            <ReceiptTicket
+              ticketNumber={detailJour.ticketsCaisse.findIndex((t) => t.id === factureToShow.id) + 1}
+              vendeur={factureToShow.staff_name || 'Admin'}
+              dateTime={new Date(factureToShow.created_at)}
+              items={(factureToShow.items || []).map((si) => ({
+                qte: si.quantity,
+                name: si.item_name,
+                tot: Number(si.total_price),
+              }))}
+              payments={[
+                ...(Number(factureToShow.cash_amount) > 0 ? [{ type: 'cash', amount: Number(factureToShow.cash_amount) }] : []),
+                ...(Number(factureToShow.bancontact_amount) > 0 ? [{ type: 'bancontact', amount: Number(factureToShow.bancontact_amount) }] : []),
+                ...(Number(factureToShow.virement_amount) > 0 ? [{ type: 'virement', amount: Number(factureToShow.virement_amount) }] : []),
+              ]}
+              changeAmount={Number(factureToShow.change_amount) || 0}
+              tvaRate={21}
+              paperWidth="80mm"
+            />
+            <button onClick={() => { setShowFactureModal(false); setFactureToShow(null) }}
+              className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* POPUP DÉTAIL DU JOUR */}
       {showDetailJour && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -1082,9 +1125,16 @@ export default function CaisseAccueil({
                               )}
                               <span className="text-gray-500">{t.payment_method}</span>
                             </div>
-                            <span className="font-bold" style={{ color: COLORS.navy }}>
-                              {Number(t.total_amount).toFixed(2)}€
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold" style={{ color: COLORS.navy }}>
+                                {Number(t.total_amount).toFixed(2)}€
+                              </span>
+                              <button onClick={() => openFacture(t)}
+                                title="Voir la facture"
+                                className="text-[#00B4CC] hover:text-[#1B2A4A]">
+                                🧾
+                              </button>
+                            </div>
                           </div>
                         )
                       })}

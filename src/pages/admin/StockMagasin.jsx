@@ -145,6 +145,10 @@ export default function StockMagasin() {
   const [selectedJourClotures, setSelectedJourClotures] = useState(null)
   const [showTicketModal, setShowTicketModal]     = useState(false)
   const [ticketToShow, setTicketToShow]           = useState(null)
+  const [ventesParCloture, setVentesParCloture]   = useState({})
+  const [loadingVentesCloture, setLoadingVentesCloture] = useState(new Set())
+  const [saleTicketToShow, setSaleTicketToShow]   = useState(null)
+  const [showSaleTicketModal, setShowSaleTicketModal] = useState(false)
 
   // Trésorerie
   const [trezSousOnglet, setTrezSousOnglet]               = useState('vue') // 'vue' | 'clotures'
@@ -644,6 +648,37 @@ export default function StockMagasin() {
     setClotures(data || [])
     setLoadingClotures(false)
   }
+
+  const fetchVentesCloture = async (closure) => {
+    if (ventesParCloture[closure.id]) return
+    setLoadingVentesCloture((prev) => new Set(prev).add(closure.id))
+    const { data } = await supabase
+      .from('shop_sales')
+      .select('*, shop_sale_items(*)')
+      .eq('magasin_id', closure.magasin_id)
+      .gte('created_at', closure.period_start)
+      .lte('created_at', closure.period_end)
+      .order('created_at', { ascending: true })
+    setVentesParCloture((prev) => ({ ...prev, [closure.id]: data || [] }))
+    setLoadingVentesCloture((prev) => {
+      const next = new Set(prev)
+      next.delete(closure.id)
+      return next
+    })
+  }
+
+  // Lance les fetch de ventes pour chaque clôture du jour sélectionné
+  useEffect(() => {
+    if (!selectedJourClotures) return
+    const dt = new Date(selectedJourClotures)
+    const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
+    clotures.forEach((c) => {
+      const cd = new Date(c.period_end)
+      const cKey = `${cd.getFullYear()}-${String(cd.getMonth()+1).padStart(2,'0')}-${String(cd.getDate()).padStart(2,'0')}`
+      if (cKey === key) fetchVentesCloture(c)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedJourClotures, clotures])
 
   // Auto-appliquer les dates du preset (sauf custom)
   useEffect(() => {
@@ -3074,6 +3109,30 @@ export default function StockMagasin() {
                                       🧾 Voir le ticket
                                     </button>
                                   </div>
+                                  <div className="mt-2 border-t border-gray-100 pt-2">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                      Ventes du jour ({(ventesParCloture[c.id] || []).length})
+                                    </p>
+                                    {loadingVentesCloture.has(c.id) ? (
+                                      <p className="text-xs text-gray-400">Chargement...</p>
+                                    ) : (
+                                      <div className="max-h-32 overflow-y-auto space-y-1">
+                                        {(ventesParCloture[c.id] || []).map((v, idx) => (
+                                          <div key={v.id}
+                                            className="flex items-center justify-between gap-2 bg-white rounded-lg px-2 py-1.5 text-xs cursor-pointer hover:bg-gray-100"
+                                            onClick={() => { setSaleTicketToShow({ ...v, indexInDay: idx + 1 }); setShowSaleTicketModal(true) }}>
+                                            <span className="font-mono text-gray-500">
+                                              {new Date(v.created_at).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            <span className="font-bold text-[#1B2A4A]">
+                                              {Number(v.total_amount).toFixed(2)}€
+                                            </span>
+                                            <span className="text-[#00B4CC]">🧾</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               )
                             })}
@@ -3364,6 +3423,36 @@ export default function StockMagasin() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* MODAL FACTURE INDIVIDUELLE (vente d'une clôture) */}
+      {showSaleTicketModal && saleTicketToShow && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
+            <ReceiptTicket
+              ticketNumber={saleTicketToShow.indexInDay}
+              vendeur={saleTicketToShow.staff_name || 'Admin'}
+              dateTime={new Date(saleTicketToShow.created_at)}
+              items={(saleTicketToShow.shop_sale_items || []).map((si) => ({
+                qte: si.quantity,
+                name: si.item_name,
+                tot: Number(si.total_price),
+              }))}
+              payments={[
+                ...(Number(saleTicketToShow.cash_amount) > 0 ? [{ type: 'cash', amount: Number(saleTicketToShow.cash_amount) }] : []),
+                ...(Number(saleTicketToShow.bancontact_amount) > 0 ? [{ type: 'bancontact', amount: Number(saleTicketToShow.bancontact_amount) }] : []),
+                ...(Number(saleTicketToShow.virement_amount) > 0 ? [{ type: 'virement', amount: Number(saleTicketToShow.virement_amount) }] : []),
+              ]}
+              changeAmount={Number(saleTicketToShow.change_amount) || 0}
+              tvaRate={21}
+              paperWidth="80mm"
+            />
+            <button onClick={() => { setShowSaleTicketModal(false); setSaleTicketToShow(null) }}
+              className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+              Fermer
+            </button>
+          </div>
         </div>
       )}
 
