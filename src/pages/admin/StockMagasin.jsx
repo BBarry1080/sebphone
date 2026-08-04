@@ -212,6 +212,18 @@ export default function StockMagasin() {
   const [tpForm, setTpForm]                       = useState({ prix_defaut: '', prix_min: '', prix_max: '' })
   const [savingTypePanne, setSavingTypePanne]     = useState(false)
 
+  // Délais réparation (sous-section de l'écran Prix)
+  const [sectionPrixDelais, setSectionPrixDelais] = useState('prix') // 'prix' | 'delais'
+  const [delaiTypesList, setDelaiTypesList]       = useState([])
+  const [loadingDelaiTypes, setLoadingDelaiTypes] = useState(false)
+  const [editingDelai, setEditingDelai]           = useState(null)
+  const [delaiForm, setDelaiForm]                 = useState({ label: '', delai_texte: '', ordre: 0 })
+  const [savingDelai, setSavingDelai]             = useState(false)
+  const [showDelaiForm, setShowDelaiForm]         = useState(false)
+
+  // Devis — délai estimé
+  const [devisDelaiId, setDevisDelaiId]           = useState('')
+
   // Historique clôtures (admin uniquement)
   const trueIsAdmin = isAdmin
   const [clotures, setClotures]                     = useState([])
@@ -963,6 +975,68 @@ export default function StockMagasin() {
     fetchTypePannePrix()
   }
 
+  // ─── Délais réparation ───
+  const fetchDelaiTypes = async () => {
+    setLoadingDelaiTypes(true)
+    const { data } = await supabase.from('delai_types')
+      .select('*').order('ordre', { ascending: true })
+    setDelaiTypesList(data || [])
+    setLoadingDelaiTypes(false)
+  }
+
+  const resetDelaiForm = () => {
+    setDelaiForm({ label: '', delai_texte: '', ordre: 0 })
+    setEditingDelai(null)
+    setShowDelaiForm(false)
+  }
+
+  const openEditDelai = (row) => {
+    setEditingDelai(row)
+    setDelaiForm({
+      label: row.label || '',
+      delai_texte: row.delai_texte || '',
+      ordre: row.ordre ?? 0,
+    })
+    setShowDelaiForm(true)
+  }
+
+  const handleSaveDelai = async () => {
+    if (!delaiForm.label.trim() || !delaiForm.delai_texte.trim()) {
+      alert('Label et délai requis'); return
+    }
+    setSavingDelai(true)
+    const payload = {
+      label: delaiForm.label.trim(),
+      delai_texte: delaiForm.delai_texte.trim(),
+      ordre: Number(delaiForm.ordre) || 0,
+    }
+    let error
+    if (editingDelai) {
+      const { error: e } = await supabase.from('delai_types')
+        .update(payload).eq('id', editingDelai.id)
+      error = e
+    } else {
+      const { error: e } = await supabase.from('delai_types').insert(payload)
+      error = e
+    }
+    setSavingDelai(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity(
+      editingDelai ? 'delai_type_update' : 'delai_type_create',
+      `Type de délai — ${payload.label} : ${payload.delai_texte}`
+    )
+    resetDelaiForm()
+    fetchDelaiTypes()
+  }
+
+  const handleDeleteDelai = async (row) => {
+    if (!window.confirm(`Supprimer le type "${row.label}" ?`)) return
+    const { error } = await supabase.from('delai_types').delete().eq('id', row.id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('delai_type_delete', `Type de délai supprimé — ${row.label}`)
+    fetchDelaiTypes()
+  }
+
   // ─── Recherche de ticket ───
   const handleSearchTickets = async () => {
     const q = (searchQuery || '').trim()
@@ -1222,15 +1296,18 @@ export default function StockMagasin() {
 
       const emailjs = (await import('@emailjs/browser')).default
       const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
+      const delaiChoisi = delaiTypesList.find((d) => d.id === devisDelaiId)
+      const delaiTexteFinal = delaiChoisi ? `${delaiChoisi.label} : ${delaiChoisi.delai_texte}` : ''
       await emailjs.send('service_nn74puq', 'template_devis', {
         to_email: email,
         to_name: (devisClientName || '').trim() || 'Client',
         items_html: html,
         total: cartTotal.toFixed(2) + '€',
         magasin_nom: magasinLabel,
+        delai_texte: delaiTexteFinal,
       }, 'rqbaYNMIGNP6IQB9O')
 
-      logActivity('devis_sent', `Devis envoyé à ${email} — ${cartTotal.toFixed(2)}€`)
+      logActivity('devis_sent', `Devis envoyé à ${email} — ${cartTotal.toFixed(2)}€${delaiTexteFinal ? ' — ' + delaiTexteFinal : ''}`)
       setCart([])
       setPaymentSplits([])
       setCurrentPaymentAmount('')
@@ -1239,6 +1316,7 @@ export default function StockMagasin() {
       setShowDevisForm(false)
       setDevisEmail('')
       setDevisClientName('')
+      setDevisDelaiId('')
       alert('📧 Devis envoyé')
     } catch (err) {
       alert('Erreur envoi : ' + (err?.message || 'inconnue'))
@@ -1246,6 +1324,9 @@ export default function StockMagasin() {
       setSendingDevis(false)
     }
   }
+
+  // Fetch délais au montage (pour le sélecteur devis)
+  useEffect(() => { fetchDelaiTypes() }, [])
 
   // Refetch clôtures quand écran actif OU filtres changent
   useEffect(() => {
@@ -1279,6 +1360,7 @@ export default function StockMagasin() {
         setPosScreen('accueil')
       } else {
         fetchTypePannePrix()
+        fetchDelaiTypes()
       }
     }
     if (posScreen === 'commissions') {
@@ -3952,6 +4034,17 @@ export default function StockMagasin() {
                   placeholder="M. Dupont"
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
               </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Délai estimé (optionnel)</label>
+                <select value={devisDelaiId}
+                  onChange={(e) => setDevisDelaiId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="">Aucun délai précisé</option>
+                  {delaiTypesList.map((d) => (
+                    <option key={d.id} value={d.id}>{d.label} — {d.delai_texte}</option>
+                  ))}
+                </select>
+              </div>
               <div className="bg-gray-50 rounded-xl p-3 text-xs">
                 <p className="text-gray-500 mb-1">Total du devis :</p>
                 <p className="font-black text-lg text-[#00B4CC]">{cartTotal.toFixed(2)}€</p>
@@ -4246,90 +4339,190 @@ export default function StockMagasin() {
           </button>
           <div className="mb-4">
             <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
-              <Tag size={22} /> Prix des réparations
+              <Tag size={22} /> Prix & Délais réparations
             </h1>
-            <p className="text-sm text-gray-500 mt-1">Prix par défaut, min et max par type de panne</p>
+            <p className="text-sm text-gray-500 mt-1">Prix par défaut, min et max par type de panne + délais indicatifs</p>
           </div>
 
-          {loadingTypePannePrix ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : typePannePrixList.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-              Aucun type de panne configuré en base
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {typePannePrixList.map((row) => {
-                const isEditing = editingTypePanne?.id === row.id
-                return (
-                  <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-[#1B2A4A]">{row.type_panne}</p>
+          {/* Toggle Prix / Délais */}
+          <div className="flex gap-2 mb-4">
+            {[
+              { key: 'prix', label: '💰 Prix' },
+              { key: 'delais', label: '⏱️ Délais' },
+            ].map((s) => (
+              <button key={s.key}
+                onClick={() => setSectionPrixDelais(s.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                  ${sectionPrixDelais === s.key
+                    ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          {sectionPrixDelais === 'prix' && (
+            loadingTypePannePrix ? (
+              <div className="flex items-center justify-center h-40">
+                <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : typePannePrixList.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                Aucun type de panne configuré en base
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {typePannePrixList.map((row) => {
+                  const isEditing = editingTypePanne?.id === row.id
+                  return (
+                    <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-[#1B2A4A]">{row.type_panne}</p>
+                        </div>
+                        {!isEditing && (
+                          <>
+                            <div className="flex gap-4 text-xs">
+                              <div>
+                                <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
+                                <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
+                                <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
+                                <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
+                              </div>
+                            </div>
+                            <button onClick={() => openEditTypePanne(row)}
+                              className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                              <Pencil size={14} />
+                            </button>
+                          </>
+                        )}
                       </div>
-                      {!isEditing && (
-                        <>
-                          <div className="flex gap-4 text-xs">
+                      {isEditing && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                          <div className="grid grid-cols-3 gap-2">
                             <div>
-                              <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
-                              <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
+                              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
+                              <input type="number" step="0.5" min="0" value={tpForm.prix_defaut}
+                                onChange={(e) => setTpForm((f) => ({ ...f, prix_defaut: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
-                              <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
+                              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
+                              <input type="number" step="0.5" min="0" value={tpForm.prix_min}
+                                onChange={(e) => setTpForm((f) => ({ ...f, prix_min: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                             </div>
                             <div>
-                              <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
-                              <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
+                              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
+                              <input type="number" step="0.5" min="0" value={tpForm.prix_max}
+                                onChange={(e) => setTpForm((f) => ({ ...f, prix_max: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                             </div>
                           </div>
-                          <button onClick={() => openEditTypePanne(row)}
-                            className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
-                            <Pencil size={14} />
-                          </button>
-                        </>
+                          <div className="flex gap-2">
+                            <button onClick={handleSaveTypePanne} disabled={savingTypePanne}
+                              className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                              {savingTypePanne ? 'Enregistrement...' : 'Enregistrer'}
+                            </button>
+                            <button onClick={() => setEditingTypePanne(null)}
+                              className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
-                    {isEditing && (
-                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
-                            <input type="number" step="0.5" min="0" value={tpForm.prix_defaut}
-                              onChange={(e) => setTpForm((f) => ({ ...f, prix_defaut: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
-                            <input type="number" step="0.5" min="0" value={tpForm.prix_min}
-                              onChange={(e) => setTpForm((f) => ({ ...f, prix_min: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
-                            <input type="number" step="0.5" min="0" value={tpForm.prix_max}
-                              onChange={(e) => setTpForm((f) => ({ ...f, prix_max: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={handleSaveTypePanne} disabled={savingTypePanne}
-                            className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                            {savingTypePanne ? 'Enregistrement...' : 'Enregistrer'}
-                          </button>
-                          <button onClick={() => setEditingTypePanne(null)}
-                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
-                            Annuler
-                          </button>
-                        </div>
+                  )
+                })}
+              </div>
+            )
+          )}
+
+          {sectionPrixDelais === 'delais' && (
+            <>
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+                {!showDelaiForm ? (
+                  <button onClick={() => { setEditingDelai(null); setDelaiForm({ label: '', delai_texte: '', ordre: 0 }); setShowDelaiForm(true) }}
+                    className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                    + Nouveau type de délai
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-[#1B2A4A]">
+                      {editingDelai ? 'Modifier le délai' : 'Nouveau type de délai'}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-2">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Label</label>
+                        <input type="text" value={delaiForm.label}
+                          onChange={(e) => setDelaiForm((f) => ({ ...f, label: e.target.value }))}
+                          placeholder="ex: Standard, Express, Sur commande..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                       </div>
-                    )}
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Ordre</label>
+                        <input type="number" step="1" value={delaiForm.ordre}
+                          onChange={(e) => setDelaiForm((f) => ({ ...f, ordre: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Délai (texte)</label>
+                      <input type="text" value={delaiForm.delai_texte}
+                        onChange={(e) => setDelaiForm((f) => ({ ...f, delai_texte: e.target.value }))}
+                        placeholder="ex: 24-48h, 3 à 5 jours ouvrables..."
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveDelai} disabled={savingDelai}
+                        className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                        {savingDelai ? 'Enregistrement...' : editingDelai ? 'Sauvegarder' : 'Créer'}
+                      </button>
+                      <button onClick={resetDelaiForm}
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                        Annuler
+                      </button>
+                    </div>
                   </div>
-                )
-              })}
-            </div>
+                )}
+              </div>
+
+              {loadingDelaiTypes ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : delaiTypesList.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                  Aucun type de délai — cliquez sur "+ Nouveau type de délai" pour commencer.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {delaiTypesList.map((row) => (
+                    <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-[#1B2A4A]">{row.label}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{row.delai_texte}</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Ordre {row.ordre ?? 0}</span>
+                      <button onClick={() => openEditDelai(row)}
+                        className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => handleDeleteDelai(row)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
