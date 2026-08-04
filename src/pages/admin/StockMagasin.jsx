@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
          Menu, Lock, Unlock, LogOut,
-         Settings, Clock, Save, UserCheck, Send, Calendar,
+         Settings, Clock, Save, UserCheck, Send, Calendar, History,
          Image as ImageIcon, Upload } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
@@ -125,7 +125,18 @@ export default function StockMagasin() {
   const [prelevementAmount, setPrelevementAmount] = useState('')
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
-  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage
+  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | historique-clotures
+
+  // Historique clôtures (admin uniquement)
+  const trueIsAdmin = isAdmin
+  const [clotures, setClotures]                     = useState([])
+  const [loadingClotures, setLoadingClotures]       = useState(false)
+  const [filterMagasinHisto, setFilterMagasinHisto] = useState('all')
+  const [periodPresetHisto, setPeriodPresetHisto]   = useState('mois')
+  const [periodStartHisto, setPeriodStartHisto]     = useState(() => {
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
+  })
+  const [periodEndHisto, setPeriodEndHisto]         = useState(() => new Date().toISOString().slice(0, 10))
 
   // Écran Pointage personnel (vue employé)
   const [myStaffRecord, setMyStaffRecord] = useState(null)
@@ -532,6 +543,55 @@ export default function StockMagasin() {
     }
   }
 
+  // ─── Historique clôtures ───
+  const MAGASINS_CAISSE = MAGASINS_LIST.filter((m) =>
+    ['anderlecht', 'molenbeek', 'rue-neuve', 'louise'].includes(m.id))
+
+  const computePresetDatesHisto = (preset) => {
+    const today = new Date()
+    const todayStr = today.toISOString().slice(0, 10)
+    if (preset === 'jour') return { start: todayStr, end: todayStr }
+    if (preset === 'semaine') {
+      const dow = today.getDay()
+      const diff = dow === 0 ? -6 : 1 - dow
+      const monday = new Date(today)
+      monday.setDate(today.getDate() + diff)
+      return { start: monday.toISOString().slice(0, 10), end: todayStr }
+    }
+    if (preset === 'mois') {
+      const first = new Date(today.getFullYear(), today.getMonth(), 1)
+      return { start: first.toISOString().slice(0, 10), end: todayStr }
+    }
+    return { start: periodStartHisto, end: periodEndHisto }
+  }
+
+  const fetchClotures = async () => {
+    setLoadingClotures(true)
+    let query = supabase.from('cash_closures').select('*')
+      .gte('period_end', periodStartHisto + 'T00:00:00')
+      .lte('period_end', periodEndHisto + 'T23:59:59')
+      .order('period_end', { ascending: false })
+    if (filterMagasinHisto !== 'all') query = query.eq('magasin_id', filterMagasinHisto)
+    const { data } = await query
+    setClotures(data || [])
+    setLoadingClotures(false)
+  }
+
+  // Auto-appliquer les dates du preset (sauf custom)
+  useEffect(() => {
+    if (periodPresetHisto === 'custom') return
+    const { start, end } = computePresetDatesHisto(periodPresetHisto)
+    setPeriodStartHisto(start)
+    setPeriodEndHisto(end)
+  }, [periodPresetHisto])
+
+  // Refetch clôtures quand écran actif OU filtres changent
+  useEffect(() => {
+    if (posScreen !== 'historique-clotures') return
+    fetchClotures()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posScreen, filterMagasinHisto, periodStartHisto, periodEndHisto])
+
   // Redirect si l'utilisateur atteint parametres sans les droits
   useEffect(() => {
     if (posScreen === 'parametres' && !canAccessParamsCaisse) {
@@ -543,8 +603,11 @@ export default function StockMagasin() {
     if (posScreen === 'pointage' && caisseSession?.staffId) {
       fetchMyPointageData()
     }
+    if (posScreen === 'historique-clotures' && !trueIsAdmin) {
+      setPosScreen('accueil')
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posScreen, canAccessParamsCaisse])
+  }, [posScreen, canAccessParamsCaisse, trueIsAdmin])
 
   useEffect(() => {
     if (magasin) {
@@ -1393,7 +1456,9 @@ export default function StockMagasin() {
           onOpenGestion={() => { setPosScreen('gestion'); setActiveTab('stock') }}
           onOpenParametresCaisse={() => { setPosScreen('parametres'); fetchStaffCaisse() }}
           onOpenPointage={() => setPosScreen('pointage')}
+          onOpenHistoriqueClotures={() => { setPosScreen('historique-clotures'); fetchClotures() }}
           showParametresCaisseTile={canAccessParamsCaisse}
+          showHistoriqueCloturesTile={trueIsAdmin}
           onAcompteRecorded={fetchCaisseToday}
         />
       )}
@@ -1679,6 +1744,144 @@ export default function StockMagasin() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ÉCRAN HISTORIQUE CLÔTURES (admin uniquement) */}
+      {posScreen === 'historique-clotures' && trueIsAdmin && (
+        <div className="max-w-6xl mx-auto">
+          <button onClick={() => setPosScreen('accueil')}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
+          </button>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
+              <History size={22} /> Historique des clôtures
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">Registre en lecture seule — toutes les clôtures enregistrées</p>
+          </div>
+
+          {/* Barre filtres */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+            <div className="flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
+                <select value={filterMagasinHisto}
+                  onChange={(e) => setFilterMagasinHisto(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="all">Tous les magasins</option>
+                  {MAGASINS_CAISSE.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nom}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { key: 'jour', label: "Aujourd'hui" },
+                  { key: 'semaine', label: 'Cette semaine' },
+                  { key: 'mois', label: 'Ce mois' },
+                  { key: 'custom', label: 'Personnalisé' },
+                ].map((p) => (
+                  <button key={p.key}
+                    onClick={() => setPeriodPresetHisto(p.key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                      ${periodPresetHisto === p.key
+                        ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {periodPresetHisto === 'custom' && (
+              <div className="flex gap-2 items-end mt-3 flex-wrap">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Du</label>
+                  <input type="date" value={periodStartHisto}
+                    onChange={(e) => setPeriodStartHisto(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Au</label>
+                  <input type="date" value={periodEndHisto}
+                    onChange={(e) => setPeriodEndHisto(e.target.value)}
+                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Résumés */}
+          {(() => {
+            const brut = clotures.reduce((s, c) => s + Number(c.ca_total || 0), 0)
+            const net = clotures.reduce((s, c) => s + (Number(c.ca_total || 0) / 1.21), 0)
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase">CA brut cumulé</p>
+                  <p className="text-2xl font-black text-[#1B2A4A] mt-1">{brut.toFixed(2)}€</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase">CA net cumulé (HT)</p>
+                  <p className="text-2xl font-black text-[#00B4CC] mt-1">{net.toFixed(2)}€</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase">Clôtures</p>
+                  <p className="text-2xl font-black text-[#1B2A4A] mt-1">{clotures.length}</p>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Tableau */}
+          {loadingClotures ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : clotures.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+              Aucune clôture sur cette période
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
+                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">CA brut</th>
+                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">CA net</th>
+                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Tickets</th>
+                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Cash</th>
+                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Bancontact</th>
+                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Virement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clotures.map((c) => {
+                    const d = new Date(c.period_end)
+                    const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+                    const magNom = (MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id || '—')
+                      .replace('Seb Telecom — ', '')
+                    const brut = Number(c.ca_total || 0)
+                    const net = brut / 1.21
+                    return (
+                      <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
+                        <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
+                        <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-[#1B2A4A]">{brut.toFixed(2)}€</td>
+                        <td className="px-4 py-2.5 text-right text-gray-500">{net.toFixed(2)}€</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">{c.ticket_count || 0}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.cash_total || 0).toFixed(2)}€</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.bancontact_total || 0).toFixed(2)}€</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.virement_total || 0).toFixed(2)}€</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

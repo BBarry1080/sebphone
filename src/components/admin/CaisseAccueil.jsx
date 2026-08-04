@@ -4,7 +4,7 @@ import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2, Settings, UserCheck,
+  Plus, Pencil, Trash2, Settings, UserCheck, History,
 } from 'lucide-react'
 
 const COLORS = {
@@ -17,6 +17,7 @@ const COLORS = {
   pink: '#ec4899',
   slate: '#64748b',
   teal: '#0d9488',
+  indigo: '#4f46e5',
 }
 
 const PANNE_OPTIONS = [
@@ -72,7 +73,9 @@ export default function CaisseAccueil({
   onOpenGestion,
   onOpenParametresCaisse,
   onOpenPointage,
+  onOpenHistoriqueClotures,
   showParametresCaisseTile = false,
+  showHistoriqueCloturesTile = false,
   onAcompteRecorded = () => {},
 }) {
   const [showClientModal, setShowClientModal] = useState(false)
@@ -457,6 +460,15 @@ export default function CaisseAccueil({
             : 'Cliquez pour détails'}
           onClick={() => setShowClotureDetail(true)}
         />
+
+        {/* HISTORIQUE CLÔTURES (admin uniquement) */}
+        {showHistoriqueCloturesTile && (
+          <Tile color={COLORS.indigo} icon={History}
+            title="Historique clôtures"
+            subtitle="Registre lecture seule, tous magasins"
+            onClick={onOpenHistoriqueClotures}
+          />
+        )}
 
         {/* VENTE CAISSE */}
         <Tile color={COLORS.blue} icon={ShoppingCart}
