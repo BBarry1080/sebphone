@@ -4,7 +4,7 @@ import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2, Settings,
+  Plus, Pencil, Trash2, Settings, UserCheck,
 } from 'lucide-react'
 
 const COLORS = {
@@ -71,6 +71,7 @@ export default function CaisseAccueil({
   onOpenCaisse,
   onOpenGestion,
   onOpenParametresCaisse,
+  onOpenPointage,
   showParametresCaisseTile = false,
   onAcompteRecorded = () => {},
 }) {
@@ -500,6 +501,13 @@ export default function CaisseAccueil({
             onClick={onOpenParametresCaisse}
           />
         )}
+
+        {/* POINTAGE (toujours visible pour l'employé connecté) */}
+        <Tile color={COLORS.teal} icon={UserCheck}
+          title="Pointage"
+          subtitle="Mon planning & mes heures"
+          onClick={onOpenPointage}
+        />
 
         {/* RÉPARATIONS */}
         <Tile color={COLORS.amber} icon={Wrench}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History, Contact2,
+  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History, Contact2, Calendar,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -52,6 +52,7 @@ function SidebarContent({ onClose }) {
     { to: '/admin/reconditionnement',  label: 'Reconditionnement',   Icon: Wrench,          show: has('stock_reconditionnement') },
     { to: '/admin/livraisons',         label: 'Livraisons',          Icon: Truck,           show: isAdmin },
     { to: '/admin/pro',                label: 'Espace Pro Admin',    Icon: Briefcase,       show: isAdmin },
+    { to: '/admin/planning',           label: 'Planning',            Icon: Calendar,        show: isAdmin || has('gerer_utilisateurs') },
     { to: '/admin/parametres',         label: 'Paramètres',          Icon: Settings,        show: isAdmin || has('gerer_utilisateurs') },
   ]
 

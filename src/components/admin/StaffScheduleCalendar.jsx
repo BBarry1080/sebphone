@@ -16,7 +16,7 @@ const extractHM = (iso) => {
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
-export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, hourlyWage, isAdmin = false }) {
+export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, hourlyWage, isAdmin = false, readOnly = false }) {
   const [monthOffset, setMonthOffset] = useState(0)
   const [scheduleDates, setScheduleDates] = useState([])
   const [pointages, setPointages] = useState([])
@@ -102,7 +102,7 @@ export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, 
     if (past && !isAdmin) return
     if (past && isAdmin && !hasPointage) return
 
-    if (multiSelectMode) {
+    if (multiSelectMode && !readOnly) {
       if (past) return // pas de multi-select sur dates passées
       toggleDateSelection(dateStr)
     } else {
@@ -253,20 +253,22 @@ export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, 
             <ChevronRight size={18} />
           </button>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={toggleMultiSelectMode}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
-              ${multiSelectMode
-                ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
-            ☑️ Sélection multiple
-          </button>
-          <button onClick={handleSendPlanning}
-            disabled={sendingPlanning}
-            className="flex items-center gap-1.5 bg-green-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-green-700 disabled:opacity-50">
-            <MessageCircle size={14} /> {sendingPlanning ? 'Envoi...' : 'Envoyer le planning (WhatsApp)'}
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={toggleMultiSelectMode}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                ${multiSelectMode
+                  ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
+              ☑️ Sélection multiple
+            </button>
+            <button onClick={handleSendPlanning}
+              disabled={sendingPlanning}
+              className="flex items-center gap-1.5 bg-green-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:bg-green-700 disabled:opacity-50">
+              <MessageCircle size={14} /> {sendingPlanning ? 'Envoi...' : 'Envoyer le planning (WhatsApp)'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* En-têtes jours de la semaine */}
@@ -408,31 +410,51 @@ export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, 
 
           {/* a) Horaire prévu (jamais pour un jour passé) */}
           {!isPastDate(selectedDay) && (
-            <div className="bg-gray-50 rounded-xl p-4">
-              <p className="text-xs font-bold text-gray-500 uppercase mb-2">Horaire prévu</p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={dayForm.repos}
-                    onChange={(e) => setDayForm((f) => ({ ...f, repos: e.target.checked }))}
-                    className="w-4 h-4 accent-[#00B4CC]" />
-                  <span className="text-xs font-medium text-gray-600">Repos</span>
-                </label>
-                <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                  <input type="time" value={dayForm.heure_debut} disabled={dayForm.repos}
-                    onChange={(e) => setDayForm((f) => ({ ...f, heure_debut: e.target.value }))}
-                    className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${dayForm.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`} />
-                  <span className="text-gray-400 text-xs">→</span>
-                  <input type="time" value={dayForm.heure_fin} disabled={dayForm.repos}
-                    onChange={(e) => setDayForm((f) => ({ ...f, heure_fin: e.target.value }))}
-                    className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${dayForm.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`} />
+            readOnly ? (
+              (() => {
+                const sched = scheduleDates.find((s) => s.date === selectedDay)
+                return (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-2">Horaire prévu</p>
+                    {!sched ? (
+                      <p className="text-sm text-gray-400">Aucun horaire prévu</p>
+                    ) : sched.repos ? (
+                      <p className="text-sm text-[#1B2A4A] font-bold">Repos</p>
+                    ) : (
+                      <p className="text-sm text-[#1B2A4A] font-bold">
+                        {sched.heure_debut?.slice(0, 5)} → {sched.heure_fin?.slice(0, 5)}
+                      </p>
+                    )}
+                  </div>
+                )
+              })()
+            ) : (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">Horaire prévu</p>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={dayForm.repos}
+                      onChange={(e) => setDayForm((f) => ({ ...f, repos: e.target.checked }))}
+                      className="w-4 h-4 accent-[#00B4CC]" />
+                    <span className="text-xs font-medium text-gray-600">Repos</span>
+                  </label>
+                  <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                    <input type="time" value={dayForm.heure_debut} disabled={dayForm.repos}
+                      onChange={(e) => setDayForm((f) => ({ ...f, heure_debut: e.target.value }))}
+                      className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${dayForm.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`} />
+                    <span className="text-gray-400 text-xs">→</span>
+                    <input type="time" value={dayForm.heure_fin} disabled={dayForm.repos}
+                      onChange={(e) => setDayForm((f) => ({ ...f, heure_fin: e.target.value }))}
+                      className={`px-2 py-1.5 border border-gray-200 rounded-lg text-sm ${dayForm.repos ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white'}`} />
+                  </div>
                 </div>
+                <button onClick={handleSaveDay}
+                  disabled={savingDay}
+                  className="mt-3 bg-[#1B2A4A] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#00B4CC] disabled:opacity-50">
+                  {savingDay ? 'Enregistrement...' : 'Enregistrer l\'horaire'}
+                </button>
               </div>
-              <button onClick={handleSaveDay}
-                disabled={savingDay}
-                className="mt-3 bg-[#1B2A4A] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#00B4CC] disabled:opacity-50">
-                {savingDay ? 'Enregistrement...' : 'Enregistrer l\'horaire'}
-              </button>
-            </div>
+            )
           )}
 
           {/* b) Pointage réel */}

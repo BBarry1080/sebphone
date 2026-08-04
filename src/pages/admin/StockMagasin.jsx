@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
          Menu, Lock, Unlock, LogOut,
-         Settings, Clock, Save,
+         Settings, Clock, Save, UserCheck, Send, Calendar,
          Image as ImageIcon, Upload } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
@@ -124,7 +124,16 @@ export default function StockMagasin() {
   const [prelevementAmount, setPrelevementAmount] = useState('')
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
-  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture
+  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage
+
+  // Écran Pointage personnel (vue employé)
+  const [myStaffRecord, setMyStaffRecord] = useState(null)
+  const [loadingMyPointage, setLoadingMyPointage] = useState(false)
+  const [showReplacementForm, setShowReplacementForm] = useState(false)
+  const [replacementForm, setReplacementForm] = useState({
+    date: '', repos: false, heure_debut: '10:00', heure_fin: '20:00', note: '',
+  })
+  const [sendingReplacement, setSendingReplacement] = useState(false)
 
   // Verrou PIN caisse
   const [caisseSession, setCaisseSession] = useState(null)
@@ -171,6 +180,153 @@ export default function StockMagasin() {
     const net = brut - Number(pointageAujourdhui.penalite_retard || 0)
     return { heures, net, enCours: !pointageAujourdhui.heure_depart }
   }
+
+  const renderPointageAndSalaire = () => (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+      <h3 className="font-bold text-[#1B2A4A] mb-3">Aujourd'hui & ce mois</h3>
+      <div className="bg-gray-50 rounded-xl p-3 mb-4">
+        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Pointage du jour</p>
+        {pointageAujourdhui ? (
+          <div className="text-sm space-y-1">
+            <p>
+              <span className="text-gray-500">Arrivée : </span>
+              <span className="font-bold text-[#1B2A4A]">
+                {new Date(pointageAujourdhui.heure_arrivee).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </p>
+            <p>
+              <span className="text-gray-500">Départ : </span>
+              {pointageAujourdhui.heure_depart ? (
+                <span className="font-bold text-[#1B2A4A]">
+                  {new Date(pointageAujourdhui.heure_depart).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              ) : (
+                <span className="text-amber-600 font-bold">En cours</span>
+              )}
+            </p>
+            {pointageAujourdhui.penalite_retard > 0 && (
+              <p className="text-red-600 font-bold text-xs mt-1">
+                Retard de {pointageAujourdhui.retard_minutes} min — pénalité -{pointageAujourdhui.penalite_retard}€
+              </p>
+            )}
+            {(() => {
+              const g = calcGainDirect()
+              if (!g) return null
+              const totalMin = Math.round(g.heures * 60)
+              const h = Math.floor(totalMin / 60)
+              const m = totalMin % 60
+              return (
+                <div className="mt-3 rounded-xl p-3 border border-cyan-100"
+                  style={{ background: 'linear-gradient(135deg, #ecfeff 0%, #ccfbf1 100%)' }}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold uppercase text-[#1B2A4A] flex items-center gap-1">
+                      {g.enCours
+                        ? <><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> En direct</>
+                        : <>Session terminée</>}
+                    </span>
+                    <span className="text-lg font-black text-teal-700">
+                      {g.net.toFixed(2)}€
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500">
+                    {h}h {String(m).padStart(2, '0')}min travaillées
+                  </p>
+                </div>
+              )
+            })()}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400">Pas encore pointé aujourd'hui</p>
+        )}
+      </div>
+
+      {salaireMoisCaisse && (
+        <>
+          <p className="text-xs font-bold text-gray-500 uppercase mb-2">Salaire du mois en cours</p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] font-bold text-gray-500 uppercase">Heures</p>
+              <p className="text-lg font-bold text-[#1B2A4A] mt-1">{salaireMoisCaisse.totalHeures.toFixed(1)}h</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] font-bold text-gray-500 uppercase">Salaire brut</p>
+              <p className="text-lg font-bold text-[#1B2A4A] mt-1">{salaireMoisCaisse.salaireBrut.toFixed(2)}€</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] font-bold text-gray-500 uppercase">Pénalités retard</p>
+              <p className={`text-lg font-bold mt-1 ${salaireMoisCaisse.penalitesRetard > 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                {salaireMoisCaisse.penalitesRetard > 0 ? '-' : ''}{salaireMoisCaisse.penalitesRetard.toFixed(2)}€
+              </p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] font-bold text-gray-500 uppercase">Absences</p>
+              <p className={`text-lg font-bold mt-1 ${salaireMoisCaisse.absencesCount > 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                {salaireMoisCaisse.absencesCount} jour{salaireMoisCaisse.absencesCount !== 1 ? 's' : ''}
+              </p>
+              {salaireMoisCaisse.penalitesAbsence > 0 && (
+                <p className="text-xs text-red-600 font-bold">-{salaireMoisCaisse.penalitesAbsence}€</p>
+              )}
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] font-bold text-gray-500 uppercase">Commissions</p>
+              <p className="text-lg font-bold text-green-600 mt-1">+{salaireMoisCaisse.commissionsTotal.toFixed(2)}€</p>
+            </div>
+          </div>
+          <div className="rounded-2xl p-5 text-white shadow-md flex items-center justify-between"
+            style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)' }}>
+            <p className="text-xs uppercase opacity-70 font-bold">Total net (ce mois)</p>
+            <p className={`text-3xl font-black ${salaireMoisCaisse.salaireNet < 0 ? 'text-red-300' : 'text-white'}`}>
+              {salaireMoisCaisse.salaireNet.toFixed(2)}€
+            </p>
+          </div>
+
+          {salaireSemaineCaisse && (
+            <div className="mt-4 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase">Cette semaine</p>
+                  <p className="text-xl font-black text-[#1B2A4A] mt-1">
+                    {salaireSemaineCaisse.totalHeures.toFixed(1)}h
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase">Salaire net</p>
+                  <p className="text-xl font-black text-green-600 mt-1">
+                    {salaireSemaineCaisse.salaireNet.toFixed(2)}€
+                  </p>
+                </div>
+              </div>
+              {joursTravaillesSemaine.length > 0 && (() => {
+                const maxH = Math.max(1, ...joursTravaillesSemaine.map((d) => d.hours))
+                const dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+                return (
+                  <div className="flex items-end justify-between gap-1.5 h-24">
+                    {joursTravaillesSemaine.map((d, i) => {
+                      const pct = (d.hours / maxH) * 100
+                      return (
+                        <div key={d.dateStr} className="flex-1 flex flex-col items-center gap-1">
+                          <div className="w-full flex items-end h-full">
+                            <div
+                              className="w-full rounded-t-md bg-gradient-to-t from-[#1B2A4A] to-[#00B4CC] transition-all"
+                              style={{ height: `${Math.max(2, pct)}%` }}
+                              title={`${d.hours.toFixed(1)}h`}
+                            />
+                          </div>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase">
+                            {dayLabels[i]}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
   const [showMovementMenu, setShowMovementMenu] = useState(false)
   const [discountMenuItemId, setDiscountMenuItemId] = useState(null)
   const [showGlobalDiscount, setShowGlobalDiscount] = useState(false)
@@ -330,6 +486,51 @@ export default function StockMagasin() {
   }
 
 
+  const fetchMyPointageData = async () => {
+    if (!caisseSession?.staffId) return
+    setLoadingMyPointage(true)
+    const { data: record } = await supabase
+      .from('staff').select('*').eq('id', caisseSession.staffId).maybeSingle()
+    if (record) {
+      setMyStaffRecord(record)
+      await openStaffDetailCaisse(record)
+    }
+    setLoadingMyPointage(false)
+  }
+
+  const handleSendReplacementRequest = async () => {
+    if (!replacementForm.date) { alert('Date requise'); return }
+    if (!myStaffRecord) return
+    setSendingReplacement(true)
+    try {
+      const { data: adminStaff } = await supabase
+        .from('staff').select('telephone').eq('is_admin', true).limit(1).maybeSingle()
+      if (!adminStaff?.telephone) {
+        alert('Aucun numéro admin configuré — contacte ton responsable directement')
+        return
+      }
+      const dateFormatee = new Date(replacementForm.date)
+        .toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' })
+      const horaireTexte = replacementForm.repos
+        ? 'Jour de repos souhaité'
+        : `Horaire souhaité : ${replacementForm.heure_debut} - ${replacementForm.heure_fin}`
+      const message = `Demande de remplacement — ${myStaffRecord.name}\n\nDate : ${dateFormatee}\n${horaireTexte}${replacementForm.note ? '\n\nNote : ' + replacementForm.note : ''}`
+
+      const digits = String(adminStaff.telephone).replace(/\D/g, '')
+      const intl = digits.startsWith('0') ? '32' + digits.slice(1)
+        : digits.startsWith('32') ? digits
+        : '32' + digits
+      window.open(`https://wa.me/${intl}?text=${encodeURIComponent(message)}`, '_blank')
+      logActivity('staff_replacement_request',
+        `Demande de remplacement envoyée par ${myStaffRecord.name} pour le ${dateFormatee}`)
+      setShowReplacementForm(false)
+      setReplacementForm({ date: '', repos: false, heure_debut: '10:00', heure_fin: '20:00', note: '' })
+      alert('📱 WhatsApp ouvert avec ta demande')
+    } finally {
+      setSendingReplacement(false)
+    }
+  }
+
   // Redirect si l'utilisateur atteint parametres sans les droits
   useEffect(() => {
     if (posScreen === 'parametres' && !canAccessParamsCaisse) {
@@ -337,6 +538,9 @@ export default function StockMagasin() {
     }
     if (posScreen === 'parametres' && staffListCaisse.length === 0) {
       fetchStaffCaisse()
+    }
+    if (posScreen === 'pointage' && caisseSession?.staffId) {
+      fetchMyPointageData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posScreen, canAccessParamsCaisse])
@@ -1184,6 +1388,7 @@ export default function StockMagasin() {
           onOpenCaisse={() => setPosScreen('caisse')}
           onOpenGestion={() => { setPosScreen('gestion'); setActiveTab('stock') }}
           onOpenParametresCaisse={() => { setPosScreen('parametres'); fetchStaffCaisse() }}
+          onOpenPointage={() => setPosScreen('pointage')}
           showParametresCaisseTile={canAccessParamsCaisse}
           onAcompteRecorded={fetchCaisseToday}
         />
@@ -1359,170 +1564,119 @@ export default function StockMagasin() {
                     </button>
                   </div>
 
-                  {/* b) Planning mensuel */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                    <h3 className="font-bold text-[#1B2A4A] mb-3 flex items-center gap-2">
-                      <Clock size={16} /> Planning
-                    </h3>
-                    <StaffScheduleCalendar
-                      staffId={selectedStaffCaisse.id}
-                      staffName={selectedStaffCaisse.name}
-                      staffPhone={selectedStaffCaisse.telephone}
-                      hourlyWage={selectedStaffCaisse.hourly_wage || 0}
-                      isAdmin={isAdmin}
-                    />
-                  </div>
-
                   {/* c) Aujourd'hui & ce mois */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                    <h3 className="font-bold text-[#1B2A4A] mb-3">Aujourd'hui & ce mois</h3>
-                    <div className="bg-gray-50 rounded-xl p-3 mb-4">
-                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Pointage du jour</p>
-                      {pointageAujourdhui ? (
-                        <div className="text-sm space-y-1">
-                          <p>
-                            <span className="text-gray-500">Arrivée : </span>
-                            <span className="font-bold text-[#1B2A4A]">
-                              {new Date(pointageAujourdhui.heure_arrivee).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </p>
-                          <p>
-                            <span className="text-gray-500">Départ : </span>
-                            {pointageAujourdhui.heure_depart ? (
-                              <span className="font-bold text-[#1B2A4A]">
-                                {new Date(pointageAujourdhui.heure_depart).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            ) : (
-                              <span className="text-amber-600 font-bold">En cours</span>
-                            )}
-                          </p>
-                          {pointageAujourdhui.penalite_retard > 0 && (
-                            <p className="text-red-600 font-bold text-xs mt-1">
-                              Retard de {pointageAujourdhui.retard_minutes} min — pénalité -{pointageAujourdhui.penalite_retard}€
-                            </p>
-                          )}
-                          {(() => {
-                            const g = calcGainDirect()
-                            if (!g) return null
-                            const totalMin = Math.round(g.heures * 60)
-                            const h = Math.floor(totalMin / 60)
-                            const m = totalMin % 60
-                            return (
-                              <div className="mt-3 rounded-xl p-3 border border-cyan-100"
-                                style={{ background: 'linear-gradient(135deg, #ecfeff 0%, #ccfbf1 100%)' }}>
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[10px] font-bold uppercase text-[#1B2A4A] flex items-center gap-1">
-                                    {g.enCours
-                                      ? <><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> En direct</>
-                                      : <>Session terminée</>}
-                                  </span>
-                                  <span className="text-lg font-black text-teal-700">
-                                    {g.net.toFixed(2)}€
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-gray-500">
-                                  {h}h {String(m).padStart(2, '0')}min travaillées
-                                </p>
-                              </div>
-                            )
-                          })()}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-400">Pas encore pointé aujourd'hui</p>
-                      )}
-                    </div>
-
-                    {salaireMoisCaisse && (
-                      <>
-                        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Salaire du mois en cours</p>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <p className="text-[10px] font-bold text-gray-500 uppercase">Heures</p>
-                            <p className="text-lg font-bold text-[#1B2A4A] mt-1">{salaireMoisCaisse.totalHeures.toFixed(1)}h</p>
-                          </div>
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <p className="text-[10px] font-bold text-gray-500 uppercase">Salaire brut</p>
-                            <p className="text-lg font-bold text-[#1B2A4A] mt-1">{salaireMoisCaisse.salaireBrut.toFixed(2)}€</p>
-                          </div>
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <p className="text-[10px] font-bold text-gray-500 uppercase">Pénalités retard</p>
-                            <p className={`text-lg font-bold mt-1 ${salaireMoisCaisse.penalitesRetard > 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
-                              {salaireMoisCaisse.penalitesRetard > 0 ? '-' : ''}{salaireMoisCaisse.penalitesRetard.toFixed(2)}€
-                            </p>
-                          </div>
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <p className="text-[10px] font-bold text-gray-500 uppercase">Absences</p>
-                            <p className={`text-lg font-bold mt-1 ${salaireMoisCaisse.absencesCount > 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
-                              {salaireMoisCaisse.absencesCount} jour{salaireMoisCaisse.absencesCount !== 1 ? 's' : ''}
-                            </p>
-                            {salaireMoisCaisse.penalitesAbsence > 0 && (
-                              <p className="text-xs text-red-600 font-bold">-{salaireMoisCaisse.penalitesAbsence}€</p>
-                            )}
-                          </div>
-                          <div className="bg-gray-50 rounded-xl p-3">
-                            <p className="text-[10px] font-bold text-gray-500 uppercase">Commissions</p>
-                            <p className="text-lg font-bold text-green-600 mt-1">+{salaireMoisCaisse.commissionsTotal.toFixed(2)}€</p>
-                          </div>
-                        </div>
-                        <div className="rounded-2xl p-5 text-white shadow-md flex items-center justify-between"
-                          style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)' }}>
-                          <p className="text-xs uppercase opacity-70 font-bold">Total net (ce mois)</p>
-                          <p className={`text-3xl font-black ${salaireMoisCaisse.salaireNet < 0 ? 'text-red-300' : 'text-white'}`}>
-                            {salaireMoisCaisse.salaireNet.toFixed(2)}€
-                          </p>
-                        </div>
-
-                        {salaireSemaineCaisse && (
-                          <div className="mt-4 bg-gray-50 rounded-2xl p-4 border border-gray-100">
-                            <div className="flex items-center justify-between mb-3">
-                              <div>
-                                <p className="text-xs font-bold text-gray-500 uppercase">Cette semaine</p>
-                                <p className="text-xl font-black text-[#1B2A4A] mt-1">
-                                  {salaireSemaineCaisse.totalHeures.toFixed(1)}h
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[10px] font-bold text-gray-500 uppercase">Salaire net</p>
-                                <p className="text-xl font-black text-green-600 mt-1">
-                                  {salaireSemaineCaisse.salaireNet.toFixed(2)}€
-                                </p>
-                              </div>
-                            </div>
-                            {joursTravaillesSemaine.length > 0 && (() => {
-                              const maxH = Math.max(1, ...joursTravaillesSemaine.map((d) => d.hours))
-                              const dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-                              return (
-                                <div className="flex items-end justify-between gap-1.5 h-24">
-                                  {joursTravaillesSemaine.map((d, i) => {
-                                    const pct = (d.hours / maxH) * 100
-                                    return (
-                                      <div key={d.dateStr} className="flex-1 flex flex-col items-center gap-1">
-                                        <div className="w-full flex items-end h-full">
-                                          <div
-                                            className="w-full rounded-t-md bg-gradient-to-t from-[#1B2A4A] to-[#00B4CC] transition-all"
-                                            style={{ height: `${Math.max(2, pct)}%` }}
-                                            title={`${d.hours.toFixed(1)}h`}
-                                          />
-                                        </div>
-                                        <span className="text-[9px] font-bold text-gray-500 uppercase">
-                                          {dayLabels[i]}
-                                        </span>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              )
-                            })()}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
+                  {renderPointageAndSalaire()}
 
                 </div>
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ÉCRAN POINTAGE PERSONNEL (vue employé) */}
+      {posScreen === 'pointage' && (
+        <div className="max-w-4xl mx-auto">
+          <button onClick={() => setPosScreen('accueil')}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
+          </button>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
+              <UserCheck size={22} /> Mon pointage
+            </h1>
+            {myStaffRecord && (
+              <p className="text-sm text-gray-500 mt-1">
+                Bonjour {(myStaffRecord.name || '').split(' ')[0]} 👋
+              </p>
+            )}
+          </div>
+
+          {loadingMyPointage ? (
+            <div className="flex items-center justify-center h-60">
+              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !myStaffRecord ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400">
+              <p className="text-sm">Impossible de charger ta fiche. Reconnecte-toi.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {renderPointageAndSalaire()}
+
+              {/* Mon planning (lecture seule) */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                <h3 className="font-bold text-[#1B2A4A] mb-3 flex items-center gap-2">
+                  <Calendar size={16} /> Mon planning
+                </h3>
+                <StaffScheduleCalendar
+                  staffId={myStaffRecord.id}
+                  staffName={myStaffRecord.name}
+                  staffPhone={myStaffRecord.telephone}
+                  hourlyWage={myStaffRecord.hourly_wage || 0}
+                  isAdmin={false}
+                  readOnly={true}
+                />
+              </div>
+
+              {/* Demander un remplacement */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                <h3 className="font-bold text-[#1B2A4A] mb-3 flex items-center gap-2">
+                  <Send size={16} /> Demander un remplacement
+                </h3>
+                {!showReplacementForm ? (
+                  <button onClick={() => setShowReplacementForm(true)}
+                    className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                    + Nouvelle demande
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Date concernée</label>
+                      <input type="date" value={replacementForm.date}
+                        onChange={(e) => setReplacementForm((f) => ({ ...f, date: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id="rep-repos" checked={replacementForm.repos}
+                        onChange={(e) => setReplacementForm((f) => ({ ...f, repos: e.target.checked }))}
+                        className="w-4 h-4 accent-[#00B4CC]" />
+                      <label htmlFor="rep-repos" className="text-sm text-gray-700">Jour de repos souhaité</label>
+                    </div>
+                    {!replacementForm.repos && (
+                      <div className="flex items-center gap-2">
+                        <input type="time" value={replacementForm.heure_debut}
+                          onChange={(e) => setReplacementForm((f) => ({ ...f, heure_debut: e.target.value }))}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                        <span className="text-gray-400">→</span>
+                        <input type="time" value={replacementForm.heure_fin}
+                          onChange={(e) => setReplacementForm((f) => ({ ...f, heure_fin: e.target.value }))}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Note (optionnel)</label>
+                      <textarea rows={2} value={replacementForm.note}
+                        onChange={(e) => setReplacementForm((f) => ({ ...f, note: e.target.value }))}
+                        placeholder="Raison, contrainte particulière..."
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleSendReplacementRequest}
+                        disabled={sendingReplacement}
+                        className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50">
+                        <Send size={14} /> {sendingReplacement ? 'Envoi...' : '📱 Envoyer la demande (WhatsApp)'}
+                      </button>
+                      <button onClick={() => { setShowReplacementForm(false); setReplacementForm({ date: '', repos: false, heure_debut: '10:00', heure_fin: '20:00', note: '' }) }}
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

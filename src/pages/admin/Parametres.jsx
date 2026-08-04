@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
-import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History, BarChart2, Clock } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History, BarChart2 } from 'lucide-react'
 import { ALL_PERMISSIONS, useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import { logActivity } from '../../lib/logActivity'
 import { calcSalairePeriode } from '../../lib/calcSalaire'
-import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
 import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
 import { PHONES_DATABASE } from '../../data/phonesDatabase'
@@ -791,8 +790,6 @@ export default function Parametres() {
   }, [showStaffDetail])
 
   // Horaires (planning hebdo)
-  const [showCalendarModal, setShowCalendarModal] = useState(false)
-  const [calendarEmployee, setCalendarEmployee]   = useState(null)
 
   const fetchBestSellers = async () => {
     const { data: config } = await supabase
@@ -1102,13 +1099,6 @@ export default function Parametres() {
                         }`}
                       >
                         {emp.active ? 'Désactiver' : 'Activer'}
-                      </button>
-                      <button
-                        onClick={() => { setCalendarEmployee(emp); setShowCalendarModal(true) }}
-                        title="Planning"
-                        className="p-2 text-gray-400 hover:text-[#00B4CC] hover:bg-cyan-50 rounded-lg transition-all cursor-pointer"
-                      >
-                        <Clock size={15} />
                       </button>
                       <button
                         onClick={() => { setEditEmployee(emp); setShowModal(true) }}
@@ -1922,28 +1912,6 @@ export default function Parametres() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {showCalendarModal && calendarEmployee && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h3 className="font-bold text-[#1B2A4A]">Planning — {calendarEmployee.name}</h3>
-              <button onClick={() => { setShowCalendarModal(false); setCalendarEmployee(null) }}>
-                <X size={18} className="text-gray-400" />
-              </button>
-            </div>
-            <div className="p-5">
-              <StaffScheduleCalendar
-                staffId={calendarEmployee.id}
-                staffName={calendarEmployee.name}
-                staffPhone={calendarEmployee.telephone}
-                hourlyWage={calendarEmployee.hourly_wage || 0}
-                isAdmin={isAdmin}
-              />
-            </div>
           </div>
         </div>
       )}

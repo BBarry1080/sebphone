@@ -56,6 +56,7 @@ import ProCataloguePage from './pages/pro/ProCataloguePage';
 import ProAdmin from './pages/admin/ProAdmin';
 import CataloguePage from './pages/CataloguePage';
 import Avis from './pages/Avis';
+import Planning from './pages/admin/Planning';
 
 function Layout({ children }) {
   return (
@@ -182,6 +183,7 @@ export default function App() {
             <Route path="pro" element={<ProAdmin />} />
             <Route path="clients" element={<Clients />} />
             <Route path="clients-interesses" element={<ClientsInteresses />} />
+            <Route path="planning" element={<Planning />} />
             <Route path="parametres" element={<AdminOnlyRoute><Parametres /></AdminOnlyRoute>} />
           </Route>
         </Routes>
