@@ -13,7 +13,7 @@ import ZFinancierReport from '../../components/admin/ZFinancierReport'
 import CaisseAccueil from '../../components/admin/CaisseAccueil'
 import CaissePinLock from '../../components/admin/CaissePinLock'
 import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
-import { calcSalairePeriode, getWeekBounds } from '../../lib/calcSalaire'
+import { calcSalairePeriode, getWeekBounds, calcDureeHeures } from '../../lib/calcSalaire'
 import { logActivity } from '../../lib/logActivity'
 
 const POS_CATEGORIES = [
@@ -328,27 +328,37 @@ export default function StockMagasin() {
                 </div>
               </div>
               {joursTravaillesSemaine.length > 0 && (() => {
-                const maxH = Math.max(1, ...joursTravaillesSemaine.map((d) => d.hours))
-                const dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+                const maxM = Math.max(...joursTravaillesSemaine.map((j) => j.montant), 1)
+                const moyenneMontant = joursTravaillesSemaine.reduce((s, j) => s + j.montant, 0) / 7
                 return (
-                  <div className="flex items-end justify-between gap-1.5 h-24">
-                    {joursTravaillesSemaine.map((d, i) => {
-                      const pct = (d.hours / maxH) * 100
-                      return (
-                        <div key={d.dateStr} className="flex-1 flex flex-col items-center gap-1">
-                          <div className="w-full flex items-end h-full">
-                            <div
-                              className="w-full rounded-t-md bg-gradient-to-t from-[#1B2A4A] to-[#00B4CC] transition-all"
-                              style={{ height: `${Math.max(2, pct)}%` }}
-                              title={`${d.hours.toFixed(1)}h`}
-                            />
+                  <div className="relative">
+                    <div className="flex items-end gap-1.5 h-20">
+                      {joursTravaillesSemaine.map((d) => {
+                        const pct = (d.montant / maxM) * 100
+                        return (
+                          <div key={d.dateStr} className="flex-1 flex flex-col items-center gap-1">
+                            <div className="w-full flex items-end h-full">
+                              <div
+                                className="w-full rounded-t-md bg-gradient-to-t from-[#1B2A4A] to-[#00B4CC] transition-all"
+                                style={{ height: `${Math.max(2, pct)}%` }}
+                                title={`${d.montant.toFixed(2)}€`}
+                              />
+                            </div>
+                            <span className="text-[9px] font-bold text-gray-500 uppercase">
+                              {d.label}
+                            </span>
                           </div>
-                          <span className="text-[9px] font-bold text-gray-500 uppercase">
-                            {dayLabels[i]}
-                          </span>
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
+                    <div
+                      className="absolute left-0 right-0 border-t-2 border-dashed border-amber-400 pointer-events-none"
+                      style={{ bottom: `${Math.min(100, (moyenneMontant / maxM) * 100)}%` }}
+                    >
+                      <span className="absolute -top-4 right-0 text-[9px] font-bold text-amber-600 bg-white px-1 rounded">
+                        moy. {moyenneMontant.toFixed(0)}€
+                      </span>
+                    </div>
                   </div>
                 )
               })()}
@@ -455,15 +465,20 @@ export default function StockMagasin() {
     const dateStart = firstOfMonth.toISOString().slice(0, 10)
     const { weekStart, weekEnd } = getWeekBounds()
 
-    const [pointRes, salaire, salaireSem, pointagesSemRes] = await Promise.all([
+    const [pointRes, salaire, salaireSem, pointagesSemRes, schedulesSemRes] = await Promise.all([
       supabase.from('staff_pointages').select('*').eq('staff_id', staff.id).eq('date', today).maybeSingle(),
       calcSalairePeriode(supabase, staff.id, staff.hourly_wage || 0, dateStart, today),
       calcSalairePeriode(supabase, staff.id, staff.hourly_wage || 0, weekStart, weekEnd),
       supabase.from('staff_pointages').select('date,heure_arrivee,heure_depart')
         .eq('staff_id', staff.id).gte('date', weekStart).lte('date', weekEnd),
+      supabase.from('staff_schedule_dates').select('date,repos,heure_debut,heure_fin')
+        .eq('staff_id', staff.id).gte('date', weekStart).lte('date', weekEnd),
     ])
 
-    // Barres 7 jours (Lun -> Dim) avec heures travaillées
+    // Barres 7 jours (Lun -> Dim) — même règle que calcSalairePeriode :
+    // shift prévu payé entier si présence confirmée
+    const wage = Number(staff.hourly_wage || 0)
+    const dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
     const monday = new Date(weekStart)
     const dayHours = []
     for (let i = 0; i < 7; i++) {
@@ -471,13 +486,23 @@ export default function StockMagasin() {
       d.setDate(monday.getDate() + i)
       const dStr = d.toISOString().slice(0, 10)
       const p = (pointagesSemRes.data || []).find((x) => x.date === dStr)
+      const sch = (schedulesSemRes.data || []).find((x) => x.date === dStr)
       let hours = 0
-      if (p?.heure_arrivee && p?.heure_depart) {
-        hours = (new Date(p.heure_depart) - new Date(p.heure_arrivee)) / 3600000
-      } else if (p?.heure_arrivee && dStr === today) {
-        hours = (new Date() - new Date(p.heure_arrivee)) / 3600000
+      if (dStr < today) {
+        if (sch && !sch.repos && p) {
+          hours = calcDureeHeures(sch.heure_debut, sch.heure_fin)
+        }
+      } else if (dStr === today) {
+        if (p?.heure_arrivee && p?.heure_depart) {
+          hours = sch && !sch.repos
+            ? calcDureeHeures(sch.heure_debut, sch.heure_fin)
+            : 0
+        } else if (p?.heure_arrivee) {
+          hours = (new Date() - new Date(p.heure_arrivee)) / 3600000
+        }
       }
-      dayHours.push({ dateStr: dStr, hours: Math.max(0, hours) })
+      hours = Math.max(0, hours)
+      dayHours.push({ dateStr: dStr, label: dayLabels[i], heures: hours, montant: hours * wage })
     }
 
     setPointageAujourdhui(pointRes.data || null)

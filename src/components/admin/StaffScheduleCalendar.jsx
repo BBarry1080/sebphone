@@ -351,6 +351,11 @@ export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, 
                     </span>
                   )
                 )}
+                {sched && !sched.repos && point && Number(point.penalite_retard) > 0 && (
+                  <span className="block text-[9px] font-bold text-red-600 bg-red-50 px-1 rounded mt-0.5 text-center">
+                    -{point.penalite_retard}€
+                  </span>
+                )}
               </button>
             )
           })}

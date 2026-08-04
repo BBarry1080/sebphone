@@ -1,3 +1,12 @@
+export function calcDureeHeures(heure_debut, heure_fin) {
+  if (!heure_debut || !heure_fin) return 0
+  const [h1, m1] = heure_debut.split(':').map(Number)
+  const [h2, m2] = heure_fin.split(':').map(Number)
+  let minutes = (h2 * 60 + m2) - (h1 * 60 + m1)
+  if (minutes <= 0) minutes += 24 * 60
+  return minutes / 60
+}
+
 export function calcPenalite(retardMin) {
   if (retardMin < 15) return 0
   return 20 * (1 + Math.floor((retardMin - 15) / 60))
@@ -51,11 +60,12 @@ export async function calcSalairePeriode(supabase, staffId, hourlyWage, dateStar
       if (!pointage) {
         absences.push(dateStr)
       } else {
-        if (pointage.heure_arrivee && pointage.heure_depart) {
-          const heures = (new Date(pointage.heure_depart) - new Date(pointage.heure_arrivee)) / 3600000
-          totalHeures += heures
-          salaireBrut += heures * hourlyWage
-        }
+        // Présence confirmée (pointage existe) → le shift prévu
+        // est compté en entier, peu importe l'heure réelle de
+        // départ (ou son absence)
+        const heures = calcDureeHeures(schedule.heure_debut, schedule.heure_fin)
+        totalHeures += heures
+        salaireBrut += heures * hourlyWage
         penalitesRetard += Number(pointage.penalite_retard || 0)
       }
     }
