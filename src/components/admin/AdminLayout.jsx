@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Smartphone, ClipboardList, Settings, LogOut,
-  Bell, Menu, X, Tag, QrCode, Calculator, BookOpen, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History, Contact2, Calendar,
+  LayoutDashboard, ClipboardList, Settings, LogOut,
+  Bell, Menu, X, Tag, QrCode, Calculator, ShoppingBag, ShoppingCart, Wrench, Briefcase, Truck, Users, Package, History, Contact2, Calendar, Boxes,
 } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
@@ -37,23 +37,55 @@ function SidebarContent({ onClose }) {
   const displayEmail = storedUser.email || supaUser?.email || ''
   const initials = displayName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'AD'
 
-  const navItems = [
-    { to: '/admin/stock-magasin',      label: 'Système de caisse',   Icon: ShoppingCart,    show: has('stock_magasin') || isAdmin },
-    { to: '/admin/dashboard',          label: 'Dashboard',           Icon: LayoutDashboard, show: true },
-    { to: '/admin/stock',              label: 'Stock',               Icon: Package,         show: has('voir_stock') },
-    { to: '/admin/vendus',             label: 'Historique ventes',   Icon: History,         show: has('voir_stock') || has('ajouter_vente_directe') },
-    { to: '/admin/commandes',          label: 'Commandes',           Icon: ShoppingBag,     show: has('voir_commandes') },
-    { to: '/admin/promoCodes',         label: 'Codes promo',         Icon: Tag,             show: has('codes_promo') },
-    { to: '/admin/verifier-code',      label: 'Vérifier code',       Icon: QrCode,          show: has('verifier_code') },
-    { to: '/admin/comptabilite',       label: 'Comptabilité',        Icon: Calculator,      show: has('voir_comptabilite') },
-    { to: '/admin/registre',           label: "Registre d'achats",   Icon: ClipboardList,   show: has('registre_achats') },
-    { to: '/admin/clients',            label: 'Clients',             Icon: Contact2,        show: has('voir_clients') || isAdmin },
-    { to: '/admin/clients-interesses', label: 'Clients intéressés',  Icon: Users,           show: has('voir_clients_interesses') || has('voir_clients') || isAdmin },
-    { to: '/admin/reconditionnement',  label: 'Reconditionnement',   Icon: Wrench,          show: has('stock_reconditionnement') },
-    { to: '/admin/livraisons',         label: 'Livraisons',          Icon: Truck,           show: isAdmin },
-    { to: '/admin/pro',                label: 'Espace Pro Admin',    Icon: Briefcase,       show: isAdmin },
-    { to: '/admin/planning',           label: 'Planning',            Icon: Calendar,        show: isAdmin || has('gerer_utilisateurs') },
-    { to: '/admin/parametres',         label: 'Paramètres',          Icon: Settings,        show: isAdmin || has('gerer_utilisateurs') },
+  const navGroups = [
+    {
+      label: 'Magasins Sebtelecom',
+      color: '#2563eb',
+      items: [
+        { to: '/admin/stock-magasin',                     label: 'Système de caisse',    Icon: ShoppingCart, show: has('stock_magasin') || isAdmin },
+        { to: '/admin/stock-magasin?screen=gestion',      label: 'Stock (marchandise)',  Icon: Boxes,        show: has('stock_magasin') || isAdmin },
+        { to: '/admin/clients',                           label: 'Clients',              Icon: Contact2,     show: has('voir_clients') || isAdmin },
+        { to: '/admin/clients-interesses',                label: 'Clients intéressés',   Icon: Users,        show: has('voir_clients_interesses') || has('voir_clients') || isAdmin },
+        { to: '/admin/planning',                          label: 'Planning',             Icon: Calendar,     show: isAdmin || has('gerer_utilisateurs') },
+      ],
+    },
+    {
+      label: 'Téléphones',
+      color: '#4f46e5',
+      items: [
+        { to: '/admin/stock',              label: 'Stock',                 Icon: Package,       show: has('voir_stock') },
+        { to: '/admin/vendus',             label: 'Historique de ventes',  Icon: History,       show: has('voir_stock') || has('ajouter_vente_directe') },
+        { to: '/admin/registre',           label: "Registre d'achats",    Icon: ClipboardList, show: has('registre_achats') },
+        { to: '/admin/reconditionnement',  label: 'Reconditionnement',     Icon: Wrench,        show: has('stock_reconditionnement') },
+      ],
+    },
+    {
+      label: 'Sebphone site',
+      color: '#16a34a',
+      items: [
+        { to: '/admin/commandes?origin=site',  label: 'Commandes',             Icon: ShoppingBag, show: has('voir_commandes') },
+        { to: '/admin/livraisons',             label: 'Livraisons',            Icon: Truck,       show: isAdmin },
+        { to: '/admin/verifier-code',          label: 'Vérifier code',         Icon: QrCode,      show: has('verifier_code') },
+        { to: '/admin/promoCodes',             label: 'Codes promo',           Icon: Tag,         show: has('codes_promo') },
+        { to: '/admin/vendus?origin=site',     label: 'Historique de ventes',  Icon: History,     show: has('voir_stock') || has('ajouter_vente_directe') },
+      ],
+    },
+    {
+      label: 'Comptabilité',
+      color: '#64748b',
+      items: [
+        { to: '/admin/dashboard',    label: 'Dashboard',    Icon: LayoutDashboard, show: true },
+        { to: '/admin/comptabilite', label: 'Comptabilité', Icon: Calculator,      show: has('voir_comptabilite') },
+      ],
+    },
+    {
+      label: 'Générale',
+      color: '#64748b',
+      items: [
+        { to: '/admin/parametres', label: 'Paramètres',      Icon: Settings,  show: isAdmin || has('gerer_utilisateurs') },
+        { to: '/admin/pro',        label: 'Espace Pro Admin', Icon: Briefcase, show: isAdmin },
+      ],
+    },
   ]
 
   return (
@@ -76,25 +108,39 @@ function SidebarContent({ onClose }) {
         )}
       </div>
 
-      {/* Navigation */}
+      {/* Navigation groupée */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        {navItems.filter((item) => item.show).map(({ to, label, Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            onClick={onClose}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-[rgba(0,180,204,0.2)] text-[#00B4CC] border-l-4 border-[#00B4CC] pl-2'
-                  : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
-              }`
-            }
-          >
-            <Icon size={18} />
-            {label}
-          </NavLink>
-        ))}
+        {navGroups.map((group, groupIdx) => {
+          const visibleItems = group.items.filter((i) => i.show)
+          if (visibleItems.length === 0) return null
+          return (
+            <div key={group.label} className={groupIdx === 0 ? '' : 'mt-4'}>
+              <p
+                className="text-[10px] font-bold uppercase tracking-wide px-3 mb-1"
+                style={{ color: group.color }}
+              >
+                {group.label}
+              </p>
+              {visibleItems.map(({ to, label, Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-[rgba(0,180,204,0.2)] text-[#00B4CC] border-l-4 border-[#00B4CC] pl-2'
+                        : 'text-[#94A3B8] hover:text-white hover:bg-white/5'
+                    }`
+                  }
+                >
+                  <Icon size={18} />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          )
+        })}
       </nav>
 
       {/* User + logout */}

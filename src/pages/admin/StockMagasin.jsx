@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
@@ -128,6 +129,16 @@ export default function StockMagasin() {
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
   const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | tresorerie | commissions | prix-reparations | recherche-ticket
+
+  const [searchParams] = useSearchParams()
+  useEffect(() => {
+    const screenParam = searchParams.get('screen')
+    if (screenParam === 'gestion') {
+      setPosScreen('gestion')
+      setActiveTab('stock')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Recherche ticket
   const [searchQuery, setSearchQuery]         = useState('')

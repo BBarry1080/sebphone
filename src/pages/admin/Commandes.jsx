@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { X, Package, RefreshCw, Search, Trash2, MapPin } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useRequirePermission, usePermission } from '../../hooks/usePermissions'
@@ -333,7 +334,8 @@ export default function Commandes() {
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [saleOrigin, setSaleOrigin]   = useState('tous')
+  const [searchParams] = useSearchParams()
+  const [saleOrigin, setSaleOrigin]   = useState(searchParams.get('origin') === 'site' ? 'site' : 'tous')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 

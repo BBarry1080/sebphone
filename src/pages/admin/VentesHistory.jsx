@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS } from '../../utils/magasins'
 import { Search, Eye, FileText, X, Pencil, Trash2 } from 'lucide-react'
@@ -14,7 +15,8 @@ export default function VentesHistory() {
   const [loading, setLoading]                 = useState(true)
   const [searchQuery, setSearchQuery]         = useState('')
   const [selectedMagasin, setSelectedMagasin] = useState('tous')
-  const [saleOrigin, setSaleOrigin]           = useState('tous')
+  const [searchParams] = useSearchParams()
+  const [saleOrigin, setSaleOrigin]           = useState(searchParams.get('origin') === 'site' ? 'site' : 'tous')
   const [selectedSale, setSelectedSale]       = useState(null)
   const [editingSale, setEditingSale]         = useState(null)
   const [editForm, setEditForm]               = useState({})
