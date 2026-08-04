@@ -2300,6 +2300,10 @@ export default function StockMagasin() {
           onOpenCommissions={() => { setPosScreen('commissions'); fetchCommissionRules(); fetchCategoriesDistinct() }}
           onOpenPrixReparations={() => { setPosScreen('prix-reparations'); fetchTypePannePrix() }}
           onOpenRechercheTicket={() => { setPosScreen('recherche-ticket'); setSearchResults([]); setSearchQuery(''); setSearchDateStart(''); setSearchDateEnd('') }}
+          onEditRefundFacture={(sale) => {
+            setSelectedTicket(sale)
+            setPosScreen('recherche-ticket')
+          }}
           showParametresCaisseTile={canAccessParamsCaisse}
           showTresorerieTile={trueIsAdmin}
           showCommissionsTile={trueIsAdmin}

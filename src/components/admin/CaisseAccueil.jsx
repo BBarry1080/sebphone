@@ -80,6 +80,7 @@ export default function CaisseAccueil({
   onOpenCommissions,
   onOpenPrixReparations,
   onOpenRechercheTicket,
+  onEditRefundFacture = () => {},
   showParametresCaisseTile = false,
   showTresorerieTile = false,
   showCommissionsTile = false,
@@ -1038,6 +1039,16 @@ export default function CaisseAccueil({
               tvaRate={21}
               paperWidth="80mm"
             />
+            <button
+              onClick={() => {
+                onEditRefundFacture(factureToShow)
+                setShowFactureModal(false)
+                setFactureToShow(null)
+                setShowDetailJour(false)
+              }}
+              className="w-full mt-2 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:opacity-90">
+              ✏️ Modifier / ↩️ Rembourser ce ticket
+            </button>
             <button onClick={() => { setShowFactureModal(false); setFactureToShow(null) }}
               className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
               Fermer
