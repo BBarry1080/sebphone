@@ -186,16 +186,9 @@ export default function StockMagasin() {
   })
   const [savingRule, setSavingRule]               = useState(false)
 
-  // Historique — vue calendrier + ticket modal
-  const [vueHistorique, setVueHistorique]         = useState('liste')
-  const [calMonthOffset, setCalMonthOffset]       = useState(0)
-  const [selectedJourClotures, setSelectedJourClotures] = useState(null)
+  // Modal ticket Z (rouvert depuis le popup calendrier)
   const [showTicketModal, setShowTicketModal]     = useState(false)
   const [ticketToShow, setTicketToShow]           = useState(null)
-  const [ventesParCloture, setVentesParCloture]   = useState({})
-  const [loadingVentesCloture, setLoadingVentesCloture] = useState(new Set())
-  const [saleTicketToShow, setSaleTicketToShow]   = useState(null)
-  const [showSaleTicketModal, setShowSaleTicketModal] = useState(false)
 
   // Trésorerie / Chiffres d'affaires
   const [mouvements, setMouvements]                       = useState([])
@@ -257,16 +250,7 @@ export default function StockMagasin() {
   // Devis — délai estimé
   const [devisDelaiId, setDevisDelaiId]           = useState('')
 
-  // Historique clôtures (admin uniquement)
   const trueIsAdmin = isAdmin
-  const [clotures, setClotures]                     = useState([])
-  const [loadingClotures, setLoadingClotures]       = useState(false)
-  const [filterMagasinHisto, setFilterMagasinHisto] = useState('all')
-  const [periodPresetHisto, setPeriodPresetHisto]   = useState('mois')
-  const [periodStartHisto, setPeriodStartHisto]     = useState(() => {
-    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
-  })
-  const [periodEndHisto, setPeriodEndHisto]         = useState(() => new Date().toISOString().slice(0, 10))
 
   // Écran Pointage personnel (vue employé)
   const [myStaffRecord, setMyStaffRecord] = useState(null)
@@ -694,78 +678,9 @@ export default function StockMagasin() {
     }
   }
 
-  // ─── Historique clôtures ───
+  // Magasins physiques concernés par la caisse
   const MAGASINS_CAISSE = MAGASINS_LIST.filter((m) =>
     ['anderlecht', 'molenbeek', 'rue-neuve', 'louise'].includes(m.id))
-
-  const computePresetDatesHisto = (preset) => {
-    const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
-    if (preset === 'jour') return { start: todayStr, end: todayStr }
-    if (preset === 'semaine') {
-      const dow = today.getDay()
-      const diff = dow === 0 ? -6 : 1 - dow
-      const monday = new Date(today)
-      monday.setDate(today.getDate() + diff)
-      return { start: monday.toISOString().slice(0, 10), end: todayStr }
-    }
-    if (preset === 'mois') {
-      const first = new Date(today.getFullYear(), today.getMonth(), 1)
-      return { start: first.toISOString().slice(0, 10), end: todayStr }
-    }
-    return { start: periodStartHisto, end: periodEndHisto }
-  }
-
-  const fetchClotures = async () => {
-    setLoadingClotures(true)
-    let query = supabase.from('cash_closures').select('*')
-      .gte('period_end', periodStartHisto + 'T00:00:00')
-      .lte('period_end', periodEndHisto + 'T23:59:59')
-      .order('period_end', { ascending: false })
-    if (filterMagasinHisto !== 'all') query = query.eq('magasin_id', filterMagasinHisto)
-    const { data } = await query
-    setClotures(data || [])
-    setLoadingClotures(false)
-  }
-
-  const fetchVentesCloture = async (closure) => {
-    if (ventesParCloture[closure.id]) return
-    setLoadingVentesCloture((prev) => new Set(prev).add(closure.id))
-    const { data } = await supabase
-      .from('shop_sales')
-      .select('*, shop_sale_items(*)')
-      .eq('magasin_id', closure.magasin_id)
-      .gte('created_at', closure.period_start)
-      .lte('created_at', closure.period_end)
-      .order('created_at', { ascending: true })
-    setVentesParCloture((prev) => ({ ...prev, [closure.id]: data || [] }))
-    setLoadingVentesCloture((prev) => {
-      const next = new Set(prev)
-      next.delete(closure.id)
-      return next
-    })
-  }
-
-  // Lance les fetch de ventes pour chaque clôture du jour sélectionné
-  useEffect(() => {
-    if (!selectedJourClotures) return
-    const dt = new Date(selectedJourClotures)
-    const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
-    clotures.forEach((c) => {
-      const cd = new Date(c.period_end)
-      const cKey = `${cd.getFullYear()}-${String(cd.getMonth()+1).padStart(2,'0')}-${String(cd.getDate()).padStart(2,'0')}`
-      if (cKey === key) fetchVentesCloture(c)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedJourClotures, clotures])
-
-  // Auto-appliquer les dates du preset (sauf custom)
-  useEffect(() => {
-    if (periodPresetHisto === 'custom') return
-    const { start, end } = computePresetDatesHisto(periodPresetHisto)
-    setPeriodStartHisto(start)
-    setPeriodEndHisto(end)
-  }, [periodPresetHisto])
 
   // ─── Trésorerie ───
   const fetchMouvements = async () => {
@@ -4116,38 +4031,14 @@ export default function StockMagasin() {
         </div>
       )}
 
-      {/* MODAL FACTURE INDIVIDUELLE (vente d'une clôture) */}
-      {showSaleTicketModal && saleTicketToShow && (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
-            <ReceiptTicket
-              ticketNumber={saleTicketToShow.indexInDay}
-              vendeur={saleTicketToShow.staff_name || 'Admin'}
-              dateTime={new Date(saleTicketToShow.created_at)}
-              items={(saleTicketToShow.shop_sale_items || []).map((si) => ({
-                qte: si.quantity,
-                name: si.item_name,
-                tot: Number(si.total_price),
-              }))}
-              payments={[
-                ...(Number(saleTicketToShow.cash_amount) > 0 ? [{ type: 'cash', amount: Number(saleTicketToShow.cash_amount) }] : []),
-                ...(Number(saleTicketToShow.bancontact_amount) > 0 ? [{ type: 'bancontact', amount: Number(saleTicketToShow.bancontact_amount) }] : []),
-                ...(Number(saleTicketToShow.virement_amount) > 0 ? [{ type: 'virement', amount: Number(saleTicketToShow.virement_amount) }] : []),
-              ]}
-              changeAmount={Number(saleTicketToShow.change_amount) || 0}
-              tvaRate={21}
-              paperWidth="80mm"
-            />
-            <button onClick={() => { setShowSaleTicketModal(false); setSaleTicketToShow(null) }}
-              className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* MODAL VOIR LE TICKET (Z financier reconstruit depuis snapshot) */}
-      {showTicketModal && ticketToShow && (
+      {showTicketModal && ticketToShow && (() => {
+        const idx = cloturesMois
+          .filter((c) => c.magasin_id === ticketToShow.magasin_id)
+          .sort((a, b) => new Date(a.period_end) - new Date(b.period_end))
+          .findIndex((c) => c.id === ticketToShow.id)
+        const reportNum = idx >= 0 ? idx + 1 : 1
+        return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
@@ -4158,10 +4049,7 @@ export default function StockMagasin() {
             </div>
             <div className="p-4">
               <ZFinancierReport
-                reportNumber={clotures
-                  .filter((c) => c.magasin_id === ticketToShow.magasin_id)
-                  .sort((a, b) => new Date(a.period_end) - new Date(b.period_end))
-                  .findIndex((c) => c.id === ticketToShow.id) + 1}
+                reportNumber={reportNum}
                 caisse={1}
                 dateTime={new Date(ticketToShow.period_end)}
                 periodStart={new Date(ticketToShow.period_start)}
@@ -4188,7 +4076,8 @@ export default function StockMagasin() {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Mini bandeau session caisse plein écran */}
       {posScreen === 'caisse' && caisseSession && (
