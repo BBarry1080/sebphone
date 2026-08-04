@@ -197,8 +197,7 @@ export default function StockMagasin() {
   const [saleTicketToShow, setSaleTicketToShow]   = useState(null)
   const [showSaleTicketModal, setShowSaleTicketModal] = useState(false)
 
-  // Trésorerie
-  const [trezSousOnglet, setTrezSousOnglet]               = useState('vue') // 'vue' | 'clotures'
+  // Trésorerie / Chiffres d'affaires
   const [mouvements, setMouvements]                       = useState([])
   const [loadingTreso, setLoadingTreso]                   = useState(false)
   const [showDepenseForm, setShowDepenseForm]             = useState(false)
@@ -208,7 +207,21 @@ export default function StockMagasin() {
     categorieAutre: '',
     holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
     payment_method: 'cash',
+    made_by: '', made_by_autre: '',
+    target_date: '',
   })
+  // Combinaisons magasins libres (défaut : les 4 physiques cochés)
+  const [selectedMagasinsCombo, setSelectedMagasinsCombo] = useState(
+    new Set(['anderlecht', 'molenbeek', 'rue-neuve', 'louise'])
+  )
+  // Clôtures du mois affiché (calendrier unifié)
+  const [cloturesMois, setCloturesMois]                   = useState([])
+  // Coffre cliquable → modal "Qui détient quoi"
+  const [showCoffreModal, setShowCoffreModal]             = useState(false)
+  // Assignation caisse via popup jour
+  const [assignHolderForClosure, setAssignHolderForClosure] = useState({})
+  // Pré-remplir target_date depuis popup jour
+  const [prefillTargetDate, setPrefillTargetDate]         = useState('')
   const [savingDepense, setSavingDepense]                 = useState(false)
   const [fournisseursListTreso, setFournisseursListTreso] = useState([])
 
@@ -769,38 +782,43 @@ export default function StockMagasin() {
     setFournisseursListTreso(data || [])
   }
 
+  // Mouvements filtrés par la combinaison de magasins active
+  const filteredMouvements = useMemo(() => (
+    mouvements.filter((m) => !m.magasin_id || selectedMagasinsCombo.has(m.magasin_id))
+  ), [mouvements, selectedMagasinsCombo])
+
   const totalGlobalTreso = useMemo(() => (
-    mouvements.reduce((s, m) =>
+    filteredMouvements.reduce((s, m) =>
       s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
-  ), [mouvements])
+  ), [filteredMouvements])
 
   const totauxParMagasin = useMemo(() => (
     MAGASINS_CAISSE.reduce((acc, mag) => {
-      acc[mag.id] = mouvements
+      acc[mag.id] = filteredMouvements
         .filter((m) => m.magasin_id === mag.id)
         .reduce((s, m) => s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
       return acc
     }, {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [mouvements])
+  ), [filteredMouvements])
 
   const totauxParMethode = useMemo(() => {
     const acc = { cash: 0, bancontact: 0, virement: 0 }
-    mouvements.forEach((m) => {
+    filteredMouvements.forEach((m) => {
       const pm = m.payment_method || 'cash'
       acc[pm] = (acc[pm] || 0) + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount))
     })
     return acc
-  }, [mouvements])
+  }, [filteredMouvements])
 
   const totauxParDetenteur = useMemo(() => {
     const acc = {}
-    mouvements.forEach((m) => {
+    filteredMouvements.forEach((m) => {
       const key = m.holder || 'Non précisé'
       acc[key] = (acc[key] || 0) + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount))
     })
     return acc
-  }, [mouvements])
+  }, [filteredMouvements])
 
   const computeHolderLabel = (form) => {
     if (form.holderType === 'zinou') return 'Zinou'
@@ -836,7 +854,10 @@ export default function StockMagasin() {
     if (!depenseForm.magasin_id) { alert('Sélectionne un magasin'); return }
     setSavingDepense(true)
     const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
-    const createdBy = currentSebUser?.name || 'Staff'
+    const fallbackCreatedBy = currentSebUser?.name || 'Staff'
+    const madeByFinal = depenseForm.made_by === '__autre__'
+      ? (depenseForm.made_by_autre.trim() || fallbackCreatedBy)
+      : (depenseForm.made_by || fallbackCreatedBy)
     const sourceFinal = depenseForm.categorie === 'autre'
       ? (depenseForm.categorieAutre.trim() || 'autre')
       : depenseForm.categorie
@@ -847,20 +868,52 @@ export default function StockMagasin() {
       amount: amt,
       reference_id: depenseForm.fournisseur_id || null,
       description: depenseForm.description || null,
-      created_by: createdBy,
+      created_by: madeByFinal,
       holder: computeHolderLabel(depenseForm),
       payment_method: depenseForm.payment_method,
+      target_date: depenseForm.target_date || null,
     })
     setSavingDepense(false)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('tresorerie_depense',
-      `Dépense enregistrée — ${amt}€ (${sourceFinal})`)
+      `Dépense enregistrée — ${amt}€ (${sourceFinal}) par ${madeByFinal}`)
     setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur',
       fournisseur_id: '', description: '',
       categorieAutre: '',
       holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
-      payment_method: 'cash' })
+      payment_method: 'cash',
+      made_by: '', made_by_autre: '',
+      target_date: '' })
     setShowDepenseForm(false)
+    setPrefillTargetDate('')
+    fetchMouvements()
+  }
+
+  // Fetch clôtures du mois affiché (pour le calendrier unifié)
+  const fetchCloturesMois = async (offset = calMonthOffsetTreso) => {
+    const now = new Date()
+    const dispDate = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+    const first = new Date(dispDate.getFullYear(), dispDate.getMonth(), 1)
+    const last = new Date(dispDate.getFullYear(), dispDate.getMonth() + 1, 0, 23, 59, 59)
+    const { data } = await supabase.from('cash_closures')
+      .select('*')
+      .gte('period_end', first.toISOString())
+      .lte('period_end', last.toISOString())
+    setCloturesMois(data || [])
+  }
+
+  // Assigner la caisse d'une clôture à un employé (met à jour les 3 lignes cash/banco/virement)
+  const handleAssignCaisseHolder = async (closure, newHolder) => {
+    if (!newHolder) return
+    const { error } = await supabase.from('tresorerie_mouvements')
+      .update({ holder: newHolder })
+      .eq('reference_id', closure.id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    const dateLabel = new Date(closure.period_end).toLocaleDateString('fr-BE')
+    const magNom = (MAGASINS_LIST.find((m) => m.id === closure.magasin_id)?.nom || closure.magasin_id || '—')
+      .replace('Seb Telecom — ', '')
+    logActivity('tresorerie_holder_update',
+      `Caisse du ${dateLabel} (${magNom}) assignée à ${newHolder}`)
     fetchMouvements()
   }
 
@@ -1355,6 +1408,13 @@ export default function StockMagasin() {
   // Fetch délais au montage (pour le sélecteur devis)
   useEffect(() => { fetchDelaiTypes() }, [])
 
+  // Refetch clôtures du mois quand on navigue dans le calendrier
+  useEffect(() => {
+    if (posScreen !== 'tresorerie') return
+    fetchCloturesMois(calMonthOffsetTreso)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calMonthOffsetTreso, posScreen])
+
   // Refetch clôtures quand écran actif OU filtres changent
   useEffect(() => {
     if (posScreen !== 'tresorerie' || trezSousOnglet !== 'clotures') return
@@ -1379,7 +1439,8 @@ export default function StockMagasin() {
       } else {
         fetchMouvements()
         if (fournisseursListTreso.length === 0) fetchFournisseursListTreso()
-        if (clotures.length === 0) fetchClotures()
+        if (staffListCaisse.length === 0) fetchStaffCaisse()
+        fetchCloturesMois(0)
       }
     }
     if (posScreen === 'prix-reparations') {
@@ -2981,40 +3042,22 @@ export default function StockMagasin() {
           </button>
           <div className="mb-4">
             <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
-              <PiggyBank size={22} /> Fonds/CA
+              <PiggyBank size={22} /> Chiffres d'affaires
             </h1>
           </div>
 
-          {/* Sous-onglet Vue / Clôtures */}
-          <div className="flex gap-2 mb-4">
-            {[
-              { key: 'vue', label: "💰 Vue d'ensemble" },
-              { key: 'clotures', label: '🧾 Clôtures' },
-            ].map((v) => (
-              <button key={v.key}
-                onClick={() => setTrezSousOnglet(v.key)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
-                  ${trezSousOnglet === v.key
-                    ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
-                {v.label}
-              </button>
-            ))}
-          </div>
-
-          {trezSousOnglet === 'vue' && (
-            <>
-              {/* Coffre central */}
-              <div className="rounded-2xl p-6 text-white shadow-md flex items-center justify-between mb-4"
-                style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)' }}>
-                <div>
-                  <p className="text-xs uppercase opacity-70 font-bold">Coffre central</p>
-                  <p className="text-[10px] opacity-60 mt-0.5">Solde global toutes sources</p>
-                </div>
-                <p className={`text-4xl font-black ${totalGlobalTreso < 0 ? 'text-red-300' : 'text-white'}`}>
-                  {totalGlobalTreso.toFixed(2)}€
-                </p>
-              </div>
+          {/* Coffre central (cliquable — modal Qui détient quoi) */}
+          <button onClick={() => setShowCoffreModal(true)}
+            className="w-full text-left rounded-2xl p-6 text-white shadow-md flex items-center justify-between mb-4 hover:shadow-lg transition-all cursor-pointer"
+            style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)' }}>
+            <div>
+              <p className="text-xs uppercase opacity-70 font-bold">Coffre central</p>
+              <p className="text-[10px] opacity-60 mt-0.5">Cliquer pour voir qui détient quoi</p>
+            </div>
+            <p className={`text-4xl font-black ${totalGlobalTreso < 0 ? 'text-red-300' : 'text-white'}`}>
+              {totalGlobalTreso.toFixed(2)}€
+            </p>
+          </button>
 
               {/* Totaux par moyen de paiement */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -3034,6 +3077,99 @@ export default function StockMagasin() {
                   )
                 })}
               </div>
+
+              {/* Sélecteur de magasins à combiner */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4">
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Magasins pris en compte</p>
+                <div className="flex flex-wrap gap-2">
+                  {MAGASINS_CAISSE.map((mag) => {
+                    const on = selectedMagasinsCombo.has(mag.id)
+                    return (
+                      <button key={mag.id}
+                        onClick={() => setSelectedMagasinsCombo((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(mag.id)) next.delete(mag.id)
+                          else next.add(mag.id)
+                          return next
+                        })}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                          ${on
+                            ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
+                        {on ? '✓ ' : ''}{mag.nom.replace('Seb Telecom — ', '')}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-2">
+                  {selectedMagasinsCombo.size} magasin{selectedMagasinsCombo.size > 1 ? 's' : ''} sélectionné{selectedMagasinsCombo.size > 1 ? 's' : ''}
+                </p>
+              </div>
+
+              {/* Liste des dépenses récentes (20 dernières, sorties uniquement) */}
+              {(() => {
+                const depenses = filteredMouvements
+                  .filter((m) => m.type === 'sortie')
+                  .sort((a, b) => {
+                    const da = new Date(a.target_date || a.created_at).getTime()
+                    const db = new Date(b.target_date || b.created_at).getTime()
+                    return db - da
+                  })
+                  .slice(0, 20)
+                return (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">
+                      Dépenses récentes {depenses.length > 0 && `(${depenses.length})`}
+                    </h3>
+                    {depenses.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-3">Aucune dépense</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-100">
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase whitespace-nowrap">Date</th>
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Fait par</th>
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Magasin</th>
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Méthode</th>
+                              <th className="text-right px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Montant</th>
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {depenses.map((m) => {
+                              const dt = new Date(m.target_date || m.created_at)
+                              const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`
+                              const magNom = m.magasin_id
+                                ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
+                                : 'Central'
+                              const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+                              return (
+                                <tr key={m.id} className="border-b border-gray-50">
+                                  <td className="px-2 py-1.5 font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
+                                  <td className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]" title={m.created_by || ''}>{m.created_by || '—'}</td>
+                                  <td className="px-2 py-1.5 text-gray-600">{magNom}</td>
+                                  <td className="px-2 py-1.5 text-gray-600">
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                      {pmIcon}
+                                    </span>
+                                  </td>
+                                  <td className="px-2 py-1.5 text-right font-bold text-red-700 whitespace-nowrap">
+                                    -{Number(m.amount || 0).toFixed(2)}€
+                                  </td>
+                                  <td className="px-2 py-1.5 text-gray-600 max-w-[180px] truncate" title={m.description || ''}>
+                                    {m.description || '—'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Calendrier des mouvements (vue unique) */}
               {loadingTreso ? (
@@ -3059,9 +3195,22 @@ export default function StockMagasin() {
                 const jourStrM = (d) =>
                   `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 
-                const mouvementsDuJour = (dateStr) => mouvements.filter((m) => {
-                  const dt = new Date(m.created_at)
-                  return jourStrM(dt) === dateStr
+                const MAG_COLORS_CAL = {
+                  anderlecht: '#2563eb', molenbeek: '#16a34a',
+                  'rue-neuve': '#f59e0b', louise: '#8b5cf6',
+                }
+
+                // Dépenses du jour : target_date si présent, sinon created_at
+                const depensesDuJour = (dateStr) => filteredMouvements.filter((m) => {
+                  if (m.type !== 'sortie') return false
+                  const eff = m.target_date || m.created_at
+                  return jourStrM(new Date(eff)) === dateStr
+                })
+
+                // Clôtures du jour filtrées par combo magasins
+                const cloturesDuJour = (dateStr) => cloturesMois.filter((c) => {
+                  if (!selectedMagasinsCombo.has(c.magasin_id)) return false
+                  return jourStrM(new Date(c.period_end)) === dateStr
                 })
 
                 return (
@@ -3092,14 +3241,12 @@ export default function StockMagasin() {
                       {cellsM.map((date, idx) => {
                         if (!date) return <div key={`empty-m-${idx}`} />
                         const dStr = jourStrM(date)
-                        const mvts = mouvementsDuJour(dStr)
-                        const net = mvts.reduce((s, m) =>
-                          s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
-                        const has = mvts.length > 0
-                        const holdersDistincts = has
-                          ? [...new Set(mvts.map((m) => m.holder || 'Non précisé'))]
-                          : []
-                        const holdersTxt = holdersDistincts.join(', ')
+                        const cloJour = cloturesDuJour(dStr)
+                        const depJour = depensesDuJour(dStr)
+                        const caTotalJour = cloJour.reduce((s, c) => s + Number(c.ca_total || 0), 0)
+                        const totalDepJour = depJour.reduce((s, m) => s + Number(m.amount || 0), 0)
+                        const magPresents = [...new Set(cloJour.map((c) => c.magasin_id))]
+                        const has = cloJour.length > 0 || depJour.length > 0
                         return (
                           <button key={dStr}
                             onClick={has ? () => setSelectedJourMouvements(dStr) : undefined}
@@ -3110,19 +3257,22 @@ export default function StockMagasin() {
                                 : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
                             <div className="flex items-start justify-between">
                               <span className="text-xs font-bold text-[#1B2A4A]">{date.getDate()}</span>
+                              <div className="flex gap-0.5 flex-wrap justify-end max-w-[24px]">
+                                {magPresents.slice(0, 4).map((mid) => (
+                                  <span key={mid} className="w-1.5 h-1.5 rounded-full"
+                                    style={{ background: MAG_COLORS_CAL[mid] || '#94a3b8' }} />
+                                ))}
+                              </div>
                             </div>
-                            {has && (
-                              <>
-                                <p className={`text-[10px] font-bold mt-0.5 leading-tight ${net < 0 ? 'text-red-600' : 'text-green-700'}`}>
-                                  {net >= 0 ? '+' : ''}{net.toFixed(0)}€
-                                </p>
-                                <p className="text-[9px] text-gray-400 leading-tight">
-                                  {mvts.length} mvt{mvts.length > 1 ? 's' : ''}
-                                </p>
-                                <p className="text-[8px] text-gray-500 leading-tight truncate" title={holdersTxt}>
-                                  {holdersTxt}
-                                </p>
-                              </>
+                            {caTotalJour > 0 && (
+                              <p className="text-[10px] font-bold text-[#1B2A4A] mt-0.5 leading-tight">
+                                {caTotalJour.toFixed(0)}€
+                              </p>
+                            )}
+                            {totalDepJour > 0 && (
+                              <span className="inline-block mt-0.5 text-[8px] font-bold px-1 rounded bg-red-50 text-red-600">
+                                -{totalDepJour.toFixed(0)}€
+                              </span>
                             )}
                           </button>
                         )
@@ -3135,7 +3285,13 @@ export default function StockMagasin() {
               {/* Formulaire dépense */}
               <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
                 {!showDepenseForm ? (
-                  <button onClick={() => setShowDepenseForm(true)}
+                  <button onClick={() => {
+                      if (staffListCaisse.length === 0) fetchStaffCaisse()
+                      if (prefillTargetDate) {
+                        setDepenseForm((f) => ({ ...f, target_date: prefillTargetDate }))
+                      }
+                      setShowDepenseForm(true)
+                    }}
                     className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
                     + Nouvelle dépense
                   </button>
@@ -3237,6 +3393,36 @@ export default function StockMagasin() {
                           placeholder="0.00"
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                       </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fait par</label>
+                        <select value={depenseForm.made_by}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, made_by: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                          <option value="">— Utilisateur connecté —</option>
+                          {staffListCaisse.map((s) => (
+                            <option key={s.id} value={s.name}>{s.name}</option>
+                          ))}
+                          <option value="__autre__">Autre…</option>
+                        </select>
+                      </div>
+                      {depenseForm.made_by === '__autre__' && (
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Précise le nom</label>
+                          <input type="text" value={depenseForm.made_by_autre}
+                            onChange={(e) => setDepenseForm((f) => ({ ...f, made_by_autre: e.target.value }))}
+                            placeholder="Nom de la personne"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                        </div>
+                      )}
+                      <div className="md:col-span-2">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Affecter à une date (optionnel)</label>
+                        <input type="date" value={depenseForm.target_date}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, target_date: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          Vide = déduit du total global ; renseigné = la dépense apparaît sur cette date du calendrier
+                        </p>
+                      </div>
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Description</label>
@@ -3250,7 +3436,7 @@ export default function StockMagasin() {
                         className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
                         {savingDepense ? 'Enregistrement...' : 'Enregistrer'}
                       </button>
-                      <button onClick={() => { setShowDepenseForm(false); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash' }) }}
+                      <button onClick={() => { setShowDepenseForm(false); setPrefillTargetDate(''); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash', made_by: '', made_by_autre: '', target_date: '' }) }}
                         className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
                         Annuler
                       </button>
@@ -3259,10 +3445,7 @@ export default function StockMagasin() {
                 )}
               </div>
 
-            </>
-          )}
-
-          {trezSousOnglet === 'clotures' && (
+          {false && (
             <>
               {/* Toggle vue Liste / Calendrier */}
               <div className="flex gap-2 mb-3">
@@ -3939,69 +4122,149 @@ export default function StockMagasin() {
         </div>
       )}
 
-      {/* MODAL DÉTAIL JOUR MOUVEMENTS (popup depuis le calendrier Fonds/CA) */}
+      {/* MODAL DÉTAIL JOUR (popup calendrier Chiffres d'affaires) */}
       {selectedJourMouvements && (() => {
         const jourStrM = (d) =>
           `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-        const jourMvts = mouvements.filter((m) => jourStrM(new Date(m.created_at)) === selectedJourMouvements)
-        if (jourMvts.length === 0) return null
-        const netJour = jourMvts.reduce((s, m) =>
-          s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
+        const jourClotures = cloturesMois.filter((c) =>
+          selectedMagasinsCombo.has(c.magasin_id) &&
+          jourStrM(new Date(c.period_end)) === selectedJourMouvements
+        )
+        const jourDepenses = filteredMouvements.filter((m) => {
+          if (m.type !== 'sortie') return false
+          const eff = m.target_date || m.created_at
+          return jourStrM(new Date(eff)) === selectedJourMouvements
+        })
+        const totalDepJour = jourDepenses.reduce((s, m) => s + Number(m.amount || 0), 0)
+        const caJour = jourClotures.reduce((s, c) => s + Number(c.ca_total || 0), 0)
+
         return (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto p-5">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto p-5">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-bold text-[#1B2A4A] text-lg">
+                  <h3 className="font-bold text-[#1B2A4A] text-lg capitalize">
                     {new Date(selectedJourMouvements).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                   </h3>
-                  <p className={`text-xl font-black mt-0.5 ${netJour < 0 ? 'text-red-600' : 'text-[#00B4CC]'}`}>
-                    {netJour >= 0 ? '+' : ''}{netJour.toFixed(2)}€
-                  </p>
-                  <p className="text-[10px] text-gray-500 uppercase">{jourMvts.length} mouvement{jourMvts.length > 1 ? 's' : ''}</p>
+                  <div className="flex gap-4 mt-1 text-xs">
+                    {caJour > 0 && <span className="text-[#00B4CC] font-bold">CA {caJour.toFixed(2)}€</span>}
+                    {totalDepJour > 0 && <span className="text-red-600 font-bold">Dépenses -{totalDepJour.toFixed(2)}€</span>}
+                  </div>
                 </div>
                 <button onClick={() => setSelectedJourMouvements(null)}
                   className="text-gray-400 hover:text-[#1B2A4A]">
                   <X size={20} />
                 </button>
               </div>
-              <div className="space-y-1 max-h-80 overflow-y-auto">
-                {jourMvts.map((m) => {
-                  const dt = new Date(m.created_at)
-                  const heure = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
-                  const magNom = m.magasin_id
-                    ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
-                    : 'Central'
-                  const isEntree = m.type === 'entree'
-                  const signe = isEntree ? '+' : '-'
-                  const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
-                  return (
-                    <div key={m.id} className="bg-gray-50 rounded-lg p-2 flex items-center gap-2 flex-wrap text-xs">
-                      <span className="font-mono text-gray-500 whitespace-nowrap">{heure}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
-                        ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {isEntree ? 'Entrée' : 'Sortie'}
-                      </span>
-                      <span className="text-gray-700">{magNom}</span>
-                      <span className="text-gray-500">{pmIcon}</span>
-                      <span className="text-gray-600 truncate max-w-[120px]" title={m.holder || ''}>{m.holder || '—'}</span>
-                      <button onClick={() => openEditHolder(m)}
-                        title="Modifier le détenteur"
-                        className="p-1 text-gray-400 hover:text-[#1B2A4A]">
-                        <Pencil size={12} />
-                      </button>
-                      <span className={`font-bold ml-auto ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
-                        {signe}{Number(m.amount || 0).toFixed(2)}€
-                      </span>
-                      {m.description && (
-                        <span className="w-full text-[10px] text-gray-500 italic truncate" title={m.description}>
-                          {m.description}
-                        </span>
-                      )}
-                    </div>
-                  )
-                })}
+
+              {jourClotures.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Clôtures</h4>
+                  <div className="space-y-2">
+                    {jourClotures.map((c) => {
+                      const magNom = (MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id || '—')
+                        .replace('Seb Telecom — ', '')
+                      const currentHolderFromMvts = (() => {
+                        const linked = mouvements.find((m) => m.reference_id === c.id)
+                        return linked?.holder || `Magasin — ${MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id}`
+                      })()
+                      const selectedNewHolder = assignHolderForClosure[c.id] ?? ''
+                      return (
+                        <div key={c.id} className="bg-gray-50 rounded-xl p-3">
+                          <p className="font-bold text-[#1B2A4A] mb-2">{magNom}</p>
+                          <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+                            <div>
+                              <p className="text-[9px] text-gray-500 uppercase">💵 Cash</p>
+                              <p className="font-bold text-[#1B2A4A]">{Number(c.cash_total || 0).toFixed(2)}€</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-gray-500 uppercase">💳 Bancontact</p>
+                              <p className="font-bold text-[#1B2A4A]">{Number(c.bancontact_total || 0).toFixed(2)}€</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-gray-500 uppercase">🏦 Virement</p>
+                              <p className="font-bold text-[#1B2A4A]">{Number(c.virement_total || 0).toFixed(2)}€</p>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-gray-500 mb-2">
+                            Clôturé par : <span className="font-bold text-gray-700">{c.staff_name || '—'}</span>
+                          </p>
+                          <div className="flex items-center gap-2 mb-2">
+                            <label className="text-[10px] font-bold text-gray-500 uppercase whitespace-nowrap">Caisse détenue par</label>
+                            <span className="text-[10px] text-gray-600 truncate flex-1" title={currentHolderFromMvts}>
+                              {currentHolderFromMvts}
+                            </span>
+                          </div>
+                          <div className="flex gap-2 mb-2">
+                            <select value={selectedNewHolder}
+                              onChange={(e) => setAssignHolderForClosure((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                              className="flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white">
+                              <option value="">— Choisir —</option>
+                              <option value={`Magasin — ${MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id}`}>
+                                Magasin — {magNom}
+                              </option>
+                              {staffListCaisse.map((s) => (
+                                <option key={s.id} value={s.name}>{s.name}</option>
+                              ))}
+                            </select>
+                            <button onClick={() => handleAssignCaisseHolder(c, selectedNewHolder)}
+                              disabled={!selectedNewHolder}
+                              className="px-3 py-1.5 bg-[#00B4CC] text-white rounded-lg text-xs font-bold hover:bg-[#1B2A4A] disabled:opacity-40">
+                              Assigner
+                            </button>
+                          </div>
+                          <button onClick={() => { setTicketToShow(c); setShowTicketModal(true) }}
+                            className="w-full bg-[#1B2A4A] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#00B4CC]">
+                            🧾 Voir le ticket de clôture
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase">Dépenses du jour</h4>
+                  <button onClick={() => {
+                      setPrefillTargetDate(selectedJourMouvements)
+                      setDepenseForm((f) => ({ ...f, target_date: selectedJourMouvements }))
+                      if (staffListCaisse.length === 0) fetchStaffCaisse()
+                      setShowDepenseForm(true)
+                      setSelectedJourMouvements(null)
+                    }}
+                    className="text-xs font-bold text-[#00B4CC] hover:text-[#1B2A4A]">
+                    + Ajouter une dépense sur ce jour
+                  </button>
+                </div>
+                {jourDepenses.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-3">Aucune dépense ce jour</p>
+                ) : (
+                  <div className="space-y-1">
+                    {jourDepenses.map((m) => {
+                      const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+                      return (
+                        <div key={m.id} className="bg-red-50 rounded-lg p-2 flex items-center gap-2 flex-wrap text-xs">
+                          <span className="text-gray-500">{pmIcon}</span>
+                          <span className="text-gray-700 truncate max-w-[130px]" title={m.created_by || ''}>
+                            {m.created_by || 'Non précisé'}
+                          </span>
+                          <span className="font-bold text-red-700 ml-auto">
+                            -{Number(m.amount || 0).toFixed(2)}€
+                          </span>
+                          {m.description && (
+                            <span className="w-full text-[10px] text-gray-500 italic truncate" title={m.description}>
+                              {m.description}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
+
               <button onClick={() => setSelectedJourMouvements(null)}
                 className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
                 Fermer
@@ -4010,6 +4273,48 @@ export default function StockMagasin() {
           </div>
         )
       })()}
+
+      {/* MODAL COFFRE — Qui détient quoi */}
+      {showCoffreModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-bold text-[#1B2A4A] text-lg">Qui détient quoi</h3>
+                <p className={`text-xl font-black mt-0.5 ${totalGlobalTreso < 0 ? 'text-red-600' : 'text-[#00B4CC]'}`}>
+                  {totalGlobalTreso.toFixed(2)}€
+                </p>
+              </div>
+              <button onClick={() => setShowCoffreModal(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            {Object.keys(totauxParDetenteur).length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-6">Aucun détenteur enregistré</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {Object.entries(totauxParDetenteur).map(([key, val]) => (
+                  <button key={key}
+                    onClick={() => { setSelectedDetenteur(key); setDetenteurMagasinFilter('all'); setShowCoffreModal(false) }}
+                    className="text-left bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-all">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase truncate" title={key}>
+                      {key}
+                    </p>
+                    <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                      {val.toFixed(2)}€
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setShowCoffreModal(false)}
+              className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DÉTAIL DÉTENTEUR (liste des mouvements du détenteur) */}
       {selectedDetenteur && (

@@ -533,10 +533,10 @@ export default function CaisseAccueil({
           onClick={() => setShowClotureDetail(true)}
         />
 
-        {/* FONDS/CA (admin uniquement) */}
+        {/* CHIFFRES D'AFFAIRES (admin uniquement) */}
         {showTresorerieTile && (
           <Tile color={COLORS.emerald} icon={PiggyBank}
-            title="Fonds/CA"
+            title="Chiffres d'affaires"
             subtitle="Cumul clôtures & dépenses"
             onClick={onOpenTresorerie}
           />
