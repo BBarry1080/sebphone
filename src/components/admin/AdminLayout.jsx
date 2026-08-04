@@ -45,7 +45,7 @@ function SidebarContent({ onClose }) {
       groupIcon: Store,
       items: [
         { to: '/admin/stock-magasin',                     label: 'Système de caisse',    Icon: ShoppingCart, show: has('stock_magasin') || isAdmin },
-        { to: '/admin/stock-magasin?screen=gestion',      label: 'Stock (marchandise)',  Icon: Boxes,        show: has('stock_magasin') || isAdmin },
+        { to: '/admin/stock-magasin?screen=gestion',      label: 'Stock (marchandise)',  Icon: Boxes,        show: false }, // désactivé temporairement - conflit d'URL avec "Système de caisse" (même pathname, actif en même temps)
         { to: '/admin/clients',                           label: 'Clients',              Icon: Contact2,     show: has('voir_clients') || isAdmin },
         { to: '/admin/clients-interesses',                label: 'Clients intéressés',   Icon: Users,        show: has('voir_clients_interesses') || has('voir_clients') || isAdmin },
         { to: '/admin/planning',                          label: 'Planning',             Icon: Calendar,     show: isAdmin || has('gerer_utilisateurs') },
