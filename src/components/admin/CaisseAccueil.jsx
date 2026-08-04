@@ -4,7 +4,7 @@ import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2, Settings, UserCheck, History,
+  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank,
 } from 'lucide-react'
 
 const COLORS = {
@@ -18,6 +18,7 @@ const COLORS = {
   slate: '#64748b',
   teal: '#0d9488',
   indigo: '#4f46e5',
+  emerald: '#059669',
 }
 
 const PANNE_OPTIONS = [
@@ -74,8 +75,10 @@ export default function CaisseAccueil({
   onOpenParametresCaisse,
   onOpenPointage,
   onOpenHistoriqueClotures,
+  onOpenTresorerie,
   showParametresCaisseTile = false,
   showHistoriqueCloturesTile = false,
+  showTresorerieTile = false,
   onAcompteRecorded = () => {},
 }) {
   const [showClientModal, setShowClientModal] = useState(false)
@@ -467,6 +470,15 @@ export default function CaisseAccueil({
             title="Historique clôtures"
             subtitle="Registre lecture seule, tous magasins"
             onClick={onOpenHistoriqueClotures}
+          />
+        )}
+
+        {/* TRÉSORERIE (admin uniquement) */}
+        {showTresorerieTile && (
+          <Tile color={COLORS.emerald} icon={PiggyBank}
+            title="Trésorerie"
+            subtitle="Cumul clôtures & dépenses"
+            onClick={onOpenTresorerie}
           />
         )}
 

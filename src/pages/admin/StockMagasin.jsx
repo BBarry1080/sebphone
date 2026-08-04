@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
          Menu, Lock, Unlock, LogOut,
          Settings, Clock, Save, UserCheck, Send, Calendar, History,
+         PiggyBank, ChevronLeft, ChevronRight,
          Image as ImageIcon, Upload } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
@@ -125,7 +126,25 @@ export default function StockMagasin() {
   const [prelevementAmount, setPrelevementAmount] = useState('')
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
-  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | historique-clotures
+  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | historique-clotures | tresorerie
+
+  // Historique — vue calendrier + ticket modal
+  const [vueHistorique, setVueHistorique]         = useState('liste')
+  const [calMonthOffset, setCalMonthOffset]       = useState(0)
+  const [selectedJourClotures, setSelectedJourClotures] = useState(null)
+  const [showTicketModal, setShowTicketModal]     = useState(false)
+  const [ticketToShow, setTicketToShow]           = useState(null)
+
+  // Trésorerie
+  const [mouvements, setMouvements]                       = useState([])
+  const [loadingTreso, setLoadingTreso]                   = useState(false)
+  const [showDepenseForm, setShowDepenseForm]             = useState(false)
+  const [depenseForm, setDepenseForm]                     = useState({
+    magasin_id: '', montant: '', categorie: 'fournisseur',
+    fournisseur_id: '', description: '',
+  })
+  const [savingDepense, setSavingDepense]                 = useState(false)
+  const [fournisseursListTreso, setFournisseursListTreso] = useState([])
 
   // Historique clôtures (admin uniquement)
   const trueIsAdmin = isAdmin
@@ -585,6 +604,61 @@ export default function StockMagasin() {
     setPeriodEndHisto(end)
   }, [periodPresetHisto])
 
+  // ─── Trésorerie ───
+  const fetchMouvements = async () => {
+    setLoadingTreso(true)
+    const { data } = await supabase.from('tresorerie_mouvements')
+      .select('*').order('created_at', { ascending: false }).limit(200)
+    setMouvements(data || [])
+    setLoadingTreso(false)
+  }
+
+  const fetchFournisseursListTreso = async () => {
+    const { data } = await supabase.from('fournisseurs')
+      .select('id, nom').order('nom', { ascending: true })
+    setFournisseursListTreso(data || [])
+  }
+
+  const totalGlobalTreso = useMemo(() => (
+    mouvements.reduce((s, m) =>
+      s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
+  ), [mouvements])
+
+  const totauxParMagasin = useMemo(() => (
+    MAGASINS_CAISSE.reduce((acc, mag) => {
+      acc[mag.id] = mouvements
+        .filter((m) => m.magasin_id === mag.id)
+        .reduce((s, m) => s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
+      return acc
+    }, {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [mouvements])
+
+  const handleSaveDepense = async () => {
+    const amt = Number(depenseForm.montant)
+    if (!amt || amt <= 0) { alert('Montant invalide'); return }
+    setSavingDepense(true)
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const createdBy = currentSebUser?.name || 'Staff'
+    const { error } = await supabase.from('tresorerie_mouvements').insert({
+      type: 'sortie',
+      source: depenseForm.categorie,
+      magasin_id: depenseForm.magasin_id || null,
+      amount: amt,
+      reference_id: depenseForm.fournisseur_id || null,
+      description: depenseForm.description || null,
+      created_by: createdBy,
+    })
+    setSavingDepense(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('tresorerie_depense',
+      `Dépense enregistrée — ${amt}€ (${depenseForm.categorie})`)
+    setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur',
+      fournisseur_id: '', description: '' })
+    setShowDepenseForm(false)
+    fetchMouvements()
+  }
+
   // Refetch clôtures quand écran actif OU filtres changent
   useEffect(() => {
     if (posScreen !== 'historique-clotures') return
@@ -605,6 +679,14 @@ export default function StockMagasin() {
     }
     if (posScreen === 'historique-clotures' && !trueIsAdmin) {
       setPosScreen('accueil')
+    }
+    if (posScreen === 'tresorerie') {
+      if (!trueIsAdmin) {
+        setPosScreen('accueil')
+      } else {
+        fetchMouvements()
+        if (fournisseursListTreso.length === 0) fetchFournisseursListTreso()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posScreen, canAccessParamsCaisse, trueIsAdmin])
@@ -1213,24 +1295,59 @@ export default function StockMagasin() {
   const confirmClosure = async () => {
     if (!closureData) return
     setClosureLoading(true)
-    const staffName = JSON.parse(
+    const currentSebUser = JSON.parse(
       localStorage.getItem('sebphone_user') || '{}'
-    )?.nom || 'Staff'
+    )
+    const staffName = currentSebUser?.name || 'Staff'
+    const prelevementFinal = Number(prelevementAmount) || 0
 
-    await supabase.from('cash_closures').insert({
-      magasin_id: magasin,
-      period_start: closureData.periodStart,
-      period_end: closureData.periodEnd,
-      ca_total: closureData.caTotal,
-      ticket_count: closureData.ticketCount,
-      cash_total: closureData.cashTotal,
-      bancontact_total: closureData.bancontactTotal,
-      virement_total: closureData.virementTotal,
-      depots_total: closureData.depotsTotal,
-      retraits_total: closureData.retraitsTotal,
-      prelevement: Number(prelevementAmount) || 0,
-      staff_name: staffName,
-    })
+    const { data: newClosure, error: closureErr } = await supabase
+      .from('cash_closures')
+      .insert({
+        magasin_id: magasin,
+        period_start: closureData.periodStart,
+        period_end: closureData.periodEnd,
+        ca_total: closureData.caTotal,
+        ticket_count: closureData.ticketCount,
+        cash_total: closureData.cashTotal,
+        bancontact_total: closureData.bancontactTotal,
+        virement_total: closureData.virementTotal,
+        depots_total: closureData.depotsTotal,
+        retraits_total: closureData.retraitsTotal,
+        prelevement: prelevementFinal,
+        staff_name: staffName,
+        detail_snapshot: {
+          ticketMoyen: closureData.ticketMoyen,
+          tvaBase21: closureData.tvaBase21,
+          tvaMontant21: closureData.tvaMontant21,
+          totalCaisseCash: closureData.totalCaisseCash,
+          totalCompte: closureData.totalCompte,
+          tvaRows: closureData.tvaRows,
+          reglementsArr: closureData.reglementsArr,
+          categoriesArr: closureData.categoriesArr,
+          retraitsArr: closureData.retraitsArr,
+        },
+      })
+      .select()
+      .single()
+
+    if (closureErr) {
+      alert('Erreur : ' + closureErr.message)
+      setClosureLoading(false)
+      return
+    }
+
+    if (prelevementFinal > 0) {
+      await supabase.from('tresorerie_mouvements').insert({
+        type: 'entree',
+        source: 'cloture',
+        magasin_id: magasin,
+        amount: prelevementFinal,
+        reference_id: newClosure.id,
+        description: `Clôture caisse — ${new Date(closureData.periodEnd).toLocaleDateString('fr-BE')}`,
+        created_by: staffName,
+      })
+    }
 
     setShowClosureModal(false)
     setClosureData(null)
@@ -1457,8 +1574,10 @@ export default function StockMagasin() {
           onOpenParametresCaisse={() => { setPosScreen('parametres'); fetchStaffCaisse() }}
           onOpenPointage={() => setPosScreen('pointage')}
           onOpenHistoriqueClotures={() => { setPosScreen('historique-clotures'); fetchClotures() }}
+          onOpenTresorerie={() => { setPosScreen('tresorerie'); fetchMouvements(); fetchFournisseursListTreso() }}
           showParametresCaisseTile={canAccessParamsCaisse}
           showHistoriqueCloturesTile={trueIsAdmin}
+          showTresorerieTile={trueIsAdmin}
           onAcompteRecorded={fetchCaisseToday}
         />
       )}
@@ -1763,6 +1882,23 @@ export default function StockMagasin() {
             <p className="text-sm text-gray-500 mt-1">Registre en lecture seule — toutes les clôtures enregistrées</p>
           </div>
 
+          {/* Toggle vue Liste / Calendrier */}
+          <div className="flex gap-2 mb-3">
+            {[
+              { key: 'liste', label: '📋 Liste' },
+              { key: 'calendrier', label: '📅 Calendrier' },
+            ].map((v) => (
+              <button key={v.key}
+                onClick={() => { setVueHistorique(v.key); setSelectedJourClotures(null) }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                  ${vueHistorique === v.key
+                    ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+
           {/* Barre filtres */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
             <div className="flex flex-wrap gap-3 items-end">
@@ -1835,14 +1971,350 @@ export default function StockMagasin() {
             )
           })()}
 
-          {/* Tableau */}
+          {/* Vue LISTE ou CALENDRIER */}
           {loadingClotures ? (
             <div className="flex items-center justify-center h-40">
               <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : clotures.length === 0 ? (
+          ) : vueHistorique === 'liste' ? (
+            clotures.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                Aucune clôture sur cette période
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
+                      <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
+                      <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">CA brut</th>
+                      <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">CA net</th>
+                      <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Tickets</th>
+                      <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Cash</th>
+                      <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Bancontact</th>
+                      <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Virement</th>
+                      <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Ticket</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clotures.map((c) => {
+                      const d = new Date(c.period_end)
+                      const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+                      const magNom = (MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id || '—')
+                        .replace('Seb Telecom — ', '')
+                      const brut = Number(c.ca_total || 0)
+                      const net = brut / 1.21
+                      return (
+                        <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
+                          <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
+                          <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
+                          <td className="px-4 py-2.5 text-right font-bold text-[#1B2A4A]">{brut.toFixed(2)}€</td>
+                          <td className="px-4 py-2.5 text-right text-gray-500">{net.toFixed(2)}€</td>
+                          <td className="px-4 py-2.5 text-right text-gray-600">{c.ticket_count || 0}</td>
+                          <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.cash_total || 0).toFixed(2)}€</td>
+                          <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.bancontact_total || 0).toFixed(2)}€</td>
+                          <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.virement_total || 0).toFixed(2)}€</td>
+                          <td className="px-4 py-2.5 text-center">
+                            <button onClick={() => { setTicketToShow(c); setShowTicketModal(true) }}
+                              title="Voir le ticket"
+                              className="text-xs font-bold text-[#00B4CC] hover:text-[#1B2A4A]">
+                              🧾 Voir
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : (
+            // VUE CALENDRIER
+            (() => {
+              const nowDt = new Date()
+              const dispDate = new Date(nowDt.getFullYear(), nowDt.getMonth() + calMonthOffset, 1)
+              const yearC = dispDate.getFullYear()
+              const monthC = dispDate.getMonth()
+              const firstC = new Date(yearC, monthC, 1)
+              const lastC = new Date(yearC, monthC + 1, 0)
+              const daysInMonthC = lastC.getDate()
+              const firstDowC = (firstC.getDay() + 6) % 7
+              const monthLabelC = dispDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
+
+              const cellsC = []
+              for (let i = 0; i < firstDowC; i++) cellsC.push(null)
+              for (let d = 1; d <= daysInMonthC; d++) cellsC.push(new Date(yearC, monthC, d))
+
+              const MAG_COLORS = {
+                anderlecht: '#2563eb', molenbeek: '#16a34a',
+                'rue-neuve': '#f59e0b', louise: '#8b5cf6',
+              }
+              const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+              const cloturesDuJour = (dateStr) => clotures.filter((c) => {
+                const dt = new Date(c.period_end)
+                const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
+                return key === dateStr
+              })
+
+              const jourStr = (d) =>
+                `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+              const jourSelectionne = selectedJourClotures ? cloturesDuJour(selectedJourClotures) : []
+
+              return (
+                <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setCalMonthOffset((o) => o - 1)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                        <ChevronLeft size={18} />
+                      </button>
+                      <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
+                        {monthLabelC}
+                      </span>
+                      <button onClick={() => setCalMonthOffset((o) => o + 1)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                        <ChevronRight size={18} />
+                      </button>
+                    </div>
+                    <div className="flex gap-3 flex-wrap text-[10px] text-gray-500">
+                      {MAGASINS_CAISSE.map((m) => (
+                        <span key={m.id} className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full" style={{ background: MAG_COLORS[m.id] }} />
+                          {m.nom.replace('Seb Telecom — ', '')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {dowLabels.map((d) => (
+                      <div key={d} className="text-center text-[10px] font-bold uppercase text-gray-400 py-1">{d}</div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1">
+                    {cellsC.map((date, idx) => {
+                      if (!date) return <div key={`empty-h-${idx}`} />
+                      const dStr = jourStr(date)
+                      const cloJour = cloturesDuJour(dStr)
+                      const totalDay = cloJour.reduce((s, c) => s + Number(c.ca_total || 0), 0)
+                      const magasinsPresents = [...new Set(cloJour.map((c) => c.magasin_id))]
+                      const isSelected = selectedJourClotures === dStr
+                      const has = cloJour.length > 0
+
+                      return (
+                        <button key={dStr}
+                          onClick={has ? () => setSelectedJourClotures(dStr) : undefined}
+                          disabled={!has}
+                          className={`aspect-square min-h-[64px] p-1 rounded-lg border-2 text-left transition-all
+                            ${isSelected ? 'border-[#00B4CC] bg-cyan-50'
+                              : has ? 'border-gray-100 bg-white hover:border-[#1B2A4A]'
+                              : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
+                          <div className="flex items-start justify-between">
+                            <span className="text-xs font-bold text-[#1B2A4A]">{date.getDate()}</span>
+                            <div className="flex gap-0.5 flex-wrap justify-end max-w-[24px]">
+                              {magasinsPresents.slice(0, 4).map((mid) => (
+                                <span key={mid} className="w-1.5 h-1.5 rounded-full"
+                                  style={{ background: MAG_COLORS[mid] || '#94a3b8' }} />
+                              ))}
+                            </div>
+                          </div>
+                          {totalDay > 0 && (
+                            <p className="text-[9px] font-bold text-gray-500 mt-1 leading-tight">
+                              {totalDay.toFixed(0)}€
+                            </p>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {selectedJourClotures && jourSelectionne.length > 0 && (
+                    <div className="mt-4 border-t border-gray-100 pt-4">
+                      <p className="text-sm font-bold text-[#1B2A4A] mb-3">
+                        {new Date(selectedJourClotures).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} — {jourSelectionne.length} clôture{jourSelectionne.length > 1 ? 's' : ''}
+                      </p>
+                      <div className="space-y-2">
+                        {jourSelectionne.map((c) => {
+                          const magNom = (MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id)
+                            .replace('Seb Telecom — ', '')
+                          return (
+                            <div key={c.id} className="bg-gray-50 rounded-xl p-3">
+                              <div className="flex items-start justify-between gap-2 flex-wrap">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-[#1B2A4A] flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full" style={{ background: MAG_COLORS[c.magasin_id] || '#94a3b8' }} />
+                                    {magNom}
+                                  </p>
+                                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 text-xs">
+                                    <div>
+                                      <p className="text-[9px] text-gray-500 uppercase">CA total</p>
+                                      <p className="font-bold text-[#1B2A4A]">{Number(c.ca_total || 0).toFixed(2)}€</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] text-gray-500 uppercase">Tickets</p>
+                                      <p className="font-bold text-[#1B2A4A]">{c.ticket_count || 0}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] text-gray-500 uppercase">Cash</p>
+                                      <p className="font-bold text-[#1B2A4A]">{Number(c.cash_total || 0).toFixed(2)}€</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] text-gray-500 uppercase">Bancontact</p>
+                                      <p className="font-bold text-[#1B2A4A]">{Number(c.bancontact_total || 0).toFixed(2)}€</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[9px] text-gray-500 uppercase">Virement</p>
+                                      <p className="font-bold text-[#1B2A4A]">{Number(c.virement_total || 0).toFixed(2)}€</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                <button onClick={() => { setTicketToShow(c); setShowTicketModal(true) }}
+                                  className="bg-[#1B2A4A] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#00B4CC]">
+                                  🧾 Voir le ticket
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()
+          )}
+        </div>
+      )}
+
+      {/* ÉCRAN TRÉSORERIE (admin uniquement) */}
+      {posScreen === 'tresorerie' && trueIsAdmin && (
+        <div className="max-w-6xl mx-auto">
+          <button onClick={() => setPosScreen('accueil')}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
+          </button>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
+              <PiggyBank size={22} /> Trésorerie
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">Cumul des clôtures, dépenses déductibles</p>
+          </div>
+
+          {/* Coffre central */}
+          <div className="rounded-2xl p-6 text-white shadow-md flex items-center justify-between mb-4"
+            style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)' }}>
+            <div>
+              <p className="text-xs uppercase opacity-70 font-bold">Coffre central</p>
+              <p className="text-[10px] opacity-60 mt-0.5">Solde global toutes sources</p>
+            </div>
+            <p className={`text-4xl font-black ${totalGlobalTreso < 0 ? 'text-red-300' : 'text-white'}`}>
+              {totalGlobalTreso.toFixed(2)}€
+            </p>
+          </div>
+
+          {/* Par magasin */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {MAGASINS_CAISSE.map((mag) => {
+              const val = totauxParMagasin[mag.id] || 0
+              return (
+                <div key={mag.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase truncate">
+                    {mag.nom.replace('Seb Telecom — ', '')}
+                  </p>
+                  <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                    {val.toFixed(2)}€
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Formulaire dépense */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+            {!showDepenseForm ? (
+              <button onClick={() => setShowDepenseForm(true)}
+                className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                + Nouvelle dépense
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <h3 className="font-bold text-[#1B2A4A]">Nouvelle dépense</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
+                    <select value={depenseForm.magasin_id}
+                      onChange={(e) => setDepenseForm((f) => ({ ...f, magasin_id: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                      <option value="">Central (aucun magasin)</option>
+                      {MAGASINS_CAISSE.map((m) => (
+                        <option key={m.id} value={m.id}>{m.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
+                    <select value={depenseForm.categorie}
+                      onChange={(e) => setDepenseForm((f) => ({ ...f, categorie: e.target.value, fournisseur_id: e.target.value === 'fournisseur' ? f.fournisseur_id : '' }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                      <option value="fournisseur">Fournisseur</option>
+                      <option value="rachat_client">Rachat client</option>
+                      <option value="autre">Autre</option>
+                    </select>
+                  </div>
+                  {depenseForm.categorie === 'fournisseur' && (
+                    <div className="md:col-span-2">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
+                      <select value={depenseForm.fournisseur_id}
+                        onChange={(e) => setDepenseForm((f) => ({ ...f, fournisseur_id: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                        <option value="">— Choisir —</option>
+                        {fournisseursListTreso.map((f) => (
+                          <option key={f.id} value={f.id}>{f.nom}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Montant (€)</label>
+                    <input type="number" step="0.01" min="0" value={depenseForm.montant}
+                      onChange={(e) => setDepenseForm((f) => ({ ...f, montant: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Description</label>
+                  <textarea rows={2} value={depenseForm.description}
+                    onChange={(e) => setDepenseForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Détail, référence facture, etc."
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleSaveDepense} disabled={savingDepense}
+                    className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                    {savingDepense ? 'Enregistrement...' : 'Enregistrer'}
+                  </button>
+                  <button onClick={() => { setShowDepenseForm(false); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '' }) }}
+                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tableau mouvements */}
+          {loadingTreso ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : mouvements.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-              Aucune clôture sur cette période
+              Aucun mouvement de trésorerie
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
@@ -1850,33 +2322,40 @@ export default function StockMagasin() {
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Type</th>
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
-                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">CA brut</th>
-                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">CA net</th>
-                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Tickets</th>
-                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Cash</th>
-                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Bancontact</th>
-                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Virement</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Source</th>
+                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Montant</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Description</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {clotures.map((c) => {
-                    const d = new Date(c.period_end)
-                    const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
-                    const magNom = (MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id || '—')
-                      .replace('Seb Telecom — ', '')
-                    const brut = Number(c.ca_total || 0)
-                    const net = brut / 1.21
+                  {mouvements.map((m) => {
+                    const dt = new Date(m.created_at)
+                    const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
+                    const magNom = m.magasin_id
+                      ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
+                      : 'Central'
+                    const isEntree = m.type === 'entree'
+                    const signe = isEntree ? '+' : '-'
                     return (
-                      <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
                         <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'}`}>
+                            {isEntree ? 'Entrée' : 'Sortie'}
+                          </span>
+                        </td>
                         <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-[#1B2A4A]">{brut.toFixed(2)}€</td>
-                        <td className="px-4 py-2.5 text-right text-gray-500">{net.toFixed(2)}€</td>
-                        <td className="px-4 py-2.5 text-right text-gray-600">{c.ticket_count || 0}</td>
-                        <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.cash_total || 0).toFixed(2)}€</td>
-                        <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.bancontact_total || 0).toFixed(2)}€</td>
-                        <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.virement_total || 0).toFixed(2)}€</td>
+                        <td className="px-4 py-2.5 text-xs text-gray-600">{m.source || '—'}</td>
+                        <td className={`px-4 py-2.5 text-right font-bold ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
+                          {signe}{Number(m.amount || 0).toFixed(2)}€
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[280px] truncate" title={m.description || ''}>
+                          {m.description || '—'}
+                        </td>
                       </tr>
                     )
                   })}
@@ -1884,6 +2363,50 @@ export default function StockMagasin() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* MODAL VOIR LE TICKET (Z financier reconstruit depuis snapshot) */}
+      {showTicketModal && ticketToShow && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-bold text-[#1B2A4A]">Ticket de clôture</h3>
+              <button onClick={() => { setShowTicketModal(false); setTicketToShow(null) }}>
+                <X size={18} className="text-gray-400" />
+              </button>
+            </div>
+            <div className="p-4">
+              <ZFinancierReport
+                reportNumber={clotures
+                  .filter((c) => c.magasin_id === ticketToShow.magasin_id)
+                  .sort((a, b) => new Date(a.period_end) - new Date(b.period_end))
+                  .findIndex((c) => c.id === ticketToShow.id) + 1}
+                caisse={1}
+                dateTime={new Date(ticketToShow.period_end)}
+                periodStart={new Date(ticketToShow.period_start)}
+                periodEnd={new Date(ticketToShow.period_end)}
+                ventes={{ montant: ticketToShow.ca_total, count: ticketToShow.ticket_count }}
+                retours={{ montant: 0, count: 0 }}
+                tvaRows={ticketToShow.detail_snapshot?.tvaRows || []}
+                reglements={ticketToShow.detail_snapshot?.reglementsArr || []}
+                ventesFacturees={{ factures: 0, notesCredit: 0 }}
+                remisesSurVentes={{ montant: 0, count: 0 }}
+                categories={ticketToShow.detail_snapshot?.categoriesArr || []}
+                proformats={{ bonsLivraison: 0, commandesClient: 0 }}
+                retraits={ticketToShow.detail_snapshot?.retraitsArr || []}
+                totalCashEnCaisse={ticketToShow.detail_snapshot?.totalCaisseCash || 0}
+                totalCompte={ticketToShow.detail_snapshot?.totalCompte || 0}
+              />
+              {!ticketToShow.detail_snapshot && (
+                <p className="text-xs text-amber-600 text-center mt-3 bg-amber-50 rounded-lg p-2">
+                  ⚠️ Cette clôture date d'avant la sauvegarde du détail complet —
+                  seuls les totaux globaux sont fiables ici, le détail par
+                  catégorie n'est pas disponible pour ce ticket.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
