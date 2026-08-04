@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
@@ -131,6 +131,7 @@ export default function StockMagasin() {
   const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | tresorerie | commissions | prix-reparations | recherche-ticket
 
   const [searchParams] = useSearchParams()
+  const location = useLocation()
   useEffect(() => {
     const screenParam = searchParams.get('screen')
     if (screenParam === 'gestion') {
@@ -139,6 +140,14 @@ export default function StockMagasin() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const screenParam = searchParams.get('screen')
+    if (!screenParam) {
+      setPosScreen('accueil')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key])
 
   // Recherche ticket
   const [searchQuery, setSearchQuery]         = useState('')
@@ -196,6 +205,7 @@ export default function StockMagasin() {
   const [depenseForm, setDepenseForm]                     = useState({
     magasin_id: '', montant: '', categorie: 'fournisseur',
     fournisseur_id: '', description: '',
+    categorieAutre: '',
     holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
     payment_method: 'cash',
   })
@@ -212,10 +222,8 @@ export default function StockMagasin() {
   // Vue d'ensemble — filtres + modaux + calendrier
   const [selectedDetenteur, setSelectedDetenteur]           = useState(null)
   const [detenteurMagasinFilter, setDetenteurMagasinFilter] = useState('all')
-  const [vueMouvements, setVueMouvements]                   = useState('liste')
   const [calMonthOffsetTreso, setCalMonthOffsetTreso]       = useState(0)
   const [selectedJourMouvements, setSelectedJourMouvements] = useState(null)
-  const [filterMouvementType, setFilterMouvementType]       = useState('all')
 
   // Prix réparations
   const [typePannePrixList, setTypePannePrixList] = useState([])
@@ -825,12 +833,16 @@ export default function StockMagasin() {
   const handleSaveDepense = async () => {
     const amt = Number(depenseForm.montant)
     if (!amt || amt <= 0) { alert('Montant invalide'); return }
+    if (!depenseForm.magasin_id) { alert('Sélectionne un magasin'); return }
     setSavingDepense(true)
     const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
     const createdBy = currentSebUser?.name || 'Staff'
+    const sourceFinal = depenseForm.categorie === 'autre'
+      ? (depenseForm.categorieAutre.trim() || 'autre')
+      : depenseForm.categorie
     const { error } = await supabase.from('tresorerie_mouvements').insert({
       type: 'sortie',
-      source: depenseForm.categorie,
+      source: sourceFinal,
       magasin_id: depenseForm.magasin_id || null,
       amount: amt,
       reference_id: depenseForm.fournisseur_id || null,
@@ -842,9 +854,10 @@ export default function StockMagasin() {
     setSavingDepense(false)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('tresorerie_depense',
-      `Dépense enregistrée — ${amt}€ (${depenseForm.categorie})`)
+      `Dépense enregistrée — ${amt}€ (${sourceFinal})`)
     setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur',
       fournisseur_id: '', description: '',
+      categorieAutre: '',
       holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
       payment_method: 'cash' })
     setShowDepenseForm(false)
@@ -2969,7 +2982,6 @@ export default function StockMagasin() {
             <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
               <PiggyBank size={22} /> Fonds/CA
             </h1>
-            <p className="text-sm text-gray-500 mt-1">Cumul des clôtures, dépenses déductibles</p>
           </div>
 
           {/* Sous-onglet Vue / Clôtures */}
@@ -3022,46 +3034,102 @@ export default function StockMagasin() {
                 })}
               </div>
 
-              {/* Par détenteur — cliquable */}
-              {Object.keys(totauxParDetenteur).length > 0 && (
-                <div className="mb-4">
-                  <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Par détenteur</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {Object.entries(totauxParDetenteur).map(([key, val]) => (
-                      <button key={key}
-                        onClick={() => { setSelectedDetenteur(key); setDetenteurMagasinFilter('all') }}
-                        className="text-left bg-white rounded-2xl border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all">
-                        <p className="text-[10px] font-bold text-gray-500 uppercase truncate" title={key}>
-                          {key}
-                        </p>
-                        <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
-                          {val.toFixed(2)}€
-                        </p>
-                      </button>
-                    ))}
-                  </div>
+              {/* Calendrier des mouvements (vue unique) */}
+              {loadingTreso ? (
+                <div className="flex items-center justify-center h-40 mb-4">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
                 </div>
-              )}
+              ) : (() => {
+                const nowDt = new Date()
+                const dispDate = new Date(nowDt.getFullYear(), nowDt.getMonth() + calMonthOffsetTreso, 1)
+                const yearM = dispDate.getFullYear()
+                const monthM = dispDate.getMonth()
+                const firstM = new Date(yearM, monthM, 1)
+                const lastM = new Date(yearM, monthM + 1, 0)
+                const daysInMonthM = lastM.getDate()
+                const firstDowM = (firstM.getDay() + 6) % 7
+                const monthLabelM = dispDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
 
-              {/* Par magasin */}
-              <div className="mb-4">
-                <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Par magasin</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {MAGASINS_CAISSE.map((mag) => {
-                    const val = totauxParMagasin[mag.id] || 0
-                    return (
-                      <div key={mag.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                        <p className="text-[10px] font-bold text-gray-500 uppercase truncate">
-                          {mag.nom.replace('Seb Telecom — ', '')}
-                        </p>
-                        <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
-                          {val.toFixed(2)}€
-                        </p>
+                const cellsM = []
+                for (let i = 0; i < firstDowM; i++) cellsM.push(null)
+                for (let d = 1; d <= daysInMonthM; d++) cellsM.push(new Date(yearM, monthM, d))
+                const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+                const jourStrM = (d) =>
+                  `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+                const mouvementsDuJour = (dateStr) => mouvements.filter((m) => {
+                  const dt = new Date(m.created_at)
+                  return jourStrM(dt) === dateStr
+                })
+
+                return (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setCalMonthOffsetTreso((o) => o - 1)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                          <ChevronLeft size={18} />
+                        </button>
+                        <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
+                          {monthLabelM}
+                        </span>
+                        <button onClick={() => setCalMonthOffsetTreso((o) => o + 1)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                          <ChevronRight size={18} />
+                        </button>
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1 mb-1">
+                      {dowLabels.map((d) => (
+                        <div key={d} className="text-center text-[10px] font-bold uppercase text-gray-400 py-1">{d}</div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1">
+                      {cellsM.map((date, idx) => {
+                        if (!date) return <div key={`empty-m-${idx}`} />
+                        const dStr = jourStrM(date)
+                        const mvts = mouvementsDuJour(dStr)
+                        const net = mvts.reduce((s, m) =>
+                          s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
+                        const has = mvts.length > 0
+                        const holdersDistincts = has
+                          ? [...new Set(mvts.map((m) => m.holder || 'Non précisé'))]
+                          : []
+                        const holdersTxt = holdersDistincts.join(', ')
+                        return (
+                          <button key={dStr}
+                            onClick={has ? () => setSelectedJourMouvements(dStr) : undefined}
+                            disabled={!has}
+                            className={`aspect-square min-h-[70px] p-1 rounded-lg border-2 text-left transition-all overflow-hidden
+                              ${has
+                                ? 'border-gray-100 bg-white hover:border-[#1B2A4A] cursor-pointer'
+                                : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
+                            <div className="flex items-start justify-between">
+                              <span className="text-xs font-bold text-[#1B2A4A]">{date.getDate()}</span>
+                            </div>
+                            {has && (
+                              <>
+                                <p className={`text-[10px] font-bold mt-0.5 leading-tight ${net < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                                  {net >= 0 ? '+' : ''}{net.toFixed(0)}€
+                                </p>
+                                <p className="text-[9px] text-gray-400 leading-tight">
+                                  {mvts.length} mvt{mvts.length > 1 ? 's' : ''}
+                                </p>
+                                <p className="text-[8px] text-gray-500 leading-tight truncate" title={holdersTxt}>
+                                  {holdersTxt}
+                                </p>
+                              </>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Formulaire dépense */}
               <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
@@ -3079,7 +3147,7 @@ export default function StockMagasin() {
                         <select value={depenseForm.magasin_id}
                           onChange={(e) => setDepenseForm((f) => ({ ...f, magasin_id: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-                          <option value="">Central (aucun magasin)</option>
+                          <option value="">— Choisir —</option>
                           {MAGASINS_CAISSE.map((m) => (
                             <option key={m.id} value={m.id}>{m.nom}</option>
                           ))}
@@ -3088,13 +3156,22 @@ export default function StockMagasin() {
                       <div>
                         <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
                         <select value={depenseForm.categorie}
-                          onChange={(e) => setDepenseForm((f) => ({ ...f, categorie: e.target.value, fournisseur_id: e.target.value === 'fournisseur' ? f.fournisseur_id : '' }))}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, categorie: e.target.value, fournisseur_id: e.target.value === 'fournisseur' ? f.fournisseur_id : '', categorieAutre: e.target.value === 'autre' ? f.categorieAutre : '' }))}
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
                           <option value="fournisseur">Fournisseur</option>
                           <option value="rachat_client">Rachat client</option>
                           <option value="autre">Autre</option>
                         </select>
                       </div>
+                      {depenseForm.categorie === 'autre' && (
+                        <div className="md:col-span-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Précise la catégorie</label>
+                          <input type="text" value={depenseForm.categorieAutre}
+                            onChange={(e) => setDepenseForm((f) => ({ ...f, categorieAutre: e.target.value }))}
+                            placeholder="ex: frais de déplacement, réparation matériel..."
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                        </div>
+                      )}
                       {depenseForm.categorie === 'fournisseur' && (
                         <div className="md:col-span-2">
                           <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
@@ -3172,7 +3249,7 @@ export default function StockMagasin() {
                         className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
                         {savingDepense ? 'Enregistrement...' : 'Enregistrer'}
                       </button>
-                      <button onClick={() => { setShowDepenseForm(false); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash' }) }}
+                      <button onClick={() => { setShowDepenseForm(false); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash' }) }}
                         className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
                         Annuler
                       </button>
@@ -3181,254 +3258,6 @@ export default function StockMagasin() {
                 )}
               </div>
 
-              {/* Toggle vue Liste / Calendrier + filtre Retraits */}
-              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                <div className="flex gap-2">
-                  {[
-                    { key: 'liste', label: '📋 Liste' },
-                    { key: 'calendrier', label: '📅 Calendrier' },
-                  ].map((v) => (
-                    <button key={v.key}
-                      onClick={() => { setVueMouvements(v.key); setSelectedJourMouvements(null) }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
-                        ${vueMouvements === v.key
-                          ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
-                {vueMouvements === 'liste' && (
-                  <div className="flex gap-2">
-                    {[
-                      { key: 'all', label: 'Tout afficher' },
-                      { key: 'sortie', label: 'Retraits uniquement' },
-                    ].map((f) => (
-                      <button key={f.key}
-                        onClick={() => setFilterMouvementType(f.key)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
-                          ${filterMouvementType === f.key
-                            ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {loadingTreso ? (
-                <div className="flex items-center justify-center h-40">
-                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : vueMouvements === 'liste' ? (
-                (() => {
-                  const filtered = filterMouvementType === 'sortie'
-                    ? mouvements.filter((m) => m.type === 'sortie')
-                    : mouvements
-                  if (filtered.length === 0) {
-                    return (
-                      <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-                        {filterMouvementType === 'sortie' ? 'Aucun retrait' : 'Aucun mouvement de trésorerie'}
-                      </div>
-                    )
-                  }
-                  return (
-                    <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
-                      <table className="w-full text-sm border-collapse">
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-gray-100">
-                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
-                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Type</th>
-                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
-                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Détenteur</th>
-                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Méthode</th>
-                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Source</th>
-                            <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Montant</th>
-                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Description</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filtered.map((m) => {
-                            const dt = new Date(m.created_at)
-                            const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
-                            const magNom = m.magasin_id
-                              ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
-                              : 'Central'
-                            const isEntree = m.type === 'entree'
-                            const signe = isEntree ? '+' : '-'
-                            const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
-                            return (
-                              <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
-                                <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
-                                <td className="px-4 py-2.5">
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700'}`}>
-                                    {isEntree ? 'Entrée' : 'Sortie'}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
-                                <td className="px-4 py-2.5 text-xs text-gray-700">
-                                  <div className="flex items-center gap-1">
-                                    <span className="truncate max-w-[120px]" title={m.holder || ''}>{m.holder || '—'}</span>
-                                    <button onClick={() => openEditHolder(m)}
-                                      title="Modifier le détenteur"
-                                      className="p-1 text-gray-400 hover:text-[#1B2A4A]">
-                                      <Pencil size={12} />
-                                    </button>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-2.5 text-xs text-gray-600">
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                                    {pmIcon} {m.payment_method || 'cash'}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-2.5 text-xs text-gray-600">{m.source || '—'}</td>
-                                <td className={`px-4 py-2.5 text-right font-bold ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
-                                  {signe}{Number(m.amount || 0).toFixed(2)}€
-                                </td>
-                                <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[280px] truncate" title={m.description || ''}>
-                                  {m.description || '—'}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )
-                })()
-              ) : (
-                // VUE CALENDRIER MOUVEMENTS
-                (() => {
-                  const nowDt = new Date()
-                  const dispDate = new Date(nowDt.getFullYear(), nowDt.getMonth() + calMonthOffsetTreso, 1)
-                  const yearM = dispDate.getFullYear()
-                  const monthM = dispDate.getMonth()
-                  const firstM = new Date(yearM, monthM, 1)
-                  const lastM = new Date(yearM, monthM + 1, 0)
-                  const daysInMonthM = lastM.getDate()
-                  const firstDowM = (firstM.getDay() + 6) % 7
-                  const monthLabelM = dispDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
-
-                  const cellsM = []
-                  for (let i = 0; i < firstDowM; i++) cellsM.push(null)
-                  for (let d = 1; d <= daysInMonthM; d++) cellsM.push(new Date(yearM, monthM, d))
-                  const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-
-                  const jourStrM = (d) =>
-                    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-
-                  const mouvementsDuJour = (dateStr) => mouvements.filter((m) => {
-                    const dt = new Date(m.created_at)
-                    return jourStrM(dt) === dateStr
-                  })
-
-                  const jourSelectionne = selectedJourMouvements ? mouvementsDuJour(selectedJourMouvements) : []
-
-                  return (
-                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => setCalMonthOffsetTreso((o) => o - 1)}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
-                            <ChevronLeft size={18} />
-                          </button>
-                          <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
-                            {monthLabelM}
-                          </span>
-                          <button onClick={() => setCalMonthOffsetTreso((o) => o + 1)}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
-                            <ChevronRight size={18} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-7 gap-1 mb-1">
-                        {dowLabels.map((d) => (
-                          <div key={d} className="text-center text-[10px] font-bold uppercase text-gray-400 py-1">{d}</div>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-7 gap-1">
-                        {cellsM.map((date, idx) => {
-                          if (!date) return <div key={`empty-m-${idx}`} />
-                          const dStr = jourStrM(date)
-                          const mvts = mouvementsDuJour(dStr)
-                          const net = mvts.reduce((s, m) =>
-                            s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
-                          const isSelected = selectedJourMouvements === dStr
-                          const has = mvts.length > 0
-                          return (
-                            <button key={dStr}
-                              onClick={has ? () => setSelectedJourMouvements(dStr) : undefined}
-                              disabled={!has}
-                              className={`aspect-square min-h-[64px] p-1 rounded-lg border-2 text-left transition-all
-                                ${isSelected ? 'border-[#00B4CC] bg-cyan-50'
-                                  : has ? 'border-gray-100 bg-white hover:border-[#1B2A4A]'
-                                  : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
-                              <div className="flex items-start justify-between">
-                                <span className="text-xs font-bold text-[#1B2A4A]">{date.getDate()}</span>
-                              </div>
-                              {has && (
-                                <>
-                                  <p className={`text-[10px] font-bold mt-1 leading-tight ${net < 0 ? 'text-red-600' : 'text-green-700'}`}>
-                                    {net >= 0 ? '+' : ''}{net.toFixed(0)}€
-                                  </p>
-                                  <p className="text-[9px] text-gray-400 leading-tight">
-                                    {mvts.length} mvt{mvts.length > 1 ? 's' : ''}
-                                  </p>
-                                </>
-                              )}
-                            </button>
-                          )
-                        })}
-                      </div>
-
-                      {selectedJourMouvements && jourSelectionne.length > 0 && (
-                        <div className="mt-4 border-t border-gray-100 pt-4">
-                          <p className="text-sm font-bold text-[#1B2A4A] mb-3">
-                            {new Date(selectedJourMouvements).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} — {jourSelectionne.length} mouvement{jourSelectionne.length > 1 ? 's' : ''}
-                          </p>
-                          <div className="space-y-1">
-                            {jourSelectionne.map((m) => {
-                              const dt = new Date(m.created_at)
-                              const heure = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
-                              const magNom = m.magasin_id
-                                ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
-                                : 'Central'
-                              const isEntree = m.type === 'entree'
-                              const signe = isEntree ? '+' : '-'
-                              const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
-                              return (
-                                <div key={m.id} className="bg-gray-50 rounded-lg p-2 flex items-center gap-2 flex-wrap text-xs">
-                                  <span className="font-mono text-gray-500 whitespace-nowrap">{heure}</span>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
-                                    ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                    {isEntree ? 'Entrée' : 'Sortie'}
-                                  </span>
-                                  <span className="text-gray-700">{magNom}</span>
-                                  <span className="text-gray-500">{pmIcon}</span>
-                                  <span className="text-gray-600 truncate max-w-[120px]" title={m.holder || ''}>{m.holder || '—'}</span>
-                                  <span className={`font-bold ml-auto ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
-                                    {signe}{Number(m.amount || 0).toFixed(2)}€
-                                  </span>
-                                  {m.description && (
-                                    <span className="w-full text-[10px] text-gray-500 italic truncate" title={m.description}>
-                                      {m.description}
-                                    </span>
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()
-              )}
             </>
           )}
 
@@ -4109,6 +3938,78 @@ export default function StockMagasin() {
         </div>
       )}
 
+      {/* MODAL DÉTAIL JOUR MOUVEMENTS (popup depuis le calendrier Fonds/CA) */}
+      {selectedJourMouvements && (() => {
+        const jourStrM = (d) =>
+          `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+        const jourMvts = mouvements.filter((m) => jourStrM(new Date(m.created_at)) === selectedJourMouvements)
+        if (jourMvts.length === 0) return null
+        const netJour = jourMvts.reduce((s, m) =>
+          s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-bold text-[#1B2A4A] text-lg">
+                    {new Date(selectedJourMouvements).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  </h3>
+                  <p className={`text-xl font-black mt-0.5 ${netJour < 0 ? 'text-red-600' : 'text-[#00B4CC]'}`}>
+                    {netJour >= 0 ? '+' : ''}{netJour.toFixed(2)}€
+                  </p>
+                  <p className="text-[10px] text-gray-500 uppercase">{jourMvts.length} mouvement{jourMvts.length > 1 ? 's' : ''}</p>
+                </div>
+                <button onClick={() => setSelectedJourMouvements(null)}
+                  className="text-gray-400 hover:text-[#1B2A4A]">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="space-y-1 max-h-80 overflow-y-auto">
+                {jourMvts.map((m) => {
+                  const dt = new Date(m.created_at)
+                  const heure = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
+                  const magNom = m.magasin_id
+                    ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
+                    : 'Central'
+                  const isEntree = m.type === 'entree'
+                  const signe = isEntree ? '+' : '-'
+                  const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+                  return (
+                    <div key={m.id} className="bg-gray-50 rounded-lg p-2 flex items-center gap-2 flex-wrap text-xs">
+                      <span className="font-mono text-gray-500 whitespace-nowrap">{heure}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
+                        ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {isEntree ? 'Entrée' : 'Sortie'}
+                      </span>
+                      <span className="text-gray-700">{magNom}</span>
+                      <span className="text-gray-500">{pmIcon}</span>
+                      <span className="text-gray-600 truncate max-w-[120px]" title={m.holder || ''}>{m.holder || '—'}</span>
+                      <button onClick={() => openEditHolder(m)}
+                        title="Modifier le détenteur"
+                        className="p-1 text-gray-400 hover:text-[#1B2A4A]">
+                        <Pencil size={12} />
+                      </button>
+                      <span className={`font-bold ml-auto ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
+                        {signe}{Number(m.amount || 0).toFixed(2)}€
+                      </span>
+                      {m.description && (
+                        <span className="w-full text-[10px] text-gray-500 italic truncate" title={m.description}>
+                          {m.description}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <button onClick={() => setSelectedJourMouvements(null)}
+                className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Fermer
+              </button>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* MODAL DÉTAIL DÉTENTEUR (liste des mouvements du détenteur) */}
       {selectedDetenteur && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -4193,7 +4094,7 @@ export default function StockMagasin() {
 
       {/* MODAL ÉDITION DÉTENTEUR */}
       {editingHolderMouvement && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[#1B2A4A]">Modifier le détenteur</h3>
