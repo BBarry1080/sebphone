@@ -4,7 +4,7 @@ import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank,
+  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Percent,
 } from 'lucide-react'
 
 const COLORS = {
@@ -19,6 +19,7 @@ const COLORS = {
   teal: '#0d9488',
   indigo: '#4f46e5',
   emerald: '#059669',
+  rose: '#e11d48',
 }
 
 const PANNE_OPTIONS = [
@@ -76,9 +77,11 @@ export default function CaisseAccueil({
   onOpenPointage,
   onOpenHistoriqueClotures,
   onOpenTresorerie,
+  onOpenCommissions,
   showParametresCaisseTile = false,
   showHistoriqueCloturesTile = false,
   showTresorerieTile = false,
+  showCommissionsTile = false,
   onAcompteRecorded = () => {},
 }) {
   const [showClientModal, setShowClientModal] = useState(false)
@@ -479,6 +482,15 @@ export default function CaisseAccueil({
             title="Trésorerie"
             subtitle="Cumul clôtures & dépenses"
             onClick={onOpenTresorerie}
+          />
+        )}
+
+        {/* COMMISSIONS (admin uniquement) */}
+        {showCommissionsTile && (
+          <Tile color={COLORS.rose} icon={Percent}
+            title="Commissions"
+            subtitle="Taux par catégorie d'article"
+            onClick={onOpenCommissions}
           />
         )}
 

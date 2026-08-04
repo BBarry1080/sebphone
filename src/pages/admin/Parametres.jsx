@@ -1770,7 +1770,7 @@ export default function Parametres() {
                             <th className="text-left px-3 py-2 font-bold text-gray-500 text-xs uppercase">Date</th>
                             <th className="text-left px-3 py-2 font-bold text-gray-500 text-xs uppercase">Article</th>
                             <th className="text-right px-3 py-2 font-bold text-gray-500 text-xs uppercase">Vente</th>
-                            <th className="text-right px-3 py-2 font-bold text-gray-500 text-xs uppercase">Commission (20%)</th>
+                            <th className="text-right px-3 py-2 font-bold text-gray-500 text-xs uppercase">Commission</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1779,7 +1779,12 @@ export default function Parametres() {
                               <td className="px-3 py-2 text-xs text-gray-600 font-mono whitespace-nowrap">
                                 {new Date(c.created_at).toLocaleDateString('fr-BE')}
                               </td>
-                              <td className="px-3 py-2 text-xs text-gray-700">{c.item_name}</td>
+                              <td className="px-3 py-2 text-xs text-gray-700">
+                                <p>{c.item_name}</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                  {c.category || '—'} · {Number(c.rate ?? 0)}%
+                                </p>
+                              </td>
                               <td className="px-3 py-2 text-xs text-gray-500 text-right">
                                 {Number(c.base_amount).toFixed(2)}€
                               </td>

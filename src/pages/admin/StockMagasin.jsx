@@ -4,7 +4,7 @@ import { Plus, X, Pencil, Trash2, Search,
          AlertTriangle, Package, Tag,
          Menu, Lock, Unlock, LogOut,
          Settings, Clock, Save, UserCheck, Send, Calendar, History,
-         PiggyBank, ChevronLeft, ChevronRight,
+         PiggyBank, ChevronLeft, ChevronRight, Percent,
          Image as ImageIcon, Upload } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
@@ -126,7 +126,18 @@ export default function StockMagasin() {
   const [prelevementAmount, setPrelevementAmount] = useState('')
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
-  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | historique-clotures | tresorerie
+  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | historique-clotures | tresorerie | commissions
+
+  // Commissions (règles)
+  const [commissionRules, setCommissionRules]     = useState([])
+  const [loadingRules, setLoadingRules]           = useState(false)
+  const [categoriesDistinct, setCategoriesDistinct] = useState([])
+  const [showRuleForm, setShowRuleForm]           = useState(false)
+  const [editingRule, setEditingRule]             = useState(null)
+  const [ruleForm, setRuleForm]                   = useState({
+    category_name: '', sous_categorie: '', rate: '', active: true,
+  })
+  const [savingRule, setSavingRule]               = useState(false)
 
   // Historique — vue calendrier + ticket modal
   const [vueHistorique, setVueHistorique]         = useState('liste')
@@ -680,6 +691,84 @@ export default function StockMagasin() {
     fetchMouvements()
   }
 
+  // ─── Commissions (règles) ───
+  const fetchCommissionRules = async () => {
+    setLoadingRules(true)
+    const { data } = await supabase.from('commission_rules')
+      .select('*').order('category_name', { ascending: true })
+    setCommissionRules(data || [])
+    setLoadingRules(false)
+  }
+
+  const fetchCategoriesDistinct = async () => {
+    const { data } = await supabase.from('shop_categories')
+      .select('name').order('name', { ascending: true })
+    const seen = new Set()
+    const uniques = []
+    ;(data || []).forEach((r) => {
+      if (r.name && !seen.has(r.name)) { seen.add(r.name); uniques.push(r.name) }
+    })
+    setCategoriesDistinct(uniques)
+  }
+
+  const resetRuleForm = () => {
+    setRuleForm({ category_name: '', sous_categorie: '', rate: '', active: true })
+    setEditingRule(null)
+    setShowRuleForm(false)
+  }
+
+  const openEditRule = (rule) => {
+    setEditingRule(rule)
+    setRuleForm({
+      category_name: rule.category_name || '',
+      sous_categorie: rule.sous_categorie || '',
+      rate: String(rule.rate ?? ''),
+      active: rule.active !== false,
+    })
+    setShowRuleForm(true)
+  }
+
+  const handleSaveRule = async () => {
+    if (!ruleForm.category_name) { alert('Catégorie requise'); return }
+    const rateNum = Number(ruleForm.rate)
+    if (isNaN(rateNum) || rateNum < 0 || rateNum > 100) {
+      alert('Taux invalide (0 à 100)'); return
+    }
+    setSavingRule(true)
+    const payload = {
+      category_name: ruleForm.category_name,
+      sous_categorie: ruleForm.sous_categorie || null,
+      rate: rateNum,
+      active: !!ruleForm.active,
+    }
+    let error
+    if (editingRule) {
+      const { error: e } = await supabase.from('commission_rules')
+        .update(payload).eq('id', editingRule.id)
+      error = e
+    } else {
+      const { error: e } = await supabase.from('commission_rules').insert(payload)
+      error = e
+    }
+    setSavingRule(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity(
+      editingRule ? 'commission_rule_update' : 'commission_rule_create',
+      `Règle commission ${payload.category_name}${payload.sous_categorie ? ' / ' + payload.sous_categorie : ''} — ${payload.rate}%`
+    )
+    resetRuleForm()
+    fetchCommissionRules()
+  }
+
+  const handleToggleRuleActive = async (rule) => {
+    const { error } = await supabase.from('commission_rules')
+      .update({ active: !rule.active }).eq('id', rule.id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('commission_rule_update',
+      `Règle ${rule.category_name}${rule.sous_categorie ? ' / ' + rule.sous_categorie : ''} ${!rule.active ? 'activée' : 'désactivée'}`)
+    fetchCommissionRules()
+  }
+
   // Refetch clôtures quand écran actif OU filtres changent
   useEffect(() => {
     if (posScreen !== 'historique-clotures') return
@@ -707,6 +796,14 @@ export default function StockMagasin() {
       } else {
         fetchMouvements()
         if (fournisseursListTreso.length === 0) fetchFournisseursListTreso()
+      }
+    }
+    if (posScreen === 'commissions') {
+      if (!trueIsAdmin) {
+        setPosScreen('accueil')
+      } else {
+        fetchCommissionRules()
+        fetchCategoriesDistinct()
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1103,16 +1200,33 @@ export default function StockMagasin() {
     await supabase.from('shop_sale_items').insert(saleItems)
 
     if (staffId) {
-      const { data: itemCats } = await supabase
+      const { data: itemDetails } = await supabase
         .from('shop_items')
-        .select('id, shop_categories(name)')
+        .select('id, sous_categorie, shop_categories(name)')
         .in('id', cart.map((c) => c.item_id))
+
+      const { data: rules } = await supabase
+        .from('commission_rules')
+        .select('*')
+        .eq('active', true)
+
+      const findRule = (catName, sousCat) => {
+        if (!rules || !catName) return null
+        // priorité à une règle qui cible précisément la sous-catégorie
+        const specific = rules.find((r) =>
+          r.category_name === catName && r.sous_categorie && r.sous_categorie === sousCat)
+        if (specific) return specific
+        // sinon règle générale sur toute la catégorie (sous_categorie null)
+        return rules.find((r) => r.category_name === catName && !r.sous_categorie) || null
+      }
 
       const commissionRows = cart
         .map((c) => {
-          const cat = itemCats?.find((ic) => ic.id === c.item_id)
-          const catName = cat?.shop_categories?.name
-          if (catName !== 'Vitre de protection') return null
+          const item = itemDetails?.find((it) => it.id === c.item_id)
+          const catName = item?.shop_categories?.name
+          const sousCat = item?.sous_categorie
+          const rule = findRule(catName, sousCat)
+          if (!rule) return null
           const base = lineTotal(c)
           return {
             staff_id: staffId,
@@ -1120,8 +1234,8 @@ export default function StockMagasin() {
             item_name: c.item_name,
             category: catName,
             base_amount: base,
-            rate: 20,
-            commission_amount: Math.round(base * 0.20 * 100) / 100,
+            rate: rule.rate,
+            commission_amount: Math.round(base * (rule.rate / 100) * 100) / 100,
           }
         })
         .filter(Boolean)
@@ -1596,9 +1710,11 @@ export default function StockMagasin() {
           onOpenPointage={() => setPosScreen('pointage')}
           onOpenHistoriqueClotures={() => { setPosScreen('historique-clotures'); fetchClotures() }}
           onOpenTresorerie={() => { setPosScreen('tresorerie'); fetchMouvements(); fetchFournisseursListTreso() }}
+          onOpenCommissions={() => { setPosScreen('commissions'); fetchCommissionRules(); fetchCategoriesDistinct() }}
           showParametresCaisseTile={canAccessParamsCaisse}
           showHistoriqueCloturesTile={trueIsAdmin}
           showTresorerieTile={trueIsAdmin}
+          showCommissionsTile={trueIsAdmin}
           onAcompteRecorded={fetchCaisseToday}
         />
       )}
@@ -2382,6 +2498,127 @@ export default function StockMagasin() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ÉCRAN COMMISSIONS (admin uniquement) */}
+      {posScreen === 'commissions' && trueIsAdmin && (
+        <div className="max-w-4xl mx-auto">
+          <button onClick={() => setPosScreen('accueil')}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
+          </button>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
+              <Percent size={22} /> Commissions
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">Taux de commission par catégorie d'article</p>
+          </div>
+
+          {/* Formulaire (inline) ou bouton d'ouverture */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+            {!showRuleForm ? (
+              <button onClick={() => { setEditingRule(null); setRuleForm({ category_name: '', sous_categorie: '', rate: '', active: true }); setShowRuleForm(true) }}
+                className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                + Nouvelle règle
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <h3 className="font-bold text-[#1B2A4A]">
+                  {editingRule ? 'Modifier la règle' : 'Nouvelle règle'}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
+                    <select value={ruleForm.category_name}
+                      onChange={(e) => setRuleForm((f) => ({ ...f, category_name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                      <option value="">— Choisir —</option>
+                      {categoriesDistinct.map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Sous-catégorie</label>
+                    <input type="text" value={ruleForm.sous_categorie}
+                      onChange={(e) => setRuleForm((f) => ({ ...f, sous_categorie: e.target.value }))}
+                      placeholder="laisser vide = toute la catégorie"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Taux (%)</label>
+                    <input type="number" min="0" max="100" step="0.5" value={ruleForm.rate}
+                      onChange={(e) => setRuleForm((f) => ({ ...f, rate: e.target.value }))}
+                      placeholder="10"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={ruleForm.active}
+                    onChange={(e) => setRuleForm((f) => ({ ...f, active: e.target.checked }))}
+                    className="w-4 h-4 accent-[#00B4CC]" />
+                  <span className="text-sm text-gray-700">Règle active</span>
+                </label>
+                <div className="flex gap-2">
+                  <button onClick={handleSaveRule} disabled={savingRule}
+                    className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                    {savingRule ? 'Enregistrement...' : editingRule ? 'Sauvegarder' : 'Créer'}
+                  </button>
+                  <button onClick={resetRuleForm}
+                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Liste des règles */}
+          {loadingRules ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : commissionRules.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+              Aucune règle de commission — cliquez sur "+ Nouvelle règle" pour commencer.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {commissionRules.map((rule) => (
+                <div key={rule.id}
+                  className={`bg-white rounded-2xl border p-4 flex items-center justify-between gap-3 ${rule.active ? 'border-gray-100' : 'border-gray-100 opacity-60'}`}>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-[#1B2A4A]">
+                      {rule.category_name}
+                      {rule.sous_categorie && (
+                        <span className="text-gray-500 font-normal"> ({rule.sous_categorie})</span>
+                      )}
+                    </p>
+                    {!rule.active && (
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">Inactive</p>
+                    )}
+                  </div>
+                  <p className="text-2xl font-black text-[#00B4CC] flex-shrink-0">
+                    {rule.rate}%
+                  </p>
+                  <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                    <input type="checkbox" checked={!!rule.active}
+                      onChange={() => handleToggleRuleActive(rule)}
+                      className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#00B4CC]
+                                    after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                                    after:bg-white after:rounded-full after:h-5 after:w-5
+                                    after:transition-all peer-checked:after:translate-x-5"></div>
+                  </label>
+                  <button onClick={() => openEditRule(rule)}
+                    className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg flex-shrink-0">
+                    <Pencil size={14} />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
