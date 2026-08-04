@@ -4913,7 +4913,9 @@ export default function StockMagasin() {
                   <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Article</th>
                   <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Catégorie</th>
                   <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Fournisseur</th>
-                  <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Achat</th>
+                  {trueIsAdmin && (
+                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Achat</th>
+                  )}
                   <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Vente</th>
                   <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Min / Max</th>
                   <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Stock</th>
@@ -4923,13 +4925,13 @@ export default function StockMagasin() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-8 text-gray-400">
+                    <td colSpan={trueIsAdmin ? 9 : 8} className="text-center py-8 text-gray-400">
                       Chargement...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-8 text-gray-400">
+                    <td colSpan={trueIsAdmin ? 9 : 8} className="text-center py-8 text-gray-400">
                       Aucun article trouvé
                     </td>
                   </tr>
@@ -4970,9 +4972,11 @@ export default function StockMagasin() {
                       <td className="px-4 py-3 text-xs text-gray-600">
                         {item.fournisseurs?.nom || '—'}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-500 text-xs">
-                        {item.purchase_price}€
-                      </td>
+                      {trueIsAdmin && (
+                        <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                          {item.purchase_price}€
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right font-bold text-[#1B2A4A]">
                         {item.sale_price}€
                       </td>
@@ -5302,9 +5306,8 @@ export default function StockMagasin() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
-                {/* MASQUÉ TEMPORAIREMENT - Prix d'achat */}
-                {false && (
+              <div className={`grid ${trueIsAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+                {trueIsAdmin && (
                   <div>
                     <label className="text-xs font-bold text-gray-500
                                      uppercase mb-1 block">
