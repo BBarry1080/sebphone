@@ -126,7 +126,7 @@ export default function StockMagasin() {
   const [prelevementAmount, setPrelevementAmount] = useState('')
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
-  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | historique-clotures | tresorerie | commissions
+  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | tresorerie | commissions | prix-reparations
 
   // Commissions (règles)
   const [commissionRules, setCommissionRules]     = useState([])
@@ -147,15 +147,32 @@ export default function StockMagasin() {
   const [ticketToShow, setTicketToShow]           = useState(null)
 
   // Trésorerie
+  const [trezSousOnglet, setTrezSousOnglet]               = useState('vue') // 'vue' | 'clotures'
   const [mouvements, setMouvements]                       = useState([])
   const [loadingTreso, setLoadingTreso]                   = useState(false)
   const [showDepenseForm, setShowDepenseForm]             = useState(false)
   const [depenseForm, setDepenseForm]                     = useState({
     magasin_id: '', montant: '', categorie: 'fournisseur',
     fournisseur_id: '', description: '',
+    holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
+    payment_method: 'cash',
   })
   const [savingDepense, setSavingDepense]                 = useState(false)
   const [fournisseursListTreso, setFournisseursListTreso] = useState([])
+
+  // Détenteur — édition d'un mouvement existant
+  const [editingHolderMouvement, setEditingHolderMouvement] = useState(null)
+  const [editHolderType, setEditHolderType]                 = useState('zinou')
+  const [editHolderDetailMagasin, setEditHolderDetailMagasin] = useState('')
+  const [editHolderDetailAutre, setEditHolderDetailAutre]   = useState('')
+  const [savingHolder, setSavingHolder]                     = useState(false)
+
+  // Prix réparations
+  const [typePannePrixList, setTypePannePrixList] = useState([])
+  const [loadingTypePannePrix, setLoadingTypePannePrix] = useState(false)
+  const [editingTypePanne, setEditingTypePanne]   = useState(null)
+  const [tpForm, setTpForm]                       = useState({ prix_defaut: '', prix_min: '', prix_max: '' })
+  const [savingTypePanne, setSavingTypePanne]     = useState(false)
 
   // Historique clôtures (admin uniquement)
   const trueIsAdmin = isAdmin
@@ -666,6 +683,52 @@ export default function StockMagasin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [mouvements])
 
+  const totauxParMethode = useMemo(() => {
+    const acc = { cash: 0, bancontact: 0, virement: 0 }
+    mouvements.forEach((m) => {
+      const pm = m.payment_method || 'cash'
+      acc[pm] = (acc[pm] || 0) + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount))
+    })
+    return acc
+  }, [mouvements])
+
+  const totauxParDetenteur = useMemo(() => {
+    const acc = {}
+    mouvements.forEach((m) => {
+      const key = m.holder || 'Non précisé'
+      acc[key] = (acc[key] || 0) + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount))
+    })
+    return acc
+  }, [mouvements])
+
+  const computeHolderLabel = (form) => {
+    if (form.holderType === 'zinou') return 'Zinou'
+    if (form.holderType === 'david') return 'David'
+    if (form.holderType === 'moha') return 'Moha'
+    if (form.holderType === 'magasin') {
+      const nom = MAGASINS_CAISSE.find((m) => m.id === form.holderDetailMagasin)?.nom || form.holderDetailMagasin
+      return `Magasin — ${nom}`
+    }
+    return `Autre — ${form.holderDetailAutre || '?'}`
+  }
+
+  const parseHolderIntoFields = (holderStr) => {
+    if (!holderStr) return { holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '' }
+    if (holderStr.startsWith('Magasin — ')) {
+      const nom = holderStr.slice('Magasin — '.length)
+      const mag = MAGASINS_CAISSE.find((m) => m.nom === nom)
+      return { holderType: 'magasin', holderDetailMagasin: mag?.id || '', holderDetailAutre: '' }
+    }
+    if (holderStr.startsWith('Autre — ')) {
+      return { holderType: 'autre', holderDetailMagasin: '', holderDetailAutre: holderStr.slice('Autre — '.length) }
+    }
+    const low = holderStr.toLowerCase()
+    if (['zinou', 'david', 'moha'].includes(low)) {
+      return { holderType: low, holderDetailMagasin: '', holderDetailAutre: '' }
+    }
+    return { holderType: 'autre', holderDetailMagasin: '', holderDetailAutre: holderStr }
+  }
+
   const handleSaveDepense = async () => {
     const amt = Number(depenseForm.montant)
     if (!amt || amt <= 0) { alert('Montant invalide'); return }
@@ -680,14 +743,43 @@ export default function StockMagasin() {
       reference_id: depenseForm.fournisseur_id || null,
       description: depenseForm.description || null,
       created_by: createdBy,
+      holder: computeHolderLabel(depenseForm),
+      payment_method: depenseForm.payment_method,
     })
     setSavingDepense(false)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('tresorerie_depense',
       `Dépense enregistrée — ${amt}€ (${depenseForm.categorie})`)
     setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur',
-      fournisseur_id: '', description: '' })
+      fournisseur_id: '', description: '',
+      holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
+      payment_method: 'cash' })
     setShowDepenseForm(false)
+    fetchMouvements()
+  }
+
+  const openEditHolder = (mvt) => {
+    const parsed = parseHolderIntoFields(mvt.holder)
+    setEditingHolderMouvement(mvt)
+    setEditHolderType(parsed.holderType)
+    setEditHolderDetailMagasin(parsed.holderDetailMagasin)
+    setEditHolderDetailAutre(parsed.holderDetailAutre)
+  }
+
+  const handleSaveHolder = async () => {
+    if (!editingHolderMouvement) return
+    setSavingHolder(true)
+    const newHolder = computeHolderLabel({
+      holderType: editHolderType,
+      holderDetailMagasin: editHolderDetailMagasin,
+      holderDetailAutre: editHolderDetailAutre,
+    })
+    const { error } = await supabase.from('tresorerie_mouvements')
+      .update({ holder: newHolder }).eq('id', editingHolderMouvement.id)
+    setSavingHolder(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('tresorerie_holder_update', `Détenteur modifié — ${newHolder}`)
+    setEditingHolderMouvement(null)
     fetchMouvements()
   }
 
@@ -769,12 +861,45 @@ export default function StockMagasin() {
     fetchCommissionRules()
   }
 
+  // ─── Prix réparations ───
+  const fetchTypePannePrix = async () => {
+    setLoadingTypePannePrix(true)
+    const { data } = await supabase.from('type_panne_prix')
+      .select('*').order('type_panne', { ascending: true })
+    setTypePannePrixList(data || [])
+    setLoadingTypePannePrix(false)
+  }
+
+  const openEditTypePanne = (row) => {
+    setEditingTypePanne(row)
+    setTpForm({
+      prix_defaut: String(row.prix_defaut ?? ''),
+      prix_min: String(row.prix_min ?? ''),
+      prix_max: String(row.prix_max ?? ''),
+    })
+  }
+
+  const handleSaveTypePanne = async () => {
+    if (!editingTypePanne) return
+    setSavingTypePanne(true)
+    const { error } = await supabase.from('type_panne_prix').update({
+      prix_defaut: Number(tpForm.prix_defaut) || 0,
+      prix_min: Number(tpForm.prix_min) || 0,
+      prix_max: Number(tpForm.prix_max) || 0,
+    }).eq('id', editingTypePanne.id)
+    setSavingTypePanne(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('type_panne_prix_update', `Prix mis à jour pour ${editingTypePanne.type_panne}`)
+    setEditingTypePanne(null)
+    fetchTypePannePrix()
+  }
+
   // Refetch clôtures quand écran actif OU filtres changent
   useEffect(() => {
-    if (posScreen !== 'historique-clotures') return
+    if (posScreen !== 'tresorerie' || trezSousOnglet !== 'clotures') return
     fetchClotures()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posScreen, filterMagasinHisto, periodStartHisto, periodEndHisto])
+  }, [posScreen, trezSousOnglet, filterMagasinHisto, periodStartHisto, periodEndHisto])
 
   // Redirect si l'utilisateur atteint parametres sans les droits
   useEffect(() => {
@@ -787,15 +912,20 @@ export default function StockMagasin() {
     if (posScreen === 'pointage' && caisseSession?.staffId) {
       fetchMyPointageData()
     }
-    if (posScreen === 'historique-clotures' && !trueIsAdmin) {
-      setPosScreen('accueil')
-    }
     if (posScreen === 'tresorerie') {
       if (!trueIsAdmin) {
         setPosScreen('accueil')
       } else {
         fetchMouvements()
         if (fournisseursListTreso.length === 0) fetchFournisseursListTreso()
+        if (clotures.length === 0) fetchClotures()
+      }
+    }
+    if (posScreen === 'prix-reparations') {
+      if (!trueIsAdmin) {
+        setPosScreen('accueil')
+      } else {
+        fetchTypePannePrix()
       }
     }
     if (posScreen === 'commissions') {
@@ -1472,16 +1602,39 @@ export default function StockMagasin() {
       return
     }
 
+    const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
+    const holderDefaut = `Magasin — ${magasinLabel}`
+    const dateLabel = new Date(closureData.periodEnd).toLocaleDateString('fr-BE')
+    const treasoRows = []
     if (prelevementFinal > 0) {
-      await supabase.from('tresorerie_mouvements').insert({
-        type: 'entree',
-        source: 'cloture',
-        magasin_id: magasin,
-        amount: prelevementFinal,
+      treasoRows.push({
+        type: 'entree', source: 'cloture', payment_method: 'cash',
+        magasin_id: magasin, holder: holderDefaut, amount: prelevementFinal,
         reference_id: newClosure.id,
-        description: `Clôture caisse — ${new Date(closureData.periodEnd).toLocaleDateString('fr-BE')}`,
+        description: `Clôture caisse (cash) — ${dateLabel}`,
         created_by: staffName,
       })
+    }
+    if (closureData.bancontactTotal > 0) {
+      treasoRows.push({
+        type: 'entree', source: 'cloture', payment_method: 'bancontact',
+        magasin_id: magasin, holder: holderDefaut, amount: closureData.bancontactTotal,
+        reference_id: newClosure.id,
+        description: `Clôture caisse (bancontact) — ${dateLabel}`,
+        created_by: staffName,
+      })
+    }
+    if (closureData.virementTotal > 0) {
+      treasoRows.push({
+        type: 'entree', source: 'cloture', payment_method: 'virement',
+        magasin_id: magasin, holder: holderDefaut, amount: closureData.virementTotal,
+        reference_id: newClosure.id,
+        description: `Clôture caisse (virement) — ${dateLabel}`,
+        created_by: staffName,
+      })
+    }
+    if (treasoRows.length > 0) {
+      await supabase.from('tresorerie_mouvements').insert(treasoRows)
     }
 
     setShowClosureModal(false)
@@ -1708,13 +1861,13 @@ export default function StockMagasin() {
           onOpenGestion={() => { setPosScreen('gestion'); setActiveTab('stock') }}
           onOpenParametresCaisse={() => { setPosScreen('parametres'); fetchStaffCaisse() }}
           onOpenPointage={() => setPosScreen('pointage')}
-          onOpenHistoriqueClotures={() => { setPosScreen('historique-clotures'); fetchClotures() }}
           onOpenTresorerie={() => { setPosScreen('tresorerie'); fetchMouvements(); fetchFournisseursListTreso() }}
           onOpenCommissions={() => { setPosScreen('commissions'); fetchCommissionRules(); fetchCategoriesDistinct() }}
+          onOpenPrixReparations={() => { setPosScreen('prix-reparations'); fetchTypePannePrix() }}
           showParametresCaisseTile={canAccessParamsCaisse}
-          showHistoriqueCloturesTile={trueIsAdmin}
           showTresorerieTile={trueIsAdmin}
           showCommissionsTile={trueIsAdmin}
+          showPrixReparationsTile={trueIsAdmin}
           onAcompteRecorded={fetchCaisseToday}
         />
       )}
@@ -2005,8 +2158,8 @@ export default function StockMagasin() {
         </div>
       )}
 
-      {/* ÉCRAN HISTORIQUE CLÔTURES (admin uniquement) */}
-      {posScreen === 'historique-clotures' && trueIsAdmin && (
+      {/* ANCIEN ÉCRAN HISTORIQUE CLÔTURES — fusionné dans Trésorerie */}
+      {false && (
         <div className="max-w-6xl mx-auto">
           <button onClick={() => setPosScreen('accueil')}
             className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
@@ -2327,7 +2480,7 @@ export default function StockMagasin() {
         </div>
       )}
 
-      {/* ÉCRAN TRÉSORERIE (admin uniquement) */}
+      {/* ÉCRAN TRÉSORERIE (admin uniquement) — fusionné Vue + Clôtures */}
       {posScreen === 'tresorerie' && trueIsAdmin && (
         <div className="max-w-6xl mx-auto">
           <button onClick={() => setPosScreen('accueil')}
@@ -2341,165 +2494,658 @@ export default function StockMagasin() {
             <p className="text-sm text-gray-500 mt-1">Cumul des clôtures, dépenses déductibles</p>
           </div>
 
-          {/* Coffre central */}
-          <div className="rounded-2xl p-6 text-white shadow-md flex items-center justify-between mb-4"
-            style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)' }}>
-            <div>
-              <p className="text-xs uppercase opacity-70 font-bold">Coffre central</p>
-              <p className="text-[10px] opacity-60 mt-0.5">Solde global toutes sources</p>
-            </div>
-            <p className={`text-4xl font-black ${totalGlobalTreso < 0 ? 'text-red-300' : 'text-white'}`}>
-              {totalGlobalTreso.toFixed(2)}€
-            </p>
-          </div>
-
-          {/* Par magasin */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            {MAGASINS_CAISSE.map((mag) => {
-              const val = totauxParMagasin[mag.id] || 0
-              return (
-                <div key={mag.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                  <p className="text-[10px] font-bold text-gray-500 uppercase truncate">
-                    {mag.nom.replace('Seb Telecom — ', '')}
-                  </p>
-                  <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
-                    {val.toFixed(2)}€
-                  </p>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Formulaire dépense */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-            {!showDepenseForm ? (
-              <button onClick={() => setShowDepenseForm(true)}
-                className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
-                + Nouvelle dépense
+          {/* Sous-onglet Vue / Clôtures */}
+          <div className="flex gap-2 mb-4">
+            {[
+              { key: 'vue', label: "💰 Vue d'ensemble" },
+              { key: 'clotures', label: '🧾 Clôtures' },
+            ].map((v) => (
+              <button key={v.key}
+                onClick={() => setTrezSousOnglet(v.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                  ${trezSousOnglet === v.key
+                    ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
+                {v.label}
               </button>
-            ) : (
-              <div className="space-y-3">
-                <h3 className="font-bold text-[#1B2A4A]">Nouvelle dépense</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            ))}
+          </div>
+
+          {trezSousOnglet === 'vue' && (
+            <>
+              {/* Coffre central */}
+              <div className="rounded-2xl p-6 text-white shadow-md flex items-center justify-between mb-4"
+                style={{ background: 'linear-gradient(135deg, #1B2A4A 0%, #0d9488 100%)' }}>
+                <div>
+                  <p className="text-xs uppercase opacity-70 font-bold">Coffre central</p>
+                  <p className="text-[10px] opacity-60 mt-0.5">Solde global toutes sources</p>
+                </div>
+                <p className={`text-4xl font-black ${totalGlobalTreso < 0 ? 'text-red-300' : 'text-white'}`}>
+                  {totalGlobalTreso.toFixed(2)}€
+                </p>
+              </div>
+
+              {/* Totaux par moyen de paiement */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                {[
+                  { key: 'cash', label: '💵 Cash' },
+                  { key: 'bancontact', label: '💳 Bancontact' },
+                  { key: 'virement', label: '🏦 Virement' },
+                ].map((pm) => {
+                  const val = totauxParMethode[pm.key] || 0
+                  return (
+                    <div key={pm.key} className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">{pm.label}</p>
+                      <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                        {val.toFixed(2)}€
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Par détenteur */}
+              {Object.keys(totauxParDetenteur).length > 0 && (
+                <div className="mb-4">
+                  <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Par détenteur</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {Object.entries(totauxParDetenteur).map(([key, val]) => (
+                      <div key={key} className="bg-white rounded-2xl border border-gray-100 p-4">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase truncate" title={key}>
+                          {key}
+                        </p>
+                        <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                          {val.toFixed(2)}€
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Par magasin */}
+              <div className="mb-4">
+                <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Par magasin</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {MAGASINS_CAISSE.map((mag) => {
+                    const val = totauxParMagasin[mag.id] || 0
+                    return (
+                      <div key={mag.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase truncate">
+                          {mag.nom.replace('Seb Telecom — ', '')}
+                        </p>
+                        <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                          {val.toFixed(2)}€
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Formulaire dépense */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+                {!showDepenseForm ? (
+                  <button onClick={() => setShowDepenseForm(true)}
+                    className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                    + Nouvelle dépense
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-[#1B2A4A]">Nouvelle dépense</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
+                        <select value={depenseForm.magasin_id}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, magasin_id: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                          <option value="">Central (aucun magasin)</option>
+                          {MAGASINS_CAISSE.map((m) => (
+                            <option key={m.id} value={m.id}>{m.nom}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
+                        <select value={depenseForm.categorie}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, categorie: e.target.value, fournisseur_id: e.target.value === 'fournisseur' ? f.fournisseur_id : '' }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                          <option value="fournisseur">Fournisseur</option>
+                          <option value="rachat_client">Rachat client</option>
+                          <option value="autre">Autre</option>
+                        </select>
+                      </div>
+                      {depenseForm.categorie === 'fournisseur' && (
+                        <div className="md:col-span-2">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
+                          <select value={depenseForm.fournisseur_id}
+                            onChange={(e) => setDepenseForm((f) => ({ ...f, fournisseur_id: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                            <option value="">— Choisir —</option>
+                            {fournisseursListTreso.map((f) => (
+                              <option key={f.id} value={f.id}>{f.nom}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Détenteur</label>
+                        <select value={depenseForm.holderType}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, holderType: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                          <option value="zinou">Zinou</option>
+                          <option value="david">David</option>
+                          <option value="moha">Moha</option>
+                          <option value="magasin">Un magasin</option>
+                          <option value="autre">Autre</option>
+                        </select>
+                      </div>
+                      {depenseForm.holderType === 'magasin' && (
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Magasin détenteur</label>
+                          <select value={depenseForm.holderDetailMagasin}
+                            onChange={(e) => setDepenseForm((f) => ({ ...f, holderDetailMagasin: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                            <option value="">— Choisir —</option>
+                            {MAGASINS_CAISSE.map((m) => (
+                              <option key={m.id} value={m.id}>{m.nom}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {depenseForm.holderType === 'autre' && (
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Précise</label>
+                          <input type="text" value={depenseForm.holderDetailAutre}
+                            onChange={(e) => setDepenseForm((f) => ({ ...f, holderDetailAutre: e.target.value }))}
+                            placeholder="précise..."
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Moyen de paiement</label>
+                        <select value={depenseForm.payment_method}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, payment_method: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                          <option value="cash">💵 Cash</option>
+                          <option value="bancontact">💳 Bancontact</option>
+                          <option value="virement">🏦 Virement</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Montant (€)</label>
+                        <input type="number" step="0.01" min="0" value={depenseForm.montant}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, montant: e.target.value }))}
+                          placeholder="0.00"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Description</label>
+                      <textarea rows={2} value={depenseForm.description}
+                        onChange={(e) => setDepenseForm((f) => ({ ...f, description: e.target.value }))}
+                        placeholder="Détail, référence facture, etc."
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveDepense} disabled={savingDepense}
+                        className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                        {savingDepense ? 'Enregistrement...' : 'Enregistrer'}
+                      </button>
+                      <button onClick={() => { setShowDepenseForm(false); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash' }) }}
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Tableau mouvements */}
+              {loadingTreso ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : mouvements.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                  Aucun mouvement de trésorerie
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
+                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Type</th>
+                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
+                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Détenteur</th>
+                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Méthode</th>
+                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Source</th>
+                        <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Montant</th>
+                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mouvements.map((m) => {
+                        const dt = new Date(m.created_at)
+                        const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
+                        const magNom = m.magasin_id
+                          ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
+                          : 'Central'
+                        const isEntree = m.type === 'entree'
+                        const signe = isEntree ? '+' : '-'
+                        const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+                        return (
+                          <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'}`}>
+                                {isEntree ? 'Entrée' : 'Sortie'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
+                            <td className="px-4 py-2.5 text-xs text-gray-700">
+                              <div className="flex items-center gap-1">
+                                <span className="truncate max-w-[120px]" title={m.holder || ''}>{m.holder || '—'}</span>
+                                <button onClick={() => openEditHolder(m)}
+                                  title="Modifier le détenteur"
+                                  className="p-1 text-gray-400 hover:text-[#1B2A4A]">
+                                  <Pencil size={12} />
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-gray-600">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                {pmIcon} {m.payment_method || 'cash'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-gray-600">{m.source || '—'}</td>
+                            <td className={`px-4 py-2.5 text-right font-bold ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
+                              {signe}{Number(m.amount || 0).toFixed(2)}€
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[280px] truncate" title={m.description || ''}>
+                              {m.description || '—'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {trezSousOnglet === 'clotures' && (
+            <>
+              {/* Toggle vue Liste / Calendrier */}
+              <div className="flex gap-2 mb-3">
+                {[
+                  { key: 'liste', label: '📋 Liste' },
+                  { key: 'calendrier', label: '📅 Calendrier' },
+                ].map((v) => (
+                  <button key={v.key}
+                    onClick={() => { setVueHistorique(v.key); setSelectedJourClotures(null) }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                      ${vueHistorique === v.key
+                        ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Barre filtres */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+                <div className="flex flex-wrap gap-3 items-end">
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
-                    <select value={depenseForm.magasin_id}
-                      onChange={(e) => setDepenseForm((f) => ({ ...f, magasin_id: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-                      <option value="">Central (aucun magasin)</option>
+                    <select value={filterMagasinHisto}
+                      onChange={(e) => setFilterMagasinHisto(e.target.value)}
+                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                      <option value="all">Tous les magasins</option>
                       {MAGASINS_CAISSE.map((m) => (
                         <option key={m.id} value={m.id}>{m.nom}</option>
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
-                    <select value={depenseForm.categorie}
-                      onChange={(e) => setDepenseForm((f) => ({ ...f, categorie: e.target.value, fournisseur_id: e.target.value === 'fournisseur' ? f.fournisseur_id : '' }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-                      <option value="fournisseur">Fournisseur</option>
-                      <option value="rachat_client">Rachat client</option>
-                      <option value="autre">Autre</option>
-                    </select>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { key: 'jour', label: "Aujourd'hui" },
+                      { key: 'semaine', label: 'Cette semaine' },
+                      { key: 'mois', label: 'Ce mois' },
+                      { key: 'custom', label: 'Personnalisé' },
+                    ].map((p) => (
+                      <button key={p.key}
+                        onClick={() => setPeriodPresetHisto(p.key)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                          ${periodPresetHisto === p.key
+                            ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                        {p.label}
+                      </button>
+                    ))}
                   </div>
-                  {depenseForm.categorie === 'fournisseur' && (
-                    <div className="md:col-span-2">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
-                      <select value={depenseForm.fournisseur_id}
-                        onChange={(e) => setDepenseForm((f) => ({ ...f, fournisseur_id: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-                        <option value="">— Choisir —</option>
-                        {fournisseursListTreso.map((f) => (
-                          <option key={f.id} value={f.id}>{f.nom}</option>
-                        ))}
-                      </select>
+                </div>
+                {periodPresetHisto === 'custom' && (
+                  <div className="flex gap-2 items-end mt-3 flex-wrap">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Du</label>
+                      <input type="date" value={periodStartHisto}
+                        onChange={(e) => setPeriodStartHisto(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                     </div>
-                  )}
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Montant (€)</label>
-                    <input type="number" step="0.01" min="0" value={depenseForm.montant}
-                      onChange={(e) => setDepenseForm((f) => ({ ...f, montant: e.target.value }))}
-                      placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Au</label>
+                      <input type="date" value={periodEndHisto}
+                        onChange={(e) => setPeriodEndHisto(e.target.value)}
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Description</label>
-                  <textarea rows={2} value={depenseForm.description}
-                    onChange={(e) => setDepenseForm((f) => ({ ...f, description: e.target.value }))}
-                    placeholder="Détail, référence facture, etc."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={handleSaveDepense} disabled={savingDepense}
-                    className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                    {savingDepense ? 'Enregistrement...' : 'Enregistrer'}
-                  </button>
-                  <button onClick={() => { setShowDepenseForm(false); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '' }) }}
-                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
-                    Annuler
-                  </button>
-                </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Tableau mouvements */}
-          {loadingTreso ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : mouvements.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-              Aucun mouvement de trésorerie
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
-                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Type</th>
-                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
-                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Source</th>
-                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Montant</th>
-                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mouvements.map((m) => {
-                    const dt = new Date(m.created_at)
-                    const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
-                    const magNom = m.magasin_id
-                      ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
-                      : 'Central'
-                    const isEntree = m.type === 'entree'
-                    const signe = isEntree ? '+' : '-'
-                    return (
-                      <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
-                        <td className="px-4 py-2.5">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'}`}>
-                            {isEntree ? 'Entrée' : 'Sortie'}
+              {/* Résumés */}
+              {(() => {
+                const brut = clotures.reduce((s, c) => s + Number(c.ca_total || 0), 0)
+                const net = clotures.reduce((s, c) => s + (Number(c.ca_total || 0) / 1.21), 0)
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">CA brut cumulé</p>
+                      <p className="text-2xl font-black text-[#1B2A4A] mt-1">{brut.toFixed(2)}€</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">CA net cumulé (HT)</p>
+                      <p className="text-2xl font-black text-[#00B4CC] mt-1">{net.toFixed(2)}€</p>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase">Clôtures</p>
+                      <p className="text-2xl font-black text-[#1B2A4A] mt-1">{clotures.length}</p>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Vue LISTE ou CALENDRIER */}
+              {loadingClotures ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : vueHistorique === 'liste' ? (
+                clotures.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                    Aucune clôture sur cette période
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
+                          <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
+                          <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">CA brut</th>
+                          <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">CA net</th>
+                          <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Tickets</th>
+                          <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Cash</th>
+                          <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Bancontact</th>
+                          <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Virement</th>
+                          <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Ticket</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {clotures.map((c) => {
+                          const d = new Date(c.period_end)
+                          const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+                          const magNom = (MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id || '—')
+                            .replace('Seb Telecom — ', '')
+                          const brut = Number(c.ca_total || 0)
+                          const net = brut / 1.21
+                          return (
+                            <tr key={c.id} className="border-b border-gray-50 hover:bg-gray-50">
+                              <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
+                              <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
+                              <td className="px-4 py-2.5 text-right font-bold text-[#1B2A4A]">{brut.toFixed(2)}€</td>
+                              <td className="px-4 py-2.5 text-right text-gray-500">{net.toFixed(2)}€</td>
+                              <td className="px-4 py-2.5 text-right text-gray-600">{c.ticket_count || 0}</td>
+                              <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.cash_total || 0).toFixed(2)}€</td>
+                              <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.bancontact_total || 0).toFixed(2)}€</td>
+                              <td className="px-4 py-2.5 text-right text-gray-600">{Number(c.virement_total || 0).toFixed(2)}€</td>
+                              <td className="px-4 py-2.5 text-center">
+                                <button onClick={() => { setTicketToShow(c); setShowTicketModal(true) }}
+                                  title="Voir le ticket"
+                                  className="text-xs font-bold text-[#00B4CC] hover:text-[#1B2A4A]">
+                                  🧾 Voir
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              ) : (
+                (() => {
+                  const nowDt = new Date()
+                  const dispDate = new Date(nowDt.getFullYear(), nowDt.getMonth() + calMonthOffset, 1)
+                  const yearC = dispDate.getFullYear()
+                  const monthC = dispDate.getMonth()
+                  const firstC = new Date(yearC, monthC, 1)
+                  const lastC = new Date(yearC, monthC + 1, 0)
+                  const daysInMonthC = lastC.getDate()
+                  const firstDowC = (firstC.getDay() + 6) % 7
+                  const monthLabelC = dispDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
+
+                  const cellsC = []
+                  for (let i = 0; i < firstDowC; i++) cellsC.push(null)
+                  for (let d = 1; d <= daysInMonthC; d++) cellsC.push(new Date(yearC, monthC, d))
+
+                  const MAG_COLORS = {
+                    anderlecht: '#2563eb', molenbeek: '#16a34a',
+                    'rue-neuve': '#f59e0b', louise: '#8b5cf6',
+                  }
+                  const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+                  const cloturesDuJour = (dateStr) => clotures.filter((c) => {
+                    const dt = new Date(c.period_end)
+                    const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
+                    return key === dateStr
+                  })
+
+                  const jourStr = (d) =>
+                    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+                  const jourSelectionne = selectedJourClotures ? cloturesDuJour(selectedJourClotures) : []
+
+                  return (
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setCalMonthOffset((o) => o - 1)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                            <ChevronLeft size={18} />
+                          </button>
+                          <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
+                            {monthLabelC}
                           </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
-                        <td className="px-4 py-2.5 text-xs text-gray-600">{m.source || '—'}</td>
-                        <td className={`px-4 py-2.5 text-right font-bold ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
-                          {signe}{Number(m.amount || 0).toFixed(2)}€
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[280px] truncate" title={m.description || ''}>
-                          {m.description || '—'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          <button onClick={() => setCalMonthOffset((o) => o + 1)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                            <ChevronRight size={18} />
+                          </button>
+                        </div>
+                        <div className="flex gap-3 flex-wrap text-[10px] text-gray-500">
+                          {MAGASINS_CAISSE.map((m) => (
+                            <span key={m.id} className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full" style={{ background: MAG_COLORS[m.id] }} />
+                              {m.nom.replace('Seb Telecom — ', '')}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1 mb-1">
+                        {dowLabels.map((d) => (
+                          <div key={d} className="text-center text-[10px] font-bold uppercase text-gray-400 py-1">{d}</div>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1">
+                        {cellsC.map((date, idx) => {
+                          if (!date) return <div key={`empty-h-${idx}`} />
+                          const dStr = jourStr(date)
+                          const cloJour = cloturesDuJour(dStr)
+                          const totalDay = cloJour.reduce((s, c) => s + Number(c.ca_total || 0), 0)
+                          const magasinsPresents = [...new Set(cloJour.map((c) => c.magasin_id))]
+                          const isSelected = selectedJourClotures === dStr
+                          const has = cloJour.length > 0
+
+                          return (
+                            <button key={dStr}
+                              onClick={has ? () => setSelectedJourClotures(dStr) : undefined}
+                              disabled={!has}
+                              className={`aspect-square min-h-[64px] p-1 rounded-lg border-2 text-left transition-all
+                                ${isSelected ? 'border-[#00B4CC] bg-cyan-50'
+                                  : has ? 'border-gray-100 bg-white hover:border-[#1B2A4A]'
+                                  : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
+                              <div className="flex items-start justify-between">
+                                <span className="text-xs font-bold text-[#1B2A4A]">{date.getDate()}</span>
+                                <div className="flex gap-0.5 flex-wrap justify-end max-w-[24px]">
+                                  {magasinsPresents.slice(0, 4).map((mid) => (
+                                    <span key={mid} className="w-1.5 h-1.5 rounded-full"
+                                      style={{ background: MAG_COLORS[mid] || '#94a3b8' }} />
+                                  ))}
+                                </div>
+                              </div>
+                              {totalDay > 0 && (
+                                <p className="text-[9px] font-bold text-gray-500 mt-1 leading-tight">
+                                  {totalDay.toFixed(0)}€
+                                </p>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {selectedJourClotures && jourSelectionne.length > 0 && (
+                        <div className="mt-4 border-t border-gray-100 pt-4">
+                          <p className="text-sm font-bold text-[#1B2A4A] mb-3">
+                            {new Date(selectedJourClotures).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} — {jourSelectionne.length} clôture{jourSelectionne.length > 1 ? 's' : ''}
+                          </p>
+                          <div className="space-y-2">
+                            {jourSelectionne.map((c) => {
+                              const magNom = (MAGASINS_LIST.find((m) => m.id === c.magasin_id)?.nom || c.magasin_id)
+                                .replace('Seb Telecom — ', '')
+                              return (
+                                <div key={c.id} className="bg-gray-50 rounded-xl p-3">
+                                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-bold text-[#1B2A4A] flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full" style={{ background: MAG_COLORS[c.magasin_id] || '#94a3b8' }} />
+                                        {magNom}
+                                      </p>
+                                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 text-xs">
+                                        <div>
+                                          <p className="text-[9px] text-gray-500 uppercase">CA total</p>
+                                          <p className="font-bold text-[#1B2A4A]">{Number(c.ca_total || 0).toFixed(2)}€</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] text-gray-500 uppercase">Tickets</p>
+                                          <p className="font-bold text-[#1B2A4A]">{c.ticket_count || 0}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] text-gray-500 uppercase">Cash</p>
+                                          <p className="font-bold text-[#1B2A4A]">{Number(c.cash_total || 0).toFixed(2)}€</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] text-gray-500 uppercase">Bancontact</p>
+                                          <p className="font-bold text-[#1B2A4A]">{Number(c.bancontact_total || 0).toFixed(2)}€</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[9px] text-gray-500 uppercase">Virement</p>
+                                          <p className="font-bold text-[#1B2A4A]">{Number(c.virement_total || 0).toFixed(2)}€</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button onClick={() => { setTicketToShow(c); setShowTicketModal(true) }}
+                                      className="bg-[#1B2A4A] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#00B4CC]">
+                                      🧾 Voir le ticket
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()
+              )}
+            </>
           )}
+        </div>
+      )}
+
+      {/* MODAL ÉDITION DÉTENTEUR */}
+      {editingHolderMouvement && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#1B2A4A]">Modifier le détenteur</h3>
+              <button onClick={() => setEditingHolderMouvement(null)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Détenteur</label>
+                <select value={editHolderType}
+                  onChange={(e) => setEditHolderType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="zinou">Zinou</option>
+                  <option value="david">David</option>
+                  <option value="moha">Moha</option>
+                  <option value="magasin">Un magasin</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </div>
+              {editHolderType === 'magasin' && (
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
+                  <select value={editHolderDetailMagasin}
+                    onChange={(e) => setEditHolderDetailMagasin(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                    <option value="">— Choisir —</option>
+                    {MAGASINS_CAISSE.map((m) => (
+                      <option key={m.id} value={m.id}>{m.nom}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {editHolderType === 'autre' && (
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Précise</label>
+                  <input type="text" value={editHolderDetailAutre}
+                    onChange={(e) => setEditHolderDetailAutre(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                <button onClick={handleSaveHolder} disabled={savingHolder}
+                  className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                  {savingHolder ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+                <button onClick={() => setEditingHolderMouvement(null)}
+                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2619,6 +3265,103 @@ export default function StockMagasin() {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ÉCRAN PRIX RÉPARATIONS (admin uniquement) */}
+      {posScreen === 'prix-reparations' && trueIsAdmin && (
+        <div className="max-w-3xl mx-auto">
+          <button onClick={() => setPosScreen('accueil')}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
+          </button>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
+              <Tag size={22} /> Prix des réparations
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">Prix par défaut, min et max par type de panne</p>
+          </div>
+
+          {loadingTypePannePrix ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : typePannePrixList.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+              Aucun type de panne configuré en base
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {typePannePrixList.map((row) => {
+                const isEditing = editingTypePanne?.id === row.id
+                return (
+                  <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-[#1B2A4A]">{row.type_panne}</p>
+                      </div>
+                      {!isEditing && (
+                        <>
+                          <div className="flex gap-4 text-xs">
+                            <div>
+                              <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
+                              <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
+                              <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
+                              <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
+                            </div>
+                          </div>
+                          <button onClick={() => openEditTypePanne(row)}
+                            className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                            <Pencil size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {isEditing && (
+                      <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
+                            <input type="number" step="0.5" min="0" value={tpForm.prix_defaut}
+                              onChange={(e) => setTpForm((f) => ({ ...f, prix_defaut: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
+                            <input type="number" step="0.5" min="0" value={tpForm.prix_min}
+                              onChange={(e) => setTpForm((f) => ({ ...f, prix_min: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
+                            <input type="number" step="0.5" min="0" value={tpForm.prix_max}
+                              onChange={(e) => setTpForm((f) => ({ ...f, prix_max: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={handleSaveTypePanne} disabled={savingTypePanne}
+                            className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                            {savingTypePanne ? 'Enregistrement...' : 'Enregistrer'}
+                          </button>
+                          <button onClick={() => setEditingTypePanne(null)}
+                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

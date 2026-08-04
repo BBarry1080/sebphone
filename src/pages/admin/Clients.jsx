@@ -55,6 +55,17 @@ export default function Clients() {
   const [editingRepair, setEditingRepair]     = useState(null)
   const [newStatus, setNewStatus]             = useState('en_attente')
   const [newDateRecup, setNewDateRecup]       = useState('')
+  const [editRepairForm, setEditRepairForm]   = useState({
+    appareil: '', imei: '', type_panne: '', prix: '',
+    tel: '', email: '', devis: false,
+  })
+
+  const PANNE_OPTIONS = [
+    'Écran cassé', 'Batterie défectueuse', 'Vitre arrière',
+    'Face ID / Touch ID', 'Connecteur de charge', 'Haut-parleur / micro',
+    'Caméra', 'Bouton (home / power)', 'Réparation logicielle',
+    'Diagnostic', 'Autre',
+  ]
 
   const fetchRepairsRegistre = async () => {
     setLoadingRepairs(true)
@@ -76,6 +87,7 @@ export default function Clients() {
       status: r.status || null,
       date_recuperation: r.date_recuperation || null,
       tel: r.tel, email: r.email,
+      prix: r.prix, devis: !!r.devis,
     }))
     const cRows = (clientsRes.data || []).map((c) => ({
       id: c.id,
@@ -125,19 +137,40 @@ export default function Clients() {
     setEditingRepair(row)
     setNewStatus(row.status || 'en_attente')
     setNewDateRecup(row.date_recuperation || new Date().toISOString().slice(0, 10))
+    setEditRepairForm({
+      appareil: row.appareil || '',
+      imei: row.imei || '',
+      type_panne: row.type_panne || '',
+      prix: row.prix != null ? String(row.prix) : '',
+      tel: row.tel || '',
+      email: row.email || '',
+      devis: !!row.devis,
+    })
     setShowStatusModal(true)
   }
 
-  const handleSaveStatus = async () => {
+  const handleSaveRepair = async () => {
     if (!editingRepair) return
-    const dateRecup = newStatus === 'termine' ? (newDateRecup || new Date().toISOString().slice(0, 10)) : null
+    const dateRecup = newStatus === 'termine'
+      ? (newDateRecup || new Date().toISOString().slice(0, 10))
+      : null
+    const payload = {
+      appareil: editRepairForm.appareil || null,
+      imei: editRepairForm.imei || null,
+      type_panne: editRepairForm.type_panne || null,
+      prix: editRepairForm.prix ? Number(editRepairForm.prix) : null,
+      tel: editRepairForm.tel || null,
+      email: editRepairForm.email || null,
+      devis: !!editRepairForm.devis,
+      status: newStatus,
+      date_recuperation: dateRecup,
+    }
     const { error } = await supabase.from('repairs')
-      .update({ status: newStatus, date_recuperation: dateRecup })
-      .eq('id', editingRepair.id)
+      .update(payload).eq('id', editingRepair.id)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity(
-      'repair_status_update',
-      `${editingRepair.nom} — statut changé en ${newStatus}${newStatus === 'termine' ? ' (garantie 2 ans démarrée)' : ''}`
+      'repair_full_update',
+      `Réparation ${editingRepair.bon_number || editingRepair.client_number || ''} modifiée — ${editingRepair.nom}`
     )
     setShowStatusModal(false)
     setEditingRepair(null)
@@ -678,20 +711,71 @@ export default function Clients() {
 
       {/* MODAL CHANGEMENT STATUT RÉPARATION */}
       {showStatusModal && editingRepair && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-bold text-[#1B2A4A]">Statut réparation</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{editingRepair.nom}</p>
+                <h3 className="font-bold text-[#1B2A4A]">Éditer réparation</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {editingRepair.nom}
+                  {editingRepair.bon_number && <span className="font-mono ml-2">· {editingRepair.bon_number}</span>}
+                </p>
               </div>
               <button onClick={() => setShowStatusModal(false)}
                 className="text-gray-400 hover:text-gray-700">
                 <X size={20}/>
               </button>
             </div>
-            <div className="space-y-3">
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Appareil (modèle)</label>
+                <input value={editRepairForm.appareil}
+                  onChange={(e) => setEditRepairForm((f) => ({ ...f, appareil: e.target.value }))}
+                  placeholder="ex: iPhone 13, Samsung A54..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
               <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">IMEI / N° série</label>
+                <input value={editRepairForm.imei}
+                  onChange={(e) => setEditRepairForm((f) => ({ ...f, imei: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Type de panne</label>
+                <select value={editRepairForm.type_panne}
+                  onChange={(e) => setEditRepairForm((f) => ({ ...f, type_panne: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="">—</option>
+                  {PANNE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Prix (€)</label>
+                <input type="number" step="0.5" min="0" value={editRepairForm.prix}
+                  onChange={(e) => setEditRepairForm((f) => ({ ...f, prix: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Téléphone</label>
+                <input type="tel" value={editRepairForm.tel}
+                  onChange={(e) => setEditRepairForm((f) => ({ ...f, tel: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Email</label>
+                <input type="email" value={editRepairForm.email}
+                  onChange={(e) => setEditRepairForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div className="col-span-2 flex items-center gap-2">
+                <input type="checkbox" checked={editRepairForm.devis}
+                  onChange={(e) => setEditRepairForm((f) => ({ ...f, devis: e.target.checked }))}
+                  className="w-4 h-4 accent-[#00B4CC]" />
+                <label className="text-sm text-gray-700">Devis requis avant intervention</label>
+              </div>
+
+              <div className="col-span-2 border-t border-gray-100 pt-3 mt-2">
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Statut</label>
                 <select value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
@@ -703,7 +787,7 @@ export default function Clients() {
                 </select>
               </div>
               {newStatus === 'termine' && (
-                <div>
+                <div className="col-span-2">
                   <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
                     Date de récupération
                   </label>
@@ -716,12 +800,13 @@ export default function Clients() {
                 </div>
               )}
             </div>
+
             <div className="flex gap-3 mt-5">
               <button onClick={() => setShowStatusModal(false)}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
                 Annuler
               </button>
-              <button onClick={handleSaveStatus}
+              <button onClick={handleSaveRepair}
                 className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
                 Enregistrer
               </button>

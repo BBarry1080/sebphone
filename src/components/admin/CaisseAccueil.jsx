@@ -4,7 +4,7 @@ import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Percent,
+  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Percent, Tag,
 } from 'lucide-react'
 
 const COLORS = {
@@ -75,13 +75,13 @@ export default function CaisseAccueil({
   onOpenGestion,
   onOpenParametresCaisse,
   onOpenPointage,
-  onOpenHistoriqueClotures,
   onOpenTresorerie,
   onOpenCommissions,
+  onOpenPrixReparations,
   showParametresCaisseTile = false,
-  showHistoriqueCloturesTile = false,
   showTresorerieTile = false,
   showCommissionsTile = false,
+  showPrixReparationsTile = false,
   onAcompteRecorded = () => {},
 }) {
   const [showClientModal, setShowClientModal] = useState(false)
@@ -103,6 +103,17 @@ export default function CaisseAccueil({
     montant_paye: '', payment_method: 'cash',
   })
   const [lastBon, setLastBon] = useState(null)
+  const [typePannePrixMap, setTypePannePrixMap] = useState({})
+
+  useEffect(() => {
+    const loadTypePannePrix = async () => {
+      const { data } = await supabase.from('type_panne_prix').select('*')
+      const map = {}
+      ;(data || []).forEach((r) => { map[r.type_panne] = r })
+      setTypePannePrixMap(map)
+    }
+    loadTypePannePrix()
+  }, [])
 
   // Détail du jour (popup)
   const [showDetailJour, setShowDetailJour] = useState(false)
@@ -467,15 +478,6 @@ export default function CaisseAccueil({
           onClick={() => setShowClotureDetail(true)}
         />
 
-        {/* HISTORIQUE CLÔTURES (admin uniquement) */}
-        {showHistoriqueCloturesTile && (
-          <Tile color={COLORS.indigo} icon={History}
-            title="Historique clôtures"
-            subtitle="Registre lecture seule, tous magasins"
-            onClick={onOpenHistoriqueClotures}
-          />
-        )}
-
         {/* TRÉSORERIE (admin uniquement) */}
         {showTresorerieTile && (
           <Tile color={COLORS.emerald} icon={PiggyBank}
@@ -494,18 +496,20 @@ export default function CaisseAccueil({
           />
         )}
 
+        {/* PRIX RÉPARATIONS (admin uniquement) */}
+        {showPrixReparationsTile && (
+          <Tile color={COLORS.indigo} icon={Tag}
+            title="Prix réparations"
+            subtitle="Prix par défaut, min et max"
+            onClick={onOpenPrixReparations}
+          />
+        )}
+
         {/* VENTE CAISSE */}
         <Tile color={COLORS.blue} icon={ShoppingCart}
           title="Vente caisse"
-          subtitle="Ouvre le point de vente"
+          subtitle="Caisse"
           onClick={onOpenCaisse}
-        />
-
-        {/* CLIENTS */}
-        <Tile color={COLORS.green} icon={Users}
-          title="Clients"
-          subtitle="Enregistrer un nouveau client"
-          onClick={openClientModal}
         />
 
         {/* FOURNISSEURS */}
@@ -736,7 +740,15 @@ export default function CaisseAccueil({
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Type de panne</label>
                 <select value={repairForm.type_panne}
-                  onChange={(e) => setRepairForm((f) => ({ ...f, type_panne: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const def = typePannePrixMap[val]?.prix_defaut
+                    setRepairForm((f) => ({
+                      ...f,
+                      type_panne: val,
+                      prix: (def && def > 0) ? String(def) : f.prix,
+                    }))
+                  }}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
                   <option value="">—</option>
                   {PANNE_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -747,6 +759,20 @@ export default function CaisseAccueil({
                 <input type="number" value={repairForm.prix}
                   onChange={(e) => setRepairForm((f) => ({ ...f, prix: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                {(() => {
+                  const tp = typePannePrixMap[repairForm.type_panne]
+                  if (!tp) return null
+                  const min = Number(tp.prix_min || 0)
+                  const max = Number(tp.prix_max || 0)
+                  if (min === 0 && max === 0) return null
+                  const prix = Number(repairForm.prix || 0)
+                  const outOfRange = max > 0 && (prix < min || prix > max)
+                  return (
+                    <p className={`text-[10px] mt-1 ${outOfRange ? 'text-orange-600 font-bold' : 'text-gray-400'}`}>
+                      Fourchette habituelle : {min}€ - {max}€
+                    </p>
+                  )
+                })()}
               </div>
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
