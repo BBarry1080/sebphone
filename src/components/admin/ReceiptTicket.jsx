@@ -115,7 +115,7 @@ export default function ReceiptTicket({
           background: "white",
           color: "black",
           fontFamily: "'Courier New', Courier, monospace",
-          fontSize: "11px",
+          fontSize: "10.5px",
           lineHeight: "1.4",
           padding: "10px",
         }}
@@ -138,7 +138,12 @@ export default function ReceiptTicket({
           <span>{formatTime(dateTime)}</span>
         </div>
 
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "6px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "6px", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "12%" }} />
+            <col />
+            <col style={{ width: "30%" }} />
+          </colgroup>
           <thead>
             <tr style={{ borderTop: "1px solid black", borderBottom: "1px solid black" }}>
               <th className="text-left" style={{ padding: "2px 0" }}>QTE</th>
@@ -150,8 +155,8 @@ export default function ReceiptTicket({
             {items.map((it, idx) => (
               <tr key={idx} style={{ borderBottom: "1px solid black" }}>
                 <td style={{ padding: "2px 0", verticalAlign: "top" }}>{it.qte}</td>
-                <td style={{ padding: "2px 4px" }}>{it.name}</td>
-                <td className="text-right" style={{ padding: "2px 0", verticalAlign: "top" }}>{money(it.tot)}</td>
+                <td style={{ padding: "2px 4px", wordBreak: "break-word" }}>{it.name}</td>
+                <td className="text-right" style={{ padding: "2px 0", verticalAlign: "top", whiteSpace: "nowrap" }}>{money(it.tot)}</td>
               </tr>
             ))}
           </tbody>
@@ -177,27 +182,33 @@ export default function ReceiptTicket({
           )}
         </div>
 
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "6px" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "6px", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "22%" }} />
+            <col style={{ width: "26%" }} />
+            <col style={{ width: "26%" }} />
+            <col style={{ width: "26%" }} />
+          </colgroup>
           <thead>
             <tr>
               <th></th>
-              <th className="text-right font-bold">HT</th>
-              <th className="text-right font-bold">TVA</th>
-              <th className="text-right font-bold">TTC</th>
+              <th className="text-right font-bold" style={{ whiteSpace: "nowrap" }}>HT</th>
+              <th className="text-right font-bold" style={{ whiteSpace: "nowrap" }}>TVA</th>
+              <th className="text-right font-bold" style={{ whiteSpace: "nowrap" }}>TTC</th>
             </tr>
           </thead>
           <tbody>
             <tr style={{ borderBottom: "1px solid black" }}>
               <td>{tvaRate}%(A)</td>
-              <td className="text-right">{money(tva.ht)}</td>
-              <td className="text-right">{money(tva.tva)}</td>
-              <td className="text-right">{money(tva.ttc)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(tva.ht)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(tva.tva)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(tva.ttc)}</td>
             </tr>
             <tr>
               <td></td>
-              <td className="text-right">{money(tva.ht)}</td>
-              <td className="text-right">{money(tva.tva)}</td>
-              <td className="text-right">{money(tva.ttc)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(tva.ht)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(tva.tva)}</td>
+              <td className="text-right" style={{ whiteSpace: "nowrap" }}>{money(tva.ttc)}</td>
             </tr>
           </tbody>
         </table>
