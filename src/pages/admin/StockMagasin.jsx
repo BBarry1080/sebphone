@@ -126,7 +126,33 @@ export default function StockMagasin() {
   const [prelevementAmount, setPrelevementAmount] = useState('')
   const [selectedCategoryView, setSelectedCategoryView] = useState(null)
   const [selectedPosCategory, setSelectedPosCategory] = useState('Tout')
-  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | tresorerie | commissions | prix-reparations
+  const [posScreen, setPosScreen] = useState('accueil') // accueil | caisse | gestion | cloture | parametres | pointage | tresorerie | commissions | prix-reparations | recherche-ticket
+
+  // Recherche ticket
+  const [searchQuery, setSearchQuery]         = useState('')
+  const [searchDateStart, setSearchDateStart] = useState('')
+  const [searchDateEnd, setSearchDateEnd]     = useState('')
+  const [searchResults, setSearchResults]     = useState([])
+  const [loadingSearch, setLoadingSearch]     = useState(false)
+  const [selectedTicket, setSelectedTicket]   = useState(null)
+  const [ticketRefunds, setTicketRefunds]     = useState([])
+  // Modifier ticket
+  const [showEditTicket, setShowEditTicket]   = useState(false)
+  const [editTicketForm, setEditTicketForm]   = useState([])
+  const [editPaymentMethod, setEditPaymentMethod] = useState('cash')
+  const [savingEditTicket, setSavingEditTicket]   = useState(false)
+  // Rembourser
+  const [showRefundForm, setShowRefundForm]   = useState(false)
+  const [refundForm, setRefundForm]           = useState([])
+  const [refundPaymentMethod, setRefundPaymentMethod] = useState('cash')
+  const [refundReason, setRefundReason]       = useState('')
+  const [savingRefund, setSavingRefund]       = useState(false)
+  // Mode devis (caisse)
+  const [modeDevis, setModeDevis]             = useState(false)
+  const [showDevisForm, setShowDevisForm]     = useState(false)
+  const [devisEmail, setDevisEmail]           = useState('')
+  const [devisClientName, setDevisClientName] = useState('')
+  const [sendingDevis, setSendingDevis]       = useState(false)
 
   // Commissions (règles)
   const [commissionRules, setCommissionRules]     = useState([])
@@ -170,6 +196,14 @@ export default function StockMagasin() {
   const [editHolderDetailMagasin, setEditHolderDetailMagasin] = useState('')
   const [editHolderDetailAutre, setEditHolderDetailAutre]   = useState('')
   const [savingHolder, setSavingHolder]                     = useState(false)
+
+  // Vue d'ensemble — filtres + modaux + calendrier
+  const [selectedDetenteur, setSelectedDetenteur]           = useState(null)
+  const [detenteurMagasinFilter, setDetenteurMagasinFilter] = useState('all')
+  const [vueMouvements, setVueMouvements]                   = useState('liste')
+  const [calMonthOffsetTreso, setCalMonthOffsetTreso]       = useState(0)
+  const [selectedJourMouvements, setSelectedJourMouvements] = useState(null)
+  const [filterMouvementType, setFilterMouvementType]       = useState('all')
 
   // Prix réparations
   const [typePannePrixList, setTypePannePrixList] = useState([])
@@ -927,6 +961,290 @@ export default function StockMagasin() {
     logActivity('type_panne_prix_update', `Prix mis à jour pour ${editingTypePanne.type_panne}`)
     setEditingTypePanne(null)
     fetchTypePannePrix()
+  }
+
+  // ─── Recherche de ticket ───
+  const handleSearchTickets = async () => {
+    const q = (searchQuery || '').trim()
+    if (!q && !searchDateStart && !searchDateEnd) {
+      alert('Tape un critère de recherche')
+      return
+    }
+    setLoadingSearch(true)
+
+    // 1) Requête principale sur shop_sales (magasin courant + dates éventuelles)
+    let query = supabase.from('shop_sales').select('*').eq('magasin_id', magasin)
+    if (searchDateStart) query = query.gte('created_at', searchDateStart + 'T00:00:00')
+    if (searchDateEnd) query = query.lte('created_at', searchDateEnd + 'T23:59:59')
+    const { data: baseRows } = await query.order('created_at', { ascending: false }).limit(500)
+    let candidates = baseRows || []
+
+    // 2) Si texte : filtre côté client sur staff_name / total / id / reference
+    if (q) {
+      const low = q.toLowerCase()
+      const byBase = candidates.filter((s) =>
+        (s.staff_name || '').toLowerCase().includes(low) ||
+        String(s.total_amount ?? '').includes(q) ||
+        String(s.id || '').toLowerCase().includes(low) ||
+        (s.reference || '').toLowerCase().includes(low)
+      )
+      // 3) Recherche par nom d'article via shop_sale_items
+      const { data: itemsHits } = await supabase.from('shop_sale_items')
+        .select('sale_id').ilike('item_name', `%${q}%`)
+      const hitIds = new Set((itemsHits || []).map((r) => r.sale_id))
+      const byItems = candidates.filter((s) => hitIds.has(s.id))
+      // Union dédoublonnée par id
+      const seen = new Set()
+      candidates = [...byBase, ...byItems].filter((s) => {
+        if (seen.has(s.id)) return false
+        seen.add(s.id); return true
+      })
+    }
+
+    // 4) Attache les items via un fetch groupé
+    const saleIds = candidates.map((s) => s.id)
+    let items = []
+    if (saleIds.length > 0) {
+      const { data } = await supabase.from('shop_sale_items').select('*').in('sale_id', saleIds)
+      items = data || []
+    }
+    const withItems = candidates.map((s) => ({
+      ...s, items: items.filter((it) => it.sale_id === s.id),
+    })).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 100)
+
+    setSearchResults(withItems)
+    setLoadingSearch(false)
+  }
+
+  const openTicketDetail = async (t) => {
+    setSelectedTicket(t)
+    setTicketRefunds([])
+    const { data } = await supabase.from('shop_sales')
+      .select('*').eq('reference', t.id).eq('sale_type', 'remboursement')
+      .order('created_at', { ascending: false })
+    setTicketRefunds(data || [])
+  }
+
+  const openEditTicket = async () => {
+    if (!selectedTicket) return
+    // Avertir si vente incluse dans une clôture
+    const { data: matchingClosures } = await supabase.from('cash_closures')
+      .select('id, period_end')
+      .eq('magasin_id', selectedTicket.magasin_id)
+      .lte('period_start', selectedTicket.created_at)
+      .gte('period_end', selectedTicket.created_at)
+    if (matchingClosures && matchingClosures.length > 0) {
+      const cloDate = new Date(matchingClosures[0].period_end).toLocaleDateString('fr-BE')
+      const ok = window.confirm(
+        `⚠️ Cette vente fait partie d'une clôture déjà effectuée le ${cloDate}. ` +
+        `La modifier rendra le ticket Z de ce jour incohérent avec la réalité. Continuer quand même ?`
+      )
+      if (!ok) return
+    }
+    setEditTicketForm((selectedTicket.items || []).map((it) => ({
+      id: it.id,
+      item_id: it.item_id,
+      item_name: it.item_name,
+      quantity: it.quantity,
+      unit_price: String(it.unit_price ?? ''),
+    })))
+    const pm = selectedTicket.payment_method === 'mixed' ? 'cash' : (selectedTicket.payment_method || 'cash')
+    setEditPaymentMethod(pm)
+    setShowEditTicket(true)
+  }
+
+  const handleSaveEditTicket = async () => {
+    if (!selectedTicket) return
+    setSavingEditTicket(true)
+    const newTotal = editTicketForm.reduce((s, l) =>
+      s + (Number(l.unit_price) || 0) * Number(l.quantity || 0), 0)
+    const round2 = (n) => Math.round(n * 100) / 100
+    const total2 = round2(newTotal)
+    const pm = editPaymentMethod
+
+    const { error: saleErr } = await supabase.from('shop_sales').update({
+      total_amount: total2,
+      payment_method: pm,
+      cash_amount: pm === 'cash' ? total2 : 0,
+      bancontact_amount: pm === 'bancontact' ? total2 : 0,
+      virement_amount: pm === 'virement' ? total2 : 0,
+    }).eq('id', selectedTicket.id)
+    if (saleErr) { alert('Erreur : ' + saleErr.message); setSavingEditTicket(false); return }
+
+    for (const line of editTicketForm) {
+      const up = Number(line.unit_price) || 0
+      const tp = round2(up * Number(line.quantity || 0))
+      await supabase.from('shop_sale_items').update({
+        unit_price: up, total_price: tp,
+      }).eq('id', line.id)
+    }
+
+    // Recalcul commissions liées
+    const { data: existingComms } = await supabase.from('staff_commissions')
+      .select('*').eq('sale_id', selectedTicket.id)
+    for (const comm of existingComms || []) {
+      const editedItem = editTicketForm.find((it) => it.item_name === comm.item_name)
+      if (!editedItem) continue
+      const newBase = Number(editedItem.unit_price) * Number(editedItem.quantity)
+      const newCommission = round2(newBase * (comm.rate / 100))
+      await supabase.from('staff_commissions').update({
+        base_amount: newBase, commission_amount: newCommission,
+      }).eq('id', comm.id)
+    }
+
+    const oldTotal = Number(selectedTicket.total_amount || 0)
+    logActivity('shop_sale_edit',
+      `Vente modifiée — ${oldTotal.toFixed(2)}€ → ${total2.toFixed(2)}€ (${selectedTicket.id})${(existingComms || []).length > 0 ? ' + commissions recalculées' : ''}`)
+    setSavingEditTicket(false)
+    setShowEditTicket(false)
+    setSelectedTicket(null)
+    alert('✅ Vente modifiée')
+    handleSearchTickets()
+  }
+
+  const openRefundForm = () => {
+    if (!selectedTicket) return
+    setRefundForm((selectedTicket.items || []).map((it) => ({
+      id: it.id,
+      item_id: it.item_id,
+      item_name: it.item_name,
+      unit_price: Number(it.unit_price || 0),
+      quantity: Number(it.quantity || 0),
+      qteRembourse: Number(it.quantity || 0),
+    })))
+    setRefundPaymentMethod(selectedTicket.payment_method === 'mixed'
+      ? 'cash' : (selectedTicket.payment_method || 'cash'))
+    setRefundReason('')
+    setShowRefundForm(true)
+  }
+
+  const handleSaveRefund = async () => {
+    if (!selectedTicket) return
+    const linesToRefund = refundForm.filter((l) => Number(l.qteRembourse) > 0)
+    if (linesToRefund.length === 0) {
+      alert('Sélectionne au moins un article à rembourser'); return
+    }
+    setSavingRefund(true)
+    const round2 = (n) => Math.round(n * 100) / 100
+    const montantRemboursement = -round2(linesToRefund.reduce((s, l) =>
+      s + Number(l.unit_price) * Number(l.qteRembourse), 0))
+
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const staffNameNow = currentSebUser?.name || 'Staff'
+    const staffIdNow = currentSebUser?.role === 'employe' ? currentSebUser?.id : null
+
+    const { data: refundSale, error: refundErr } = await supabase.from('shop_sales').insert({
+      magasin_id: selectedTicket.magasin_id,
+      staff_id: staffIdNow,
+      staff_name: staffNameNow,
+      total_amount: montantRemboursement,
+      payment_method: refundPaymentMethod,
+      cash_amount: refundPaymentMethod === 'cash' ? montantRemboursement : 0,
+      bancontact_amount: refundPaymentMethod === 'bancontact' ? montantRemboursement : 0,
+      virement_amount: refundPaymentMethod === 'virement' ? montantRemboursement : 0,
+      change_amount: 0, change_confirmed: true, global_discount: 0,
+      sale_type: 'remboursement',
+      reference: selectedTicket.id,
+    }).select().single()
+
+    if (refundErr) { alert('Erreur : ' + refundErr.message); setSavingRefund(false); return }
+
+    const refundItems = linesToRefund.map((l) => ({
+      sale_id: refundSale.id,
+      item_id: l.item_id,
+      item_name: l.item_name,
+      quantity: Number(l.qteRembourse),
+      unit_price: Number(l.unit_price),
+      total_price: -round2(Number(l.unit_price) * Number(l.qteRembourse)),
+      discount_type: null, discount_value: 0,
+    }))
+    await supabase.from('shop_sale_items').insert(refundItems)
+
+    // Déduction commission d'origine (vendeur original)
+    if (selectedTicket.staff_id) {
+      const itemIds = linesToRefund.map((l) => l.item_id)
+      const { data: itemDetails } = await supabase.from('shop_items')
+        .select('id, sous_categorie, shop_categories(name)').in('id', itemIds)
+      const { data: rules } = await supabase.from('commission_rules')
+        .select('*').eq('active', true)
+      const findRule = (catName, sousCat) => {
+        if (!rules || !catName) return null
+        const specific = rules.find((r) =>
+          r.category_name === catName && r.sous_categorie && r.sous_categorie === sousCat)
+        if (specific) return specific
+        return rules.find((r) => r.category_name === catName && !r.sous_categorie) || null
+      }
+      const refundCommRows = linesToRefund.map((l) => {
+        const item = itemDetails?.find((it) => it.id === l.item_id)
+        const catName = item?.shop_categories?.name
+        const sousCat = item?.sous_categorie
+        const rule = findRule(catName, sousCat)
+        if (!rule) return null
+        const base = -(Number(l.unit_price) * Number(l.qteRembourse))
+        return {
+          staff_id: selectedTicket.staff_id,
+          sale_id: refundSale.id,
+          item_name: `Remboursement — ${l.item_name}`,
+          category: catName,
+          base_amount: base,
+          rate: rule.rate,
+          commission_amount: round2(base * (rule.rate / 100)),
+        }
+      }).filter(Boolean)
+      if (refundCommRows.length > 0) {
+        await supabase.from('staff_commissions').insert(refundCommRows)
+      }
+    }
+
+    logActivity('shop_sale_refund',
+      `Remboursement de ${(-montantRemboursement).toFixed(2)}€ sur la vente ${selectedTicket.id}${refundReason ? ' — ' + refundReason : ''}`)
+    setSavingRefund(false)
+    setShowRefundForm(false)
+    setSelectedTicket(null)
+    alert('✅ Remboursement enregistré')
+    handleSearchTickets()
+  }
+
+  // ─── Devis par email ───
+  const handleSendDevis = async () => {
+    const email = (devisEmail || '').trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert('Email invalide'); return
+    }
+    if (cart.length === 0) { alert('Panier vide'); return }
+    setSendingDevis(true)
+    try {
+      const itemsHtml = cart.map((c) => {
+        const lt = lineTotal(c)
+        return `<tr><td>${c.quantity}× ${c.item_name}</td><td style="text-align:right">${lt.toFixed(2)}€</td></tr>`
+      }).join('')
+      const html = `<table style="width:100%;border-collapse:collapse">${itemsHtml}</table>`
+
+      const emailjs = (await import('@emailjs/browser')).default
+      const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
+      await emailjs.send('service_nn74puq', 'template_devis', {
+        to_email: email,
+        to_name: (devisClientName || '').trim() || 'Client',
+        items_html: html,
+        total: cartTotal.toFixed(2) + '€',
+        magasin_nom: magasinLabel,
+      }, 'rqbaYNMIGNP6IQB9O')
+
+      logActivity('devis_sent', `Devis envoyé à ${email} — ${cartTotal.toFixed(2)}€`)
+      setCart([])
+      setPaymentSplits([])
+      setCurrentPaymentAmount('')
+      setGlobalDiscountValue('')
+      setModeDevis(false)
+      setShowDevisForm(false)
+      setDevisEmail('')
+      setDevisClientName('')
+      alert('📧 Devis envoyé')
+    } catch (err) {
+      alert('Erreur envoi : ' + (err?.message || 'inconnue'))
+    } finally {
+      setSendingDevis(false)
+    }
   }
 
   // Refetch clôtures quand écran actif OU filtres changent
@@ -1899,6 +2217,7 @@ export default function StockMagasin() {
           onOpenTresorerie={() => { setPosScreen('tresorerie'); fetchMouvements(); fetchFournisseursListTreso() }}
           onOpenCommissions={() => { setPosScreen('commissions'); fetchCommissionRules(); fetchCategoriesDistinct() }}
           onOpenPrixReparations={() => { setPosScreen('prix-reparations'); fetchTypePannePrix() }}
+          onOpenRechercheTicket={() => { setPosScreen('recherche-ticket'); setSearchResults([]); setSearchQuery(''); setSearchDateStart(''); setSearchDateEnd('') }}
           showParametresCaisseTile={canAccessParamsCaisse}
           showTresorerieTile={trueIsAdmin}
           showCommissionsTile={trueIsAdmin}
@@ -2524,7 +2843,7 @@ export default function StockMagasin() {
           </button>
           <div className="mb-4">
             <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
-              <PiggyBank size={22} /> Trésorerie
+              <PiggyBank size={22} /> Fonds/CA
             </h1>
             <p className="text-sm text-gray-500 mt-1">Cumul des clôtures, dépenses déductibles</p>
           </div>
@@ -2579,20 +2898,22 @@ export default function StockMagasin() {
                 })}
               </div>
 
-              {/* Par détenteur */}
+              {/* Par détenteur — cliquable */}
               {Object.keys(totauxParDetenteur).length > 0 && (
                 <div className="mb-4">
                   <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Par détenteur</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {Object.entries(totauxParDetenteur).map(([key, val]) => (
-                      <div key={key} className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <button key={key}
+                        onClick={() => { setSelectedDetenteur(key); setDetenteurMagasinFilter('all') }}
+                        className="text-left bg-white rounded-2xl border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-all">
                         <p className="text-[10px] font-bold text-gray-500 uppercase truncate" title={key}>
                           {key}
                         </p>
                         <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
                           {val.toFixed(2)}€
                         </p>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -2736,79 +3057,253 @@ export default function StockMagasin() {
                 )}
               </div>
 
-              {/* Tableau mouvements */}
+              {/* Toggle vue Liste / Calendrier + filtre Retraits */}
+              <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                <div className="flex gap-2">
+                  {[
+                    { key: 'liste', label: '📋 Liste' },
+                    { key: 'calendrier', label: '📅 Calendrier' },
+                  ].map((v) => (
+                    <button key={v.key}
+                      onClick={() => { setVueMouvements(v.key); setSelectedJourMouvements(null) }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                        ${vueMouvements === v.key
+                          ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'}`}>
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+                {vueMouvements === 'liste' && (
+                  <div className="flex gap-2">
+                    {[
+                      { key: 'all', label: 'Tout afficher' },
+                      { key: 'sortie', label: 'Retraits uniquement' },
+                    ].map((f) => (
+                      <button key={f.key}
+                        onClick={() => setFilterMouvementType(f.key)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all
+                          ${filterMouvementType === f.key
+                            ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#1B2A4A]'}`}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {loadingTreso ? (
                 <div className="flex items-center justify-center h-40">
                   <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
                 </div>
-              ) : mouvements.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-                  Aucun mouvement de trésorerie
-                </div>
-              ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100">
-                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
-                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Type</th>
-                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
-                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Détenteur</th>
-                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Méthode</th>
-                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Source</th>
-                        <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Montant</th>
-                        <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mouvements.map((m) => {
-                        const dt = new Date(m.created_at)
-                        const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
-                        const magNom = m.magasin_id
-                          ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
-                          : 'Central'
-                        const isEntree = m.type === 'entree'
-                        const signe = isEntree ? '+' : '-'
-                        const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
-                        return (
-                          <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
-                            <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
-                            <td className="px-4 py-2.5">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'}`}>
-                                {isEntree ? 'Entrée' : 'Sortie'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
-                            <td className="px-4 py-2.5 text-xs text-gray-700">
-                              <div className="flex items-center gap-1">
-                                <span className="truncate max-w-[120px]" title={m.holder || ''}>{m.holder || '—'}</span>
-                                <button onClick={() => openEditHolder(m)}
-                                  title="Modifier le détenteur"
-                                  className="p-1 text-gray-400 hover:text-[#1B2A4A]">
-                                  <Pencil size={12} />
-                                </button>
-                              </div>
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-gray-600">
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                                {pmIcon} {m.payment_method || 'cash'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-gray-600">{m.source || '—'}</td>
-                            <td className={`px-4 py-2.5 text-right font-bold ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
-                              {signe}{Number(m.amount || 0).toFixed(2)}€
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[280px] truncate" title={m.description || ''}>
-                              {m.description || '—'}
-                            </td>
+              ) : vueMouvements === 'liste' ? (
+                (() => {
+                  const filtered = filterMouvementType === 'sortie'
+                    ? mouvements.filter((m) => m.type === 'sortie')
+                    : mouvements
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                        {filterMouvementType === 'sortie' ? 'Aucun retrait' : 'Aucun mouvement de trésorerie'}
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-100">
+                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase whitespace-nowrap">Date</th>
+                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Type</th>
+                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
+                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Détenteur</th>
+                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Méthode</th>
+                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Source</th>
+                            <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Montant</th>
+                            <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Description</th>
                           </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                        </thead>
+                        <tbody>
+                          {filtered.map((m) => {
+                            const dt = new Date(m.created_at)
+                            const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
+                            const magNom = m.magasin_id
+                              ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
+                              : 'Central'
+                            const isEntree = m.type === 'entree'
+                            const signe = isEntree ? '+' : '-'
+                            const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+                            return (
+                              <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50">
+                                <td className="px-4 py-2.5 text-xs font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
+                                <td className="px-4 py-2.5">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-red-100 text-red-700'}`}>
+                                    {isEntree ? 'Entrée' : 'Sortie'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2.5 text-sm text-[#1B2A4A]">{magNom}</td>
+                                <td className="px-4 py-2.5 text-xs text-gray-700">
+                                  <div className="flex items-center gap-1">
+                                    <span className="truncate max-w-[120px]" title={m.holder || ''}>{m.holder || '—'}</span>
+                                    <button onClick={() => openEditHolder(m)}
+                                      title="Modifier le détenteur"
+                                      className="p-1 text-gray-400 hover:text-[#1B2A4A]">
+                                      <Pencil size={12} />
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-2.5 text-xs text-gray-600">
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                    {pmIcon} {m.payment_method || 'cash'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2.5 text-xs text-gray-600">{m.source || '—'}</td>
+                                <td className={`px-4 py-2.5 text-right font-bold ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
+                                  {signe}{Number(m.amount || 0).toFixed(2)}€
+                                </td>
+                                <td className="px-4 py-2.5 text-xs text-gray-600 max-w-[280px] truncate" title={m.description || ''}>
+                                  {m.description || '—'}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                })()
+              ) : (
+                // VUE CALENDRIER MOUVEMENTS
+                (() => {
+                  const nowDt = new Date()
+                  const dispDate = new Date(nowDt.getFullYear(), nowDt.getMonth() + calMonthOffsetTreso, 1)
+                  const yearM = dispDate.getFullYear()
+                  const monthM = dispDate.getMonth()
+                  const firstM = new Date(yearM, monthM, 1)
+                  const lastM = new Date(yearM, monthM + 1, 0)
+                  const daysInMonthM = lastM.getDate()
+                  const firstDowM = (firstM.getDay() + 6) % 7
+                  const monthLabelM = dispDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
+
+                  const cellsM = []
+                  for (let i = 0; i < firstDowM; i++) cellsM.push(null)
+                  for (let d = 1; d <= daysInMonthM; d++) cellsM.push(new Date(yearM, monthM, d))
+                  const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+                  const jourStrM = (d) =>
+                    `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+                  const mouvementsDuJour = (dateStr) => mouvements.filter((m) => {
+                    const dt = new Date(m.created_at)
+                    return jourStrM(dt) === dateStr
+                  })
+
+                  const jourSelectionne = selectedJourMouvements ? mouvementsDuJour(selectedJourMouvements) : []
+
+                  return (
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setCalMonthOffsetTreso((o) => o - 1)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                            <ChevronLeft size={18} />
+                          </button>
+                          <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
+                            {monthLabelM}
+                          </span>
+                          <button onClick={() => setCalMonthOffsetTreso((o) => o + 1)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                            <ChevronRight size={18} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1 mb-1">
+                        {dowLabels.map((d) => (
+                          <div key={d} className="text-center text-[10px] font-bold uppercase text-gray-400 py-1">{d}</div>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-1">
+                        {cellsM.map((date, idx) => {
+                          if (!date) return <div key={`empty-m-${idx}`} />
+                          const dStr = jourStrM(date)
+                          const mvts = mouvementsDuJour(dStr)
+                          const net = mvts.reduce((s, m) =>
+                            s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
+                          const isSelected = selectedJourMouvements === dStr
+                          const has = mvts.length > 0
+                          return (
+                            <button key={dStr}
+                              onClick={has ? () => setSelectedJourMouvements(dStr) : undefined}
+                              disabled={!has}
+                              className={`aspect-square min-h-[64px] p-1 rounded-lg border-2 text-left transition-all
+                                ${isSelected ? 'border-[#00B4CC] bg-cyan-50'
+                                  : has ? 'border-gray-100 bg-white hover:border-[#1B2A4A]'
+                                  : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
+                              <div className="flex items-start justify-between">
+                                <span className="text-xs font-bold text-[#1B2A4A]">{date.getDate()}</span>
+                              </div>
+                              {has && (
+                                <>
+                                  <p className={`text-[10px] font-bold mt-1 leading-tight ${net < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                                    {net >= 0 ? '+' : ''}{net.toFixed(0)}€
+                                  </p>
+                                  <p className="text-[9px] text-gray-400 leading-tight">
+                                    {mvts.length} mvt{mvts.length > 1 ? 's' : ''}
+                                  </p>
+                                </>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {selectedJourMouvements && jourSelectionne.length > 0 && (
+                        <div className="mt-4 border-t border-gray-100 pt-4">
+                          <p className="text-sm font-bold text-[#1B2A4A] mb-3">
+                            {new Date(selectedJourMouvements).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} — {jourSelectionne.length} mouvement{jourSelectionne.length > 1 ? 's' : ''}
+                          </p>
+                          <div className="space-y-1">
+                            {jourSelectionne.map((m) => {
+                              const dt = new Date(m.created_at)
+                              const heure = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
+                              const magNom = m.magasin_id
+                                ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
+                                : 'Central'
+                              const isEntree = m.type === 'entree'
+                              const signe = isEntree ? '+' : '-'
+                              const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+                              return (
+                                <div key={m.id} className="bg-gray-50 rounded-lg p-2 flex items-center gap-2 flex-wrap text-xs">
+                                  <span className="font-mono text-gray-500 whitespace-nowrap">{heure}</span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
+                                    ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {isEntree ? 'Entrée' : 'Sortie'}
+                                  </span>
+                                  <span className="text-gray-700">{magNom}</span>
+                                  <span className="text-gray-500">{pmIcon}</span>
+                                  <span className="text-gray-600 truncate max-w-[120px]" title={m.holder || ''}>{m.holder || '—'}</span>
+                                  <span className={`font-bold ml-auto ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
+                                    {signe}{Number(m.amount || 0).toFixed(2)}€
+                                  </span>
+                                  {m.description && (
+                                    <span className="w-full text-[10px] text-gray-500 italic truncate" title={m.description}>
+                                      {m.description}
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()
               )}
             </>
           )}
@@ -3145,6 +3640,419 @@ export default function StockMagasin() {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* ÉCRAN RECHERCHE TICKET (tous utilisateurs) */}
+      {posScreen === 'recherche-ticket' && (
+        <div className="max-w-4xl mx-auto">
+          <button onClick={() => { setPosScreen('accueil'); setSelectedTicket(null) }}
+            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+            ← Retour à l'accueil
+          </button>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
+              <Search size={22} /> Rechercher un ticket
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Toutes les ventes de {MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Recherche</label>
+                <input type="text" value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSearchTickets() }}
+                  placeholder="Article, vendeur, montant, id..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Du</label>
+                <input type="date" value={searchDateStart}
+                  onChange={(e) => setSearchDateStart(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Au</label>
+                <input type="date" value={searchDateEnd}
+                  onChange={(e) => setSearchDateEnd(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+            </div>
+            <button onClick={handleSearchTickets} disabled={loadingSearch}
+              className="mt-3 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC] disabled:opacity-50">
+              {loadingSearch ? 'Recherche...' : '🔍 Rechercher'}
+            </button>
+          </div>
+
+          {loadingSearch ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : searchResults.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+              Aucun résultat — lance une recherche pour afficher des tickets
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {searchResults.map((t) => {
+                const dt = new Date(t.created_at)
+                const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
+                const isRefund = t.sale_type === 'remboursement'
+                const isAcompte = t.sale_type && t.sale_type !== 'vente' && t.sale_type !== 'remboursement'
+                const badgeCls = isRefund ? 'bg-red-100 text-red-700'
+                  : isAcompte ? 'bg-amber-100 text-amber-700'
+                  : 'bg-green-100 text-green-700'
+                const badgeLbl = isRefund ? 'Remboursement' : isAcompte ? 'Acompte' : 'Vente'
+                return (
+                  <button key={t.id}
+                    onClick={() => openTicketDetail(t)}
+                    className="w-full text-left bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="font-mono text-xs text-gray-500">{dateStr}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeCls}`}>{badgeLbl}</span>
+                        <span className="text-xs text-gray-600">{t.staff_name || '—'}</span>
+                        <span className="text-[10px] text-gray-400">{t.payment_method || 'cash'}</span>
+                      </div>
+                      <span className={`text-lg font-black ${Number(t.total_amount) < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                        {Number(t.total_amount || 0).toFixed(2)}€
+                      </span>
+                    </div>
+                    {(t.items || []).length > 0 && (
+                      <p className="text-[11px] text-gray-400 mt-1 truncate">
+                        {(t.items || []).map((i) => `${i.quantity}× ${i.item_name}`).join(', ')}
+                      </p>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL DÉTAIL TICKET */}
+      {selectedTicket && !showEditTicket && !showRefundForm && (
+        <div className="fixed inset-0 bg-black/50 z-[55] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A]">Ticket</h3>
+              <button onClick={() => setSelectedTicket(null)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            <ReceiptTicket
+              ticketNumber={searchResults.findIndex((s) => s.id === selectedTicket.id) + 1}
+              vendeur={selectedTicket.staff_name || 'Admin'}
+              dateTime={new Date(selectedTicket.created_at)}
+              items={(selectedTicket.items || []).map((si) => ({
+                qte: si.quantity, name: si.item_name, tot: Number(si.total_price),
+              }))}
+              payments={[
+                ...(Number(selectedTicket.cash_amount) !== 0 ? [{ type: 'cash', amount: Number(selectedTicket.cash_amount) }] : []),
+                ...(Number(selectedTicket.bancontact_amount) !== 0 ? [{ type: 'bancontact', amount: Number(selectedTicket.bancontact_amount) }] : []),
+                ...(Number(selectedTicket.virement_amount) !== 0 ? [{ type: 'virement', amount: Number(selectedTicket.virement_amount) }] : []),
+              ]}
+              changeAmount={Number(selectedTicket.change_amount) || 0}
+              tvaRate={21} paperWidth="80mm"
+            />
+            {ticketRefunds.length > 0 && (
+              <div className="mt-3 border-t border-gray-100 pt-3">
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Remboursements liés</p>
+                <div className="space-y-1">
+                  {ticketRefunds.map((r) => (
+                    <div key={r.id} className="bg-red-50 rounded-lg p-2 text-xs flex justify-between">
+                      <span>{new Date(r.created_at).toLocaleString('fr-BE')}</span>
+                      <span className="font-bold text-red-700">{Number(r.total_amount).toFixed(2)}€</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="mt-4 border-t border-gray-100 pt-3">
+              {canModifyPrices ? (
+                <div className="flex gap-2">
+                  <button onClick={openEditTicket}
+                    className="flex-1 bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                    ✏️ Modifier
+                  </button>
+                  <button onClick={openRefundForm}
+                    className="flex-1 bg-amber-500 text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-amber-600">
+                    ↩️ Rembourser
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 text-center italic">
+                  Vous n'avez pas le droit de modifier ou rembourser une vente
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MODIFIER TICKET */}
+      {showEditTicket && selectedTicket && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A]">Modifier la vente</h3>
+              <button onClick={() => setShowEditTicket(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-2 mb-3">
+              {editTicketForm.map((line, idx) => (
+                <div key={line.id} className="bg-gray-50 rounded-xl p-3">
+                  <p className="font-semibold text-[#1B2A4A] text-sm truncate" title={line.item_name}>
+                    {line.quantity}× {line.item_name}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Prix unit.</label>
+                    <input type="number" step="0.01" value={line.unit_price}
+                      onChange={(e) => setEditTicketForm((f) => f.map((l, i) =>
+                        i === idx ? { ...l, unit_price: e.target.value } : l))}
+                      className="w-24 px-2 py-1 border border-gray-200 rounded-lg text-sm" />
+                    <span className="text-xs text-gray-500">€</span>
+                    <span className="ml-auto text-sm font-bold text-[#00B4CC]">
+                      = {(Number(line.unit_price || 0) * Number(line.quantity || 0)).toFixed(2)}€
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mb-3">
+              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Méthode de paiement</label>
+              <select value={editPaymentMethod}
+                onChange={(e) => setEditPaymentMethod(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                <option value="cash">💵 Cash</option>
+                <option value="bancontact">💳 Bancontact</option>
+                <option value="virement">🏦 Virement</option>
+              </select>
+            </div>
+            <div className="flex justify-between font-bold text-lg mb-3">
+              <span>Total</span>
+              <span className="text-[#00B4CC]">
+                {editTicketForm.reduce((s, l) => s + (Number(l.unit_price) || 0) * Number(l.quantity || 0), 0).toFixed(2)}€
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleSaveEditTicket} disabled={savingEditTicket}
+                className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                {savingEditTicket ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+              <button onClick={() => setShowEditTicket(false)}
+                className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REMBOURSER TICKET */}
+      {showRefundForm && selectedTicket && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A]">Rembourser la vente</h3>
+              <button onClick={() => setShowRefundForm(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-2 mb-3">
+              {refundForm.map((line, idx) => (
+                <div key={line.id} className="bg-gray-50 rounded-xl p-3">
+                  <p className="font-semibold text-[#1B2A4A] text-sm truncate" title={line.item_name}>
+                    {line.item_name}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Qté à rembourser</label>
+                    <input type="number" min="0" max={line.quantity} step="1"
+                      value={line.qteRembourse}
+                      onChange={(e) => setRefundForm((f) => f.map((l, i) =>
+                        i === idx ? { ...l, qteRembourse: Math.max(0, Math.min(line.quantity, Number(e.target.value) || 0)) } : l))}
+                      className="w-20 px-2 py-1 border border-gray-200 rounded-lg text-sm text-right" />
+                    <span className="text-xs text-gray-500">/ {line.quantity}</span>
+                    <span className="ml-auto text-sm font-bold text-red-600">
+                      -{(Number(line.unit_price) * Number(line.qteRembourse || 0)).toFixed(2)}€
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mb-3">
+              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Méthode de remboursement</label>
+              <select value={refundPaymentMethod}
+                onChange={(e) => setRefundPaymentMethod(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                <option value="cash">💵 Cash</option>
+                <option value="bancontact">💳 Bancontact</option>
+                <option value="virement">🏦 Virement</option>
+              </select>
+            </div>
+            <div className="mb-3">
+              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Raison (optionnel)</label>
+              <textarea rows={2} value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="Article défectueux, geste commercial..."
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+            </div>
+            <div className="flex justify-between font-bold text-lg mb-3">
+              <span>Total remboursé</span>
+              <span className="text-red-600">
+                -{refundForm.reduce((s, l) => s + Number(l.unit_price) * Number(l.qteRembourse || 0), 0).toFixed(2)}€
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleSaveRefund} disabled={savingRefund}
+                className="flex-1 bg-amber-500 text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-amber-600 disabled:opacity-50">
+                {savingRefund ? 'Enregistrement...' : '↩️ Rembourser'}
+              </button>
+              <button onClick={() => setShowRefundForm(false)}
+                className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DEVIS (email + nom client) */}
+      {showDevisForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A]">📧 Envoyer le devis</h3>
+              <button onClick={() => setShowDevisForm(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Email client *</label>
+                <input type="email" value={devisEmail}
+                  onChange={(e) => setDevisEmail(e.target.value)}
+                  placeholder="client@example.com"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nom client (optionnel)</label>
+                <input type="text" value={devisClientName}
+                  onChange={(e) => setDevisClientName(e.target.value)}
+                  placeholder="M. Dupont"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 text-xs">
+                <p className="text-gray-500 mb-1">Total du devis :</p>
+                <p className="font-black text-lg text-[#00B4CC]">{cartTotal.toFixed(2)}€</p>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {cart.length} article{cart.length > 1 ? 's' : ''} — aucun impact sur CA/stock/commissions
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={handleSendDevis} disabled={sendingDevis}
+                  className="flex-1 bg-amber-500 text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-amber-600 disabled:opacity-50">
+                  {sendingDevis ? 'Envoi...' : '📧 Envoyer'}
+                </button>
+                <button onClick={() => setShowDevisForm(false)}
+                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DÉTAIL DÉTENTEUR (liste des mouvements du détenteur) */}
+      {selectedDetenteur && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg my-8 max-h-[90vh] overflow-y-auto p-5">
+            {(() => {
+              const mvtsDet = mouvements
+                .filter((m) => (m.holder || 'Non précisé') === selectedDetenteur)
+                .filter((m) => detenteurMagasinFilter === 'all' || m.magasin_id === detenteurMagasinFilter)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+              const total = mvtsDet.reduce((s, m) =>
+                s + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount)), 0)
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-bold text-[#1B2A4A] text-lg">{selectedDetenteur}</h3>
+                      <p className={`text-xl font-black mt-0.5 ${total < 0 ? 'text-red-600' : 'text-[#00B4CC]'}`}>
+                        {total.toFixed(2)}€
+                      </p>
+                    </div>
+                    <button onClick={() => setSelectedDetenteur(null)}
+                      className="text-gray-400 hover:text-[#1B2A4A]">
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="mb-3">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Filtrer par magasin</label>
+                    <select value={detenteurMagasinFilter}
+                      onChange={(e) => setDetenteurMagasinFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                      <option value="all">Tous les magasins</option>
+                      {MAGASINS_CAISSE.map((m) => (
+                        <option key={m.id} value={m.id}>{m.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {mvtsDet.length === 0 ? (
+                    <p className="text-center text-gray-400 text-sm py-6">Aucun mouvement</p>
+                  ) : (
+                    <div className="space-y-1 max-h-80 overflow-y-auto">
+                      {mvtsDet.map((m) => {
+                        const dt = new Date(m.created_at)
+                        const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
+                        const magNom = m.magasin_id
+                          ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
+                          : 'Central'
+                        const isEntree = m.type === 'entree'
+                        const signe = isEntree ? '+' : '-'
+                        const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+                        return (
+                          <div key={m.id} className="bg-gray-50 rounded-lg p-2 flex flex-wrap items-center gap-2 text-xs">
+                            <span className="font-mono text-gray-500">{dateStr}</span>
+                            <span className="text-gray-700">{magNom}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isEntree
+                              ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {isEntree ? 'Entrée' : 'Sortie'}
+                            </span>
+                            <span className="text-gray-500">{pmIcon}</span>
+                            <span className={`font-bold ml-auto ${isEntree ? 'text-green-700' : 'text-red-700'}`}>
+                              {signe}{Number(m.amount || 0).toFixed(2)}€
+                            </span>
+                            {(m.description || m.source) && (
+                              <span className="w-full text-[10px] text-gray-500 italic truncate" title={m.description || m.source}>
+                                {m.description || m.source}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <button onClick={() => setSelectedDetenteur(null)}
+                    className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                    Fermer
+                  </button>
+                </>
+              )
+            })()}
+          </div>
         </div>
       )}
 
@@ -3634,9 +4542,21 @@ export default function StockMagasin() {
 
           {/* COLONNE DROITE — Ticket / Panier */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 overflow-y-auto flex flex-col">
-            <h3 className="font-bold text-[#1B2A4A] mb-3">
-              Ticket ({cart.length})
-            </h3>
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <h3 className="font-bold text-[#1B2A4A]">
+                {modeDevis ? 'Devis' : 'Ticket'} ({cart.length})
+              </h3>
+              <label className="relative inline-flex items-center cursor-pointer" title="Basculer en mode Devis (aucun impact CA/stock/commissions)">
+                <input type="checkbox" checked={modeDevis}
+                  onChange={(e) => setModeDevis(e.target.checked)}
+                  className="sr-only peer" />
+                <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-amber-500
+                                after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                                after:bg-white after:rounded-full after:h-4 after:w-4
+                                after:transition-all peer-checked:after:translate-x-4"></div>
+                <span className="ml-2 text-[10px] font-bold text-gray-600 uppercase">Devis</span>
+              </label>
+            </div>
 
             {cart.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm flex-1">
@@ -3773,10 +4693,18 @@ export default function StockMagasin() {
                     )}
                   </div>
 
-                  <button onClick={() => setShowPaymentModal(true)}
+                  <button onClick={() => {
+                      if (cart.length === 0) { alert('Panier vide'); return }
+                      if (modeDevis) setShowDevisForm(true)
+                      else setShowPaymentModal(true)
+                    }}
                     disabled={cart.length === 0}
-                    className="py-2.5 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50">
-                    Ticket →
+                    className={`py-2.5 text-white rounded-xl font-bold transition-all disabled:opacity-50 ${
+                      modeDevis
+                        ? 'bg-amber-500 hover:bg-amber-600'
+                        : 'bg-[#00B4CC] hover:bg-[#1B2A4A]'
+                    }`}>
+                    {modeDevis ? '📧 Envoyer le devis' : 'Ticket →'}
                   </button>
                 </div>
 

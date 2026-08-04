@@ -5,7 +5,7 @@ import { logActivity } from '../../lib/logActivity'
 import ReceiptTicket from './ReceiptTicket'
 import {
   ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Percent, Tag,
+  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Percent, Tag, Search,
 } from 'lucide-react'
 
 const COLORS = {
@@ -79,6 +79,7 @@ export default function CaisseAccueil({
   onOpenTresorerie,
   onOpenCommissions,
   onOpenPrixReparations,
+  onOpenRechercheTicket,
   showParametresCaisseTile = false,
   showTresorerieTile = false,
   showCommissionsTile = false,
@@ -491,10 +492,10 @@ export default function CaisseAccueil({
           onClick={() => setShowClotureDetail(true)}
         />
 
-        {/* TRÉSORERIE (admin uniquement) */}
+        {/* FONDS/CA (admin uniquement) */}
         {showTresorerieTile && (
           <Tile color={COLORS.emerald} icon={PiggyBank}
-            title="Trésorerie"
+            title="Fonds/CA"
             subtitle="Cumul clôtures & dépenses"
             onClick={onOpenTresorerie}
           />
@@ -523,6 +524,13 @@ export default function CaisseAccueil({
           title="Vente caisse"
           subtitle="Caisse"
           onClick={onOpenCaisse}
+        />
+
+        {/* RECHERCHER UN TICKET (toujours visible) */}
+        <Tile color={COLORS.green} icon={Search}
+          title="Rechercher un ticket"
+          subtitle="Retrouver et gérer une vente"
+          onClick={onOpenRechercheTicket}
         />
 
         {/* FOURNISSEURS */}
