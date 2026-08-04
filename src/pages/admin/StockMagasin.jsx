@@ -55,6 +55,7 @@ export default function StockMagasin() {
     price_min: 0, price_max: 0,
     description: '',
     image_url: '', fournisseur_id: '',
+    sans_stock: false,
   })
 
   // Form catégorie
@@ -678,6 +679,7 @@ export default function StockMagasin() {
       description: item.description || '',
       image_url: item.image_url || '',
       fournisseur_id: item.fournisseur_id || '',
+      sans_stock: !!item.sans_stock,
     } : {
       name: '', reference: '', barcode: '',
       category_id: categories[0]?.id || '', sous_categorie: '',
@@ -686,6 +688,7 @@ export default function StockMagasin() {
       price_min: 0, price_max: 0,
       description: '',
       image_url: '', fournisseur_id: '',
+      sans_stock: false,
     })
     setShowItemModal(true)
   }
@@ -696,14 +699,15 @@ export default function StockMagasin() {
     }
     const payload = {
       ...itemForm,
-      quantity:       itemForm.quantity || 0,
+      quantity:       itemForm.sans_stock ? 0 : (itemForm.quantity || 0),
       purchase_price: itemForm.purchase_price || null,
-      quantity_alert: itemForm.quantity_alert || 0,
+      quantity_alert: itemForm.sans_stock ? 0 : (itemForm.quantity_alert || 0),
       barcode:        itemForm.barcode || null,
       reference:      itemForm.reference || null,
       sous_categorie: itemForm.sous_categorie || null,
       image_url:      itemForm.image_url || null,
       fournisseur_id: itemForm.fournisseur_id || null,
+      sans_stock:     itemForm.sans_stock,
       magasin_id: magasin,
       updated_at: new Date().toISOString(),
     }
@@ -2096,13 +2100,17 @@ export default function StockMagasin() {
                         {item.price_min}€ / {item.price_max}€
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
-                          ${isLow
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-gray-100 text-gray-600'}`}>
-                          {isLow && <AlertTriangle size={11} />}
-                          {item.quantity ?? 0}
-                        </span>
+                        {item.sans_stock ? (
+                          <span className="text-gray-400 text-sm">—</span>
+                        ) : (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
+                            ${isLow
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-gray-100 text-gray-600'}`}>
+                            {isLow && <AlertTriangle size={11} />}
+                            {item.quantity ?? 0}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1 justify-center">
@@ -2367,14 +2375,31 @@ export default function StockMagasin() {
               </div>
 
               {/* MASQUÉ TEMPORAIREMENT - Quantité + Alerte stock bas */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-amber-800">Article sans stock (prix libre)</p>
+                  <p className="text-xs text-amber-600">ex: acompte, service, réparation — pas de suivi de quantité</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked={itemForm.sans_stock}
+                    onChange={(e) => setItemForm((f) => ({ ...f, sans_stock: e.target.checked }))}
+                    className="sr-only peer" />
+                  <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-amber-500
+                                  after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                                  after:bg-white after:rounded-full after:h-5 after:w-5
+                                  after:transition-all peer-checked:after:translate-x-5"></div>
+                </label>
+              </div>
+
               {false && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className={`grid grid-cols-2 gap-3 ${itemForm.sans_stock ? 'opacity-40 pointer-events-none' : ''}`}>
                   <div>
                     <label className="text-xs font-bold text-gray-500
                                      uppercase mb-1 block">
                       Quantité
                     </label>
                     <input type="number" value={itemForm.quantity}
+                      disabled={itemForm.sans_stock}
                       onChange={e => setItemForm(f => ({
                         ...f, quantity: Number(e.target.value)
                       }))}
@@ -2387,6 +2412,7 @@ export default function StockMagasin() {
                       Alerte stock bas (qté)
                     </label>
                     <input type="number" value={itemForm.quantity_alert}
+                      disabled={itemForm.sans_stock}
                       onChange={e => setItemForm(f => ({
                         ...f, quantity_alert: Number(e.target.value)
                       }))}
