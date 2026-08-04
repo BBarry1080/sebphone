@@ -71,6 +71,8 @@ export default function ReceiptTicket({
   tvaRate = 21,
   paperWidth = "80mm",
   onPrint,
+  repairInfo = null,
+  extraLines = null,
 }) {
   const [signature, setSignature] = useState("");
   const total = items.reduce((s, i) => s + i.tot, 0);
@@ -138,6 +140,17 @@ export default function ReceiptTicket({
           <span>{formatTime(dateTime)}</span>
         </div>
 
+        {repairInfo && (
+          <div style={{ borderTop: "1px solid black", borderBottom: "1px solid black", padding: "4px 0", marginTop: "4px" }}>
+            <div style={{ fontWeight: "bold", textAlign: "center" }}>BON RÉPARATION {repairInfo.bonNumber}</div>
+            {repairInfo.clientNom && <div>Client : {repairInfo.clientNom}</div>}
+            {repairInfo.appareil && <div>Appareil : {repairInfo.appareil}</div>}
+            {repairInfo.imei && <div>IMEI : {repairInfo.imei}</div>}
+            {repairInfo.typePanne && <div>Panne : {repairInfo.typePanne}</div>}
+            {repairInfo.statut && <div>Statut : {repairInfo.statut}</div>}
+          </div>
+        )}
+
         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "6px", tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "12%" }} />
@@ -181,6 +194,17 @@ export default function ReceiptTicket({
             </div>
           )}
         </div>
+
+        {extraLines && extraLines.length > 0 && (
+          <div style={{ marginTop: "6px" }}>
+            {extraLines.map((l, idx) => (
+              <div className="flex justify-between" key={idx}>
+                <span>{l.label}</span>
+                <span style={{ whiteSpace: "nowrap", flexShrink: 0, marginLeft: "8px" }}>{l.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "6px", tableLayout: "fixed" }}>
           <colgroup>

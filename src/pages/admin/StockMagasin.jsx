@@ -2359,6 +2359,7 @@ export default function StockMagasin() {
           showTresorerieTile={trueIsAdmin}
           showCommissionsTile={trueIsAdmin}
           showPrixReparationsTile={trueIsAdmin}
+          showBenefice={trueIsAdmin}
           onAcompteRecorded={fetchCaisseToday}
         />
       )}

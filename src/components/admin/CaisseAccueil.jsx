@@ -85,6 +85,7 @@ export default function CaisseAccueil({
   showTresorerieTile = false,
   showCommissionsTile = false,
   showPrixReparationsTile = false,
+  showBenefice = false,
   onAcompteRecorded = () => {},
 }) {
   const [showClientModal, setShowClientModal] = useState(false)
@@ -107,6 +108,8 @@ export default function CaisseAccueil({
   })
   const [lastBon, setLastBon] = useState(null)
   const [typePannePrixMap, setTypePannePrixMap] = useState({})
+  const [repairTicketData, setRepairTicketData] = useState(null)
+  const [showRepairTicketModal, setShowRepairTicketModal] = useState(false)
 
   useEffect(() => {
     const loadTypePannePrix = async () => {
@@ -144,7 +147,7 @@ export default function CaisseAccueil({
       supabase.from('repairs').select('*')
         .eq('magasin_id', magasin).eq('date', todayDate)
         .order('created_at', { ascending: false }),
-      supabase.from('orders').select('*, phones(purchase_price)')
+      supabase.from('orders').select('*, phones(purchase_price, model, storage, color, battery_health, imei)')
         .eq('magasin_id', magasin).gte('created_at', startISO)
         .eq('status', 'recupere')
         .order('created_at', { ascending: false }),
@@ -214,6 +217,10 @@ export default function CaisseAccueil({
     setShowDetailJour(true)
     if (!detailJour) fetchDetailJour()
   }
+
+  useEffect(() => {
+    setDetailJour(null)
+  }, [magasin])
 
   const beneficeAffiche = detailJour?.beneficeTotalCalcule ?? beneficeJour
 
@@ -430,6 +437,37 @@ export default function CaisseAccueil({
       repairForm.bon_number
     )
     setLastBon(payload)
+
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const vendeurName = currentSebUser?.name || 'Admin'
+    const prixNum = Number(payload.prix || 0)
+    const payeNum = Number(payload.montant_paye || 0)
+    const numericTicket = parseInt(String(payload.bon_number).replace(/\D/g, ''), 10) || 1
+    setRepairTicketData({
+      ticketNumber: numericTicket,
+      vendeur: vendeurName,
+      dateTime: new Date(),
+      items: [{
+        qte: 1,
+        name: `Réparation — ${payload.type_panne || 'Diagnostic'}`,
+        tot: prixNum,
+      }],
+      payments: payeNum > 0
+        ? [{ type: repairForm.payment_method, amount: payeNum }]
+        : [],
+      repairInfo: {
+        bonNumber: payload.bon_number,
+        clientNom: payload.client_nom,
+        appareil: payload.appareil,
+        imei: payload.imei,
+        typePanne: payload.type_panne,
+      },
+      extraLines: [
+        { label: 'Montant payé', value: `${payeNum.toFixed(2)}€` },
+        { label: 'Restant dû', value: `${(prixNum - payeNum).toFixed(2)}€` },
+      ],
+    })
+
     setShowRepairModal(false)
     setShowBonPrintable(true)
     setTimeout(() => window.print(), 300)
@@ -457,19 +495,21 @@ export default function CaisseAccueil({
           style={{ background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)` }}>
           <p className="text-xs font-bold uppercase opacity-70 tracking-wide">Aujourd'hui</p>
           <p className="text-sm opacity-70 mt-1">{magasinLabel || magasinName(magasin)}</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <div className={showBenefice ? 'grid grid-cols-2 md:grid-cols-4 gap-4 mt-4' : 'grid grid-cols-2 md:grid-cols-3 gap-4 mt-4'}>
             <div>
               <p className="text-[10px] uppercase opacity-70">CA du jour</p>
               <p className="text-2xl font-bold mt-1">{Number(caTotal).toFixed(2)}€</p>
             </div>
-            <div>
-              <p className="text-[10px] uppercase opacity-70">Bénéfice du jour</p>
-              <p className="text-2xl font-bold mt-1">
-                {detailJour || beneficeJour > 0
-                  ? `${Number(beneficeAffiche).toFixed(2)}€`
-                  : '—'}
-              </p>
-            </div>
+            {showBenefice && (
+              <div>
+                <p className="text-[10px] uppercase opacity-70">Bénéfice du jour</p>
+                <p className="text-2xl font-bold mt-1">
+                  {detailJour || beneficeJour > 0
+                    ? `${Number(beneficeAffiche).toFixed(2)}€`
+                    : '—'}
+                </p>
+              </div>
+            )}
             <div>
               <p className="text-[10px] uppercase opacity-70">Tickets créés</p>
               <p className="text-2xl font-bold mt-1">{ticketCount}</p>
@@ -1179,9 +1219,35 @@ export default function CaisseAccueil({
                           r.status === 'en_cours'  ? 'bg-amber-100 text-amber-700' :
                           r.status === 'abandonne' ? 'bg-gray-200 text-gray-500' :
                                                      'bg-blue-100 text-blue-700'
+                        const openRepairTicket = () => {
+                          const prixNum = Number(r.prix || 0)
+                          const payeNum = Number(r.montant_paye || 0)
+                          const numericTicket = parseInt(String(r.bon_number || '').replace(/\D/g, ''), 10) || 1
+                          setRepairTicketData({
+                            ticketNumber: numericTicket,
+                            vendeur: 'Admin',
+                            dateTime: new Date(r.created_at || r.date || Date.now()),
+                            items: [{ qte: 1, name: `Réparation — ${r.type_panne || 'Diagnostic'}`, tot: prixNum }],
+                            payments: [],
+                            repairInfo: {
+                              bonNumber: r.bon_number,
+                              clientNom: r.client_nom,
+                              appareil: r.appareil,
+                              imei: r.imei,
+                              typePanne: r.type_panne,
+                              statut: r.status,
+                            },
+                            extraLines: [
+                              { label: 'Montant payé', value: `${payeNum.toFixed(2)}€` },
+                              { label: 'Restant dû', value: `${(prixNum - payeNum).toFixed(2)}€` },
+                            ],
+                          })
+                          setShowRepairTicketModal(true)
+                        }
                         return (
                           <div key={r.id}
-                            className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                            onClick={openRepairTicket}
+                            className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-xs cursor-pointer hover:bg-gray-100">
                             <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
                               <span className="font-semibold text-[#1B2A4A] truncate">{r.client_nom}</span>
                               <span className="text-gray-500 truncate">{r.type_panne || '—'}</span>
@@ -1208,14 +1274,36 @@ export default function CaisseAccueil({
                     <p className="text-sm text-gray-400 text-center py-3">Aucune vente</p>
                   ) : (
                     <div className="max-h-40 overflow-y-auto space-y-1">
-                      {detailJour.ventesPhoneJour.map((o) => {
+                      {detailJour.ventesPhoneJour.map((o, idx) => {
                         const cout = Number(o.phones?.purchase_price) || 0
                         const vente = Number(o.final_price) || 0
                         const margeConnue = o.phones?.purchase_price != null && cout > 0
                         const marge = vente - cout
+                        const openPhoneTicket = () => {
+                          setRepairTicketData({
+                            ticketNumber: idx + 1,
+                            vendeur: o.staff_name || 'Admin',
+                            dateTime: new Date(o.created_at),
+                            items: [{
+                              qte: 1,
+                              name: o.phones?.model || o.phone_name || 'Téléphone',
+                              tot: vente,
+                            }],
+                            payments: [],
+                            repairInfo: null,
+                            extraLines: [
+                              o.phones?.imei && { label: 'IMEI / N° série', value: o.phones.imei },
+                              o.phones?.storage && { label: 'Stockage', value: o.phones.storage },
+                              o.phones?.color && { label: 'Couleur', value: o.phones.color },
+                              o.phones?.battery_health != null && { label: 'Batterie', value: `${o.phones.battery_health}%` },
+                            ].filter(Boolean),
+                          })
+                          setShowRepairTicketModal(true)
+                        }
                         return (
                           <div key={o.id}
-                            className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-xs">
+                            onClick={openPhoneTicket}
+                            className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-xs cursor-pointer hover:bg-gray-100">
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-[#1B2A4A] truncate">{o.phone_name}</p>
                               {margeConnue ? (
@@ -1302,6 +1390,51 @@ export default function CaisseAccueil({
             )}
             <button onClick={() => setShowClotureDetail(false)}
               className="w-full mt-5 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY BOUTONS APRÈS GÉNÉRATION DU BON (visible à l'écran) */}
+      {showBonPrintable && lastBon && (
+        <div className="fixed bottom-4 right-4 z-50 bg-white rounded-2xl shadow-xl border border-gray-200 p-3 flex flex-col gap-2 print:!hidden">
+          <p className="text-xs font-bold text-[#1B2A4A]">Bon {lastBon.bon_number} généré</p>
+          <div className="flex gap-2">
+            <button onClick={() => window.print()}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-700 hover:border-[#1B2A4A]">
+              🖨️ Imprimer A4
+            </button>
+            <button onClick={() => setShowRepairTicketModal(true)}
+              className="px-3 py-1.5 bg-[#1B2A4A] text-white rounded-lg text-xs font-bold hover:bg-[#00B4CC]">
+              🧾 Ticket caisse
+            </button>
+            <button onClick={() => setShowBonPrintable(false)}
+              className="px-3 py-1.5 text-gray-400 hover:text-red-500 text-lg leading-none">
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL TICKET RÉPARATION (utilise ReceiptTicket) */}
+      {showRepairTicketModal && repairTicketData && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto print:!hidden">
+          <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
+            <ReceiptTicket
+              ticketNumber={repairTicketData.ticketNumber}
+              vendeur={repairTicketData.vendeur}
+              dateTime={repairTicketData.dateTime}
+              items={repairTicketData.items}
+              payments={repairTicketData.payments}
+              changeAmount={0}
+              tvaRate={21}
+              paperWidth="80mm"
+              repairInfo={repairTicketData.repairInfo}
+              extraLines={repairTicketData.extraLines}
+            />
+            <button onClick={() => setShowRepairTicketModal(false)}
+              className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
               Fermer
             </button>
           </div>
