@@ -57,6 +57,7 @@ export default function StockMagasin() {
     description: '',
     image_url: '', fournisseur_id: '',
     sans_stock: false,
+    tva_rate: 21,
   })
 
   // Form catégorie
@@ -1185,6 +1186,7 @@ export default function StockMagasin() {
       unit_price: Number(it.unit_price || 0),
       quantity: Number(it.quantity || 0),
       qteRembourse: Number(it.quantity || 0),
+      tva_rate: it.tva_rate ?? 21,
     })))
     setRefundPaymentMethod(selectedTicket.payment_method === 'mixed'
       ? 'cash' : (selectedTicket.payment_method || 'cash'))
@@ -1231,6 +1233,7 @@ export default function StockMagasin() {
       unit_price: Number(l.unit_price),
       total_price: -round2(Number(l.unit_price) * Number(l.qteRembourse)),
       discount_type: null, discount_value: 0,
+      tva_rate: l.tva_rate ?? 21,
     }))
     await supabase.from('shop_sale_items').insert(refundItems)
 
@@ -1508,6 +1511,7 @@ export default function StockMagasin() {
       image_url: item.image_url || '',
       fournisseur_id: item.fournisseur_id || '',
       sans_stock: !!item.sans_stock,
+      tva_rate: item.tva_rate ?? 21,
     } : {
       name: '', reference: '', barcode: '',
       category_id: categories[0]?.id || '', sous_categorie: '',
@@ -1517,6 +1521,7 @@ export default function StockMagasin() {
       description: '',
       image_url: '', fournisseur_id: '',
       sans_stock: false,
+      tva_rate: 21,
     })
     setShowItemModal(true)
   }
@@ -1536,6 +1541,7 @@ export default function StockMagasin() {
       image_url:      itemForm.image_url || null,
       fournisseur_id: itemForm.fournisseur_id || null,
       sans_stock:     itemForm.sans_stock,
+      tva_rate:       Number(itemForm.tva_rate) || 21,
       magasin_id: magasin,
       updated_at: new Date().toISOString(),
     }
@@ -1751,25 +1757,29 @@ export default function StockMagasin() {
       return
     }
 
-    const saleItems = cart.map(c => ({
-      sale_id: sale.id,
-      item_id: c.item_id,
-      item_name: c.item_name,
-      quantity: c.quantity,
-      unit_price: c.unit_price,
-      total_price: lineTotal(c),
-      discount_type: c.discountType || null,
-      discount_value: c.discount || 0,
-    }))
+    const { data: itemDetails } = await supabase
+      .from('shop_items')
+      .select('id, sous_categorie, tva_rate, shop_categories(name)')
+      .in('id', cart.map((c) => c.item_id))
+
+    const saleItems = cart.map((c) => {
+      const detail = itemDetails?.find((d) => d.id === c.item_id)
+      return {
+        sale_id: sale.id,
+        item_id: c.item_id,
+        item_name: c.item_name,
+        quantity: c.quantity,
+        unit_price: c.unit_price,
+        total_price: lineTotal(c),
+        discount_type: c.discountType || null,
+        discount_value: c.discount || 0,
+        tva_rate: detail?.tva_rate ?? 21,
+      }
+    })
 
     await supabase.from('shop_sale_items').insert(saleItems)
 
     if (staffId) {
-      const { data: itemDetails } = await supabase
-        .from('shop_items')
-        .select('id, sous_categorie, shop_categories(name)')
-        .in('id', cart.map((c) => c.item_id))
-
       const { data: rules } = await supabase
         .from('commission_rules')
         .select('*')
@@ -1938,8 +1948,21 @@ export default function StockMagasin() {
       })
     })
 
-    const tvaBase21 = caTotal / 1.21
-    const tvaMontant21 = caTotal - tvaBase21
+    // Ventes normales (avec items détaillés, y compris remboursements négatifs)
+    const parTaux = {}
+    salesList.forEach((sale) => {
+      (sale.shop_sale_items || []).forEach((item) => {
+        const rate = Number(item.tva_rate ?? 21)
+        parTaux[rate] = (parTaux[rate] || 0) + Number(item.total_price || 0)
+      })
+    })
+
+    // Acomptes / autres ventes sans items détaillés (fallback 21%)
+    const salesSansItems = salesList.filter((s) => !s.shop_sale_items || s.shop_sale_items.length === 0)
+    const totalSansItems = salesSansItems.reduce((s, v) => s + Number(v.total_amount || 0), 0)
+    if (totalSansItems !== 0) {
+      parTaux[21] = (parTaux[21] || 0) + totalSansItems
+    }
 
     const movs = await fetchMovementsSince(periodStart)
     const depotsTotal = movs
@@ -1952,14 +1975,18 @@ export default function StockMagasin() {
     const totalCaisseCash = cashTotal + depotsTotal - retraitsTotal
     const totalCompte = bancontactTotal + virementTotal
 
-    const tvaRows = [
-      {
-        code: 'A', rate: 21,
-        base: tvaBase21,
-        tva: caTotal - tvaBase21,
-        total: caTotal,
-      },
-    ]
+    const codes = ['A', 'B', 'C', 'D', 'E']
+    const tvaRows = Object.entries(parTaux)
+      .sort((a, b) => Number(b[0]) - Number(a[0]))
+      .map(([rate, total], idx) => {
+        const rateNum = Number(rate)
+        const base = rateNum > 0 ? total / (1 + rateNum / 100) : total
+        const tva = total - base
+        return { code: codes[idx] || '?', rate: rateNum, base, tva, total }
+      })
+
+    const tvaBase21 = tvaRows.reduce((s, r) => s + r.base, 0)
+    const tvaMontant21 = tvaRows.reduce((s, r) => s + r.tva, 0)
 
     const reglementsArr = [
       ...(bancontactTotal > 0 ? [{ method: 'BANCONTACT', montant: bancontactTotal }] : []),
@@ -5390,6 +5417,20 @@ export default function StockMagasin() {
                     }))}
                     className="w-full px-3 py-2 border border-gray-200
                                rounded-xl text-sm"/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500
+                                   uppercase mb-1 block">
+                    Taux de TVA
+                  </label>
+                  <select value={itemForm.tva_rate}
+                    onChange={(e) => setItemForm((f) => ({ ...f, tva_rate: Number(e.target.value) }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                    <option value={21}>21% (standard)</option>
+                    <option value={12}>12%</option>
+                    <option value={6}>6%</option>
+                    <option value={0}>0%</option>
+                  </select>
                 </div>
               </div>
 
