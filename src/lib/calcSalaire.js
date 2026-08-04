@@ -7,6 +7,18 @@ export function calcDureeHeures(heure_debut, heure_fin) {
   return minutes / 60
 }
 
+export function isShiftFinished(dateStr, heure_fin, heure_depart) {
+  const todayStr = new Date().toISOString().slice(0, 10)
+  if (dateStr < todayStr) return true // jour passé : toujours terminé
+  if (dateStr > todayStr) return false // jour futur : jamais terminé
+  if (heure_depart) return true // a pointé son départ
+  if (!heure_fin) return false
+  const now = new Date()
+  const [h, m] = heure_fin.split(':').map(Number)
+  const finPrevue = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0)
+  return now >= finPrevue
+}
+
 export function calcPenalite(retardMin) {
   if (retardMin < 15) return 0
   return 20 * (1 + Math.floor((retardMin - 15) / 60))
@@ -60,12 +72,16 @@ export async function calcSalairePeriode(supabase, staffId, hourlyWage, dateStar
       if (!pointage) {
         absences.push(dateStr)
       } else {
-        // Présence confirmée (pointage existe) → le shift prévu
-        // est compté en entier, peu importe l'heure réelle de
-        // départ (ou son absence)
-        const heures = calcDureeHeures(schedule.heure_debut, schedule.heure_fin)
-        totalHeures += heures
-        salaireBrut += heures * hourlyWage
+        const finished = isShiftFinished(dateStr, schedule.heure_fin, pointage.heure_depart)
+        if (finished) {
+          const heures = calcDureeHeures(schedule.heure_debut, schedule.heure_fin)
+          totalHeures += heures
+          salaireBrut += heures * hourlyWage
+        } else if (pointage.heure_arrivee) {
+          const heuresLive = Math.max(0, (new Date() - new Date(pointage.heure_arrivee)) / 3600000)
+          totalHeures += heuresLive
+          salaireBrut += heuresLive * hourlyWage
+        }
         penalitesRetard += Number(pointage.penalite_retard || 0)
       }
     }

@@ -13,7 +13,7 @@ import ZFinancierReport from '../../components/admin/ZFinancierReport'
 import CaisseAccueil from '../../components/admin/CaisseAccueil'
 import CaissePinLock from '../../components/admin/CaissePinLock'
 import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
-import { calcSalairePeriode, getWeekBounds, calcDureeHeures } from '../../lib/calcSalaire'
+import { calcSalairePeriode, getWeekBounds, calcDureeHeures, isShiftFinished } from '../../lib/calcSalaire'
 import { logActivity } from '../../lib/logActivity'
 
 const POS_CATEGORIES = [
@@ -475,8 +475,9 @@ export default function StockMagasin() {
         .eq('staff_id', staff.id).gte('date', weekStart).lte('date', weekEnd),
     ])
 
-    // Barres 7 jours (Lun -> Dim) — même règle que calcSalairePeriode :
-    // shift prévu payé entier si présence confirmée
+    // Barres 7 jours (Lun -> Dim) — MÊME logique que calcSalairePeriode :
+    // shift complet si terminé (via isShiftFinished), sinon heures live
+    // depuis heure_arrivee (si pointage existe et pas encore fini)
     const wage = Number(staff.hourly_wage || 0)
     const dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
     const monday = new Date(weekStart)
@@ -488,16 +489,11 @@ export default function StockMagasin() {
       const p = (pointagesSemRes.data || []).find((x) => x.date === dStr)
       const sch = (schedulesSemRes.data || []).find((x) => x.date === dStr)
       let hours = 0
-      if (dStr < today) {
-        if (sch && !sch.repos && p) {
+      if (sch && !sch.repos && p) {
+        const finished = isShiftFinished(dStr, sch.heure_fin, p.heure_depart)
+        if (finished) {
           hours = calcDureeHeures(sch.heure_debut, sch.heure_fin)
-        }
-      } else if (dStr === today) {
-        if (p?.heure_arrivee && p?.heure_depart) {
-          hours = sch && !sch.repos
-            ? calcDureeHeures(sch.heure_debut, sch.heure_fin)
-            : 0
-        } else if (p?.heure_arrivee) {
+        } else if (p.heure_arrivee) {
           hours = (new Date() - new Date(p.heure_arrivee)) / 3600000
         }
       }
