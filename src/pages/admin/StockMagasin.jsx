@@ -262,6 +262,10 @@ export default function StockMagasin() {
   const [libellesListTreso, setLibellesListTreso]         = useState([])
   const [closuresListTreso, setClosuresListTreso]         = useState([])
   const [loadingClosuresTreso, setLoadingClosuresTreso]   = useState(false)
+  // Restriction du select Magasin quand on ouvre le formulaire depuis un jour précis du calendrier.
+  // null = pas de restriction jour (comportement global via MAGASINS_CAISSE_DEPENSE).
+  // array = magasins autorisés pour ce jour (ceux ayant clôturé ce jour-là).
+  const [depenseMagasinJourFilter, setDepenseMagasinJourFilter] = useState(null)
 
   // Détenteur — édition d'un mouvement existant
   const [editingHolderMouvement, setEditingHolderMouvement] = useState(null)
@@ -909,6 +913,7 @@ export default function StockMagasin() {
       closure_id: '', libelle_id: '' })
     setShowDepenseForm(false)
     setPrefillTargetDate('')
+    setDepenseMagasinJourFilter(null)
     fetchMouvements()
   }
 
@@ -2976,6 +2981,7 @@ export default function StockMagasin() {
                       if (prefillTargetDate) {
                         setDepenseForm((f) => ({ ...f, target_date: prefillTargetDate }))
                       }
+                      setDepenseMagasinJourFilter(null)
                       setShowDepenseForm(true)
                     }}
                     className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
@@ -2995,15 +3001,22 @@ export default function StockMagasin() {
                           }}
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
                           <option value="">— Choisir —</option>
-                          {MAGASINS_CAISSE_DEPENSE.map((m) => (
-                            <option key={m.id} value={m.id}>{m.nom}</option>
-                          ))}
+                          {MAGASINS_CAISSE_DEPENSE
+                            .filter(m => depenseMagasinJourFilter === null || depenseMagasinJourFilter.includes(m.id))
+                            .map((m) => (
+                              <option key={m.id} value={m.id}>{m.nom}</option>
+                            ))}
                         </select>
                         {MAGASINS_CAISSE_DEPENSE.length === 0 && (
                           <p className="text-xs text-amber-600 mt-1">
                             Aucun magasin n'a encore de caisse clôturée —
                             impossible d'ajouter une dépense tant qu'aucune
                             clôture n'a eu lieu.
+                          </p>
+                        )}
+                        {depenseMagasinJourFilter !== null && depenseMagasinJourFilter.length === 0 && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Aucun magasin n'a de caisse clôturée à cette date.
                           </p>
                         )}
                       </div>
@@ -3188,7 +3201,7 @@ export default function StockMagasin() {
                         className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
                         {savingDepense ? 'Enregistrement...' : 'Enregistrer'}
                       </button>
-                      <button onClick={() => { setShowDepenseForm(false); setPrefillTargetDate(''); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: '', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash', made_by: '', made_by_autre: '', target_date: '', closure_id: '', libelle_id: '' }) }}
+                      <button onClick={() => { setShowDepenseForm(false); setPrefillTargetDate(''); setDepenseMagasinJourFilter(null); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: '', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash', made_by: '', made_by_autre: '', target_date: '', closure_id: '', libelle_id: '' }) }}
                         className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
                         Annuler
                       </button>
@@ -3784,8 +3797,17 @@ export default function StockMagasin() {
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-bold text-gray-500 uppercase">Dépenses du jour</h4>
                   <button onClick={() => {
+                      const idsDuJour = jourClotures.map(c => c.magasin_id)
+                      setDepenseMagasinJourFilter(idsDuJour)
                       setPrefillTargetDate(selectedJourMouvements)
-                      setDepenseForm((f) => ({ ...f, target_date: selectedJourMouvements }))
+                      const magPre = idsDuJour.length === 1 ? idsDuJour[0] : ''
+                      setDepenseForm((f) => ({
+                        ...f,
+                        target_date: selectedJourMouvements,
+                        magasin_id: magPre,
+                        closure_id: '',
+                      }))
+                      if (magPre) fetchClosuresForDepense(magPre)
                       if (staffListCaisse.length === 0) fetchStaffCaisse()
                       setShowDepenseForm(true)
                       setSelectedJourMouvements(null)
