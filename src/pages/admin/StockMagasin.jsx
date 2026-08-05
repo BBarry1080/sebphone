@@ -885,7 +885,7 @@ export default function StockMagasin() {
     setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur',
       fournisseur_id: '', description: '',
       categorieAutre: '',
-      holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
+      holderType: '', holderDetailMagasin: '', holderDetailAutre: '',
       payment_method: 'cash',
       made_by: '', made_by_autre: '',
       target_date: '',
@@ -3237,7 +3237,7 @@ export default function StockMagasin() {
                         className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
                         {savingDepense ? 'Enregistrement...' : 'Enregistrer'}
                       </button>
-                      <button onClick={() => { setShowDepenseForm(false); setPrefillTargetDate(''); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash', made_by: '', made_by_autre: '', target_date: '', closure_id: '', libelle_id: '' }) }}
+                      <button onClick={() => { setShowDepenseForm(false); setPrefillTargetDate(''); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: '', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash', made_by: '', made_by_autre: '', target_date: '', closure_id: '', libelle_id: '' }) }}
                         className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
                         Annuler
                       </button>
