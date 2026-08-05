@@ -5221,149 +5221,166 @@ export default function StockMagasin() {
       {/* TAB STOCK */}
       {posScreen === 'gestion' && activeTab === 'stock' && (
         <>
-          {/* Filtres */}
-          <div className="flex gap-2 mb-4 flex-wrap items-center">
-            <div className="relative flex-1 min-w-48">
-              <Search size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2
-                           text-gray-400"/>
-              <input type="text" value={search}
-                onChange={e => handleSearch(e.target.value)}
-                placeholder="Nom, référence ou scan code-barres..."
-                className="w-full pl-8 pr-3 py-2 border border-gray-200
-                           rounded-xl text-sm"/>
-            </div>
-            <button
-              onClick={() => setFilterCategory(null)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold
-                ${!filterCategory
-                  ? 'bg-[#1B2A4A] text-white'
-                  : 'bg-white border border-gray-200'}`}>
-              Tout
-            </button>
-            {categories.map(cat => (
-              <button key={cat.id}
-                onClick={() => setFilterCategory(
-                  filterCategory === cat.id ? null : cat.id
-                )}
-                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all
-                  ${filterCategory === cat.id
-                    ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-[#1B2A4A]'}`}>
-                {cat.name}
-              </button>
-            ))}
-          </div>
+          <div className="grid grid-cols-[180px_1fr] gap-4">
 
-          {/* Tableau */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Image</th>
-                  <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Article</th>
-                  <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Catégorie</th>
-                  <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Fournisseur</th>
-                  {trueIsAdmin && (
-                    <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Achat</th>
-                  )}
-                  <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Vente</th>
-                  <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Min / Max</th>
-                  <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Stock</th>
-                  <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={trueIsAdmin ? 9 : 8} className="text-center py-8 text-gray-400">
-                      Chargement...
-                    </td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={trueIsAdmin ? 9 : 8} className="text-center py-8 text-gray-400">
-                      Aucun article trouvé
-                    </td>
-                  </tr>
-                ) : filtered.map(item => {
-                  const cat = item.shop_categories
-                  const isLow = item.quantity_alert > 0 && item.quantity <= item.quantity_alert
-                  return (
-                    <tr key={item.id}
-                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
-                        {item.image_url ? (
-                          <img src={item.image_url} alt=""
-                            className="w-9 h-9 rounded-lg object-cover border border-gray-200" />
-                        ) : (
-                          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-                            <Package size={16} className="text-gray-400" />
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-[#1B2A4A] text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {item.reference && `Réf: ${item.reference}`}
-                          {item.reference && item.barcode && ' · '}
-                          {item.barcode && `CB: ${item.barcode}`}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        {cat && (
-                          <span className="text-xs font-bold px-2 py-1 rounded-lg bg-gray-100 text-gray-600">
-                            {cat.name}
-                          </span>
-                        )}
-                        {item.sous_categorie && (
-                          <p className="text-[10px] text-gray-400 mt-1">{item.sous_categorie}</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-600">
-                        {item.fournisseurs?.nom || '—'}
-                      </td>
+            {/* COLONNE GAUCHE — Catégories */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-2 flex flex-col"
+                 style={{ maxHeight: 'calc(100vh - 280px)' }}>
+              <button onClick={() => setFilterCategory(null)}
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
+                  ${!filterCategory
+                    ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
+                Tout
+              </button>
+              {categories.map(cat => (
+                <button key={cat.id}
+                  onClick={() => setFilterCategory(filterCategory === cat.id ? null : cat.id)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
+                    ${filterCategory === cat.id
+                      ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+
+            {/* COLONNE DROITE — Recherche + bouton Ajouter + Tableau */}
+            <div className="min-w-0">
+
+              <div className="flex gap-2 mb-4 items-center">
+                <div className="relative flex-1 min-w-48">
+                  <Search size={14}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+                  <input type="text" value={search}
+                    onChange={e => handleSearch(e.target.value)}
+                    placeholder="Nom, référence ou scan code-barres..."
+                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                </div>
+                <button
+                  onClick={() => {
+                    openItemModal()
+                    if (filterCategory) {
+                      setItemForm((f) => ({ ...f, category_id: filterCategory }))
+                    }
+                  }}
+                  className="flex items-center gap-1.5 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC] flex-shrink-0">
+                  <Plus size={16}/> Ajouter un article
+                </button>
+              </div>
+
+              {/* Tableau */}
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Image</th>
+                      <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Article</th>
+                      <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Catégorie</th>
+                      <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Fournisseur</th>
                       {trueIsAdmin && (
-                        <td className="px-4 py-3 text-right text-gray-500 text-xs">
-                          {item.purchase_price}€
-                        </td>
+                        <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Achat</th>
                       )}
-                      <td className="px-4 py-3 text-right font-bold text-[#1B2A4A]">
-                        {item.sale_price}€
-                      </td>
-                      <td className="px-4 py-3 text-right text-xs text-gray-400">
-                        {item.price_min}€ / {item.price_max}€
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {item.sans_stock ? (
-                          <span className="text-gray-400 text-sm">—</span>
-                        ) : (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
-                            ${isLow
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-600'}`}>
-                            {isLow && <AlertTriangle size={11} />}
-                            {item.quantity ?? 0}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-1 justify-center">
-                          <button onClick={() => openItemModal(item)}
-                            className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-400 hover:text-blue-600">
-                            <Pencil size={14}/>
-                          </button>
-                          <button onClick={() => handleDeleteItem(item.id)}
-                            className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600">
-                            <Trash2 size={14}/>
-                          </button>
-                        </div>
-                      </td>
+                      <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Vente</th>
+                      <th className="text-right px-4 py-3 font-bold text-gray-500 text-xs uppercase">Min / Max</th>
+                      <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Stock</th>
+                      <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">Actions</th>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={trueIsAdmin ? 9 : 8} className="text-center py-8 text-gray-400">
+                          Chargement...
+                        </td>
+                      </tr>
+                    ) : filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={trueIsAdmin ? 9 : 8} className="text-center py-8 text-gray-400">
+                          Aucun article trouvé
+                        </td>
+                      </tr>
+                    ) : filtered.map(item => {
+                      const cat = item.shop_categories
+                      const isLow = item.quantity_alert > 0 && item.quantity <= item.quantity_alert
+                      return (
+                        <tr key={item.id}
+                          className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt=""
+                                className="w-9 h-9 rounded-lg object-cover border border-gray-200" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                                <Package size={16} className="text-gray-400" />
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-[#1B2A4A] text-sm">{item.name}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {item.reference && `Réf: ${item.reference}`}
+                              {item.reference && item.barcode && ' · '}
+                              {item.barcode && `CB: ${item.barcode}`}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            {cat && (
+                              <span className="text-xs font-bold px-2 py-1 rounded-lg bg-gray-100 text-gray-600">
+                                {cat.name}
+                              </span>
+                            )}
+                            {item.sous_categorie && (
+                              <p className="text-[10px] text-gray-400 mt-1">{item.sous_categorie}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-600">
+                            {item.fournisseurs?.nom || '—'}
+                          </td>
+                          {trueIsAdmin && (
+                            <td className="px-4 py-3 text-right text-gray-500 text-xs">
+                              {item.purchase_price}€
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-right font-bold text-[#1B2A4A]">
+                            {item.sale_price}€
+                          </td>
+                          <td className="px-4 py-3 text-right text-xs text-gray-400">
+                            {item.price_min}€ / {item.price_max}€
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {item.sans_stock ? (
+                              <span className="text-gray-400 text-sm">—</span>
+                            ) : (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
+                                ${isLow
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-gray-100 text-gray-600'}`}>
+                                {isLow && <AlertTriangle size={11} />}
+                                {item.quantity ?? 0}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1 justify-center">
+                              <button onClick={() => openItemModal(item)}
+                                className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-400 hover:text-blue-600">
+                                <Pencil size={14}/>
+                              </button>
+                              <button onClick={() => handleDeleteItem(item.id)}
+                                className="p-1.5 hover:bg-red-50 rounded-lg text-red-400 hover:text-red-600">
+                                <Trash2 size={14}/>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
           </div>
         </>
       )}
