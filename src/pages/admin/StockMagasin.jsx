@@ -1655,7 +1655,9 @@ export default function StockMagasin() {
       alert('Nom obligatoire'); return
     }
     const finalBarcode = itemForm.barcode?.trim() || generateBarcode()
-    const categoryName = categories.find(c => c.id === itemForm.category_id)?.name || ''
+    const categoryName = itemForm.sous_categorie?.trim()
+      || categories.find(c => c.id === itemForm.category_id)?.name
+      || ''
     const payload = {
       ...itemForm,
       quantity:       itemForm.sans_stock ? 0 : (itemForm.quantity || 0),

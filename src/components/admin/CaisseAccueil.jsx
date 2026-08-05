@@ -4,7 +4,7 @@ import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
 import ReceiptTicket from './ReceiptTicket'
 import {
-  ShoppingCart, Users, Truck, Package, Boxes, Wrench, ClipboardList, X,
+  ShoppingCart, Users, Truck, Boxes, Wrench, ClipboardList, X,
   Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Percent, Tag, Search,
 } from 'lucide-react'
 
