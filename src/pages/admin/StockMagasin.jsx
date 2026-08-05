@@ -869,6 +869,22 @@ export default function StockMagasin() {
     if (!depenseForm.target_date) { alert('Indique la date de la dépense'); return }
     if (!depenseForm.libelle_id) { alert('Sélectionne ou ajoute un libellé'); return }
     if (!depenseForm.holderType) { alert('Sélectionne un détenteur'); return }
+    if (depenseForm.categorie === 'fournisseur' && !depenseForm.fournisseur_id) {
+      alert('Sélectionne un fournisseur')
+      return
+    }
+    if (depenseForm.categorie === 'autre' && !depenseForm.categorieAutre.trim()) {
+      alert('Précise la catégorie')
+      return
+    }
+    if (depenseForm.holderType === 'magasin' && !depenseForm.holderDetailMagasin) {
+      alert('Sélectionne le magasin détenteur')
+      return
+    }
+    if (depenseForm.holderType === 'autre' && !depenseForm.holderDetailAutre.trim()) {
+      alert('Précise qui détient la dépense')
+      return
+    }
     if (depenseForm.libelle_id === '__custom__' && !depenseForm.description.trim()) {
       alert('Indique le libellé')
       return
