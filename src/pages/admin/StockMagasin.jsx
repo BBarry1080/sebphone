@@ -211,6 +211,7 @@ export default function StockMagasin() {
   const [showDepenseForm, setShowDepenseForm]             = useState(false)
   const [editingDescId, setEditingDescId]                 = useState(null)
   const [editingDescValue, setEditingDescValue]           = useState('')
+  const cancelDescRef = useRef(false)
   const [depenseForm, setDepenseForm]                     = useState({
     magasin_id: '', montant: '', categorie: 'fournisseur',
     fournisseur_id: '', description: '',
@@ -2903,14 +2904,19 @@ export default function StockMagasin() {
                                         value={editingDescValue}
                                         onChange={(e) => setEditingDescValue(e.target.value)}
                                         onBlur={() => {
-                                          if (editingDescId === m.id) handleSaveDescription(m.id)
+                                          if (cancelDescRef.current) {
+                                            cancelDescRef.current = false
+                                            setEditingDescId(null)
+                                            return
+                                          }
+                                          handleSaveDescription(m.id)
                                         }}
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') {
                                             e.target.blur()
                                           }
                                           if (e.key === 'Escape') {
-                                            setEditingDescId(null)
+                                            cancelDescRef.current = true
                                             e.target.blur()
                                           }
                                         }}
