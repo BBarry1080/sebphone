@@ -122,6 +122,9 @@ export default function StockMagasin() {
   // Caisse
   const [cart, setCart] = useState([])
   const [cartSearch, setCartSearch] = useState('')
+  const [repairsInCart, setRepairsInCart]                 = useState([])
+  const [pendingRepairs, setPendingRepairs]               = useState([])
+  const [loadingPendingRepairs, setLoadingPendingRepairs] = useState(false)
   const [paymentSplits, setPaymentSplits] = useState([])
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState('cash')
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState('')
@@ -1585,6 +1588,9 @@ export default function StockMagasin() {
     if (posScreen === 'pointage' && caisseSession?.staffId) {
       fetchMyPointageData()
     }
+    if (posScreen === 'caisse' && magasin) {
+      fetchPendingRepairs()
+    }
     if (posScreen === 'tresorerie') {
       if (!trueIsAdmin && !canSeeTresorerie) {
         setPosScreen('accueil')
@@ -1719,6 +1725,41 @@ export default function StockMagasin() {
       .order('name')
     setItems(data || [])
     setLoading(false)
+  }
+
+  // ─── Réparations en attente (à ajouter au panier caisse) ───
+  const fetchPendingRepairs = async () => {
+    setLoadingPendingRepairs(true)
+    const { data } = await supabase
+      .from('repairs')
+      .select('*')
+      .eq('magasin_id', magasin)
+      .neq('status', 'abandonne')
+      .order('created_at', { ascending: false })
+    const withBalance = (data || []).filter((r) =>
+      (Number(r.prix) || 0) - (Number(r.montant_paye) || 0) > 0.01
+    )
+    setPendingRepairs(withBalance)
+    setLoadingPendingRepairs(false)
+  }
+
+  const addRepairToCart = (repair) => {
+    if (repairsInCart.find((r) => r.repair_id === repair.id)) return
+    const solde = (Number(repair.prix) || 0) - (Number(repair.montant_paye) || 0)
+    setRepairsInCart((prev) => [...prev, {
+      repair_id: repair.id,
+      bon_number: repair.bon_number,
+      client_nom: repair.client_nom,
+      unit_price: solde,
+      quantity: 1,
+    }])
+    setPendingRepairs((prev) => prev.filter((r) => r.id !== repair.id))
+  }
+
+  const removeRepairFromCart = (repairId) => {
+    const removed = repairsInCart.find((r) => r.repair_id === repairId)
+    setRepairsInCart((prev) => prev.filter((r) => r.repair_id !== repairId))
+    if (removed) fetchPendingRepairs()
   }
 
   const filtered = items.filter(item => {
@@ -1931,9 +1972,11 @@ export default function StockMagasin() {
     ))
   }
 
-  const cartSubtotal = cart.reduce((sum, c) => sum + lineTotal(c), 0)
+  const cartArticlesSubtotal = cart.reduce((sum, c) => sum + lineTotal(c), 0)
+  const repairsSubtotal = repairsInCart.reduce((sum, r) => sum + Number(r.unit_price || 0), 0)
+  const cartSubtotal = cartArticlesSubtotal + repairsSubtotal
   const globalDiscountAmount = globalDiscountValue
-    ? cartSubtotal * (Number(globalDiscountValue) / 100)
+    ? cartArticlesSubtotal * (Number(globalDiscountValue) / 100)
     : 0
   const cartTotal = Math.max(0, cartSubtotal - globalDiscountAmount)
 
@@ -1960,7 +2003,7 @@ export default function StockMagasin() {
   }
 
   const handleCheckout = async () => {
-    if (cart.length === 0 || !isFullyPaid) return
+    if ((cart.length === 0 && repairsInCart.length === 0) || !isFullyPaid) return
     setCheckoutLoading(true)
 
     const currentSebUser = JSON.parse(
@@ -2033,7 +2076,33 @@ export default function StockMagasin() {
       }
     })
 
-    await supabase.from('shop_sale_items').insert(saleItems)
+    const repairSaleItems = repairsInCart.map((r) => ({
+      sale_id: sale.id,
+      item_id: null,
+      item_name: `Réparation ${r.bon_number} — ${r.client_nom}`,
+      quantity: 1,
+      unit_price: r.unit_price,
+      total_price: r.unit_price,
+      discount_type: null,
+      discount_value: 0,
+      tva_rate: 21,
+      line_type: 'reparation',
+      repair_id: r.repair_id,
+    }))
+
+    await supabase.from('shop_sale_items').insert([...saleItems, ...repairSaleItems])
+
+    // Mise à jour du montant_paye de chaque réparation encaissée
+    for (const r of repairsInCart) {
+      const { data: rep } = await supabase.from('repairs')
+        .select('montant_paye').eq('id', r.repair_id).single()
+      const nouveauMontant = (Number(rep?.montant_paye) || 0) + r.unit_price
+      await supabase.from('repairs')
+        .update({ montant_paye: nouveauMontant })
+        .eq('id', r.repair_id)
+      await logActivity('repair_payment_completed',
+        `Solde réparation encaissé — ${r.bon_number} (${r.unit_price.toFixed(2)}€)`)
+    }
 
     if (staffId) {
       const { data: rules } = await supabase
@@ -2078,7 +2147,17 @@ export default function StockMagasin() {
 
     const saleWithTicket = {
       ...sale,
-      items: cart,
+      items: [
+        ...cart,
+        ...repairsInCart.map((r) => ({
+          item_id: null,
+          item_name: `Réparation ${r.bon_number} — ${r.client_nom}`,
+          quantity: 1,
+          unit_price: r.unit_price,
+          discount: 0,
+          discountType: null,
+        })),
+      ],
       ticketNumber: (ticketNumber || 0) + 1,
       changeToGive: currentChange,
       paymentsUsed: paymentSplits.map((p) => ({ type: p.method, amount: p.amount })),
@@ -2086,11 +2165,13 @@ export default function StockMagasin() {
     }
 
     setCart([])
+    setRepairsInCart([])
     setPaymentSplits([])
     setCurrentPaymentAmount('')
     setGlobalDiscountValue('')
     fetchItems()
     fetchCaisseToday()
+    fetchPendingRepairs()
     setCheckoutLoading(false)
 
     if (currentChange > 0) {
@@ -2598,7 +2679,6 @@ export default function StockMagasin() {
           onOpenTresorerie={() => { setPosScreen('tresorerie'); fetchMouvements(); fetchFournisseursListTreso() }}
           onOpenCommissions={() => { setPosScreen('commissions'); fetchCommissionRules(); fetchCategoriesDistinct() }}
           onOpenPrixReparations={() => { setPosScreen('prix-reparations'); fetchTypePannePrix() }}
-          onOpenRechercheTicket={() => { setPosScreen('recherche-ticket'); setSearchResults([]); setSearchQuery(''); setSearchDateStart(''); setSearchDateEnd('') }}
           onEditRefundFacture={(sale) => {
             setSelectedTicket(sale)
             setPosScreen('recherche-ticket')
@@ -4819,8 +4899,8 @@ export default function StockMagasin() {
       {posScreen === 'caisse' && (
         <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-130px)]">
 
-          {/* COLONNE GAUCHE — Catégories */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-2">
+          {/* COLONNE GAUCHE — Catégories + Réparations en attente */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-2 flex flex-col">
             <button onClick={() => setSelectedPosCategory('Tout')}
               className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all
                 ${selectedPosCategory === 'Tout'
@@ -4838,14 +4918,51 @@ export default function StockMagasin() {
                 {catName}
               </button>
             ))}
+
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-[9px] font-bold text-gray-400 uppercase mb-2 px-1">
+                🔧 En attente ({pendingRepairs.length})
+              </p>
+              <div className="space-y-1 max-h-60 overflow-y-auto">
+                {loadingPendingRepairs ? (
+                  <div className="flex justify-center py-3">
+                    <div className="w-4 h-4 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : pendingRepairs.length === 0 ? (
+                  <p className="text-[9px] text-gray-300 px-1">Aucune</p>
+                ) : (
+                  pendingRepairs.map((r) => {
+                    const solde = (Number(r.prix) || 0) - (Number(r.montant_paye) || 0)
+                    return (
+                      <button key={r.id} onClick={() => addRepairToCart(r)}
+                        className="w-full text-left bg-amber-50 hover:bg-amber-100 rounded-lg p-1.5 transition-all">
+                        <p className="text-[9px] font-bold text-[#1B2A4A] truncate">{r.client_nom}</p>
+                        <p className="text-[9px] text-amber-700 font-bold">{solde.toFixed(2)}€</p>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </div>
           </div>
 
           {/* COLONNE CENTRE — Grille articles */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-4">
-            <div className="relative mb-3">
+            <div className="relative mb-3 flex items-center gap-2">
               <button onClick={() => setShowMovementMenu(!showMovementMenu)}
                 className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:border-[#1B2A4A]">
                 <Menu size={18} className="text-gray-500"/>
+              </button>
+              <button onClick={() => {
+                  setPosScreen('recherche-ticket')
+                  setSearchResults([])
+                  setSearchQuery('')
+                  setSearchDateStart('')
+                  setSearchDateEnd('')
+                }}
+                title="Rechercher un ticket"
+                className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:border-[#1B2A4A]">
+                <Search size={18} className="text-gray-500"/>
               </button>
               {showMovementMenu && (
                 <div className="absolute top-11 left-0 bg-white rounded-2xl border border-gray-100 shadow-lg p-2 w-48 z-20">
@@ -4915,7 +5032,7 @@ export default function StockMagasin() {
           <div className="bg-white rounded-2xl border border-gray-100 p-4 overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between mb-3 gap-2">
               <h3 className="font-bold text-[#1B2A4A]">
-                {modeDevis ? 'Devis' : 'Ticket'} ({cart.length})
+                {modeDevis ? 'Devis' : 'Ticket'} ({cart.length + repairsInCart.length})
               </h3>
               <label className="relative inline-flex items-center cursor-pointer" title="Basculer en mode Devis (aucun impact CA/stock/commissions)">
                 <input type="checkbox" checked={modeDevis}
@@ -4929,13 +5046,28 @@ export default function StockMagasin() {
               </label>
             </div>
 
-            {cart.length === 0 ? (
+            {cart.length === 0 && repairsInCart.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm flex-1">
                 Sélectionnez des articles
               </p>
             ) : (
               <>
                 <div className="space-y-2 mb-4 flex-1 overflow-y-auto">
+                  {repairsInCart.map((r) => (
+                    <div key={r.repair_id} className="flex items-center justify-between gap-2 bg-amber-50 rounded-xl p-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[#1B2A4A] truncate">
+                          🔧 {r.bon_number} — {r.client_nom}
+                        </p>
+                        <p className="text-[10px] text-gray-500">Solde réparation</p>
+                      </div>
+                      <span className="text-sm font-bold text-[#1B2A4A]">{r.unit_price.toFixed(2)}€</span>
+                      <button onClick={() => removeRepairFromCart(r.repair_id)}
+                        className="text-gray-400 hover:text-red-600">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
                   {cart.map((c) => (
                     <div key={c.item_id}
                       onClick={() => setSelectedCartItemId(c.item_id)}
@@ -5065,11 +5197,11 @@ export default function StockMagasin() {
                   </div>
 
                   <button onClick={() => {
-                      if (cart.length === 0) { alert('Panier vide'); return }
+                      if (cart.length === 0 && repairsInCart.length === 0) { alert('Panier vide'); return }
                       if (modeDevis) setShowDevisForm(true)
                       else setShowPaymentModal(true)
                     }}
-                    disabled={cart.length === 0}
+                    disabled={cart.length === 0 && repairsInCart.length === 0}
                     className={`py-2.5 text-white rounded-xl font-bold transition-all disabled:opacity-50 ${
                       modeDevis
                         ? 'bg-amber-500 hover:bg-amber-600'

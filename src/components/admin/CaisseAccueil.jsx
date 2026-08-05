@@ -5,7 +5,7 @@ import { logActivity } from '../../lib/logActivity'
 import ReceiptTicket from './ReceiptTicket'
 import {
   ShoppingCart, Users, Truck, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Search,
+  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank,
 } from 'lucide-react'
 
 const COLORS = {
@@ -79,7 +79,6 @@ export default function CaisseAccueil({
   onOpenTresorerie,
   onOpenCommissions,
   onOpenPrixReparations,
-  onOpenRechercheTicket,
   onEditRefundFacture = () => {},
   showParametresCaisseTile = false,
   showTresorerieTile = false,
@@ -591,13 +590,6 @@ export default function CaisseAccueil({
           title="Vente caisse"
           subtitle="Caisse"
           onClick={onOpenCaisse}
-        />
-
-        {/* RECHERCHER UN TICKET (toujours visible) */}
-        <Tile color={COLORS.green} icon={Search}
-          title="Rechercher un ticket"
-          subtitle="Retrouver et gérer une vente"
-          onClick={onOpenRechercheTicket}
         />
 
         {/* FOURNISSEURS */}
