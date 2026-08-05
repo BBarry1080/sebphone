@@ -14,7 +14,6 @@ export const ALL_PERMISSIONS = [
   'stock_reconditionnement',
   'stock_magasin',
   'caisse',
-  'ouvrir_tiroir_sans_vente',
   'rappel_ticket',
   'modifier_prix_remises',
   'cloture_limitee',

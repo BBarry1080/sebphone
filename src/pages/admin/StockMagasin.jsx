@@ -51,7 +51,6 @@ export default function StockMagasin() {
   const canAccessParamsCaisse = isAdmin || canManageStaff
   const canModifyPrices  = isAdmin || usePermission('modifier_prix_remises')
   const canRappelTicket  = isAdmin || usePermission('rappel_ticket')
-  const canOpenDrawer    = isAdmin || usePermission('ouvrir_tiroir_sans_vente')
   const canClotureLimitee = usePermission('cloture_limitee')
   const canSeeTresorerie = usePermission('voir_tresorerie')
 
@@ -2548,63 +2547,65 @@ export default function StockMagasin() {
       )}
 
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6
-                      flex-wrap gap-3">
-        {/* MASQUÉ TEMPORAIREMENT - Titre + sous-titre */}
-        {false && (
-          <div>
-            <h1 className="text-2xl font-bold text-[#1B2A4A]">
-              Stock magasin
-            </h1>
-            <p className="text-sm text-gray-500">
-              Gérez l'inventaire de votre boutique
-            </p>
-          </div>
-        )}
-        <div className="flex gap-2 flex-wrap items-center">
-          {isAdmin && (
-            <select value={magasin}
-              onChange={e => setMagasin(e.target.value)}
-              className="px-3 py-2 border border-gray-200
-                         rounded-xl text-sm">
-              {MAGASINS_LIST.filter(m => !m.virtuel).map(m => (
-                <option key={m.id} value={m.id}>{m.nom}</option>
-              ))}
-            </select>
-          )}
-          {/* MASQUÉ TEMPORAIREMENT - Nom magasin en lecture seule pour non-admins */}
-          {false && !isAdmin && (
-            <span className="px-3 py-2 text-sm text-gray-500 font-medium">
-              {MAGASINS_LIST.find(m => m.id === magasin)?.nom || magasin}
-            </span>
-          )}
-          {/* MASQUÉ TEMPORAIREMENT - bouton Ajouter un article (déplacé dans la vue Catégorie) */}
+      {/* Header (accueil uniquement) */}
+      {posScreen === 'accueil' && (
+        <div className="flex items-center justify-between mb-6
+                        flex-wrap gap-3">
+          {/* MASQUÉ TEMPORAIREMENT - Titre + sous-titre */}
           {false && (
-            <button onClick={() => openItemModal()}
-              className="flex items-center gap-2 bg-[#1B2A4A]
-                         text-white px-4 py-2 rounded-xl
-                         text-sm font-bold hover:bg-[#00B4CC]">
-              <Plus size={16}/> Ajouter un article
-            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-[#1B2A4A]">
+                Stock magasin
+              </h1>
+              <p className="text-sm text-gray-500">
+                Gérez l'inventaire de votre boutique
+              </p>
+            </div>
           )}
-          {/* Horloge live + badge session + bouton changer d'utilisateur */}
-          <span className="text-sm text-gray-500 font-mono">{clockNow}</span>
-          {caisseSession && (
-            <>
-              <span className="flex items-center gap-2 px-3 py-1.5 bg-cyan-50 border border-cyan-200 rounded-xl text-xs font-bold text-[#00B4CC]">
-                👤 {(caisseSession.staffName || '').split(' ')[0]}
-                <span className="text-gray-500 font-normal">· {caisseSession.arrivalDisplay}</span>
+          <div className="flex gap-2 flex-wrap items-center">
+            {isAdmin && (
+              <select value={magasin}
+                onChange={e => setMagasin(e.target.value)}
+                className="px-3 py-2 border border-gray-200
+                           rounded-xl text-sm">
+                {MAGASINS_LIST.filter(m => !m.virtuel).map(m => (
+                  <option key={m.id} value={m.id}>{m.nom}</option>
+                ))}
+              </select>
+            )}
+            {/* MASQUÉ TEMPORAIREMENT - Nom magasin en lecture seule pour non-admins */}
+            {false && !isAdmin && (
+              <span className="px-3 py-2 text-sm text-gray-500 font-medium">
+                {MAGASINS_LIST.find(m => m.id === magasin)?.nom || magasin}
               </span>
-              <button onClick={handleChangeUser}
-                title="Changer d'utilisateur"
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
-                <LogOut size={14} /> Changer
+            )}
+            {/* MASQUÉ TEMPORAIREMENT - bouton Ajouter un article (déplacé dans la vue Catégorie) */}
+            {false && (
+              <button onClick={() => openItemModal()}
+                className="flex items-center gap-2 bg-[#1B2A4A]
+                           text-white px-4 py-2 rounded-xl
+                           text-sm font-bold hover:bg-[#00B4CC]">
+                <Plus size={16}/> Ajouter un article
               </button>
-            </>
-          )}
+            )}
+            {/* Horloge live + badge session + bouton changer d'utilisateur */}
+            <span className="text-sm text-gray-500 font-mono">{clockNow}</span>
+            {caisseSession && (
+              <>
+                <span className="flex items-center gap-2 px-3 py-1.5 bg-cyan-50 border border-cyan-200 rounded-xl text-xs font-bold text-[#00B4CC]">
+                  👤 {(caisseSession.staffName || '').split(' ')[0]}
+                  <span className="text-gray-500 font-normal">· {caisseSession.arrivalDisplay}</span>
+                </span>
+                <button onClick={handleChangeUser}
+                  title="Changer d'utilisateur"
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
+                  <LogOut size={14} /> Changer
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -4859,45 +4860,9 @@ export default function StockMagasin() {
         )
       })()}
 
-      {/* Mini bandeau session caisse plein écran */}
-      {posScreen === 'caisse' && caisseSession && (
-        <div className="flex items-center justify-between mb-2 text-xs">
-          <span className="text-gray-500 font-mono">{clockNow}</span>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="flex items-center gap-2 px-2.5 py-1 bg-cyan-50 border border-cyan-200 rounded-lg font-bold text-[#00B4CC]">
-              👤 {(caisseSession.staffName || '').split(' ')[0]}
-              <span className="text-gray-500 font-normal">· {caisseSession.arrivalDisplay}</span>
-            </span>
-            {canRappelTicket && lastSale && (
-              <button onClick={() => setShowTicket(true)}
-                title="Rappel du dernier ticket"
-                className="flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded-lg font-bold text-gray-600 hover:border-[#00B4CC] hover:text-[#00B4CC]">
-                🧾 Rappel ticket
-              </button>
-            )}
-            {canOpenDrawer && (
-              <button onClick={async () => {
-                  if (!window.confirm('Ouvrir le tiroir-caisse sans vente ?')) return
-                  await logActivity('tiroir_ouvert', 'Ouverture du tiroir sans vente')
-                  alert('✅ Action enregistrée')
-                }}
-                title="Ouvrir le tiroir sans vente"
-                className="flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded-lg font-bold text-gray-600 hover:border-[#1B2A4A]">
-                🗄️ Ouvrir le tiroir
-              </button>
-            )}
-            <button onClick={handleChangeUser}
-              title="Changer d'utilisateur"
-              className="flex items-center gap-1 px-2.5 py-1 border border-gray-200 rounded-lg font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
-              <LogOut size={12} /> Changer
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* TAB CAISSE — layout POS 3 colonnes */}
       {posScreen === 'caisse' && (
-        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-130px)]">
+        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-25px)]">
 
           {/* COLONNE GAUCHE — Catégories + Réparations en attente */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-2 flex flex-col">
@@ -5107,22 +5072,24 @@ export default function StockMagasin() {
                           <span className="text-xs text-gray-400">€</span>
                         </div>
                       </div>
-                      <p className="text-right text-xs mt-1.5">
-                        {c.discountType ? (
-                          <>
-                            <span className="line-through text-gray-400 mr-1">
-                              {(c.unit_price * c.quantity).toFixed(2)}€
+                      {(c.discountType || c.quantity > 1) && (
+                        <p className="text-right text-xs mt-1.5">
+                          {c.discountType ? (
+                            <>
+                              <span className="line-through text-gray-400 mr-1">
+                                {(c.unit_price * c.quantity).toFixed(2)}€
+                              </span>
+                              <span className="font-bold text-amber-600">
+                                {lineTotal(c).toFixed(2)}€
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-gray-400">
+                              = {lineTotal(c).toFixed(2)}€
                             </span>
-                            <span className="font-bold text-amber-600">
-                              {lineTotal(c).toFixed(2)}€
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-gray-400">
-                            = {lineTotal(c).toFixed(2)}€
-                          </span>
-                        )}
-                      </p>
+                          )}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>

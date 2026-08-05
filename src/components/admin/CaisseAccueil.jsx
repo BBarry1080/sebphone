@@ -587,8 +587,8 @@ export default function CaisseAccueil({
 
         {/* VENTE CAISSE */}
         <Tile color={COLORS.blue} icon={ShoppingCart}
-          title="Vente caisse"
-          subtitle="Caisse"
+          title="Caisse"
+          subtitle="Vente caisse"
           onClick={onOpenCaisse}
         />
 
