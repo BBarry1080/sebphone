@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search, Receipt,
-         AlertTriangle, Package, Tag,
+         AlertTriangle, Package, Tag, Boxes,
          Menu, Lock, Unlock, LogOut,
          Settings, Clock, Save, UserCheck, Send, Calendar, History,
          PiggyBank, ChevronLeft, ChevronRight, Percent,
@@ -2555,17 +2555,6 @@ export default function StockMagasin() {
       {posScreen === 'accueil' && (
         <div className="flex items-center justify-between mb-6
                         flex-wrap gap-3">
-          {/* MASQUÉ TEMPORAIREMENT - Titre + sous-titre */}
-          {false && (
-            <div>
-              <h1 className="text-2xl font-bold text-[#1B2A4A]">
-                Stock magasin
-              </h1>
-              <p className="text-sm text-gray-500">
-                Gérez l'inventaire de votre boutique
-              </p>
-            </div>
-          )}
           <div className="flex gap-2 flex-wrap items-center">
             {isAdmin && (
               <select value={magasin}
@@ -2704,6 +2693,12 @@ export default function StockMagasin() {
             className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
             ← Retour à l'accueil
           </button>
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
+              <Boxes size={22} /> Gestion de stock
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">Catégories & inventaire</p>
+          </div>
           <div className="flex gap-2 mb-4">
             {[
               { key: 'stock', label: 'Stock' },
