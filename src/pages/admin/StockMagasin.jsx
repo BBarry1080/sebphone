@@ -767,6 +767,24 @@ export default function StockMagasin() {
     return acc
   }, [filteredMouvements])
 
+  const totauxParDetenteurEtMagasin = useMemo(() => {
+    const acc = {}
+    filteredMouvements.forEach((m) => {
+      const key = m.holder || 'Non précisé'
+      if (!acc[key]) acc[key] = { total: 0, parMagasin: {} }
+      const delta = m.type === 'entree' ? Number(m.amount) : -Number(m.amount)
+      acc[key].total += delta
+      const magKey = m.magasin_id || '_sans_magasin'
+      acc[key].parMagasin[magKey] = (acc[key].parMagasin[magKey] || 0) + delta
+    })
+    return acc
+  }, [filteredMouvements])
+
+  const nomMagasinCourt = (id) => {
+    if (id === '_sans_magasin') return 'Sans magasin'
+    return MAGASINS_CAISSE.find((m) => m.id === id)?.nom?.replace('Seb Telecom — ', '') || id
+  }
+
   const computeHolderLabel = (form) => {
     if (form.holderType === 'zinou') return 'Zinou'
     if (form.holderType === 'david') return 'David'
@@ -2727,9 +2745,12 @@ export default function StockMagasin() {
               <p className="text-xs uppercase opacity-70 font-bold">Coffre central</p>
               <p className="text-[10px] opacity-60 mt-0.5">Cliquer pour voir qui détient quoi</p>
             </div>
-            <p className={`text-4xl font-black ${totalGlobalTreso < 0 ? 'text-red-300' : 'text-white'}`}>
-              {totalGlobalTreso.toFixed(2)}€
-            </p>
+            <div className="text-right">
+              <p className="text-[10px] uppercase opacity-70 font-bold">Total</p>
+              <p className={`text-4xl font-black ${totalGlobalTreso < 0 ? 'text-red-300' : 'text-white'}`}>
+                {totalGlobalTreso.toFixed(2)}€
+              </p>
+            </div>
           </button>
 
               {/* Totaux par moyen de paiement */}
@@ -3629,7 +3650,8 @@ export default function StockMagasin() {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="font-bold text-[#1B2A4A] text-lg">Qui détient quoi</h3>
-                <p className={`text-xl font-black mt-0.5 ${totalGlobalTreso < 0 ? 'text-red-600' : 'text-[#00B4CC]'}`}>
+                <p className="text-[10px] uppercase text-gray-400 font-bold mt-1">Total</p>
+                <p className={`text-xl font-black ${totalGlobalTreso < 0 ? 'text-red-600' : 'text-[#00B4CC]'}`}>
                   {totalGlobalTreso.toFixed(2)}€
                 </p>
               </div>
@@ -3638,24 +3660,65 @@ export default function StockMagasin() {
                 <X size={20} />
               </button>
             </div>
-            {Object.keys(totauxParDetenteur).length === 0 ? (
-              <p className="text-center text-gray-400 text-sm py-6">Aucun détenteur enregistré</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {Object.entries(totauxParDetenteur).map(([key, val]) => (
-                  <button key={key}
-                    onClick={() => { setSelectedDetenteur(key); setDetenteurMagasinFilter('all'); setShowCoffreModal(false) }}
-                    className="text-left bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-all">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase truncate" title={key}>
-                      {key}
-                    </p>
-                    <p className={`text-xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
-                      {val.toFixed(2)}€
-                    </p>
-                  </button>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              {/* COLONNE MAGASINS */}
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Magasins</p>
+                <div className="space-y-2">
+                  {MAGASINS_CAISSE.map((mag) => {
+                    const val = totauxParMagasin[mag.id] || 0
+                    return (
+                      <div key={mag.id}
+                        className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-xs font-bold text-gray-600 uppercase truncate">
+                          {mag.nom.replace('Seb Telecom — ', '')}
+                        </p>
+                        <p className={`text-2xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                          {val.toFixed(2)}€
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            )}
+
+              {/* COLONNE DÉTENTEURS */}
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Détenteurs</p>
+                {Object.keys(totauxParDetenteurEtMagasin).length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-6">Aucun détenteur enregistré</p>
+                ) : (
+                  <div className="space-y-2">
+                    {Object.entries(totauxParDetenteurEtMagasin).map(([key, info]) => (
+                      <button key={key}
+                        onClick={() => { setSelectedDetenteur(key); setDetenteurMagasinFilter('all'); setShowCoffreModal(false) }}
+                        className="w-full text-left bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-all">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase truncate" title={key}>
+                          {key}
+                        </p>
+                        <p className={`text-xl font-black mt-1 ${info.total < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                          {info.total.toFixed(2)}€
+                        </p>
+                        <div className="mt-1.5 space-y-0.5">
+                          {Object.entries(info.parMagasin)
+                            .filter(([, v]) => v !== 0)
+                            .map(([magId, v]) => (
+                              <p key={magId} className="text-[10px] text-gray-500 flex justify-between">
+                                <span>{nomMagasinCourt(magId)}</span>
+                                <span className={v < 0 ? 'text-red-500' : 'text-gray-600'}>
+                                  {v.toFixed(2)}€
+                                </span>
+                              </p>
+                            ))}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
             <button onClick={() => setShowCoffreModal(false)}
               className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
               Fermer
