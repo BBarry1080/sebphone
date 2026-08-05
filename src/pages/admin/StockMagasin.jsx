@@ -30,6 +30,20 @@ const MAG_COLORS_CAL = {
   'rue-neuve': '#f59e0b', louise: '#8b5cf6',
 }
 
+// Code-barres interne EAN-13 (préfixe 200 = usage privé)
+const generateBarcode = () => {
+  const timePart = Date.now().toString().slice(-7)
+  const randPart = Math.floor(Math.random() * 100).toString().padStart(2, '0')
+  const base = '200' + timePart + randPart
+  let sum = 0
+  for (let i = 0; i < 12; i++) {
+    const digit = parseInt(base[i], 10)
+    sum += (i % 2 === 0) ? digit : digit * 3
+  }
+  const checkDigit = (10 - (sum % 10)) % 10
+  return base + String(checkDigit)
+}
+
 export default function StockMagasin() {
   const isAdmin = useIsAdmin()
   const hasPermission = usePermission('stock_magasin')
@@ -1640,14 +1654,16 @@ export default function StockMagasin() {
     if (!itemForm.name) {
       alert('Nom obligatoire'); return
     }
+    const finalBarcode = itemForm.barcode?.trim() || generateBarcode()
+    const categoryName = categories.find(c => c.id === itemForm.category_id)?.name || ''
     const payload = {
       ...itemForm,
       quantity:       itemForm.sans_stock ? 0 : (itemForm.quantity || 0),
       purchase_price: itemForm.purchase_price || null,
       quantity_alert: itemForm.sans_stock ? 0 : (itemForm.quantity_alert || 0),
-      barcode:        itemForm.barcode || null,
+      barcode:        finalBarcode,
       reference:      itemForm.reference || null,
-      sous_categorie: itemForm.sous_categorie || null,
+      sous_categorie: categoryName,
       image_url:      itemForm.image_url || null,
       fournisseur_id: itemForm.fournisseur_id || null,
       sans_stock:     itemForm.sans_stock,
@@ -5145,37 +5161,21 @@ export default function StockMagasin() {
                              rounded-xl text-sm"/>
               </div>
 
-              {/* MASQUÉ TEMPORAIREMENT - Référence + Code-barres */}
-              {false && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-gray-500
-                                     uppercase mb-1 block">
-                      Référence
-                    </label>
-                    <input value={itemForm.reference}
-                      onChange={e => setItemForm(f => ({
-                        ...f, reference: e.target.value
-                      }))}
-                      placeholder="EC-IP13P"
-                      className="w-full px-3 py-2 border border-gray-200
-                                 rounded-xl text-sm"/>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500
-                                     uppercase mb-1 block">
-                      Code-barres
-                    </label>
-                    <input value={itemForm.barcode}
-                      onChange={e => setItemForm(f => ({
-                        ...f, barcode: e.target.value
-                      }))}
-                      placeholder="8712345678901"
-                      className="w-full px-3 py-2 border border-gray-200
-                                 rounded-xl text-sm font-mono"/>
-                  </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Code-barres
+                </label>
+                <div className="flex gap-2">
+                  <input value={itemForm.barcode}
+                    onChange={e => setItemForm(f => ({ ...f, barcode: e.target.value }))}
+                    placeholder="Généré automatiquement si vide"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono"/>
                 </div>
-              )}
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Laisse vide pour générer un code-barres automatiquement,
+                  ou saisis le tien.
+                </p>
+              </div>
 
               <div>
                 <label className="text-xs font-bold text-gray-500
@@ -5197,16 +5197,6 @@ export default function StockMagasin() {
                 </select>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
-                  Sous-catégorie
-                </label>
-                <input value={itemForm.sous_categorie}
-                  onChange={e => setItemForm(f => ({ ...f, sous_categorie: e.target.value }))}
-                  placeholder="ex: iPhone 13"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-              </div>
-
               {/* MASQUÉ TEMPORAIREMENT - Quantité + Alerte stock bas */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
                 <div>
@@ -5224,36 +5214,18 @@ export default function StockMagasin() {
                 </label>
               </div>
 
-              {false && (
-                <div className={`grid grid-cols-2 gap-3 ${itemForm.sans_stock ? 'opacity-40 pointer-events-none' : ''}`}>
-                  <div>
-                    <label className="text-xs font-bold text-gray-500
-                                     uppercase mb-1 block">
-                      Quantité
-                    </label>
-                    <input type="number" value={itemForm.quantity}
-                      disabled={itemForm.sans_stock}
-                      onChange={e => setItemForm(f => ({
-                        ...f, quantity: Number(e.target.value)
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-200
-                                 rounded-xl text-sm"/>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-amber-600
-                                     uppercase mb-1 block">
-                      Alerte stock bas (qté)
-                    </label>
-                    <input type="number" value={itemForm.quantity_alert}
-                      disabled={itemForm.sans_stock}
-                      onChange={e => setItemForm(f => ({
-                        ...f, quantity_alert: Number(e.target.value)
-                      }))}
-                      className="w-full px-3 py-2 border border-amber-200
-                                 rounded-xl text-sm"/>
-                  </div>
-                </div>
-              )}
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Quantité minimum
+                </label>
+                <input type="number" value={itemForm.quantity_alert}
+                  onChange={e => setItemForm(f => ({ ...f, quantity_alert: Number(e.target.value) }))}
+                  placeholder="3"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Seuil en dessous duquel une alerte de stock bas s'affiche.
+                </p>
+              </div>
 
               <div className={`grid ${trueIsAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
                 {trueIsAdmin && (

@@ -581,13 +581,6 @@ export default function CaisseAccueil({
           onClick={() => setShowFournisseurs(true)}
         />
 
-        {/* PRODUITS */}
-        <Tile color={COLORS.pink} icon={Package}
-          title="Produits"
-          subtitle="Consulter le catalogue articles"
-          onClick={onOpenGestion}
-        />
-
         {/* GESTION DE STOCK */}
         <Tile color={COLORS.cyan} icon={Boxes}
           title="Gestion de stock"
