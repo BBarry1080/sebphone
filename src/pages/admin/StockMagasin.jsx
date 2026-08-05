@@ -5519,6 +5519,21 @@ export default function StockMagasin() {
       {showClosureModal && closureData && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
+            {closureData.ticketCount >= 900 && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 mb-3">
+                <p className="text-sm font-bold text-amber-800">
+                  ⚠️ Volume élevé : {closureData.ticketCount} ventes détectées
+                </p>
+                <p className="text-xs text-amber-700 mt-1">
+                  Au-delà de 1000 ventes sur une même période, certaines
+                  pourraient ne pas être comptabilisées dans cette clôture
+                  (limite technique de la base de données). Si le magasin n'a
+                  pas clôturé depuis longtemps, vérifie attentivement les
+                  montants avant de confirmer, ou contacte le support si un
+                  doute existe.
+                </p>
+              </div>
+            )}
             <ZFinancierReport
               reportNumber={(lastClosure ? 1 : 0) + 1}
               caisse={magasin}

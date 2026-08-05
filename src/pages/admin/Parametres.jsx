@@ -647,6 +647,7 @@ export default function Parametres() {
         ventesJour:  { count: (jour.data || []).length, sum: sumJour },
         ventesMois:  { count: (mois.data || []).length, sum: sumMois },
         commissions: sumComms,
+        commissionsMois: salaireMois.commissionsTotal,
         fautes:      fautes.count || 0,
         salaireNetMois: salaireMois.salaireNet,
       }
@@ -1540,7 +1541,7 @@ export default function Parametres() {
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Magasin</th>
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Ventes jour</th>
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Ventes mois</th>
-                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Commissions</th>
+                    <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Commissions (mois / total)</th>
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Salaire net (ce mois)</th>
                     <th className="text-left px-4 py-3 font-bold text-gray-500 text-xs uppercase">Fautes</th>
                     <th className="text-center px-4 py-3 font-bold text-gray-500 text-xs uppercase">—</th>
@@ -1573,8 +1574,13 @@ export default function Parametres() {
                           <p className="font-bold text-[#1B2A4A]">{row.ventesMois.count} vente{row.ventesMois.count > 1 ? 's' : ''}</p>
                           <p className="text-gray-500">{row.ventesMois.sum.toFixed(2)}€</p>
                         </td>
-                        <td className="px-4 py-3">
-                          <span className="font-bold text-[#00B4CC]">{row.commissions.toFixed(2)}€</span>
+                        <td className="px-4 py-3 text-xs">
+                          <p className="font-bold text-[#00B4CC]">
+                            {row.commissionsMois.toFixed(2)}€ <span className="text-[9px] text-gray-400 font-normal">ce mois</span>
+                          </p>
+                          <p className="text-gray-500 mt-0.5">
+                            {row.commissions.toFixed(2)}€ <span className="text-[9px]">total</span>
+                          </p>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`font-bold ${row.salaireNetMois >= 0 ? 'text-green-600' : 'text-red-600'}`}>
