@@ -3708,20 +3708,20 @@ export default function StockMagasin() {
                 {jourDepenses.length === 0 ? (
                   <p className="text-xs text-gray-400 text-center py-3">Aucune dépense ce jour</p>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {jourDepenses.map((m) => {
                       const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
                       return (
-                        <div key={m.id} className="bg-red-50 rounded-lg p-2 flex items-center gap-2 flex-wrap text-xs">
+                        <div key={m.id} className="bg-red-50 rounded-lg px-2 py-1.5 flex items-center gap-1.5 flex-wrap text-xs">
                           <span className="text-gray-500">{pmIcon}</span>
-                          <span className="text-gray-700 truncate max-w-[130px]" title={m.created_by || ''}>
+                          <span className="text-gray-700 truncate max-w-[110px]" title={m.created_by || ''}>
                             {m.created_by || 'Non précisé'}
                           </span>
-                          <span className="font-bold text-red-700 ml-auto">
+                          <span className="font-bold text-red-700">
                             -{Number(m.amount || 0).toFixed(2)}€
                           </span>
                           {m.description && (
-                            <span className="w-full text-[10px] text-gray-500 italic truncate" title={m.description}>
+                            <span className="w-full text-[10px] text-gray-500 italic truncate -mt-0.5" title={m.description}>
                               {m.description}
                             </span>
                           )}
