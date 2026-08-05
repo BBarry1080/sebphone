@@ -24,6 +24,12 @@ const POS_CATEGORIES = [
   'Autre téléphone', 'Écran Samsung',
 ]
 
+// Couleur par magasin — pastilles du calendrier et cartes du coffre
+const MAG_COLORS_CAL = {
+  anderlecht: '#2563eb', molenbeek: '#16a34a',
+  'rue-neuve': '#f59e0b', louise: '#8b5cf6',
+}
+
 export default function StockMagasin() {
   const isAdmin = useIsAdmin()
   const hasPermission = usePermission('stock_magasin')
@@ -33,6 +39,7 @@ export default function StockMagasin() {
   const canRappelTicket  = isAdmin || usePermission('rappel_ticket')
   const canOpenDrawer    = isAdmin || usePermission('ouvrir_tiroir_sans_vente')
   const canClotureLimitee = usePermission('cloture_limitee')
+  const canSeeTresorerie = usePermission('voir_tresorerie')
 
   const [magasin, setMagasin] = useState('')
   const [categories, setCategories] = useState([])
@@ -251,6 +258,7 @@ export default function StockMagasin() {
 
   // Vue d'ensemble — filtres + modaux + calendrier
   const [selectedDetenteur, setSelectedDetenteur]           = useState(null)
+  const [selectedMagasinDetail, setSelectedMagasinDetail]   = useState(null)
   const [detenteurMagasinFilter, setDetenteurMagasinFilter] = useState('all')
   const [calMonthOffsetTreso, setCalMonthOffsetTreso]       = useState(0)
   const [selectedJourMouvements, setSelectedJourMouvements] = useState(null)
@@ -2450,7 +2458,7 @@ export default function StockMagasin() {
             setPosScreen('recherche-ticket')
           }}
           showParametresCaisseTile={canAccessParamsCaisse}
-          showTresorerieTile={trueIsAdmin}
+          showTresorerieTile={trueIsAdmin || canSeeTresorerie}
           showCommissionsTile={trueIsAdmin}
           showPrixReparationsTile={trueIsAdmin}
           showBenefice={trueIsAdmin}
@@ -2770,7 +2778,7 @@ export default function StockMagasin() {
 
 
       {/* ÉCRAN TRÉSORERIE (admin uniquement) — fusionné Vue + Clôtures */}
-      {posScreen === 'tresorerie' && trueIsAdmin && (
+      {posScreen === 'tresorerie' && (trueIsAdmin || canSeeTresorerie) && (
         <div className="max-w-6xl mx-auto">
           <button onClick={() => setPosScreen('accueil')}
             className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
@@ -2938,141 +2946,6 @@ export default function StockMagasin() {
                         </table>
                       </div>
                     )}
-                  </div>
-                )
-              })()}
-
-              {/* Calendrier des mouvements (vue unique) */}
-              {loadingTreso ? (
-                <div className="flex items-center justify-center h-40 mb-4">
-                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : (() => {
-                const nowDt = new Date()
-                const dispDate = new Date(nowDt.getFullYear(), nowDt.getMonth() + calMonthOffsetTreso, 1)
-                const yearM = dispDate.getFullYear()
-                const monthM = dispDate.getMonth()
-                const firstM = new Date(yearM, monthM, 1)
-                const lastM = new Date(yearM, monthM + 1, 0)
-                const daysInMonthM = lastM.getDate()
-                const firstDowM = (firstM.getDay() + 6) % 7
-                const monthLabelM = dispDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
-
-                const cellsM = []
-                for (let i = 0; i < firstDowM; i++) cellsM.push(null)
-                for (let d = 1; d <= daysInMonthM; d++) cellsM.push(new Date(yearM, monthM, d))
-                const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-
-                const jourStrM = (d) =>
-                  `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-
-                const MAG_COLORS_CAL = {
-                  anderlecht: '#2563eb', molenbeek: '#16a34a',
-                  'rue-neuve': '#f59e0b', louise: '#8b5cf6',
-                }
-
-                // Dépenses du jour : target_date si présent, sinon created_at
-                const depensesDuJour = (dateStr) => filteredMouvements.filter((m) => {
-                  if (m.type !== 'sortie') return false
-                  const eff = m.target_date || m.created_at
-                  return jourStrM(new Date(eff)) === dateStr
-                })
-
-                // Clôtures du jour filtrées par combo magasins
-                const cloturesDuJour = (dateStr) => cloturesMois.filter((c) => {
-                  if (!selectedMagasinsCombo.has(c.magasin_id)) return false
-                  return jourStrM(new Date(c.period_end)) === dateStr
-                })
-
-                return (
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => setCalMonthOffsetTreso((o) => o - 1)}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
-                          <ChevronLeft size={18} />
-                        </button>
-                        <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
-                          {monthLabelM}
-                        </span>
-                        <button onClick={() => setCalMonthOffsetTreso((o) => o + 1)}
-                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
-                          <ChevronRight size={18} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1 mb-1">
-                      {dowLabels.map((d) => (
-                        <div key={d} className="text-center text-[10px] font-bold uppercase text-gray-400 py-1">{d}</div>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1">
-                      {cellsM.map((date, idx) => {
-                        if (!date) return <div key={`empty-m-${idx}`} />
-                        const dStr = jourStrM(date)
-                        const cloJour = cloturesDuJour(dStr)
-                        const depJour = depensesDuJour(dStr)
-                        const caTotalJour = cloJour.reduce((s, c) => s + Number(c.ca_total || 0), 0)
-                        const totalDepJour = depJour.reduce((s, m) => s + Number(m.amount || 0), 0)
-                        const magPresents = [...new Set(cloJour.map((c) => c.magasin_id))]
-                        const has = cloJour.length > 0 || depJour.length > 0
-                        return (
-                          <button key={dStr}
-                            onClick={has ? () => setSelectedJourMouvements(dStr) : undefined}
-                            disabled={!has}
-                            className={`aspect-square min-h-[92px] p-1.5 rounded-lg border-2 text-left transition-all overflow-hidden
-                              ${has
-                                ? 'border-gray-100 bg-white hover:border-[#1B2A4A] cursor-pointer'
-                                : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
-                            <div className="flex items-start justify-between">
-                              <span className="text-xs font-bold text-[#1B2A4A]">{date.getDate()}</span>
-                              <div className="flex gap-0.5 flex-wrap justify-end max-w-[24px]">
-                                {magPresents.slice(0, 4).map((mid) => (
-                                  <span key={mid} className="w-1.5 h-1.5 rounded-full"
-                                    style={{ background: MAG_COLORS_CAL[mid] || '#94a3b8' }} />
-                                ))}
-                              </div>
-                            </div>
-                            {totalDepJour > 0 ? (
-                              <>
-                                {caTotalJour > 0 && (
-                                  <p className="text-sm font-bold text-[#1B2A4A] mt-0.5 leading-tight flex items-center gap-1"
-                                    title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
-                                    <span className="text-[9px] font-bold text-gray-400 border border-gray-300 rounded-full px-1.5 leading-tight">CA</span>
-                                    {caTotalJour.toFixed(0)}€
-                                  </p>
-                                )}
-                                <p className="mt-0.5 text-xs font-bold text-red-600 leading-tight flex items-center gap-1"
-                                  title={`Dépenses : -${totalDepJour.toFixed(2)}€`}>
-                                  <span className="text-[9px] font-bold text-red-500 border border-red-300 rounded-full px-1.5 leading-tight">Dép</span>
-                                  -{totalDepJour.toFixed(0)}€
-                                </p>
-                                {(() => {
-                                  const net = caTotalJour - totalDepJour
-                                  return (
-                                    <p className={`mt-0.5 text-lg font-black leading-tight flex items-center gap-1 ${net < 0 ? 'text-red-600' : 'text-green-600'}`}
-                                      title={`Total net : ${net.toFixed(2)}€`}>
-                                      <span className={`text-[9px] font-bold border rounded-full px-1.5 leading-tight ${net < 0 ? 'text-red-500 border-red-400' : 'text-green-600 border-green-500'}`}>Net</span>
-                                      {net.toFixed(0)}€
-                                    </p>
-                                  )
-                                })()}
-                              </>
-                            ) : (
-                              caTotalJour > 0 && (
-                                <p className="mt-0.5 text-lg font-black text-green-600 leading-tight flex items-center gap-1"
-                                  title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
-                                  <span className="text-[9px] font-bold text-green-600 border border-green-500 rounded-full px-1.5 leading-tight">CA</span>
-                                  {caTotalJour.toFixed(0)}€
-                                </p>
-                              )
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
                   </div>
                 )
               })()}
@@ -3305,6 +3178,136 @@ export default function StockMagasin() {
                   </div>
                 )}
               </div>
+
+              {/* Calendrier des mouvements (vue unique) */}
+              {loadingTreso ? (
+                <div className="flex items-center justify-center h-40 mb-4">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (() => {
+                const nowDt = new Date()
+                const dispDate = new Date(nowDt.getFullYear(), nowDt.getMonth() + calMonthOffsetTreso, 1)
+                const yearM = dispDate.getFullYear()
+                const monthM = dispDate.getMonth()
+                const firstM = new Date(yearM, monthM, 1)
+                const lastM = new Date(yearM, monthM + 1, 0)
+                const daysInMonthM = lastM.getDate()
+                const firstDowM = (firstM.getDay() + 6) % 7
+                const monthLabelM = dispDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
+
+                const cellsM = []
+                for (let i = 0; i < firstDowM; i++) cellsM.push(null)
+                for (let d = 1; d <= daysInMonthM; d++) cellsM.push(new Date(yearM, monthM, d))
+                const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+
+                const jourStrM = (d) =>
+                  `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+                // Dépenses du jour : target_date si présent, sinon created_at
+                const depensesDuJour = (dateStr) => filteredMouvements.filter((m) => {
+                  if (m.type !== 'sortie') return false
+                  const eff = m.target_date || m.created_at
+                  return jourStrM(new Date(eff)) === dateStr
+                })
+
+                // Clôtures du jour filtrées par combo magasins
+                const cloturesDuJour = (dateStr) => cloturesMois.filter((c) => {
+                  if (!selectedMagasinsCombo.has(c.magasin_id)) return false
+                  return jourStrM(new Date(c.period_end)) === dateStr
+                })
+
+                return (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setCalMonthOffsetTreso((o) => o - 1)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                          <ChevronLeft size={18} />
+                        </button>
+                        <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
+                          {monthLabelM}
+                        </span>
+                        <button onClick={() => setCalMonthOffsetTreso((o) => o + 1)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1 mb-1">
+                      {dowLabels.map((d) => (
+                        <div key={d} className="text-center text-[10px] font-bold uppercase text-gray-400 py-1">{d}</div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1">
+                      {cellsM.map((date, idx) => {
+                        if (!date) return <div key={`empty-m-${idx}`} />
+                        const dStr = jourStrM(date)
+                        const cloJour = cloturesDuJour(dStr)
+                        const depJour = depensesDuJour(dStr)
+                        const caTotalJour = cloJour.reduce((s, c) => s + Number(c.ca_total || 0), 0)
+                        const totalDepJour = depJour.reduce((s, m) => s + Number(m.amount || 0), 0)
+                        const magPresents = [...new Set(cloJour.map((c) => c.magasin_id))]
+                        const has = cloJour.length > 0 || depJour.length > 0
+                        return (
+                          <button key={dStr}
+                            onClick={has ? () => setSelectedJourMouvements(dStr) : undefined}
+                            disabled={!has}
+                            className={`aspect-square min-h-[92px] p-1.5 rounded-lg border-2 text-left transition-all overflow-hidden
+                              ${has
+                                ? 'border-gray-100 bg-white hover:border-[#1B2A4A] cursor-pointer'
+                                : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
+                            <div className="flex items-start justify-between">
+                              <span className="text-xs font-bold text-[#1B2A4A]">{date.getDate()}</span>
+                              <div className="flex gap-0.5 flex-wrap justify-end max-w-[24px]">
+                                {magPresents.slice(0, 4).map((mid) => (
+                                  <span key={mid} className="w-1.5 h-1.5 rounded-full"
+                                    style={{ background: MAG_COLORS_CAL[mid] || '#94a3b8' }} />
+                                ))}
+                              </div>
+                            </div>
+                            {totalDepJour > 0 ? (
+                              <>
+                                {caTotalJour > 0 && (
+                                  <p className="text-sm font-bold text-[#1B2A4A] mt-0.5 leading-tight flex items-center gap-1"
+                                    title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
+                                    <span className="text-[9px] font-bold text-gray-400 border border-gray-300 rounded-full px-1.5 leading-tight">CA</span>
+                                    {caTotalJour.toFixed(0)}€
+                                  </p>
+                                )}
+                                <p className="mt-0.5 text-xs font-bold text-red-600 leading-tight flex items-center gap-1"
+                                  title={`Dépenses : -${totalDepJour.toFixed(2)}€`}>
+                                  <span className="text-[9px] font-bold text-red-500 border border-red-300 rounded-full px-1.5 leading-tight">Dép</span>
+                                  -{totalDepJour.toFixed(0)}€
+                                </p>
+                                {(() => {
+                                  const net = caTotalJour - totalDepJour
+                                  return (
+                                    <p className={`mt-0.5 text-lg font-black leading-tight flex items-center gap-1 ${net < 0 ? 'text-red-600' : 'text-green-600'}`}
+                                      title={`Total net : ${net.toFixed(2)}€`}>
+                                      <span className={`text-[9px] font-bold border rounded-full px-1.5 leading-tight ${net < 0 ? 'text-red-500 border-red-400' : 'text-green-600 border-green-500'}`}>Net</span>
+                                      {net.toFixed(0)}€
+                                    </p>
+                                  )
+                                })()}
+                              </>
+                            ) : (
+                              caTotalJour > 0 && (
+                                <p className="mt-0.5 text-lg font-black text-green-600 leading-tight flex items-center gap-1"
+                                  title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
+                                  <span className="text-[9px] font-bold text-green-600 border border-green-500 rounded-full px-1.5 leading-tight">CA</span>
+                                  {caTotalJour.toFixed(0)}€
+                                </p>
+                              )
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
 
         </div>
       )}
@@ -3834,16 +3837,20 @@ export default function StockMagasin() {
                 <div className="space-y-2">
                   {MAGASINS_CAISSE.map((mag) => {
                     const val = totauxParMagasin[mag.id] || 0
+                    const magColor = MAG_COLORS_CAL[mag.id] || '#94a3b8'
                     return (
-                      <div key={mag.id}
-                        className="bg-gray-50 rounded-xl p-3">
-                        <p className="text-xs font-bold text-gray-600 uppercase truncate">
+                      <button key={mag.id}
+                        onClick={() => setSelectedMagasinDetail(mag.id)}
+                        className="w-full text-left bg-gray-50 rounded-xl p-3 hover:bg-gray-100 transition-all border-l-4"
+                        style={{ borderLeftColor: magColor }}>
+                        <p className="text-xs font-bold text-gray-600 uppercase truncate flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full inline-block" style={{ background: magColor }} />
                           {mag.nom.replace('Seb Telecom — ', '')}
                         </p>
                         <p className={`text-2xl font-black mt-1 ${val < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
                           {val.toFixed(2)}€
                         </p>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
@@ -3880,6 +3887,62 @@ export default function StockMagasin() {
           </div>
         </div>
       )}
+
+      {/* MODAL DÉTAIL MAGASIN (qui détient l'argent de ce magasin) */}
+      {selectedMagasinDetail && (() => {
+        const mag = MAGASINS_CAISSE.find((m) => m.id === selectedMagasinDetail)
+        const totalMagasin = totauxParMagasin[selectedMagasinDetail] || 0
+        const holdersForMagasin = {}
+        filteredMouvements
+          .filter((m) => m.magasin_id === selectedMagasinDetail)
+          .forEach((m) => {
+            const key = m.holder || 'Non précisé'
+            const delta = m.type === 'entree' ? Number(m.amount) : -Number(m.amount)
+            holdersForMagasin[key] = (holdersForMagasin[key] || 0) + delta
+          })
+        const magColor = MAG_COLORS_CAL[selectedMagasinDetail] || '#94a3b8'
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-bold text-[#1B2A4A] text-lg flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full inline-block" style={{ background: magColor }} />
+                    {mag?.nom?.replace('Seb Telecom — ', '') || selectedMagasinDetail}
+                  </h3>
+                  <p className="text-[10px] uppercase text-gray-400 font-bold mt-1">Argent dans le magasin</p>
+                  <p className={`text-xl font-black ${totalMagasin < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                    {totalMagasin.toFixed(2)}€
+                  </p>
+                </div>
+                <button onClick={() => setSelectedMagasinDetail(null)}
+                  className="text-gray-400 hover:text-[#1B2A4A]">
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Détenu par</p>
+              {Object.keys(holdersForMagasin).length === 0 ? (
+                <p className="text-center text-gray-400 text-sm py-6">Aucun mouvement pour ce magasin</p>
+              ) : (
+                <div className="space-y-2">
+                  {Object.entries(holdersForMagasin).map(([holder, amt]) => (
+                    <div key={holder} className="bg-gray-50 rounded-xl p-3 flex justify-between items-center">
+                      <p className="text-xs font-bold text-gray-600 uppercase truncate">{holder}</p>
+                      <p className={`text-lg font-black ${amt < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
+                        {amt.toFixed(2)}€
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setSelectedMagasinDetail(null)}
+                className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Fermer
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* MODAL DÉTAIL DÉTENTEUR (liste des mouvements du détenteur) */}
       {selectedDetenteur && (

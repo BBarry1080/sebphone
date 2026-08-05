@@ -87,6 +87,7 @@ const PERMISSION_GROUPS = [
     perms: [
       { key: 'voir_comptabilite', label: 'Voir la comptabilité' },
       { key: 'ajouter_paiements', label: 'Ajouter un paiement' },
+      { key: 'voir_tresorerie', label: 'Chiffres d\'affaires / Trésorerie' },
     ],
   },
   {

@@ -38,6 +38,7 @@ export const ALL_PERMISSIONS = [
   // Finance
   'voir_comptabilite',
   'ajouter_paiements',
+  'voir_tresorerie',
 
   // Ventes
   'ajouter_vente_directe',
