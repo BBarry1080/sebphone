@@ -209,6 +209,8 @@ export default function StockMagasin() {
   const [mouvements, setMouvements]                       = useState([])
   const [loadingTreso, setLoadingTreso]                   = useState(false)
   const [showDepenseForm, setShowDepenseForm]             = useState(false)
+  const [editingDescId, setEditingDescId]                 = useState(null)
+  const [editingDescValue, setEditingDescValue]           = useState('')
   const [depenseForm, setDepenseForm]                     = useState({
     magasin_id: '', montant: '', categorie: 'fournisseur',
     fournisseur_id: '', description: '',
@@ -884,6 +886,15 @@ export default function StockMagasin() {
       closure_id: '', libelle_id: '' })
     setShowDepenseForm(false)
     setPrefillTargetDate('')
+    fetchMouvements()
+  }
+
+  const handleSaveDescription = async (id) => {
+    const trimmed = editingDescValue.trim()
+    await supabase.from('tresorerie_mouvements')
+      .update({ description: trimmed || null })
+      .eq('id', id)
+    setEditingDescId(null)
     fetchMouvements()
   }
 
@@ -2884,8 +2895,28 @@ export default function StockMagasin() {
                                   <td className="px-2 py-1.5 text-right font-bold text-red-700 whitespace-nowrap">
                                     -{Number(m.amount || 0).toFixed(2)}€
                                   </td>
-                                  <td className="px-2 py-1.5 text-gray-600 max-w-[180px] truncate" title={m.description || ''}>
-                                    {m.description || '—'}
+                                  <td className="px-2 py-1.5 text-gray-600 max-w-[180px]">
+                                    {editingDescId === m.id ? (
+                                      <input
+                                        type="text"
+                                        autoFocus
+                                        value={editingDescValue}
+                                        onChange={(e) => setEditingDescValue(e.target.value)}
+                                        onBlur={() => handleSaveDescription(m.id)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') e.target.blur()
+                                          if (e.key === 'Escape') setEditingDescId(null)
+                                        }}
+                                        className="w-full px-1.5 py-0.5 border border-[#00B4CC] rounded text-xs outline-none"
+                                      />
+                                    ) : (
+                                      <span
+                                        onClick={() => { setEditingDescId(m.id); setEditingDescValue(m.description || '') }}
+                                        className="cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 truncate block"
+                                        title={m.description ? `${m.description} (cliquer pour modifier)` : 'Cliquer pour ajouter une description'}>
+                                        {m.description || <span className="text-gray-300 italic">+ Ajouter</span>}
+                                      </span>
+                                    )}
                                   </td>
                                 </tr>
                               )
