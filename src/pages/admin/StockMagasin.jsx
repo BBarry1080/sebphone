@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { Plus, X, Pencil, Trash2, Search,
+import { Plus, X, Pencil, Trash2, Search, Receipt,
          AlertTriangle, Package, Tag,
          Menu, Lock, Unlock, LogOut,
          Settings, Clock, Save, UserCheck, Send, Calendar, History,
@@ -4865,21 +4865,21 @@ export default function StockMagasin() {
         <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-25px)]">
 
           {/* COLONNE GAUCHE — Catégories + Réparations en attente */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-2 flex flex-col">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-2 flex flex-col">
             <button onClick={() => setSelectedPosCategory('Tout')}
-              className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all
+              className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
                 ${selectedPosCategory === 'Tout'
-                  ? 'bg-[#1B2A4A] text-white'
-                  : 'text-gray-600 hover:bg-gray-50'}`}>
+                  ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                  : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
               Tout
             </button>
             {POS_CATEGORIES.map((catName) => (
               <button key={catName}
                 onClick={() => setSelectedPosCategory(catName)}
-                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all
+                className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
                   ${selectedPosCategory === catName
-                    ? 'bg-[#1B2A4A] text-white'
-                    : 'text-gray-600 hover:bg-gray-50'}`}>
+                    ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
                 {catName}
               </button>
             ))}
@@ -4912,7 +4912,7 @@ export default function StockMagasin() {
           </div>
 
           {/* COLONNE CENTRE — Grille articles */}
-          <div className="bg-white rounded-2xl border border-gray-100 overflow-y-auto p-4">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-4">
             <div className="relative mb-3 flex items-center gap-2">
               <button onClick={() => setShowMovementMenu(!showMovementMenu)}
                 className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:border-[#1B2A4A]">
@@ -4925,9 +4925,10 @@ export default function StockMagasin() {
                   setSearchDateStart('')
                   setSearchDateEnd('')
                 }}
-                title="Rechercher un ticket"
-                className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:border-[#1B2A4A]">
-                <Search size={18} className="text-gray-500"/>
+                title="Rechercher un ticket — par nom du client, montant, date ou numéro de ticket"
+                className="h-9 px-3 rounded-xl border-2 border-cyan-200 bg-cyan-50 flex items-center gap-1.5 hover:border-[#00B4CC] hover:bg-cyan-100 transition-all">
+                <Receipt size={16} className="text-[#00B4CC]"/>
+                <span className="text-xs font-bold text-[#00B4CC] whitespace-nowrap">Rechercher un ticket</span>
               </button>
               {showMovementMenu && (
                 <div className="absolute top-11 left-0 bg-white rounded-2xl border border-gray-100 shadow-lg p-2 w-48 z-20">
@@ -4994,7 +4995,7 @@ export default function StockMagasin() {
           </div>
 
           {/* COLONNE DROITE — Ticket / Panier */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 overflow-y-auto flex flex-col">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between mb-3 gap-2">
               <h3 className="font-bold text-[#1B2A4A]">
                 {modeDevis ? 'Devis' : 'Ticket'} ({cart.length + repairsInCart.length})
