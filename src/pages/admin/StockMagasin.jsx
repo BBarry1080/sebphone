@@ -123,6 +123,7 @@ export default function StockMagasin() {
   const [movements, setMovements] = useState([])
   const [lastClosure, setLastClosure] = useState(null)
   const [todaysClosure, setTodaysClosure] = useState(null)
+  const [nowTick, setNowTick] = useState(Date.now())
   const [showClosureModal, setShowClosureModal] = useState(false)
   const [closureData, setClosureData] = useState(null)
   const [closureLoading, setClosureLoading] = useState(false)
@@ -141,6 +142,19 @@ export default function StockMagasin() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 30000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Fenêtre de clôture manuelle : à partir de 19h00 (heure de Bruxelles)
+  const brusselsHour = Number(
+    new Date(nowTick).toLocaleString('en-GB', {
+      timeZone: 'Europe/Brussels', hour: '2-digit', hour12: false
+    })
+  ) % 24
+  const canCloseNow = brusselsHour >= 19
 
   useEffect(() => {
     const screenParam = searchParams.get('screen')
@@ -2442,6 +2456,15 @@ export default function StockMagasin() {
                   CA {Number(todaysClosure.ca_total).toFixed(2)}€
                 </p>
               </div>
+            ) : !canCloseNow ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+                <p className="text-amber-700 text-sm font-bold">
+                  🕖 Clôture disponible à partir de 19h00
+                </p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Repasse après 19h pour clôturer la caisse.
+                </p>
+              </div>
             ) : (
               <button onClick={openClosureModal}
                 className="py-3 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:opacity-90">
@@ -4443,6 +4466,15 @@ export default function StockMagasin() {
               <div className="w-full mt-2 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-center">
                 <p className="text-gray-500 text-xs">
                   🔒 Déjà clôturé aujourd'hui — {Number(todaysClosure.ca_total).toFixed(2)}€
+                </p>
+              </div>
+            ) : !canCloseNow ? (
+              <div className="w-full mt-2 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-center">
+                <p className="text-amber-700 text-sm font-bold">
+                  🕖 Clôture disponible à partir de 19h00
+                </p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Repasse après 19h pour clôturer la caisse.
                 </p>
               </div>
             ) : (
