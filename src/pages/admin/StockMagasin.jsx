@@ -2158,6 +2158,7 @@ export default function StockMagasin() {
     fetchLastClosure()
     fetchTodaysClosure()
     fetchCaisseToday()
+    fetchMagasinsAvecHistorique()
   }
 
   const printViaAgent = async (ticketData, fallbackPrint) => {
