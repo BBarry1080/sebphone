@@ -70,8 +70,8 @@ export default function Clients() {
   const fetchRepairsRegistre = async () => {
     setLoadingRepairs(true)
     const [repairsRes, clientsRes] = await Promise.all([
-      supabase.from('repairs').select('*').order('created_at', { ascending: false }).limit(300),
-      supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(300),
+      supabase.from('repairs').select('*').order('created_at', { ascending: false }).limit(3000),
+      supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(3000),
     ])
     const rRows = (repairsRes.data || []).map((r) => ({
       id: r.id,
