@@ -1502,7 +1502,7 @@ export default function StockMagasin() {
       fetchMyPointageData()
     }
     if (posScreen === 'tresorerie') {
-      if (!trueIsAdmin) {
+      if (!trueIsAdmin && !canSeeTresorerie) {
         setPosScreen('accueil')
       } else {
         fetchMouvements()
@@ -1529,7 +1529,7 @@ export default function StockMagasin() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posScreen, canAccessParamsCaisse, trueIsAdmin])
+  }, [posScreen, canAccessParamsCaisse, trueIsAdmin, canSeeTresorerie])
 
   useEffect(() => {
     if (magasin) {
@@ -2915,103 +2915,6 @@ export default function StockMagasin() {
                 </p>
               </div>
 
-              {/* Liste des dépenses récentes (20 dernières, sorties uniquement) */}
-              {(() => {
-                const depenses = filteredMouvements
-                  .filter((m) => m.type === 'sortie')
-                  .sort((a, b) => {
-                    const da = new Date(a.target_date || a.created_at).getTime()
-                    const db = new Date(b.target_date || b.created_at).getTime()
-                    return db - da
-                  })
-                  .slice(0, 20)
-                return (
-                  <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">
-                      Dépenses récentes {depenses.length > 0 && `(${depenses.length})`}
-                    </h3>
-                    {depenses.length === 0 ? (
-                      <p className="text-xs text-gray-400 text-center py-3">Aucune dépense</p>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-gray-100">
-                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase whitespace-nowrap">Date</th>
-                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Fait par</th>
-                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Magasin</th>
-                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Méthode</th>
-                              <th className="text-right px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Montant</th>
-                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {depenses.map((m) => {
-                              const dt = new Date(m.target_date || m.created_at)
-                              const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`
-                              const magNom = m.magasin_id
-                                ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
-                                : 'Central'
-                              const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
-                              return (
-                                <tr key={m.id} className="border-b border-gray-50">
-                                  <td className="px-2 py-1.5 font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
-                                  <td className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]" title={m.created_by || ''}>{m.created_by || '—'}</td>
-                                  <td className="px-2 py-1.5 text-gray-600">{magNom}</td>
-                                  <td className="px-2 py-1.5 text-gray-600">
-                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                                      {pmIcon}
-                                    </span>
-                                  </td>
-                                  <td className="px-2 py-1.5 text-right font-bold text-red-700 whitespace-nowrap">
-                                    -{Number(m.amount || 0).toFixed(2)}€
-                                  </td>
-                                  <td className="px-2 py-1.5 text-gray-600 max-w-[180px]">
-                                    {editingDescId === m.id ? (
-                                      <input
-                                        type="text"
-                                        autoFocus
-                                        value={editingDescValue}
-                                        onChange={(e) => setEditingDescValue(e.target.value)}
-                                        onBlur={() => {
-                                          if (cancelDescRef.current) {
-                                            cancelDescRef.current = false
-                                            setEditingDescId(null)
-                                            return
-                                          }
-                                          handleSaveDescription(m.id)
-                                        }}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') {
-                                            e.target.blur()
-                                          }
-                                          if (e.key === 'Escape') {
-                                            cancelDescRef.current = true
-                                            e.target.blur()
-                                          }
-                                        }}
-                                        className="w-full px-1.5 py-0.5 border border-[#00B4CC] rounded text-xs outline-none"
-                                      />
-                                    ) : (
-                                      <span
-                                        onClick={() => { setEditingDescId(m.id); setEditingDescValue(m.description || '') }}
-                                        className="cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 truncate block"
-                                        title={m.description ? `${m.description} (cliquer pour modifier)` : 'Cliquer pour ajouter une description'}>
-                                        {m.description || <span className="text-gray-300 italic">+ Ajouter</span>}
-                                      </span>
-                                    )}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-
               {/* Formulaire dépense */}
               <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
                 {!showDepenseForm ? (
@@ -3248,6 +3151,103 @@ export default function StockMagasin() {
                   </div>
                 )}
               </div>
+
+              {/* Liste des dépenses récentes (20 dernières, sorties uniquement) */}
+              {(() => {
+                const depenses = filteredMouvements
+                  .filter((m) => m.type === 'sortie')
+                  .sort((a, b) => {
+                    const da = new Date(a.target_date || a.created_at).getTime()
+                    const db = new Date(b.target_date || b.created_at).getTime()
+                    return db - da
+                  })
+                  .slice(0, 20)
+                return (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">
+                      Dépenses récentes {depenses.length > 0 && `(${depenses.length})`}
+                    </h3>
+                    {depenses.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-3">Aucune dépense</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-100">
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase whitespace-nowrap">Date</th>
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Fait par</th>
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Magasin</th>
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Méthode</th>
+                              <th className="text-right px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Montant</th>
+                              <th className="text-left px-2 py-2 font-bold text-gray-500 text-[10px] uppercase">Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {depenses.map((m) => {
+                              const dt = new Date(m.target_date || m.created_at)
+                              const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`
+                              const magNom = m.magasin_id
+                                ? (MAGASINS_LIST.find((x) => x.id === m.magasin_id)?.nom || m.magasin_id).replace('Seb Telecom — ', '')
+                                : 'Central'
+                              const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+                              return (
+                                <tr key={m.id} className="border-b border-gray-50">
+                                  <td className="px-2 py-1.5 font-mono text-gray-600 whitespace-nowrap">{dateStr}</td>
+                                  <td className="px-2 py-1.5 text-gray-700 truncate max-w-[100px]" title={m.created_by || ''}>{m.created_by || '—'}</td>
+                                  <td className="px-2 py-1.5 text-gray-600">{magNom}</td>
+                                  <td className="px-2 py-1.5 text-gray-600">
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                                      {pmIcon}
+                                    </span>
+                                  </td>
+                                  <td className="px-2 py-1.5 text-right font-bold text-red-700 whitespace-nowrap">
+                                    -{Number(m.amount || 0).toFixed(2)}€
+                                  </td>
+                                  <td className="px-2 py-1.5 text-gray-600 max-w-[180px]">
+                                    {editingDescId === m.id ? (
+                                      <input
+                                        type="text"
+                                        autoFocus
+                                        value={editingDescValue}
+                                        onChange={(e) => setEditingDescValue(e.target.value)}
+                                        onBlur={() => {
+                                          if (cancelDescRef.current) {
+                                            cancelDescRef.current = false
+                                            setEditingDescId(null)
+                                            return
+                                          }
+                                          handleSaveDescription(m.id)
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.target.blur()
+                                          }
+                                          if (e.key === 'Escape') {
+                                            cancelDescRef.current = true
+                                            e.target.blur()
+                                          }
+                                        }}
+                                        className="w-full px-1.5 py-0.5 border border-[#00B4CC] rounded text-xs outline-none"
+                                      />
+                                    ) : (
+                                      <span
+                                        onClick={() => { setEditingDescId(m.id); setEditingDescValue(m.description || '') }}
+                                        className="cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 truncate block"
+                                        title={m.description ? `${m.description} (cliquer pour modifier)` : 'Cliquer pour ajouter une description'}>
+                                        {m.description || <span className="text-gray-300 italic">+ Ajouter</span>}
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Calendrier des mouvements (vue unique) */}
               {loadingTreso ? (
