@@ -213,7 +213,7 @@ export default function StockMagasin() {
     magasin_id: '', montant: '', categorie: 'fournisseur',
     fournisseur_id: '', description: '',
     categorieAutre: '',
-    holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
+    holderType: '', holderDetailMagasin: '', holderDetailAutre: '',
     payment_method: 'cash',
     made_by: '', made_by_autre: '',
     target_date: '',
@@ -840,6 +840,7 @@ export default function StockMagasin() {
     if (!depenseForm.closure_id) { alert('Sélectionne une clôture de caisse'); return }
     if (!depenseForm.target_date) { alert('Indique la date de la dépense'); return }
     if (!depenseForm.libelle_id) { alert('Sélectionne ou ajoute un libellé'); return }
+    if (!depenseForm.holderType) { alert('Sélectionne un détenteur'); return }
     if (depenseForm.libelle_id === '__custom__' && !depenseForm.description.trim()) {
       alert('Indique le libellé')
       return
@@ -3124,6 +3125,7 @@ export default function StockMagasin() {
                         <select value={depenseForm.holderType}
                           onChange={(e) => setDepenseForm((f) => ({ ...f, holderType: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                          <option value="">— Choisir —</option>
                           <option value="zinou">Zinou</option>
                           <option value="david">David</option>
                           <option value="moha">Moha</option>
