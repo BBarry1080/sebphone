@@ -2902,10 +2902,17 @@ export default function StockMagasin() {
                                         autoFocus
                                         value={editingDescValue}
                                         onChange={(e) => setEditingDescValue(e.target.value)}
-                                        onBlur={() => handleSaveDescription(m.id)}
+                                        onBlur={() => {
+                                          if (editingDescId === m.id) handleSaveDescription(m.id)
+                                        }}
                                         onKeyDown={(e) => {
-                                          if (e.key === 'Enter') e.target.blur()
-                                          if (e.key === 'Escape') setEditingDescId(null)
+                                          if (e.key === 'Enter') {
+                                            e.target.blur()
+                                          }
+                                          if (e.key === 'Escape') {
+                                            setEditingDescId(null)
+                                            e.target.blur()
+                                          }
                                         }}
                                         className="w-full px-1.5 py-0.5 border border-[#00B4CC] rounded text-xs outline-none"
                                       />
