@@ -3887,6 +3887,13 @@ export default function StockMagasin() {
                         const isEntree = m.type === 'entree'
                         const signe = isEntree ? '+' : '-'
                         const pmIcon = m.payment_method === 'bancontact' ? '💳' : m.payment_method === 'virement' ? '🏦' : '💵'
+
+                        const depensesLiees = (m.source === 'cloture' && m.reference_id)
+                          ? mouvements.filter((x) => x.type === 'sortie' && x.closure_id === m.reference_id)
+                          : []
+                        const totalDepLiee = depensesLiees.reduce((s, x) => s + Number(x.amount || 0), 0)
+                        const netLiee = Number(m.amount || 0) - totalDepLiee
+
                         return (
                           <div key={m.id} className="bg-gray-50 rounded-lg p-2 flex flex-wrap items-center gap-2 text-xs">
                             <span className="font-mono text-gray-500">{dateStr}</span>
@@ -3903,6 +3910,18 @@ export default function StockMagasin() {
                               <span className="w-full text-[10px] text-gray-500 italic truncate" title={m.description || m.source}>
                                 {m.description || m.source}
                               </span>
+                            )}
+                            {totalDepLiee > 0 && (
+                              <>
+                                <span className="w-full text-xs font-bold text-red-600">
+                                  <span className="text-[9px] font-normal opacity-70 mr-0.5">Dép</span>
+                                  -{totalDepLiee.toFixed(2)}€
+                                </span>
+                                <span className="w-full text-sm font-black text-green-600">
+                                  <span className="text-[9px] font-normal text-green-500 mr-0.5">Net</span>
+                                  {netLiee.toFixed(2)}€
+                                </span>
+                              </>
                             )}
                           </div>
                         )
