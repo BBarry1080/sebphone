@@ -29,10 +29,12 @@ async function buildAndPrint(ticket) {
     throw new Error(`Imprimante injoignable sur ${PRINTER_IP}:${PRINTER_PORT}`);
   }
 
-  printer.alignCenter();
+  printer.setTypeFontA();
   printer.bold(true);
+  printer.setTextDoubleHeight();
+
+  printer.alignCenter();
   printer.println(ticket.companyName || "SLT GROUP (SRL)");
-  printer.bold(false);
   printer.println(`TVA: ${ticket.tva || "BE 1028.764.677"}`);
   printer.println(`Caisse n°: ${ticket.caisseNom || ""}`);
   printer.println(`Date: ${ticket.dateTime}`);
@@ -50,12 +52,10 @@ async function buildAndPrint(ticket) {
   }
   printer.drawLine();
 
-  printer.bold(true);
   printer.tableCustom([
     { text: "TOTAL:", align: "LEFT", width: 0.7 },
     { text: money(total), align: "RIGHT", width: 0.3 },
   ]);
-  printer.bold(false);
   printer.drawLine();
 
   const rate = ticket.tvaRate || 21;
@@ -84,6 +84,7 @@ async function buildAndPrint(ticket) {
   printer.drawLine();
 
   if (ticket.barcode) {
+    printer.setTextNormal();
     printer.alignCenter();
     printer.printBarcode(String(ticket.barcode), 73, {
       hriPos: 2,
@@ -92,6 +93,8 @@ async function buildAndPrint(ticket) {
       height: 80,
     });
     printer.newLine();
+    printer.setTextDoubleHeight();
+    printer.bold(true);
   }
 
   printer.alignCenter();
