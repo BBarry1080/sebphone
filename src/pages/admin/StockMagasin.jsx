@@ -3013,13 +3013,16 @@ export default function StockMagasin() {
                                 -{totalDepJour.toFixed(0)}€
                               </p>
                             )}
-                            {(caTotalJour > 0 || totalDepJour > 0) && (
-                              <p className="mt-0.5 text-sm font-black text-green-600 leading-tight"
-                                title={`Total net : ${(caTotalJour - totalDepJour).toFixed(2)}€`}>
-                                <span className="text-[9px] font-normal text-green-500 mr-0.5">Net</span>
-                                {(caTotalJour - totalDepJour).toFixed(0)}€
-                              </p>
-                            )}
+                            {(caTotalJour > 0 || totalDepJour > 0) && (() => {
+                              const net = caTotalJour - totalDepJour
+                              return (
+                                <p className={`mt-0.5 text-sm font-black leading-tight ${net < 0 ? 'text-red-600' : 'text-green-600'}`}
+                                  title={`Total net : ${net.toFixed(2)}€`}>
+                                  <span className={`text-[9px] font-normal mr-0.5 ${net < 0 ? 'text-red-400' : 'text-green-500'}`}>Net</span>
+                                  {net.toFixed(0)}€
+                                </p>
+                              )
+                            })()}
                           </button>
                         )
                       })}
