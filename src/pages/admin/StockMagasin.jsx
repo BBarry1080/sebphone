@@ -3666,6 +3666,7 @@ export default function StockMagasin() {
         })
         const totalDepJour = jourDepenses.reduce((s, m) => s + Number(m.amount || 0), 0)
         const caJour = jourClotures.reduce((s, c) => s + Number(c.ca_total || 0), 0)
+        const netJour = caJour - totalDepJour
 
         return (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -3675,9 +3676,14 @@ export default function StockMagasin() {
                   <h3 className="font-bold text-[#1B2A4A] text-lg capitalize">
                     {new Date(selectedJourMouvements).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                   </h3>
-                  <div className="flex gap-4 mt-1 text-xs">
-                    {caJour > 0 && <span className="text-[#00B4CC] font-bold">CA {caJour.toFixed(2)}€</span>}
-                    {totalDepJour > 0 && <span className="text-red-600 font-bold">Dépenses -{totalDepJour.toFixed(2)}€</span>}
+                  <div className="flex items-center gap-4 mt-1">
+                    {caJour > 0 && <span className="text-[#00B4CC] font-bold text-xs">CA {caJour.toFixed(2)}€</span>}
+                    {totalDepJour > 0 && <span className="text-red-600 font-bold text-xs">Dépenses -{totalDepJour.toFixed(2)}€</span>}
+                    {(caJour > 0 || totalDepJour > 0) && (
+                      <span className={`font-black text-xl ${netJour < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        Net {netJour.toFixed(2)}€
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button onClick={() => setSelectedJourMouvements(null)}
