@@ -3811,18 +3811,6 @@ export default function StockMagasin() {
                         <p className={`text-xl font-black mt-1 ${info.total < 0 ? 'text-red-600' : 'text-[#1B2A4A]'}`}>
                           {info.total.toFixed(2)}€
                         </p>
-                        <div className="mt-1.5 space-y-0.5">
-                          {Object.entries(info.parMagasin)
-                            .filter(([, v]) => v !== 0)
-                            .map(([magId, v]) => (
-                              <p key={magId} className="text-[10px] text-gray-500 flex justify-between">
-                                <span>{nomMagasinCourt(magId)}</span>
-                                <span className={v < 0 ? 'text-red-500' : 'text-gray-600'}>
-                                  {v.toFixed(2)}€
-                                </span>
-                              </p>
-                            ))}
-                        </div>
                       </button>
                     ))}
                   </div>
