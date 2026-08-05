@@ -3908,8 +3908,8 @@ export default function StockMagasin() {
                                   <span className="text-[9px] font-normal opacity-70 mr-0.5">Dép</span>
                                   -{totalDepLiee.toFixed(2)}€
                                 </span>
-                                <span className="w-full text-sm font-black text-green-600">
-                                  <span className="text-[9px] font-normal text-green-500 mr-0.5">Net</span>
+                                <span className={`w-full text-sm font-black ${netLiee < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                  <span className={`text-[9px] font-normal mr-0.5 ${netLiee < 0 ? 'text-red-400' : 'text-green-500'}`}>Net</span>
                                   {netLiee.toFixed(2)}€
                                 </span>
                               </>
