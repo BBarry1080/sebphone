@@ -5,7 +5,7 @@ import { logActivity } from '../../lib/logActivity'
 import ReceiptTicket from './ReceiptTicket'
 import {
   ShoppingCart, Users, Truck, Boxes, Wrench, ClipboardList, X,
-  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Percent, Tag, Search,
+  Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank, Search,
 } from 'lucide-react'
 
 const COLORS = {
@@ -542,24 +542,6 @@ export default function CaisseAccueil({
           />
         )}
 
-        {/* COMMISSIONS (admin uniquement) */}
-        {showCommissionsTile && (
-          <Tile color={COLORS.rose} icon={Percent}
-            title="Commissions"
-            subtitle="Taux par catégorie d'article"
-            onClick={onOpenCommissions}
-          />
-        )}
-
-        {/* PRIX RÉPARATIONS (admin uniquement) */}
-        {showPrixReparationsTile && (
-          <Tile color={COLORS.indigo} icon={Tag}
-            title="Prix réparations"
-            subtitle="Prix par défaut, min et max"
-            onClick={onOpenPrixReparations}
-          />
-        )}
-
         {/* VENTE CAISSE */}
         <Tile color={COLORS.blue} icon={ShoppingCart}
           title="Vente caisse"
@@ -598,18 +580,38 @@ export default function CaisseAccueil({
         )}
 
         {/* POINTAGE (toujours visible pour l'employé connecté) */}
-        <Tile color={COLORS.teal} icon={UserCheck}
-          title="Pointage"
-          subtitle="Mon planning & mes heures"
-          onClick={onOpenPointage}
-        />
+        <div className="relative">
+          <Tile color={COLORS.teal} icon={UserCheck}
+            title="Pointage"
+            subtitle="Mon planning & mes heures"
+            onClick={onOpenPointage}
+          />
+          {showCommissionsTile && (
+            <button type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenCommissions() }}
+              title="Configurer les commissions"
+              className="absolute top-2 right-2 p-1.5 rounded-lg text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-100 z-10">
+              <Settings size={14} strokeWidth={2.2} />
+            </button>
+          )}
+        </div>
 
         {/* RÉPARATIONS */}
-        <Tile color={COLORS.amber} icon={Wrench}
-          title="Réparations"
-          subtitle="Générer un bon de dépôt"
-          onClick={openRepairModal}
-        />
+        <div className="relative">
+          <Tile color={COLORS.amber} icon={Wrench}
+            title="Réparations"
+            subtitle="Générer un bon de dépôt"
+            onClick={openRepairModal}
+          />
+          {showPrixReparationsTile && (
+            <button type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenPrixReparations() }}
+              title="Configurer les prix de réparation"
+              className="absolute top-2 right-2 p-1.5 rounded-lg text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-100 z-10">
+              <Settings size={14} strokeWidth={2.2} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* MODAL CLIENT */}
