@@ -1413,12 +1413,13 @@ export default function StockMagasin() {
 
   const fetchTodaysClosure = async () => {
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Brussels' })
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('cash_closures')
       .select('*')
       .eq('magasin_id', magasin)
       .eq('closure_date', todayStr)
       .maybeSingle()
+    if (error) console.error('fetchTodaysClosure error:', error)
     setTodaysClosure(data || null)
     return data
   }
@@ -4438,10 +4439,18 @@ export default function StockMagasin() {
               className="w-full mt-2 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:border-[#1B2A4A]">
               Imprimer récap du jour
             </button>
-            <button onClick={openClosureModal}
-              className="w-full mt-2 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-xs font-bold hover:opacity-90">
-              Clôturer la caisse
-            </button>
+            {todaysClosure ? (
+              <div className="w-full mt-2 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-center">
+                <p className="text-gray-500 text-xs">
+                  🔒 Déjà clôturé aujourd'hui — {Number(todaysClosure.ca_total).toFixed(2)}€
+                </p>
+              </div>
+            ) : (
+              <button onClick={openClosureModal}
+                className="w-full mt-2 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-xs font-bold hover:opacity-90">
+                Clôturer la caisse
+              </button>
+            )}
           </div>
         </div>
       )}
