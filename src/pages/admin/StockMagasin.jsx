@@ -791,19 +791,11 @@ export default function StockMagasin() {
     const acc = {}
     filteredMouvements.forEach((m) => {
       const key = m.holder || 'Non précisé'
-      if (!acc[key]) acc[key] = { total: 0, parMagasin: {} }
       const delta = m.type === 'entree' ? Number(m.amount) : -Number(m.amount)
-      acc[key].total += delta
-      const magKey = m.magasin_id || '_sans_magasin'
-      acc[key].parMagasin[magKey] = (acc[key].parMagasin[magKey] || 0) + delta
+      acc[key] = { total: (acc[key]?.total || 0) + delta }
     })
     return acc
   }, [filteredMouvements])
-
-  const nomMagasinCourt = (id) => {
-    if (id === '_sans_magasin') return 'Sans magasin'
-    return MAGASINS_CAISSE.find((m) => m.id === id)?.nom?.replace('Seb Telecom — ', '') || id
-  }
 
   const computeHolderLabel = (form) => {
     if (form.holderType === 'zinou') return 'Zinou'
