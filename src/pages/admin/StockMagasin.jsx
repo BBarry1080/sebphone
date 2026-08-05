@@ -232,6 +232,7 @@ export default function StockMagasin() {
   const [prefillTargetDate, setPrefillTargetDate]         = useState('')
   const [savingDepense, setSavingDepense]                 = useState(false)
   const [fournisseursListTreso, setFournisseursListTreso] = useState([])
+  const [magasinsAvecHistorique, setMagasinsAvecHistorique] = useState([])
 
   // Détenteur — édition d'un mouvement existant
   const [editingHolderMouvement, setEditingHolderMouvement] = useState(null)
@@ -506,6 +507,8 @@ export default function StockMagasin() {
     )
     if (user.magasin_id) setMagasin(user.magasin_id)
     else if (MAGASINS_LIST.length > 0) setMagasin(MAGASINS_LIST[0].id)
+    fetchMagasinsAvecHistorique()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Charge la session caisse depuis localStorage à chaque changement de magasin
@@ -697,6 +700,11 @@ export default function StockMagasin() {
   const MAGASINS_CAISSE = MAGASINS_LIST.filter((m) =>
     ['anderlecht', 'molenbeek', 'rue-neuve', 'louise'].includes(m.id))
 
+  // Formulaire dépense uniquement : magasins ayant déjà clôturé au moins une fois
+  const MAGASINS_CAISSE_DEPENSE = MAGASINS_CAISSE.filter(
+    (m) => magasinsAvecHistorique.includes(m.id)
+  )
+
   // ─── Trésorerie ───
   const fetchMouvements = async () => {
     setLoadingTreso(true)
@@ -710,6 +718,15 @@ export default function StockMagasin() {
     const { data } = await supabase.from('fournisseurs')
       .select('id, nom').order('nom', { ascending: true })
     setFournisseursListTreso(data || [])
+  }
+
+  // Magasins ayant déjà au moins une clôture enregistrée
+  const fetchMagasinsAvecHistorique = async () => {
+    const { data } = await supabase
+      .from('cash_closures')
+      .select('magasin_id')
+    const uniques = [...new Set((data || []).map(r => r.magasin_id))]
+    setMagasinsAvecHistorique(uniques)
   }
 
   // Mouvements filtrés par la combinaison de magasins active
@@ -2960,10 +2977,17 @@ export default function StockMagasin() {
                           onChange={(e) => setDepenseForm((f) => ({ ...f, magasin_id: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
                           <option value="">— Choisir —</option>
-                          {MAGASINS_CAISSE.map((m) => (
+                          {MAGASINS_CAISSE_DEPENSE.map((m) => (
                             <option key={m.id} value={m.id}>{m.nom}</option>
                           ))}
                         </select>
+                        {MAGASINS_CAISSE_DEPENSE.length === 0 && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Aucun magasin n'a encore de caisse clôturée —
+                            impossible d'ajouter une dépense tant qu'aucune
+                            clôture n'a eu lieu.
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
@@ -3016,7 +3040,7 @@ export default function StockMagasin() {
                             onChange={(e) => setDepenseForm((f) => ({ ...f, holderDetailMagasin: e.target.value }))}
                             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
                             <option value="">— Choisir —</option>
-                            {MAGASINS_CAISSE.map((m) => (
+                            {MAGASINS_CAISSE_DEPENSE.map((m) => (
                               <option key={m.id} value={m.id}>{m.nom}</option>
                             ))}
                           </select>
