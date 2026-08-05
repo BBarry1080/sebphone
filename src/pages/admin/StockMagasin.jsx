@@ -758,15 +758,6 @@ export default function StockMagasin() {
     return acc
   }, [filteredMouvements])
 
-  const totauxParDetenteur = useMemo(() => {
-    const acc = {}
-    filteredMouvements.forEach((m) => {
-      const key = m.holder || 'Non précisé'
-      acc[key] = (acc[key] || 0) + (m.type === 'entree' ? Number(m.amount) : -Number(m.amount))
-    })
-    return acc
-  }, [filteredMouvements])
-
   const totauxParDetenteurEtMagasin = useMemo(() => {
     const acc = {}
     filteredMouvements.forEach((m) => {
