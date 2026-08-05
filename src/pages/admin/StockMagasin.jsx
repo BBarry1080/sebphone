@@ -2986,7 +2986,7 @@ export default function StockMagasin() {
                           <button key={dStr}
                             onClick={has ? () => setSelectedJourMouvements(dStr) : undefined}
                             disabled={!has}
-                            className={`aspect-square min-h-[70px] p-1 rounded-lg border-2 text-left transition-all overflow-hidden
+                            className={`aspect-square min-h-[92px] p-1.5 rounded-lg border-2 text-left transition-all overflow-hidden
                               ${has
                                 ? 'border-gray-100 bg-white hover:border-[#1B2A4A] cursor-pointer'
                                 : 'border-transparent bg-gray-50 opacity-60 cursor-default'}`}>
@@ -3000,18 +3000,25 @@ export default function StockMagasin() {
                               </div>
                             </div>
                             {caTotalJour > 0 && (
-                              <p className="text-xs font-bold text-[#1B2A4A] mt-0.5 leading-tight"
+                              <p className="text-sm font-bold text-[#1B2A4A] mt-0.5 leading-tight"
                                 title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
-                                <span className="text-[8px] font-normal text-gray-400 mr-0.5">CA</span>
+                                <span className="text-[9px] font-normal text-gray-400 mr-0.5">CA</span>
                                 {caTotalJour.toFixed(0)}€
                               </p>
                             )}
                             {totalDepJour > 0 && (
-                              <span className="inline-block mt-0.5 text-[10px] font-bold px-1 rounded bg-red-50 text-red-600"
+                              <p className="mt-0.5 text-xs font-bold text-red-600 leading-tight"
                                 title={`Dépenses : -${totalDepJour.toFixed(2)}€`}>
-                                <span className="text-[8px] font-normal opacity-70 mr-0.5">Dép</span>
+                                <span className="text-[9px] font-normal opacity-70 mr-0.5">Dép</span>
                                 -{totalDepJour.toFixed(0)}€
-                              </span>
+                              </p>
+                            )}
+                            {(caTotalJour > 0 || totalDepJour > 0) && (
+                              <p className="mt-0.5 text-sm font-black text-green-600 leading-tight"
+                                title={`Total net : ${(caTotalJour - totalDepJour).toFixed(2)}€`}>
+                                <span className="text-[9px] font-normal text-green-500 mr-0.5">Net</span>
+                                {(caTotalJour - totalDepJour).toFixed(0)}€
+                              </p>
                             )}
                           </button>
                         )
