@@ -3035,30 +3035,40 @@ export default function StockMagasin() {
                                 ))}
                               </div>
                             </div>
-                            {caTotalJour > 0 && (
-                              <p className="text-sm font-bold text-[#1B2A4A] mt-0.5 leading-tight"
-                                title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
-                                <span className="text-[9px] font-normal text-gray-400 mr-0.5">CA</span>
-                                {caTotalJour.toFixed(0)}€
-                              </p>
-                            )}
-                            {totalDepJour > 0 && (
-                              <p className="mt-0.5 text-xs font-bold text-red-600 leading-tight"
-                                title={`Dépenses : -${totalDepJour.toFixed(2)}€`}>
-                                <span className="text-[9px] font-normal opacity-70 mr-0.5">Dép</span>
-                                -{totalDepJour.toFixed(0)}€
-                              </p>
-                            )}
-                            {(caTotalJour > 0 || totalDepJour > 0) && (() => {
-                              const net = caTotalJour - totalDepJour
-                              return (
-                                <p className={`mt-0.5 text-sm font-black leading-tight ${net < 0 ? 'text-red-600' : 'text-green-600'}`}
-                                  title={`Total net : ${net.toFixed(2)}€`}>
-                                  <span className={`text-[9px] font-normal mr-0.5 ${net < 0 ? 'text-red-400' : 'text-green-500'}`}>Net</span>
-                                  {net.toFixed(0)}€
+                            {totalDepJour > 0 ? (
+                              <>
+                                {caTotalJour > 0 && (
+                                  <p className="text-sm font-bold text-[#1B2A4A] mt-0.5 leading-tight"
+                                    title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
+                                    <span className="text-[9px] font-normal text-gray-400 mr-0.5">CA</span>
+                                    {caTotalJour.toFixed(0)}€
+                                  </p>
+                                )}
+                                <p className="mt-0.5 text-xs font-bold text-red-600 leading-tight"
+                                  title={`Dépenses : -${totalDepJour.toFixed(2)}€`}>
+                                  <span className="text-[9px] font-normal opacity-70 mr-0.5">Dép</span>
+                                  -{totalDepJour.toFixed(0)}€
+                                </p>
+                                {(() => {
+                                  const net = caTotalJour - totalDepJour
+                                  return (
+                                    <p className={`mt-0.5 text-lg font-black leading-tight ${net < 0 ? 'text-red-600' : 'text-green-600'}`}
+                                      title={`Total net : ${net.toFixed(2)}€`}>
+                                      <span className={`text-[9px] font-normal mr-0.5 ${net < 0 ? 'text-red-400' : 'text-green-500'}`}>Net</span>
+                                      {net.toFixed(0)}€
+                                    </p>
+                                  )
+                                })()}
+                              </>
+                            ) : (
+                              caTotalJour > 0 && (
+                                <p className="mt-0.5 text-lg font-black text-green-600 leading-tight"
+                                  title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
+                                  <span className="text-[9px] font-normal text-green-500 mr-0.5">CA</span>
+                                  {caTotalJour.toFixed(0)}€
                                 </p>
                               )
-                            })()}
+                            )}
                           </button>
                         )
                       })}
