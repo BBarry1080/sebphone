@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { ThermalPrinter, PrinterTypes } = require("node-thermal-printer");
+const { ThermalPrinter, PrinterTypes, CharacterSet } = require("node-thermal-printer");
 
 const app = express();
 app.use(cors());
@@ -20,6 +20,8 @@ async function buildAndPrint(ticket) {
     interface: `tcp://${PRINTER_IP}:${PRINTER_PORT}`,
     removeSpecialCharacters: false,
     lineCharacter: "-",
+    width: 48,
+    characterSet: CharacterSet.PC858_EURO,
   });
 
   const isConnected = await printer.isPrinterConnected();
@@ -80,6 +82,17 @@ async function buildAndPrint(ticket) {
     ]);
   }
   printer.drawLine();
+
+  if (ticket.barcode) {
+    printer.alignCenter();
+    printer.printBarcode(String(ticket.barcode), 73, {
+      hriPos: 2,
+      hriFont: 0,
+      width: 2,
+      height: 80,
+    });
+    printer.newLine();
+  }
 
   printer.alignCenter();
   printer.println("Merci de votre visite");

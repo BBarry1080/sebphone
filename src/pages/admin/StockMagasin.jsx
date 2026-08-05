@@ -6117,8 +6117,22 @@ export default function StockMagasin() {
                 companyName: 'SLT GROUP (SRL)',
                 tva: 'BE 1028.764.677',
                 caisseNom: magasin,
-                dateTime: new Date(lastSale.created_at || Date.now()).toLocaleString('fr-BE'),
+                dateTime: (() => {
+                  const d = new Date(lastSale.created_at || Date.now())
+                  const pad = (n) => String(n).padStart(2, '0')
+                  return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+                })(),
                 ticketNumber: lastSale.ticketNumber,
+                barcode: (() => {
+                  const base = '200' + String(lastSale.ticketNumber).padStart(9, '0')
+                  let sum = 0
+                  for (let i = 0; i < 12; i++) {
+                    const digit = parseInt(base[i], 10)
+                    sum += (i % 2 === 0) ? digit : digit * 3
+                  }
+                  const checkDigit = (10 - (sum % 10)) % 10
+                  return base + String(checkDigit)
+                })(),
                 items: lastSale.items.map((c) => ({
                   name: c.item_name,
                   qty: c.quantity,
