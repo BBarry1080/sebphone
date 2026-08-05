@@ -313,9 +313,22 @@ export default function StockMagasin() {
   const [ecranSearch, setEcranSearch]             = useState('')
   const [editingEcran, setEditingEcran]           = useState(null)
   const [ecranForm, setEcranForm]                 = useState({
-    prix_min: '', prix_defaut: '', prix_max: '', disponible: true, notes: '',
+    prix_min: '', prix_defaut: '', prix_max: '',
+    cout_achat: '',
+    disponible: true, notes: '',
   })
   const [savingEcran, setSavingEcran]             = useState(false)
+
+  // Création d'un nouveau modèle d'écran
+  const [showNewEcranForm, setShowNewEcranForm]   = useState(false)
+  const [newEcranForm, setNewEcranForm]           = useState({
+    marque: '', marqueMode: 'existing',
+    gamme: '', modele: '', modele_code: '',
+    qualite: 'compatible',
+    cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
+    disponible: true, notes: '',
+  })
+  const [savingNewEcran, setSavingNewEcran]       = useState(false)
   const [showDelaiForm, setShowDelaiForm]         = useState(false)
 
   // Devis — délai estimé
@@ -1226,6 +1239,7 @@ export default function StockMagasin() {
       prix_min: String(row.prix_min ?? ''),
       prix_defaut: String(row.prix_defaut ?? ''),
       prix_max: String(row.prix_max ?? ''),
+      cout_achat: String(row.cout_achat ?? ''),
       disponible: row.disponible !== false,
       notes: row.notes || '',
     })
@@ -1238,6 +1252,7 @@ export default function StockMagasin() {
       prix_min: Number(ecranForm.prix_min) || 0,
       prix_defaut: Number(ecranForm.prix_defaut) || 0,
       prix_max: Number(ecranForm.prix_max) || 0,
+      cout_achat: Number(ecranForm.cout_achat) || 0,
       disponible: ecranForm.disponible,
       notes: ecranForm.notes || null,
     }).eq('id', editingEcran.id)
@@ -1249,10 +1264,65 @@ export default function StockMagasin() {
     fetchEcranCatalog()
   }
 
+  const resetNewEcranForm = () => {
+    setNewEcranForm({
+      marque: '', marqueMode: 'existing',
+      gamme: '', modele: '', modele_code: '',
+      qualite: 'compatible',
+      cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
+      disponible: true, notes: '',
+    })
+  }
+
+  const handleCreateEcran = async () => {
+    const marque = newEcranForm.marque.trim()
+    const gamme = newEcranForm.gamme.trim()
+    const modele = newEcranForm.modele.trim()
+    if (!marque || !gamme || !modele) {
+      alert('Marque, gamme et modèle sont obligatoires')
+      return
+    }
+    if (!['compatible', 'original_equivalent', 'original'].includes(newEcranForm.qualite)) {
+      alert('Qualité invalide')
+      return
+    }
+    setSavingNewEcran(true)
+    const { error } = await supabase.from('reparation_ecrans').insert({
+      marque,
+      gamme,
+      modele,
+      modele_code: newEcranForm.modele_code.trim() || null,
+      qualite: newEcranForm.qualite,
+      disponible: newEcranForm.disponible,
+      cout_achat: Number(newEcranForm.cout_achat) || 0,
+      prix_min: Number(newEcranForm.prix_min) || 0,
+      prix_defaut: Number(newEcranForm.prix_defaut) || 0,
+      prix_max: Number(newEcranForm.prix_max) || 0,
+      notes: newEcranForm.notes.trim() || null,
+    })
+    setSavingNewEcran(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('ecran_create',
+      `Nouveau modèle — ${marque} ${modele} (${newEcranForm.qualite})`)
+    resetNewEcranForm()
+    setShowNewEcranForm(false)
+    fetchEcranCatalog()
+  }
+
   const ecranMarquesDistinct = useMemo(
     () => [...new Set(ecranCatalogList.map((e) => e.marque).filter(Boolean))].sort(),
     [ecranCatalogList]
   )
+
+  const ecranGammesDistinct = useMemo(() => {
+    if (!newEcranForm.marque) return []
+    return [...new Set(
+      ecranCatalogList
+        .filter((e) => e.marque === newEcranForm.marque)
+        .map((e) => e.gamme)
+        .filter(Boolean)
+    )].sort()
+  }, [ecranCatalogList, newEcranForm.marque])
 
   const ecranCatalogFiltered = useMemo(() => (
     ecranCatalogList.filter((row) => {
@@ -4830,6 +4900,119 @@ export default function StockMagasin() {
                 </span>
               </div>
 
+              {!showNewEcranForm ? (
+                <button onClick={() => setShowNewEcranForm(true)}
+                  className="mb-4 flex items-center gap-1.5 bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                  <Plus size={16}/> Nouveau modèle
+                </button>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-3">
+                  <h3 className="font-bold text-[#1B2A4A]">Nouveau modèle</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Marque</label>
+                      <select value={newEcranForm.marqueMode === 'custom' ? '__autre__' : newEcranForm.marque}
+                        onChange={(e) => {
+                          if (e.target.value === '__autre__') {
+                            setNewEcranForm((f) => ({ ...f, marque: '', marqueMode: 'custom' }))
+                          } else {
+                            setNewEcranForm((f) => ({ ...f, marque: e.target.value, marqueMode: 'existing', gamme: '' }))
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                        <option value="">— Choisir —</option>
+                        {ecranMarquesDistinct.map((m) => <option key={m} value={m}>{m}</option>)}
+                        <option value="__autre__">+ Autre marque…</option>
+                      </select>
+                      {newEcranForm.marqueMode === 'custom' && (
+                        <input type="text" value={newEcranForm.marque}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, marque: e.target.value }))}
+                          placeholder="Nom de la marque"
+                          className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Gamme</label>
+                      <input type="text" value={newEcranForm.gamme}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, gamme: e.target.value }))}
+                        placeholder="ex: iPhone 11"
+                        list="gammes-existantes"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      <datalist id="gammes-existantes">
+                        {ecranGammesDistinct.map((g) => <option key={g} value={g} />)}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Modèle précis</label>
+                      <input type="text" value={newEcranForm.modele}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
+                        placeholder="ex: iPhone 11 Pro"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Code modèle (optionnel)</label>
+                      <input type="text" value={newEcranForm.modele_code}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, modele_code: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Qualité</label>
+                      <select value={newEcranForm.qualite}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, qualite: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                        <option value="compatible">Compatible</option>
+                        <option value="original_equivalent">Qualité originale</option>
+                        <option value="original">100% Original</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end">
+                      <label className="flex items-center gap-2 text-xs text-gray-600 pb-2">
+                        <input type="checkbox" checked={newEcranForm.disponible}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, disponible: e.target.checked }))}
+                          className="w-4 h-4 accent-[#00B4CC]" />
+                        Disponible à la vente
+                      </label>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
+                      <input type="number" step="0.5" min="0" value={newEcranForm.cout_achat}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, cout_achat: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
+                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_min}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
+                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_defaut}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
+                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_max}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={handleCreateEcran} disabled={savingNewEcran}
+                      className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                      {savingNewEcran ? 'Création...' : 'Créer le modèle'}
+                    </button>
+                    <button onClick={() => { resetNewEcranForm(); setShowNewEcranForm(false) }}
+                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {loadingEcranCatalog ? (
                 <div className="flex items-center justify-center h-40">
                   <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
@@ -4893,7 +5076,13 @@ export default function StockMagasin() {
                               </div>
                               {isEditing && (
                                 <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
-                                  <div className="grid grid-cols-3 gap-2">
+                                  <div className="grid grid-cols-4 gap-2">
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
+                                      <input type="number" step="0.5" min="0" value={ecranForm.cout_achat}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, cout_achat: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
                                     <div>
                                       <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
                                       <input type="number" step="0.5" min="0" value={ecranForm.prix_defaut}
