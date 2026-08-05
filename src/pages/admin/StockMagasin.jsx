@@ -3000,12 +3000,16 @@ export default function StockMagasin() {
                               </div>
                             </div>
                             {caTotalJour > 0 && (
-                              <p className="text-[10px] font-bold text-[#1B2A4A] mt-0.5 leading-tight">
+                              <p className="text-xs font-bold text-[#1B2A4A] mt-0.5 leading-tight"
+                                title={`Caisse totale : ${caTotalJour.toFixed(2)}€`}>
+                                <span className="text-[8px] font-normal text-gray-400 mr-0.5">CA</span>
                                 {caTotalJour.toFixed(0)}€
                               </p>
                             )}
                             {totalDepJour > 0 && (
-                              <span className="inline-block mt-0.5 text-[8px] font-bold px-1 rounded bg-red-50 text-red-600">
+                              <span className="inline-block mt-0.5 text-[10px] font-bold px-1 rounded bg-red-50 text-red-600"
+                                title={`Dépenses : -${totalDepJour.toFixed(2)}€`}>
+                                <span className="text-[8px] font-normal opacity-70 mr-0.5">Dép</span>
                                 -{totalDepJour.toFixed(0)}€
                               </span>
                             )}
