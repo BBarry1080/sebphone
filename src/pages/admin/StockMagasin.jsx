@@ -296,6 +296,17 @@ export default function StockMagasin() {
   const [editingDelai, setEditingDelai]           = useState(null)
   const [delaiForm, setDelaiForm]                 = useState({ label: '', delai_texte: '', ordre: 0 })
   const [savingDelai, setSavingDelai]             = useState(false)
+
+  // Catalogue écrans par modèle
+  const [ecranCatalogList, setEcranCatalogList]   = useState([])
+  const [loadingEcranCatalog, setLoadingEcranCatalog] = useState(false)
+  const [ecranMarqueFilter, setEcranMarqueFilter] = useState('Samsung')
+  const [ecranSearch, setEcranSearch]             = useState('')
+  const [editingEcran, setEditingEcran]           = useState(null)
+  const [ecranForm, setEcranForm]                 = useState({
+    prix_min: '', prix_defaut: '', prix_max: '', disponible: true, notes: '',
+  })
+  const [savingEcran, setSavingEcran]             = useState(false)
   const [showDelaiForm, setShowDelaiForm]         = useState(false)
 
   // Devis — délai estimé
@@ -1189,6 +1200,71 @@ export default function StockMagasin() {
     fetchDelaiTypes()
   }
 
+  // ─── Catalogue écrans par modèle ───
+  const fetchEcranCatalog = async () => {
+    setLoadingEcranCatalog(true)
+    const { data } = await supabase.from('reparation_ecrans')
+      .select('*')
+      .order('gamme', { ascending: true })
+      .order('modele', { ascending: true })
+    setEcranCatalogList(data || [])
+    setLoadingEcranCatalog(false)
+  }
+
+  const openEditEcran = (row) => {
+    setEditingEcran(row)
+    setEcranForm({
+      prix_min: String(row.prix_min ?? ''),
+      prix_defaut: String(row.prix_defaut ?? ''),
+      prix_max: String(row.prix_max ?? ''),
+      disponible: row.disponible !== false,
+      notes: row.notes || '',
+    })
+  }
+
+  const handleSaveEcran = async () => {
+    if (!editingEcran) return
+    setSavingEcran(true)
+    const { error } = await supabase.from('reparation_ecrans').update({
+      prix_min: Number(ecranForm.prix_min) || 0,
+      prix_defaut: Number(ecranForm.prix_defaut) || 0,
+      prix_max: Number(ecranForm.prix_max) || 0,
+      disponible: ecranForm.disponible,
+      notes: ecranForm.notes || null,
+    }).eq('id', editingEcran.id)
+    setSavingEcran(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('ecran_prix_update',
+      `Prix mis à jour — ${editingEcran.modele} (${editingEcran.qualite})`)
+    setEditingEcran(null)
+    fetchEcranCatalog()
+  }
+
+  const ecranMarquesDistinct = useMemo(
+    () => [...new Set(ecranCatalogList.map((e) => e.marque).filter(Boolean))].sort(),
+    [ecranCatalogList]
+  )
+
+  const ecranCatalogFiltered = useMemo(() => (
+    ecranCatalogList.filter((row) => {
+      if (ecranMarqueFilter !== 'all' && row.marque !== ecranMarqueFilter) return false
+      const q = ecranSearch.trim().toLowerCase()
+      if (!q) return true
+      return (row.modele || '').toLowerCase().includes(q)
+        || (row.modele_code || '').toLowerCase().includes(q)
+    })
+  ), [ecranCatalogList, ecranMarqueFilter, ecranSearch])
+
+  const ecranGroupedByGamme = useMemo(() => {
+    const groups = {}
+    ecranCatalogFiltered.forEach((row) => {
+      const g = row.gamme || '—'
+      if (!groups[g]) groups[g] = []
+      groups[g].push(row)
+    })
+    return groups
+  }, [ecranCatalogFiltered])
+
   // ─── Recherche de ticket ───
   const handleSearchTickets = async () => {
     const q = (searchQuery || '').trim()
@@ -1481,6 +1557,14 @@ export default function StockMagasin() {
 
   // Fetch délais au montage (pour le sélecteur devis)
   useEffect(() => { fetchDelaiTypes() }, [])
+
+  // Fetch catalogue écrans à la première activation de l'onglet
+  useEffect(() => {
+    if (sectionPrixDelais === 'ecrans' && ecranCatalogList.length === 0) {
+      fetchEcranCatalog()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionPrixDelais])
 
   // Refetch clôtures + mouvements du mois quand on navigue dans le calendrier
   useEffect(() => {
@@ -4321,14 +4405,15 @@ export default function StockMagasin() {
             <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
               <Tag size={22} /> Prix & Délais réparations
             </h1>
-            <p className="text-sm text-gray-500 mt-1">Prix par défaut, min et max par type de panne + délais indicatifs</p>
+            <p className="text-sm text-gray-500 mt-1">Prix par défaut, min et max par type de panne, délais indicatifs et catalogue d'écrans par modèle</p>
           </div>
 
-          {/* Toggle Prix / Délais */}
+          {/* Toggle Prix / Délais / Écrans */}
           <div className="flex gap-2 mb-4">
             {[
               { key: 'prix', label: '💰 Prix' },
               { key: 'delais', label: '⏱️ Délais' },
+              { key: 'ecrans', label: '📱 Écrans par modèle' },
             ].map((s) => (
               <button key={s.key}
                 onClick={() => setSectionPrixDelais(s.key)}
@@ -4498,6 +4583,145 @@ export default function StockMagasin() {
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                         <Trash2 size={14} />
                       </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {sectionPrixDelais === 'ecrans' && (
+            <>
+              {/* Barre filtres */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4 flex flex-col md:flex-row gap-2 items-stretch md:items-center">
+                <select value={ecranMarqueFilter}
+                  onChange={(e) => setEcranMarqueFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white md:w-48">
+                  <option value="all">Toutes les marques</option>
+                  {ecranMarquesDistinct.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <input type="text" value={ecranSearch}
+                  onChange={(e) => setEcranSearch(e.target.value)}
+                  placeholder="Rechercher un modèle..."
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                <span className="text-xs font-bold text-gray-400 uppercase whitespace-nowrap md:ml-2">
+                  {ecranCatalogFiltered.length} résultat{ecranCatalogFiltered.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {loadingEcranCatalog ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : ecranCatalogFiltered.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                  Aucun écran trouvé.
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {Object.entries(ecranGroupedByGamme).map(([gamme, rows]) => (
+                    <div key={gamme}>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-2">{gamme}</p>
+                      <div className="space-y-2">
+                        {rows.map((row) => {
+                          const isEditing = editingEcran?.id === row.id
+                          const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
+                            : row.qualite === 'original_equivalent' ? 'Qualité originale'
+                            : '100% Original'
+                          return (
+                            <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                              <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-bold text-[#1B2A4A]">{row.modele}</p>
+                                  {row.modele_code && (
+                                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{row.modele_code}</p>
+                                  )}
+                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700">
+                                      {qualiteLabel}
+                                    </span>
+                                    {!row.disponible && (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                                        Non disponible
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!isEditing && (
+                                  <>
+                                    <div className="flex gap-4 text-xs">
+                                      <div>
+                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
+                                        <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
+                                        <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
+                                        <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
+                                      </div>
+                                    </div>
+                                    <button onClick={() => openEditEcran(row)}
+                                      className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                                      <Pencil size={14} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                              {isEditing && (
+                                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
+                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_defaut}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
+                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_min}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
+                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_max}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
+                                  </div>
+                                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                                    <input type="checkbox" checked={ecranForm.disponible}
+                                      onChange={(e) => setEcranForm((f) => ({ ...f, disponible: e.target.checked }))}
+                                      className="w-4 h-4 accent-[#00B4CC]" />
+                                    Disponible à la vente
+                                  </label>
+                                  <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Notes</label>
+                                    <textarea rows={2} value={ecranForm.notes}
+                                      onChange={(e) => setEcranForm((f) => ({ ...f, notes: e.target.value }))}
+                                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button onClick={handleSaveEcran} disabled={savingEcran}
+                                      className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                                      {savingEcran ? 'Enregistrement...' : 'Enregistrer'}
+                                    </button>
+                                    <button onClick={() => setEditingEcran(null)}
+                                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                                      Annuler
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
                   ))}
                 </div>

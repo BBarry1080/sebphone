@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { logActivity } from '../../lib/logActivity'
@@ -105,6 +105,7 @@ export default function CaisseAccueil({
     nom: '', date: today, appareil: '', imei: '', bon_number: '', client_number: '',
     magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
     montant_paye: '', payment_method: 'cash',
+    ecran_modele: '', ecran_qualite: '',
   })
   const [lastBon, setLastBon] = useState(null)
   const [typePannePrixMap, setTypePannePrixMap] = useState({})
@@ -120,6 +121,43 @@ export default function CaisseAccueil({
     }
     loadTypePannePrix()
   }, [])
+
+  // Catalogue écrans par modèle (chargé au mount)
+  const [ecranCatalog, setEcranCatalog] = useState([])
+  const [ecranMarqueSel, setEcranMarqueSel] = useState('')
+  const [ecranGammeSel, setEcranGammeSel]   = useState('')
+  const [ecranModeleSel, setEcranModeleSel] = useState('')
+
+  useEffect(() => {
+    supabase.from('reparation_ecrans').select('*')
+      .then(({ data }) => setEcranCatalog(data || []))
+  }, [])
+
+  const ecranMarques = useMemo(
+    () => [...new Set(ecranCatalog.map((e) => e.marque).filter(Boolean))].sort(),
+    [ecranCatalog]
+  )
+  const ecranGammes = useMemo(() => {
+    if (!ecranMarqueSel) return []
+    return [...new Set(
+      ecranCatalog.filter((e) => e.marque === ecranMarqueSel).map((e) => e.gamme).filter(Boolean)
+    )].sort()
+  }, [ecranCatalog, ecranMarqueSel])
+  const ecranModeles = useMemo(() => {
+    if (!ecranMarqueSel || !ecranGammeSel) return []
+    return [...new Set(
+      ecranCatalog
+        .filter((e) => e.marque === ecranMarqueSel && e.gamme === ecranGammeSel)
+        .map((e) => e.modele)
+        .filter(Boolean)
+    )].sort()
+  }, [ecranCatalog, ecranMarqueSel, ecranGammeSel])
+  const ecranQualitesDisponibles = useMemo(() => {
+    if (!ecranMarqueSel || !ecranGammeSel || !ecranModeleSel) return []
+    return ecranCatalog.filter((e) =>
+      e.marque === ecranMarqueSel && e.gamme === ecranGammeSel && e.modele === ecranModeleSel
+    )
+  }, [ecranCatalog, ecranMarqueSel, ecranGammeSel, ecranModeleSel])
 
   // Détail du jour (popup)
   const [showDetailJour, setShowDetailJour] = useState(false)
@@ -357,7 +395,11 @@ export default function CaisseAccueil({
       client_number: 'CL-' + pad4((clientCount || 0) + 1),
       magasin_id: magasin, type_panne: '', prix: '', devis: false, tel: '', email: '',
       montant_paye: '', payment_method: 'cash',
+      ecran_modele: '', ecran_qualite: '',
     })
+    setEcranMarqueSel('')
+    setEcranGammeSel('')
+    setEcranModeleSel('')
     setShowRepairModal(true)
   }
 
@@ -427,6 +469,8 @@ export default function CaisseAccueil({
       email: repairForm.email || null,
       status: 'en_attente',
       montant_paye: repairForm.montant_paye ? Number(repairForm.montant_paye) : 0,
+      ecran_modele: repairForm.ecran_modele || null,
+      ecran_qualite: repairForm.ecran_qualite || null,
     }
     const { error } = await supabase.from('repairs').insert(payload)
     if (error) { alert('Erreur : ' + error.message); return }
@@ -831,6 +875,95 @@ export default function CaisseAccueil({
                   )
                 })()}
               </div>
+              {repairForm.type_panne === 'Écran cassé' && (
+                <div className="col-span-2 bg-cyan-50 rounded-xl p-3 space-y-2 border border-cyan-100">
+                  <p className="text-xs font-bold text-[#1B2A4A]">📱 Modèle & qualité de l'écran</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Marque</label>
+                      <select value={ecranMarqueSel}
+                        onChange={(e) => {
+                          setEcranMarqueSel(e.target.value)
+                          setEcranGammeSel('')
+                          setEcranModeleSel('')
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                        <option value="">—</option>
+                        {ecranMarques.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Gamme</label>
+                      <select value={ecranGammeSel}
+                        disabled={!ecranMarqueSel}
+                        onChange={(e) => {
+                          setEcranGammeSel(e.target.value)
+                          setEcranModeleSel('')
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                        <option value="">{!ecranMarqueSel ? '— Marque d\'abord —' : '—'}</option>
+                        {ecranGammes.map((g) => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Modèle</label>
+                      <select value={ecranModeleSel}
+                        disabled={!ecranGammeSel}
+                        onChange={(e) => setEcranModeleSel(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                        <option value="">{!ecranGammeSel ? '— Gamme d\'abord —' : '—'}</option>
+                        {ecranModeles.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {ecranQualitesDisponibles.length > 0 && (
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Qualité</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {ecranQualitesDisponibles.map((row) => (
+                          <button key={row.id} type="button"
+                            disabled={!row.disponible}
+                            onClick={() => {
+                              setRepairForm((f) => ({
+                                ...f,
+                                prix: String(row.prix_defaut),
+                                appareil: row.modele,
+                                ecran_modele: row.modele,
+                                ecran_qualite: row.qualite,
+                              }))
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all
+                              ${repairForm.ecran_qualite === row.qualite
+                                ? 'bg-[#00B4CC] text-white border-[#00B4CC]'
+                                : row.disponible
+                                  ? 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'
+                                  : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'}`}>
+                            {row.qualite === 'compatible' ? 'Compatible'
+                              : row.qualite === 'original_equivalent' ? 'Qualité originale'
+                              : '100% Original'}
+                            {!row.disponible && ' (indispo)'}
+                          </button>
+                        ))}
+                      </div>
+                      {(() => {
+                        const sel = ecranQualitesDisponibles.find((r) => r.qualite === repairForm.ecran_qualite)
+                        if (!sel) return null
+                        return (
+                          <p className="text-[10px] text-gray-500 mt-1">
+                            Fourchette : {Number(sel.prix_min).toFixed(2)}€ - {Number(sel.prix_max).toFixed(2)}€
+                          </p>
+                        )
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
               <div>
                 <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
                   Montant déjà payé (€)
