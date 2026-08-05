@@ -124,6 +124,13 @@ export default function StockMagasin() {
   const [repairsInCart, setRepairsInCart]                 = useState([])
   const [pendingRepairs, setPendingRepairs]               = useState([])
   const [loadingPendingRepairs, setLoadingPendingRepairs] = useState(false)
+  // Nouvelle réparation créée depuis la caisse (via clic écran catalogue)
+  const [newRepairsInCart, setNewRepairsInCart]           = useState([])
+  const [showNewRepairForm, setShowNewRepairForm]         = useState(false)
+  const [newRepairEcran, setNewRepairEcran]               = useState(null)
+  const [newRepairClientData, setNewRepairClientData]     = useState({
+    nom: '', tel: '', email: '', imei: '',
+  })
   const [paymentSplits, setPaymentSplits] = useState([])
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState('cash')
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState('')
@@ -1560,6 +1567,9 @@ export default function StockMagasin() {
   // Fetch délais au montage (pour le sélecteur devis)
   useEffect(() => { fetchDelaiTypes() }, [])
 
+  // Catalogue écrans chargé au mount (nécessaire pour la recherche caisse)
+  useEffect(() => { fetchEcranCatalog() }, [])
+
   // Fetch catalogue écrans à la première activation de l'onglet
   useEffect(() => {
     if (sectionPrixDelais === 'ecrans' && ecranCatalogList.length === 0) {
@@ -1761,6 +1771,42 @@ export default function StockMagasin() {
     if (removed) fetchPendingRepairs()
   }
 
+  const openNewRepairForm = (ecranRow) => {
+    setNewRepairEcran(ecranRow)
+    setNewRepairClientData({ nom: '', tel: '', email: '', imei: '' })
+    setShowNewRepairForm(true)
+    setCartSearch('')
+  }
+
+  const confirmAddNewRepairToCart = () => {
+    if (!newRepairClientData.nom.trim()) {
+      alert('Le nom du client est obligatoire')
+      return
+    }
+    const qualiteLabel =
+      newRepairEcran.qualite === 'compatible' ? 'Compatible'
+      : newRepairEcran.qualite === 'original_equivalent' ? 'Qualité originale'
+      : '100% Original'
+    setNewRepairsInCart((prev) => [...prev, {
+      key: `${newRepairEcran.id}-${Date.now()}`,
+      ecran_id: newRepairEcran.id,
+      modele: newRepairEcran.modele,
+      qualite: newRepairEcran.qualite,
+      qualiteLabel,
+      unit_price: Number(newRepairEcran.prix_defaut) || 0,
+      clientNom: newRepairClientData.nom.trim(),
+      tel: newRepairClientData.tel.trim() || null,
+      email: newRepairClientData.email.trim() || null,
+      imei: newRepairClientData.imei.trim() || null,
+    }])
+    setShowNewRepairForm(false)
+    setNewRepairEcran(null)
+  }
+
+  const removeNewRepairFromCart = (key) => {
+    setNewRepairsInCart((prev) => prev.filter((r) => r.key !== key))
+  }
+
   const filtered = items.filter(item => {
     const matchSearch = !search ||
       item.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -1896,13 +1942,25 @@ export default function StockMagasin() {
     setSearch(val)
   }
 
-  const cartSearchResults = cartSearch.length >= 2
+  const cartSearchArticles = cartSearch.length >= 2
     ? items.filter(i =>
         i.name?.toLowerCase().includes(cartSearch.toLowerCase()) ||
         i.reference?.toLowerCase().includes(cartSearch.toLowerCase()) ||
         i.barcode?.includes(cartSearch)
-      ).slice(0, 8)
+      ).slice(0, 5).map(i => ({ ...i, _kind: 'article' }))
     : []
+
+  const cartSearchEcrans = cartSearch.length >= 2
+    ? ecranCatalogList.filter(e =>
+        e.disponible !== false && (
+          e.modele?.toLowerCase().includes(cartSearch.toLowerCase()) ||
+          e.gamme?.toLowerCase().includes(cartSearch.toLowerCase()) ||
+          e.marque?.toLowerCase().includes(cartSearch.toLowerCase())
+        )
+      ).slice(0, 6).map(e => ({ ...e, _kind: 'ecran' }))
+    : []
+
+  const cartSearchResults = [...cartSearchArticles, ...cartSearchEcrans]
 
   const addToCart = (item) => {
     setCart(prev => {
@@ -1973,7 +2031,8 @@ export default function StockMagasin() {
 
   const cartArticlesSubtotal = cart.reduce((sum, c) => sum + lineTotal(c), 0)
   const repairsSubtotal = repairsInCart.reduce((sum, r) => sum + Number(r.unit_price || 0), 0)
-  const cartSubtotal = cartArticlesSubtotal + repairsSubtotal
+  const newRepairsSubtotal = newRepairsInCart.reduce((sum, r) => sum + Number(r.unit_price || 0), 0)
+  const cartSubtotal = cartArticlesSubtotal + repairsSubtotal + newRepairsSubtotal
   const globalDiscountAmount = globalDiscountValue
     ? cartArticlesSubtotal * (Number(globalDiscountValue) / 100)
     : 0
@@ -2002,7 +2061,7 @@ export default function StockMagasin() {
   }
 
   const handleCheckout = async () => {
-    if ((cart.length === 0 && repairsInCart.length === 0) || !isFullyPaid) return
+    if ((cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) || !isFullyPaid) return
     setCheckoutLoading(true)
 
     const currentSebUser = JSON.parse(
@@ -2103,6 +2162,76 @@ export default function StockMagasin() {
         `Solde réparation encaissé — ${r.bon_number} (${r.unit_price.toFixed(2)}€)`)
     }
 
+    // Création automatique des nouvelles réparations depuis le catalogue écrans
+    let createdRepairInfos = []
+    if (newRepairsInCart.length > 0) {
+      const { count: initialRepairCount } = await supabase
+        .from('repairs').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
+      const { count: initialClientCount } = await supabase
+        .from('clients').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
+
+      let repairCounter = initialRepairCount || 0
+      let clientCounter = initialClientCount || 0
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const newRepairSaleItems = []
+
+      for (const r of newRepairsInCart) {
+        repairCounter += 1
+        clientCounter += 1
+        const bonNumber = 'BON-' + String(repairCounter).padStart(4, '0')
+        const clientNumber = 'CL-' + String(clientCounter).padStart(4, '0')
+
+        const { data: newRepair, error: repairErr } = await supabase.from('repairs').insert({
+          bon_number: bonNumber,
+          client_nom: r.clientNom,
+          client_number: clientNumber,
+          magasin_id: magasin,
+          date: todayStr,
+          appareil: r.modele,
+          imei: r.imei,
+          type_panne: 'Écran cassé',
+          ecran_modele: r.modele,
+          ecran_qualite: r.qualite,
+          prix: r.unit_price,
+          montant_paye: r.unit_price,
+          devis: false,
+          tel: r.tel,
+          email: r.email,
+          status: 'termine',
+          date_recuperation: todayStr,
+        }).select().single()
+
+        if (!repairErr && newRepair) {
+          createdRepairInfos.push({
+            bonNumber: newRepair.bon_number,
+            clientNom: newRepair.client_nom,
+            appareil: newRepair.appareil,
+            imei: newRepair.imei,
+            typePanne: `Écran cassé — ${r.qualiteLabel}`,
+          })
+          newRepairSaleItems.push({
+            sale_id: sale.id,
+            item_id: null,
+            item_name: `Réparation écran — ${r.modele} (${r.qualiteLabel})`,
+            quantity: 1,
+            unit_price: r.unit_price,
+            total_price: r.unit_price,
+            discount_type: null,
+            discount_value: 0,
+            tva_rate: 21,
+            line_type: 'reparation',
+            repair_id: newRepair.id,
+          })
+          await logActivity('repair_created_from_caisse',
+            `Réparation créée depuis la caisse — ${r.modele} (${r.qualiteLabel}) pour ${r.clientNom}`)
+        }
+      }
+
+      if (newRepairSaleItems.length > 0) {
+        await supabase.from('shop_sale_items').insert(newRepairSaleItems)
+      }
+    }
+
     if (staffId) {
       const { data: rules } = await supabase
         .from('commission_rules')
@@ -2156,15 +2285,25 @@ export default function StockMagasin() {
           discount: 0,
           discountType: null,
         })),
+        ...newRepairsInCart.map((r) => ({
+          item_id: null,
+          item_name: `Réparation écran — ${r.modele} (${r.qualiteLabel})`,
+          quantity: 1,
+          unit_price: r.unit_price,
+          discount: 0,
+          discountType: null,
+        })),
       ],
       ticketNumber: (ticketNumber || 0) + 1,
       changeToGive: currentChange,
       paymentsUsed: paymentSplits.map((p) => ({ type: p.method, amount: p.amount })),
       staffName: staffName,
+      repairInfoList: createdRepairInfos,
     }
 
     setCart([])
     setRepairsInCart([])
+    setNewRepairsInCart([])
     setPaymentSplits([])
     setCurrentPaymentAmount('')
     setGlobalDiscountValue('')
@@ -4960,12 +5099,50 @@ export default function StockMagasin() {
                 className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm"/>
             </div>
 
-            {(() => {
+            {cartSearch.length >= 2 ? (
+              cartSearchResults.length === 0 ? (
+                <p className="text-center text-gray-400 py-8 text-sm">
+                  Aucun résultat pour "{cartSearch}"
+                </p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {cartSearchResults.map((result) => {
+                    if (result._kind === 'article') {
+                      return (
+                        <button key={`art-${result.id}`}
+                          onClick={() => addToCart(result)}
+                          className="text-left bg-gray-50 hover:bg-gray-100 rounded-xl p-3 transition-all border border-transparent hover:border-[#1B2A4A]">
+                          <p className="font-bold text-xs text-[#1B2A4A] mb-1 line-clamp-2">
+                            {result.name}
+                          </p>
+                          <p className="text-sm font-bold text-[#00B4CC]">
+                            {result.sale_price}€
+                          </p>
+                        </button>
+                      )
+                    }
+                    const qualiteLabel = result.qualite === 'compatible' ? 'Compatible'
+                      : result.qualite === 'original_equivalent' ? 'Qualité originale'
+                      : '100% Original'
+                    return (
+                      <button key={`ecr-${result.id}`}
+                        onClick={() => openNewRepairForm(result)}
+                        className="text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-3 transition-all border border-purple-100 hover:border-purple-300">
+                        <p className="text-[10px] font-bold text-purple-600 uppercase mb-0.5">🔧 Réparation</p>
+                        <p className="font-bold text-xs text-[#1B2A4A] line-clamp-2">
+                          {result.modele}
+                        </p>
+                        <p className="text-[10px] text-purple-700 font-bold mb-1">{qualiteLabel}</p>
+                        <p className="text-sm font-bold text-purple-700">
+                          {Number(result.prix_defaut || 0).toFixed(2)}€
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            ) : (() => {
               const posFiltered = items.filter((item) => {
-                if (cartSearch.length >= 2) {
-                  return item.name?.toLowerCase().includes(cartSearch.toLowerCase()) ||
-                         item.reference?.toLowerCase().includes(cartSearch.toLowerCase())
-                }
                 if (selectedPosCategory === 'Tout') return true
                 const cat = categories.find((c) => c.name === selectedPosCategory)
                 return cat && item.category_id === cat.id
@@ -4997,7 +5174,7 @@ export default function StockMagasin() {
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between mb-3 gap-2">
               <h3 className="font-bold text-[#1B2A4A]">
-                {modeDevis ? 'Devis' : 'Ticket'} ({cart.length + repairsInCart.length})
+                {modeDevis ? 'Devis' : 'Ticket'} ({cart.length + repairsInCart.length + newRepairsInCart.length})
               </h3>
               <label className="relative inline-flex items-center cursor-pointer" title="Basculer en mode Devis (aucun impact CA/stock/commissions)">
                 <input type="checkbox" checked={modeDevis}
@@ -5011,7 +5188,7 @@ export default function StockMagasin() {
               </label>
             </div>
 
-            {cart.length === 0 && repairsInCart.length === 0 ? (
+            {cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm flex-1">
                 Sélectionnez des articles
               </p>
@@ -5028,6 +5205,21 @@ export default function StockMagasin() {
                       </div>
                       <span className="text-sm font-bold text-[#1B2A4A]">{r.unit_price.toFixed(2)}€</span>
                       <button onClick={() => removeRepairFromCart(r.repair_id)}
+                        className="text-gray-400 hover:text-red-600">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {newRepairsInCart.map((r) => (
+                    <div key={r.key} className="flex items-center justify-between gap-2 bg-purple-50 rounded-xl p-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[#1B2A4A] truncate">
+                          🔧 Nouvelle — {r.modele} ({r.qualiteLabel})
+                        </p>
+                        <p className="text-[10px] text-gray-500">{r.clientNom}</p>
+                      </div>
+                      <span className="text-sm font-bold text-[#1B2A4A]">{r.unit_price.toFixed(2)}€</span>
+                      <button onClick={() => removeNewRepairFromCart(r.key)}
                         className="text-gray-400 hover:text-red-600">
                         <Trash2 size={14} />
                       </button>
@@ -5164,11 +5356,11 @@ export default function StockMagasin() {
                   </div>
 
                   <button onClick={() => {
-                      if (cart.length === 0 && repairsInCart.length === 0) { alert('Panier vide'); return }
+                      if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) { alert('Panier vide'); return }
                       if (modeDevis) setShowDevisForm(true)
                       else setShowPaymentModal(true)
                     }}
-                    disabled={cart.length === 0 && repairsInCart.length === 0}
+                    disabled={cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0}
                     className={`py-2.5 text-white rounded-xl font-bold transition-all disabled:opacity-50 ${
                       modeDevis
                         ? 'bg-amber-500 hover:bg-amber-600'
@@ -6130,6 +6322,7 @@ export default function StockMagasin() {
               changeAmount={lastSale.changeToGive || 0}
               tvaRate={21}
               paperWidth="80mm"
+              repairInfoList={lastSale.repairInfoList || []}
               onPrint={() => printViaAgent({
                 companyName: 'SLT GROUP (SRL)',
                 tva: 'BE 1028.764.677',
@@ -6169,6 +6362,80 @@ export default function StockMagasin() {
           </div>
         </div>
       )}
+
+      {/* MODAL NOUVELLE RÉPARATION (depuis clic écran catalogue en caisse) */}
+      {showNewRepairForm && newRepairEcran && (() => {
+        const qualiteLabel = newRepairEcran.qualite === 'compatible' ? 'Compatible'
+          : newRepairEcran.qualite === 'original_equivalent' ? 'Qualité originale'
+          : '100% Original'
+        return (
+          <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="font-bold text-[#1B2A4A] text-lg">
+                    Réparation — {newRepairEcran.modele}
+                  </h3>
+                  <p className="text-xs text-purple-700 font-bold mt-0.5">
+                    {qualiteLabel} · {Number(newRepairEcran.prix_defaut || 0).toFixed(2)}€
+                  </p>
+                </div>
+                <button onClick={() => { setShowNewRepairForm(false); setNewRepairEcran(null) }}
+                  className="text-gray-400 hover:text-[#1B2A4A]">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    Nom du client *
+                  </label>
+                  <input type="text" autoFocus value={newRepairClientData.nom}
+                    onChange={(e) => setNewRepairClientData((f) => ({ ...f, nom: e.target.value }))}
+                    placeholder="Nom et prénom"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    Téléphone
+                  </label>
+                  <input type="tel" value={newRepairClientData.tel}
+                    onChange={(e) => setNewRepairClientData((f) => ({ ...f, tel: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    Email
+                  </label>
+                  <input type="email" value={newRepairClientData.email}
+                    onChange={(e) => setNewRepairClientData((f) => ({ ...f, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    IMEI / N° série
+                  </label>
+                  <input type="text" value={newRepairClientData.imei}
+                    onChange={(e) => setNewRepairClientData((f) => ({ ...f, imei: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono" />
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => { setShowNewRepairForm(false); setNewRepairEcran(null) }}
+                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
+                  Annuler
+                </button>
+                <button onClick={confirmAddNewRepairToCart}
+                  className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-purple-700">
+                  Ajouter au panier
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

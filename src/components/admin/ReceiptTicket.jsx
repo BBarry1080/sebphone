@@ -72,6 +72,7 @@ export default function ReceiptTicket({
   paperWidth = "80mm",
   onPrint,
   repairInfo = null,
+  repairInfoList = null,
   extraLines = null,
 }) {
   const [signature, setSignature] = useState("");
@@ -140,7 +141,18 @@ export default function ReceiptTicket({
           <span>{formatTime(dateTime)}</span>
         </div>
 
-        {repairInfo && (
+        {repairInfoList && repairInfoList.length > 0 ? (
+          repairInfoList.map((r, idx) => (
+            <div key={idx} style={{ borderTop: "1px solid black", borderBottom: "1px solid black", padding: "4px 0", marginTop: "4px" }}>
+              <div style={{ fontWeight: "bold", textAlign: "center" }}>BON RÉPARATION {r.bonNumber}</div>
+              {r.clientNom && <div>Client : {r.clientNom}</div>}
+              {r.appareil && <div>Appareil : {r.appareil}</div>}
+              {r.imei && <div>IMEI : {r.imei}</div>}
+              {r.typePanne && <div>Panne : {r.typePanne}</div>}
+              {r.statut && <div>Statut : {r.statut}</div>}
+            </div>
+          ))
+        ) : repairInfo && (
           <div style={{ borderTop: "1px solid black", borderBottom: "1px solid black", padding: "4px 0", marginTop: "4px" }}>
             <div style={{ fontWeight: "bold", textAlign: "center" }}>BON RÉPARATION {repairInfo.bonNumber}</div>
             {repairInfo.clientNom && <div>Client : {repairInfo.clientNom}</div>}
