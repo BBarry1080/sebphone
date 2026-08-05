@@ -228,6 +228,7 @@ export default function StockMagasin() {
 
   // Trésorerie / Chiffres d'affaires
   const [mouvements, setMouvements]                       = useState([])
+  const [mouvementsMois, setMouvementsMois]               = useState([])
   const [loadingTreso, setLoadingTreso]                   = useState(false)
   const [showDepenseForm, setShowDepenseForm]             = useState(false)
   const [editingDescId, setEditingDescId]                 = useState(null)
@@ -744,7 +745,7 @@ export default function StockMagasin() {
   const fetchMouvements = async () => {
     setLoadingTreso(true)
     const { data } = await supabase.from('tresorerie_mouvements')
-      .select('*').order('created_at', { ascending: false }).limit(200)
+      .select('*').order('created_at', { ascending: false }).limit(5000)
     setMouvements(data || [])
     setLoadingTreso(false)
   }
@@ -791,6 +792,12 @@ export default function StockMagasin() {
   const filteredMouvements = useMemo(() => (
     mouvements.filter((m) => !m.magasin_id || selectedMagasinsCombo.has(m.magasin_id))
   ), [mouvements, selectedMagasinsCombo])
+
+  // Variante sourcée sur mouvementsMois (bornée au mois affiché) — utilisée pour le calendrier
+  const filteredMouvementsMois = useMemo(
+    () => mouvementsMois.filter(m => !m.magasin_id || selectedMagasinsCombo.has(m.magasin_id)),
+    [mouvementsMois, selectedMagasinsCombo]
+  )
 
   const totalGlobalTreso = useMemo(() => (
     filteredMouvements.reduce((s, m) =>
@@ -937,6 +944,20 @@ export default function StockMagasin() {
       .gte('period_end', first.toISOString())
       .lte('period_end', last.toISOString())
     setCloturesMois(data || [])
+  }
+
+  // Fetch mouvements du mois affiché (borné, pour badges calendrier + popup jour)
+  const fetchMouvementsMois = async (offset = calMonthOffsetTreso) => {
+    const now = new Date()
+    const dispDate = new Date(now.getFullYear(), now.getMonth() + offset, 1)
+    const first = new Date(dispDate.getFullYear(), dispDate.getMonth(), 1)
+    const last = new Date(dispDate.getFullYear(), dispDate.getMonth() + 1, 0, 23, 59, 59)
+    const firstStr = first.toISOString().slice(0, 10)
+    const lastStr = last.toISOString().slice(0, 10)
+    const { data } = await supabase.from('tresorerie_mouvements')
+      .select('*')
+      .or(`and(target_date.gte.${firstStr},target_date.lte.${lastStr}),and(target_date.is.null,created_at.gte.${first.toISOString()},created_at.lte.${last.toISOString()})`)
+    setMouvementsMois(data || [])
   }
 
   // Assigner la caisse d'une clôture à un employé (met à jour les 3 lignes cash/banco/virement)
@@ -1445,10 +1466,11 @@ export default function StockMagasin() {
   // Fetch délais au montage (pour le sélecteur devis)
   useEffect(() => { fetchDelaiTypes() }, [])
 
-  // Refetch clôtures du mois quand on navigue dans le calendrier
+  // Refetch clôtures + mouvements du mois quand on navigue dans le calendrier
   useEffect(() => {
     if (posScreen !== 'tresorerie') return
     fetchCloturesMois(calMonthOffsetTreso)
+    fetchMouvementsMois(calMonthOffsetTreso)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [calMonthOffsetTreso, posScreen])
 
@@ -1471,6 +1493,7 @@ export default function StockMagasin() {
         if (fournisseursListTreso.length === 0) fetchFournisseursListTreso()
         if (staffListCaisse.length === 0) fetchStaffCaisse()
         fetchCloturesMois(0)
+        fetchMouvementsMois(0)
       }
     }
     if (posScreen === 'prix-reparations') {
@@ -3235,7 +3258,7 @@ export default function StockMagasin() {
                   `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 
                 // Dépenses du jour : target_date si présent, sinon created_at
-                const depensesDuJour = (dateStr) => filteredMouvements.filter((m) => {
+                const depensesDuJour = (dateStr) => filteredMouvementsMois.filter((m) => {
                   if (m.type !== 'sortie') return false
                   const eff = m.target_date || m.created_at
                   return jourStrM(new Date(eff)) === dateStr
