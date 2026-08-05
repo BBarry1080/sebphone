@@ -217,6 +217,8 @@ export default function StockMagasin() {
     payment_method: 'cash',
     made_by: '', made_by_autre: '',
     target_date: '',
+    closure_id: '',
+    libelle_id: '',
   })
   // Combinaisons magasins libres (défaut : les 4 physiques cochés)
   const [selectedMagasinsCombo, setSelectedMagasinsCombo] = useState(
@@ -233,6 +235,9 @@ export default function StockMagasin() {
   const [savingDepense, setSavingDepense]                 = useState(false)
   const [fournisseursListTreso, setFournisseursListTreso] = useState([])
   const [magasinsAvecHistorique, setMagasinsAvecHistorique] = useState([])
+  const [libellesListTreso, setLibellesListTreso]         = useState([])
+  const [closuresListTreso, setClosuresListTreso]         = useState([])
+  const [loadingClosuresTreso, setLoadingClosuresTreso]   = useState(false)
 
   // Détenteur — édition d'un mouvement existant
   const [editingHolderMouvement, setEditingHolderMouvement] = useState(null)
@@ -508,6 +513,7 @@ export default function StockMagasin() {
     if (user.magasin_id) setMagasin(user.magasin_id)
     else if (MAGASINS_LIST.length > 0) setMagasin(MAGASINS_LIST[0].id)
     fetchMagasinsAvecHistorique()
+    fetchLibellesTreso()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -720,6 +726,29 @@ export default function StockMagasin() {
     setFournisseursListTreso(data || [])
   }
 
+  // Libellés de dépense prédéfinis
+  const fetchLibellesTreso = async () => {
+    const { data } = await supabase
+      .from('depense_libelles')
+      .select('*')
+      .order('label')
+    setLibellesListTreso(data || [])
+  }
+
+  // Clôtures disponibles pour le magasin choisi dans le formulaire dépense
+  const fetchClosuresForDepense = async (magasinId) => {
+    if (!magasinId) { setClosuresListTreso([]); return }
+    setLoadingClosuresTreso(true)
+    const { data } = await supabase
+      .from('cash_closures')
+      .select('id, closure_date, ca_total, staff_name')
+      .eq('magasin_id', magasinId)
+      .order('closure_date', { ascending: false })
+      .limit(60)
+    setClosuresListTreso(data || [])
+    setLoadingClosuresTreso(false)
+  }
+
   // Magasins ayant déjà au moins une clôture enregistrée
   const fetchMagasinsAvecHistorique = async () => {
     const { data } = await supabase
@@ -808,6 +837,13 @@ export default function StockMagasin() {
     const amt = Number(depenseForm.montant)
     if (!amt || amt <= 0) { alert('Montant invalide'); return }
     if (!depenseForm.magasin_id) { alert('Sélectionne un magasin'); return }
+    if (!depenseForm.closure_id) { alert('Sélectionne une clôture de caisse'); return }
+    if (!depenseForm.target_date) { alert('Indique la date de la dépense'); return }
+    if (!depenseForm.libelle_id) { alert('Sélectionne ou ajoute un libellé'); return }
+    if (depenseForm.libelle_id === '__custom__' && !depenseForm.description.trim()) {
+      alert('Indique le libellé')
+      return
+    }
     setSavingDepense(true)
     const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
     const fallbackCreatedBy = currentSebUser?.name || 'Staff'
@@ -817,17 +853,29 @@ export default function StockMagasin() {
     const sourceFinal = depenseForm.categorie === 'autre'
       ? (depenseForm.categorieAutre.trim() || 'autre')
       : depenseForm.categorie
+    let finalDescription = depenseForm.description
+    if (depenseForm.libelle_id === '__custom__') {
+      const trimmed = depenseForm.description.trim()
+      const { data: newLib } = await supabase
+        .from('depense_libelles')
+        .upsert({ label: trimmed }, { onConflict: 'label' })
+        .select()
+        .single()
+      finalDescription = newLib?.label || trimmed
+      fetchLibellesTreso()
+    }
     const { error } = await supabase.from('tresorerie_mouvements').insert({
       type: 'sortie',
       source: sourceFinal,
       magasin_id: depenseForm.magasin_id || null,
       amount: amt,
       reference_id: depenseForm.fournisseur_id || null,
-      description: depenseForm.description || null,
+      description: finalDescription || null,
       created_by: madeByFinal,
       holder: computeHolderLabel(depenseForm),
       payment_method: depenseForm.payment_method,
-      target_date: depenseForm.target_date || null,
+      closure_id: depenseForm.closure_id,
+      target_date: depenseForm.target_date,
     })
     setSavingDepense(false)
     if (error) { alert('Erreur : ' + error.message); return }
@@ -839,7 +887,8 @@ export default function StockMagasin() {
       holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '',
       payment_method: 'cash',
       made_by: '', made_by_autre: '',
-      target_date: '' })
+      target_date: '',
+      closure_id: '', libelle_id: '' })
     setShowDepenseForm(false)
     setPrefillTargetDate('')
     fetchMouvements()
@@ -2987,7 +3036,11 @@ export default function StockMagasin() {
                       <div>
                         <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
                         <select value={depenseForm.magasin_id}
-                          onChange={(e) => setDepenseForm((f) => ({ ...f, magasin_id: e.target.value }))}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setDepenseForm((f) => ({ ...f, magasin_id: val, closure_id: '', target_date: '' }))
+                            fetchClosuresForDepense(val)
+                          }}
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
                           <option value="">— Choisir —</option>
                           {MAGASINS_CAISSE_DEPENSE.map((m) => (
@@ -2999,6 +3052,38 @@ export default function StockMagasin() {
                             Aucun magasin n'a encore de caisse clôturée —
                             impossible d'ajouter une dépense tant qu'aucune
                             clôture n'a eu lieu.
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                          Clôture de caisse *
+                        </label>
+                        <select
+                          value={depenseForm.closure_id}
+                          disabled={!depenseForm.magasin_id}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            const closure = closuresListTreso.find((c) => c.id === val)
+                            setDepenseForm((f) => ({
+                              ...f,
+                              closure_id: val,
+                              target_date: closure ? closure.closure_date : f.target_date,
+                            }))
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm disabled:bg-gray-50 disabled:text-gray-400">
+                          <option value="">
+                            {!depenseForm.magasin_id ? '— Choisis un magasin d\'abord —' : '— Choisir —'}
+                          </option>
+                          {closuresListTreso.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {new Date(c.closure_date).toLocaleDateString('fr-BE')} — {Number(c.ca_total).toFixed(2)}€ ({c.staff_name || 'Admin'})
+                            </option>
+                          ))}
+                        </select>
+                        {depenseForm.magasin_id && closuresListTreso.length === 0 && !loadingClosuresTreso && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            Aucune clôture trouvée pour ce magasin.
                           </p>
                         )}
                       </div>
@@ -3107,28 +3192,50 @@ export default function StockMagasin() {
                         </div>
                       )}
                       <div className="md:col-span-2">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Affecter à une date (optionnel)</label>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Date de la dépense *</label>
                         <input type="date" value={depenseForm.target_date}
                           onChange={(e) => setDepenseForm((f) => ({ ...f, target_date: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                         <p className="text-[10px] text-gray-400 mt-1">
-                          Vide = déduit du total global ; renseigné = la dépense apparaît sur cette date du calendrier
+                          La dépense apparaîtra sur cette date dans le calendrier.
                         </p>
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Description</label>
-                      <textarea rows={2} value={depenseForm.description}
-                        onChange={(e) => setDepenseForm((f) => ({ ...f, description: e.target.value }))}
-                        placeholder="Détail, référence facture, etc."
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+                      <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                        Libellé de la dépense *
+                      </label>
+                      <select
+                        value={depenseForm.libelle_id}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '__custom__') {
+                            setDepenseForm((f) => ({ ...f, libelle_id: '__custom__', description: '' }))
+                          } else {
+                            const lib = libellesListTreso.find((l) => l.id === val)
+                            setDepenseForm((f) => ({ ...f, libelle_id: val, description: lib?.label || '' }))
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                        <option value="">— Choisir —</option>
+                        {libellesListTreso.map((l) => (
+                          <option key={l.id} value={l.id}>{l.label}</option>
+                        ))}
+                        <option value="__custom__">+ Ajouter un nouveau libellé</option>
+                      </select>
+                      {depenseForm.libelle_id === '__custom__' && (
+                        <input type="text" autoFocus value={depenseForm.description}
+                          onChange={(e) => setDepenseForm((f) => ({ ...f, description: e.target.value }))}
+                          placeholder="ex: Frais de déplacement, réparation matériel..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mt-2" />
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button onClick={handleSaveDepense} disabled={savingDepense}
                         className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
                         {savingDepense ? 'Enregistrement...' : 'Enregistrer'}
                       </button>
-                      <button onClick={() => { setShowDepenseForm(false); setPrefillTargetDate(''); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash', made_by: '', made_by_autre: '', target_date: '' }) }}
+                      <button onClick={() => { setShowDepenseForm(false); setPrefillTargetDate(''); setDepenseForm({ magasin_id: '', montant: '', categorie: 'fournisseur', fournisseur_id: '', description: '', categorieAutre: '', holderType: 'zinou', holderDetailMagasin: '', holderDetailAutre: '', payment_method: 'cash', made_by: '', made_by_autre: '', target_date: '', closure_id: '', libelle_id: '' }) }}
                         className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
                         Annuler
                       </button>
