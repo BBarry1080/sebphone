@@ -2532,9 +2532,13 @@ export default function StockMagasin() {
   }
 
   return (
-    <div className={(posScreen === 'caisse' || posScreen === 'gestion')
-      ? 'p-2 max-w-none mx-auto relative'
-      : 'p-4 md:p-8 max-w-7xl mx-auto relative'}>
+    <div className={
+      posScreen === 'caisse'
+        ? 'p-2 max-w-none mx-auto relative bg-[#EDF0F4] -m-4 lg:-m-6 p-4'
+        : posScreen === 'gestion'
+          ? 'p-2 max-w-none mx-auto relative'
+          : 'p-4 md:p-8 max-w-7xl mx-auto relative'
+    }>
 
       {!caisseSession && magasin && (
         <div className="fixed inset-0 z-[100] backdrop-blur-md bg-black/40 flex items-center justify-center p-4">
@@ -2722,7 +2726,7 @@ export default function StockMagasin() {
       {/* Bouton retour pour Caisse */}
       {posScreen === 'caisse' && (
         <button onClick={() => setPosScreen('accueil')}
-          className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
+          className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-1.5">
           ← Retour à l'accueil
         </button>
       )}
@@ -4862,7 +4866,7 @@ export default function StockMagasin() {
 
       {/* TAB CAISSE — layout POS 3 colonnes */}
       {posScreen === 'caisse' && (
-        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-25px)]">
+        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-100px)]">
 
           {/* COLONNE GAUCHE — Catégories + Réparations en attente */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-2 flex flex-col">
