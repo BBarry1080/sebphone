@@ -3861,7 +3861,7 @@ export default function StockMagasin() {
                     <p className="text-center text-gray-400 text-sm py-6">Aucun mouvement</p>
                   ) : (
                     <div className="space-y-1 max-h-80 overflow-y-auto">
-                      {mvtsDet.map((m) => {
+                      {mvtsDet.filter((m) => !(m.type === 'sortie' && m.closure_id)).map((m) => {
                         const dt = new Date(m.created_at)
                         const dateStr = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`
                         const magNom = m.magasin_id
@@ -3896,9 +3896,14 @@ export default function StockMagasin() {
                             )}
                             {totalDepLiee > 0 && (
                               <>
-                                <span className="w-full text-xs font-bold text-red-600">
-                                  <span className="text-[9px] font-normal opacity-70 mr-0.5">Dép</span>
-                                  -{totalDepLiee.toFixed(2)}€
+                                <span className="w-full text-xs font-bold text-red-600 flex items-center gap-1">
+                                  <span className="text-[9px] font-normal opacity-70">Dép</span>
+                                  <span>-{totalDepLiee.toFixed(2)}€</span>
+                                  {depensesLiees.some((d) => d.description) && (
+                                    <span className="text-[10px] font-normal italic text-gray-500 truncate">
+                                      — {depensesLiees.map((d) => d.description).filter(Boolean).join(', ')}
+                                    </span>
+                                  )}
                                 </span>
                                 <span className={`w-full text-sm font-black ${netLiee < 0 ? 'text-red-600' : 'text-green-600'}`}>
                                   <span className={`text-[9px] font-normal mr-0.5 ${netLiee < 0 ? 'text-red-400' : 'text-green-500'}`}>Net</span>
