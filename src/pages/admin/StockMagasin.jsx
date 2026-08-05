@@ -4866,7 +4866,7 @@ export default function StockMagasin() {
 
       {/* TAB CAISSE — layout POS 3 colonnes */}
       {posScreen === 'caisse' && (
-        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-100px)]">
+        <div className="grid grid-cols-[140px_1fr_340px] gap-4 h-[calc(100vh-118px)]">
 
           {/* COLONNE GAUCHE — Catégories + Réparations en attente */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-2 flex flex-col">
