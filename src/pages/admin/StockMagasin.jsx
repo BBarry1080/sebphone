@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Plus, X, Pencil, Trash2, Search, Receipt,
-         AlertTriangle, Package, Tag, Boxes,
+         AlertTriangle, Package, Tag, Boxes, Wrench,
          Menu, Lock, Unlock, LogOut,
          Settings, Clock, Save, UserCheck, Send, Calendar, History,
          PiggyBank, ChevronLeft, ChevronRight, Percent,
