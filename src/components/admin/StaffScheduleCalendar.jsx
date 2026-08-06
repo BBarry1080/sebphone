@@ -135,7 +135,9 @@ export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, 
 
     const buildISO = (hm) => {
       if (!hm) return null
-      return `${selectedDay}T${hm}:00`
+      const [h, m] = hm.split(':').map(Number)
+      const [y, mo, d] = selectedDay.split('-').map(Number)
+      return new Date(y, mo - 1, d, h, m, 0).toISOString()
     }
 
     const arriveeISO = buildISO(pointageForm.heure_arrivee) || p.heure_arrivee
