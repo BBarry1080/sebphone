@@ -590,6 +590,7 @@ export default function CaisseAccueil({
           title="Caisse"
           subtitle="Vente caisse"
           onClick={onOpenCaisse}
+          span={2}
         />
 
         {/* FOURNISSEURS */}
