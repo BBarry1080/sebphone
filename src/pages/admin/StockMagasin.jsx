@@ -347,6 +347,7 @@ export default function StockMagasin() {
 
   // Verrou PIN caisse
   const [caisseSession, setCaisseSession] = useState(null)
+  const [todayScheduleForLive, setTodayScheduleForLive] = useState(null)
 
   // Paramètres caisse (PIN/horaires/salaire par employé)
   const [staffListCaisse, setStaffListCaisse]           = useState([])
@@ -380,15 +381,48 @@ export default function StockMagasin() {
     return () => clearInterval(t)
   }, [pointageAujourdhui])
 
+  // Fetch du planning du jour pour compteur "En direct" + détection heure sup au départ
+  useEffect(() => {
+    if (!caisseSession) { setTodayScheduleForLive(null); return }
+    supabase.from('staff_schedule_dates')
+      .select('heure_debut, heure_fin')
+      .eq('staff_id', caisseSession.staffId)
+      .eq('date', new Date().toISOString().slice(0, 10))
+      .maybeSingle()
+      .then(({ data }) => setTodayScheduleForLive(data))
+  }, [caisseSession])
+
   const calcGainDirect = () => {
     if (!pointageAujourdhui || !pointageAujourdhui.heure_arrivee) return null
     const wage = Number(selectedStaffCaisse?.hourly_wage || 0)
     const arr = new Date(pointageAujourdhui.heure_arrivee)
-    const end = pointageAujourdhui.heure_depart ? new Date(pointageAujourdhui.heure_depart) : new Date()
+
+    let end = pointageAujourdhui.heure_depart ? new Date(pointageAujourdhui.heure_depart) : new Date()
+    let shiftTermine = false
+
+    if (!pointageAujourdhui.heure_depart && todayScheduleForLive?.heure_fin) {
+      const now = new Date()
+      const [fh, fm] = todayScheduleForLive.heure_fin.split(':').map(Number)
+      const finPrevue = new Date(now.getFullYear(), now.getMonth(), now.getDate(), fh, fm, 0)
+      if (now >= finPrevue) {
+        end = finPrevue
+        shiftTermine = true
+      }
+    }
+
     const heures = Math.max(0, (end - arr) / 3600000)
     const brut = heures * wage
     const net = brut - Number(pointageAujourdhui.penalite_retard || 0)
-    return { heures, net, enCours: !pointageAujourdhui.heure_depart }
+
+    let prevuDepuisMin = null
+    if (todayScheduleForLive?.heure_debut) {
+      const now = new Date()
+      const [dh, dm] = todayScheduleForLive.heure_debut.split(':').map(Number)
+      const debutPrevu = new Date(now.getFullYear(), now.getMonth(), now.getDate(), dh, dm, 0)
+      prevuDepuisMin = Math.max(0, (now - debutPrevu) / 60000)
+    }
+
+    return { heures, net, enCours: !pointageAujourdhui.heure_depart && !shiftTermine, shiftTermine, prevuDepuisMin }
   }
 
   const renderPointageAndSalaire = () => (
@@ -425,6 +459,12 @@ export default function StockMagasin() {
               const totalMin = Math.round(g.heures * 60)
               const h = Math.floor(totalMin / 60)
               const m = totalMin % 60
+              let prevuLabel = null
+              if (g.prevuDepuisMin !== null) {
+                const pH = Math.floor(g.prevuDepuisMin / 60)
+                const pM = Math.round(g.prevuDepuisMin % 60)
+                prevuLabel = `${pH}h ${String(pM).padStart(2, '0')}min`
+              }
               return (
                 <div className="mt-3 rounded-xl p-3 border border-cyan-100"
                   style={{ background: 'linear-gradient(135deg, #ecfeff 0%, #ccfbf1 100%)' }}>
@@ -432,7 +472,9 @@ export default function StockMagasin() {
                     <span className="text-[10px] font-bold uppercase text-[#1B2A4A] flex items-center gap-1">
                       {g.enCours
                         ? <><span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> En direct</>
-                        : <>Session terminée</>}
+                        : g.shiftTermine
+                          ? <>Shift terminé</>
+                          : <>Session terminée</>}
                     </span>
                     <span className="text-lg font-black text-teal-700">
                       {g.net.toFixed(2)}€
@@ -441,6 +483,16 @@ export default function StockMagasin() {
                   <p className="text-[11px] text-gray-500">
                     {h}h {String(m).padStart(2, '0')}min travaillées
                   </p>
+                  {prevuLabel && (
+                    <p className="text-[10px] text-amber-600 font-bold mt-1">
+                      ⏱️ Prévu depuis {prevuLabel}
+                    </p>
+                  )}
+                  {g.shiftTermine && (
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      Temps au-delà à déclarer via "Changer" en fin de session
+                    </p>
+                  )}
                 </div>
               )
             })()}
@@ -615,10 +667,52 @@ export default function StockMagasin() {
 
   const handleChangeUser = async () => {
     if (!caisseSession) return
+
+    const { data: todaySchedule } = await supabase
+      .from('staff_schedule_dates')
+      .select('heure_fin')
+      .eq('staff_id', caisseSession.staffId)
+      .eq('date', new Date().toISOString().slice(0, 10))
+      .maybeSingle()
+
+    let heuresSupData = null
+    if (todaySchedule?.heure_fin) {
+      const now = new Date()
+      const [fh, fm] = todaySchedule.heure_fin.split(':').map(Number)
+      const finPrevue = new Date(now.getFullYear(), now.getMonth(), now.getDate(), fh, fm, 0)
+      const depassementMin = (now - finPrevue) / 60000
+      if (depassementMin > 15) {
+        const h = Math.floor(depassementMin / 60)
+        const m = Math.round(depassementMin % 60)
+        const confirmDeclare = window.confirm(
+          `Tu termines ${h}h${String(m).padStart(2, '0')} après l'heure prévue (${todaySchedule.heure_fin}).\n\nDéclarer ce temps en heures supplémentaires (en attente de validation par le gérant) ?`
+        )
+        if (confirmDeclare) {
+          const motif = window.prompt('Motif (optionnel) :') || null
+          heuresSupData = {
+            staff_id: caisseSession.staffId,
+            date: new Date().toISOString().slice(0, 10),
+            pointage_id: caisseSession.pointageId,
+            heure_fin_prevue: todaySchedule.heure_fin,
+            heure_depart_reelle: now.toISOString(),
+            duree_heures: Math.round((depassementMin / 60) * 100) / 100,
+            motif,
+            statut: 'en_attente',
+          }
+        }
+      }
+    }
+
     if (!window.confirm('Terminer votre session sur ce poste ?')) return
+
     await supabase.from('staff_pointages')
       .update({ heure_depart: new Date().toISOString() })
       .eq('id', caisseSession.pointageId)
+
+    if (heuresSupData) {
+      await supabase.from('staff_heures_sup').insert(heuresSupData)
+    }
+
     localStorage.removeItem(`sebphone_caisse_session_${magasin}`)
     setCaisseSession(null)
   }

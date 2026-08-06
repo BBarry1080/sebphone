@@ -56,6 +56,14 @@ export async function calcSalairePeriode(supabase, staffId, hourlyWage, dateStar
     .gte('created_at', dateStart + 'T00:00:00')
     .lte('created_at', dateEnd + 'T23:59:59')
 
+  const { data: heuresSup } = await supabase
+    .from('staff_heures_sup')
+    .select('duree_heures')
+    .eq('staff_id', staffId)
+    .eq('statut', 'accepte')
+    .gte('date', dateStart)
+    .lte('date', dateEnd)
+
   let totalHeures = 0
   let salaireBrut = 0
   let penalitesRetard = 0
@@ -89,12 +97,16 @@ export async function calcSalairePeriode(supabase, staffId, hourlyWage, dateStar
   }
 
   const commissionsTotal = (commissions || []).reduce((s, c) => s + Number(c.commission_amount || 0), 0)
+  const heuresSupTotal = (heuresSup || []).reduce((s, h) => s + Number(h.duree_heures || 0), 0)
+  const heuresSupMontant = heuresSupTotal * hourlyWage
   const penalitesAbsence = absences.length * 200
-  const salaireNet = salaireBrut - penalitesRetard - penalitesAbsence + commissionsTotal
+  const salaireNet = salaireBrut + heuresSupMontant - penalitesRetard - penalitesAbsence + commissionsTotal
 
   return {
     totalHeures, salaireBrut, penalitesRetard,
     absencesCount: absences.length, absencesDates: absences,
-    penalitesAbsence, commissionsTotal, salaireNet,
+    penalitesAbsence, commissionsTotal,
+    heuresSupTotal, heuresSupMontant,
+    salaireNet,
   }
 }
