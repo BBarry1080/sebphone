@@ -300,6 +300,20 @@ export default function StockMagasin() {
 
   // Délais réparation (sous-section de l'écran Prix)
   const [sectionPrixDelais, setSectionPrixDelais] = useState('prix') // 'prix' | 'delais' | 'ecrans' | 'taches'
+
+  // Hub Réparations (posScreen === 'reparations-hub')
+  const [reparationsHubTab, setReparationsHubTab]         = useState('recherche')
+  const [reparationsHubData, setReparationsHubData]       = useState([])
+  const [loadingReparationsHub, setLoadingReparationsHub] = useState(false)
+  const [searchReparationsHub, setSearchReparationsHub]   = useState('')
+  const [calHubMonthOffset, setCalHubMonthOffset]         = useState(0)
+  const [selectedJourReparations, setSelectedJourReparations] = useState(null)
+  // Nouvelle réparation depuis le hub (modal simplifié)
+  const [showNewRepairFromHub, setShowNewRepairFromHub]   = useState(false)
+  const [newRepairFromHubForm, setNewRepairFromHubForm]   = useState({
+    nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
+  })
+  const [savingNewRepairFromHub, setSavingNewRepairFromHub] = useState(false)
   const [delaiTypesList, setDelaiTypesList]       = useState([])
   const [loadingDelaiTypes, setLoadingDelaiTypes] = useState(false)
   const [editingDelai, setEditingDelai]           = useState(null)
@@ -977,6 +991,16 @@ export default function StockMagasin() {
     () => mouvementsMois.filter(m => !m.magasin_id || selectedMagasinsCombo.has(m.magasin_id)),
     [mouvementsMois, selectedMagasinsCombo]
   )
+
+  const filteredReparationsHub = useMemo(() => {
+    const q = searchReparationsHub.trim().toLowerCase()
+    if (!q) return reparationsHubData
+    return reparationsHubData.filter((r) => {
+      const target = [r.client_nom, r.imei, r.appareil, r.bon_number, r.client_number]
+        .filter(Boolean).join(' ').toLowerCase()
+      return target.includes(q)
+    })
+  }, [reparationsHubData, searchReparationsHub])
 
   const totalGlobalTreso = useMemo(() => (
     filteredMouvements.reduce((s, m) =>
@@ -1896,10 +1920,9 @@ export default function StockMagasin() {
         fetchMouvementsMois(0)
       }
     }
-    if (posScreen === 'prix-reparations') {
-      if (!trueIsAdmin) {
-        setPosScreen('accueil')
-      } else {
+    if (posScreen === 'reparations-hub') {
+      fetchReparationsHubData()
+      if (trueIsAdmin) {
         fetchTypePannePrix()
         fetchDelaiTypes()
       }
@@ -2043,6 +2066,54 @@ export default function StockMagasin() {
 
     setItems(flattened)
     setLoading(false)
+  }
+
+  // ─── Hub Réparations (posScreen === 'reparations-hub') ───
+  const fetchReparationsHubData = async () => {
+    setLoadingReparationsHub(true)
+    const { data } = await supabase
+      .from('repairs')
+      .select('*')
+      .eq('magasin_id', magasin)
+      .order('created_at', { ascending: false })
+      .limit(500)
+    setReparationsHubData(data || [])
+    setLoadingReparationsHub(false)
+  }
+
+  const handleCreateNewRepairFromHub = async () => {
+    if (!newRepairFromHubForm.nom.trim()) { alert('Nom du client obligatoire'); return }
+    setSavingNewRepairFromHub(true)
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const { count: repairCount } = await supabase
+      .from('repairs').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
+    const { count: clientCount } = await supabase
+      .from('clients').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
+    const bonNumber = 'BON-' + String((repairCount || 0) + 1).padStart(4, '0')
+    const clientNumber = 'CL-' + String((clientCount || 0) + 1).padStart(4, '0')
+    const { error } = await supabase.from('repairs').insert({
+      bon_number: bonNumber,
+      client_nom: newRepairFromHubForm.nom.trim(),
+      client_number: clientNumber,
+      magasin_id: magasin,
+      date: new Date().toISOString().slice(0, 10),
+      appareil: newRepairFromHubForm.appareil || null,
+      imei: newRepairFromHubForm.imei || null,
+      type_panne: newRepairFromHubForm.type_panne || null,
+      prix: newRepairFromHubForm.prix ? Number(newRepairFromHubForm.prix) : null,
+      devis: false,
+      tel: newRepairFromHubForm.tel || null,
+      email: newRepairFromHubForm.email || null,
+      status: 'en_attente',
+      montant_paye: 0,
+      staff_name: currentSebUser?.name || 'Staff',
+    })
+    setSavingNewRepairFromHub(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
+    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '' })
+    setShowNewRepairFromHub(false)
+    fetchReparationsHubData()
   }
 
   // ─── Réparations en attente (à ajouter au panier caisse) ───
@@ -3148,15 +3219,13 @@ export default function StockMagasin() {
           onOpenParametresCaisse={() => { setPosScreen('parametres'); fetchStaffCaisse() }}
           onOpenPointage={() => setPosScreen('pointage')}
           onOpenTresorerie={() => { setPosScreen('tresorerie'); fetchMouvements(); fetchFournisseursListTreso() }}
-          onOpenPrixReparations={() => { setPosScreen('prix-reparations'); fetchTypePannePrix() }}
+          onOpenReparationsHub={() => { setPosScreen('reparations-hub'); setSectionPrixDelais('recherche'); fetchReparationsHubData() }}
           onEditRefundFacture={(sale) => {
             setSelectedTicket(sale)
             setPosScreen('recherche-ticket')
           }}
           showParametresCaisseTile={canAccessParamsCaisse}
           showTresorerieTile={trueIsAdmin || canSeeTresorerie}
-          showCommissionsTile={trueIsAdmin}
-          showPrixReparationsTile={trueIsAdmin}
           showBenefice={trueIsAdmin}
           onAcompteRecorded={fetchCaisseToday}
         />
@@ -5016,27 +5085,37 @@ export default function StockMagasin() {
 
       {/* ÉCRAN COMMISSIONS (admin uniquement) */}
 
-      {/* ÉCRAN PRIX RÉPARATIONS (admin uniquement) */}
-      {posScreen === 'prix-reparations' && trueIsAdmin && (
-        <div className="max-w-3xl mx-auto">
+      {/* ÉCRAN RÉPARATIONS HUB */}
+      {posScreen === 'reparations-hub' && (
+        <div className="max-w-5xl mx-auto">
           <button onClick={() => setPosScreen('accueil')}
             className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
             ← Retour à l'accueil
           </button>
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
-              <Tag size={22} /> Prix & Délais réparations
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">Prix par défaut, min et max par type de panne, délais indicatifs et catalogue d'écrans par modèle</p>
+          <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
+                <Wrench size={22} /> Réparations
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">Recherche, planning et gestion des réparations</p>
+            </div>
+            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '' }); setShowNewRepairFromHub(true) }}
+              className="flex items-center gap-1.5 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+              <Plus size={16} /> Nouvelle réparation
+            </button>
           </div>
 
-          {/* Toggle Prix / Délais / Écrans / Tâches clôture */}
+          {/* Toggle Recherche / Calendrier / (admin) Prix / Délais / Écrans / Tâches */}
           <div className="flex gap-2 mb-4 flex-wrap">
             {[
-              { key: 'prix', label: '💰 Prix' },
-              { key: 'delais', label: '⏱️ Délais' },
-              { key: 'ecrans', label: '📱 Écrans par modèle' },
-              { key: 'taches', label: '✅ Tâches clôture' },
+              { key: 'recherche', label: '🔍 Recherche' },
+              { key: 'calendrier', label: '📅 Calendrier' },
+              ...(trueIsAdmin ? [
+                { key: 'prix', label: '💰 Prix' },
+                { key: 'delais', label: '⏱️ Délais' },
+                { key: 'ecrans', label: '📱 Écrans par modèle' },
+                { key: 'taches', label: '✅ Tâches clôture' },
+              ] : []),
             ].map((s) => (
               <button key={s.key}
                 onClick={() => setSectionPrixDelais(s.key)}
@@ -5049,7 +5128,132 @@ export default function StockMagasin() {
             ))}
           </div>
 
-          {sectionPrixDelais === 'prix' && (
+          {sectionPrixDelais === 'recherche' && (
+            <div className="space-y-3">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+                <input type="text" value={searchReparationsHub}
+                  onChange={(e) => setSearchReparationsHub(e.target.value)}
+                  placeholder="Nom, IMEI, modèle, n° bon..."
+                  className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm"/>
+              </div>
+              {loadingReparationsHub ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : filteredReparationsHub.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                  Aucune réparation trouvée.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {filteredReparationsHub.map((r) => {
+                    const statutColor = r.status === 'termine' ? 'bg-emerald-100 text-emerald-700'
+                      : r.status === 'abandonne' ? 'bg-gray-100 text-gray-500'
+                      : 'bg-amber-100 text-amber-700'
+                    const statutLabel = r.status === 'termine' ? 'Terminé'
+                      : r.status === 'abandonne' ? 'Abandonné'
+                      : 'En attente'
+                    return (
+                      <div key={r.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3 flex-wrap">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="text-xs font-mono text-gray-500">{r.bon_number}</span>
+                            <p className="font-bold text-[#1B2A4A] text-sm">{r.client_nom}</p>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statutColor}`}>
+                              {statutLabel}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-0.5">
+                            {r.appareil && <span>📱 {r.appareil}</span>}
+                            {r.imei && <span className="font-mono">IMEI {r.imei}</span>}
+                            {r.type_panne && <span>{r.type_panne}</span>}
+                            {r.date && <span>{new Date(r.date).toLocaleDateString('fr-BE')}</span>}
+                            {r.staff_name && <span className="text-[#00B4CC] font-bold">👤 {r.staff_name}</span>}
+                          </div>
+                        </div>
+                        {r.prix != null && (
+                          <p className="text-lg font-black text-[#1B2A4A] flex-shrink-0">
+                            {Number(r.prix).toFixed(2)}€
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {sectionPrixDelais === 'calendrier' && (() => {
+            const now = new Date()
+            const dispDate = new Date(now.getFullYear(), now.getMonth() + calHubMonthOffset, 1)
+            const yearM = dispDate.getFullYear()
+            const monthM = dispDate.getMonth()
+            const monthLabelM = dispDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
+            const daysInMonthM = new Date(yearM, monthM + 1, 0).getDate()
+            const firstDayOfMonthM = new Date(yearM, monthM, 1).getDay()
+            const firstDowM = firstDayOfMonthM === 0 ? 6 : firstDayOfMonthM - 1
+            const cellsM = []
+            for (let i = 0; i < firstDowM; i++) cellsM.push(null)
+            for (let d = 1; d <= daysInMonthM; d++) cellsM.push(new Date(yearM, monthM, d))
+            const dowLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+            const jourStrM = (d) =>
+              `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+            const reparationsDuJour = (dateStr) => reparationsHubData.filter((r) => {
+              const eff = r.date || (r.created_at ? r.created_at.slice(0, 10) : null)
+              return eff === dateStr
+            })
+            return (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setCalHubMonthOffset((o) => o - 1)}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
+                      {monthLabelM}
+                    </span>
+                    <button onClick={() => setCalHubMonthOffset((o) => o + 1)}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1 mb-1">
+                  {dowLabels.map((d) => (
+                    <div key={d} className="text-[10px] font-bold text-gray-400 uppercase text-center py-1">{d}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {cellsM.map((d, i) => {
+                    if (!d) return <div key={i} />
+                    const dStr = jourStrM(d)
+                    const reps = reparationsDuJour(dStr)
+                    return (
+                      <button key={i}
+                        onClick={() => reps.length > 0 && setSelectedJourReparations(dStr)}
+                        disabled={reps.length === 0}
+                        className={`aspect-square rounded-lg text-xs flex flex-col items-center justify-center transition-all border
+                          ${reps.length > 0
+                            ? 'bg-amber-50 border-amber-200 text-[#1B2A4A] font-bold hover:bg-amber-100 cursor-pointer'
+                            : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                        <span>{d.getDate()}</span>
+                        {reps.length > 0 && (
+                          <span className="text-[9px] text-amber-700 font-bold mt-0.5">
+                            {reps.length}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
+
+          {sectionPrixDelais === 'prix' && trueIsAdmin && (
             loadingTypePannePrix ? (
               <div className="flex items-center justify-center h-40">
                 <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
@@ -5132,7 +5336,7 @@ export default function StockMagasin() {
             )
           )}
 
-          {sectionPrixDelais === 'delais' && (
+          {sectionPrixDelais === 'delais' && trueIsAdmin && (
             <>
               <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
                 {!showDelaiForm ? (
@@ -5213,7 +5417,7 @@ export default function StockMagasin() {
             </>
           )}
 
-          {sectionPrixDelais === 'ecrans' && (
+          {sectionPrixDelais === 'ecrans' && trueIsAdmin && (
             <>
               {/* Barre filtres */}
               <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4 flex flex-col md:flex-row gap-2 items-stretch md:items-center">
@@ -5471,7 +5675,7 @@ export default function StockMagasin() {
             </>
           )}
 
-          {sectionPrixDelais === 'taches' && (
+          {sectionPrixDelais === 'taches' && trueIsAdmin && (
             <>
               <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
                 {!showTacheForm ? (
@@ -7047,6 +7251,135 @@ export default function StockMagasin() {
                   Ajouter au panier
                 </button>
               </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* MODAL NOUVELLE RÉPARATION (depuis le hub) */}
+      {showNewRepairFromHub && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 my-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">Nouvelle réparation</h3>
+              <button onClick={() => setShowNewRepairFromHub(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nom du client *</label>
+                <input type="text" autoFocus value={newRepairFromHubForm.nom}
+                  onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, nom: e.target.value }))}
+                  placeholder="Nom et prénom"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Appareil</label>
+                  <input type="text" value={newRepairFromHubForm.appareil}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, appareil: e.target.value }))}
+                    placeholder="ex: iPhone 13"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">IMEI</label>
+                  <input type="text" value={newRepairFromHubForm.imei}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, imei: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Type de panne</label>
+                  <input type="text" value={newRepairFromHubForm.type_panne}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, type_panne: e.target.value }))}
+                    placeholder="ex: Écran cassé"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Prix (€)</label>
+                  <input type="number" step="0.01" min="0" value={newRepairFromHubForm.prix}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, prix: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Téléphone</label>
+                  <input type="tel" value={newRepairFromHubForm.tel}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, tel: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Email</label>
+                  <input type="email" value={newRepairFromHubForm.email}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+              </div>
+              <p className="text-[10px] text-gray-400 italic">
+                Pour enregistrer un acompte, prend le paiement via la caisse (panier "Réparations en attente").
+              </p>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowNewRepairFromHub(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
+                Annuler
+              </button>
+              <button onClick={handleCreateNewRepairFromHub} disabled={savingNewRepairFromHub}
+                className="flex-1 py-2.5 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                {savingNewRepairFromHub ? 'Création...' : 'Créer la réparation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP DÉTAIL JOUR — réparations du jour cliqué dans le calendrier hub */}
+      {selectedJourReparations && (() => {
+        const reps = reparationsHubData.filter((r) => {
+          const eff = r.date || (r.created_at ? r.created_at.slice(0, 10) : null)
+          return eff === selectedJourReparations
+        })
+        return (
+          <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 my-8 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-[#1B2A4A] text-lg capitalize">
+                  {new Date(selectedJourReparations).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </h3>
+                <button onClick={() => setSelectedJourReparations(null)}
+                  className="text-gray-400 hover:text-[#1B2A4A]">
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                {reps.length} réparation{reps.length > 1 ? 's' : ''} ce jour
+              </p>
+              <div className="space-y-2">
+                {reps.map((r) => (
+                  <div key={r.id} className="bg-gray-50 rounded-xl p-3">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-xs font-mono text-gray-500">{r.bon_number}</span>
+                      <p className="font-bold text-[#1B2A4A] text-sm">{r.client_nom}</p>
+                    </div>
+                    {r.appareil && <p className="text-xs text-gray-600">📱 {r.appareil}</p>}
+                    {r.type_panne && <p className="text-xs text-gray-500">{r.type_panne}</p>}
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Traité par : <span className="font-bold text-[#00B4CC]">{r.staff_name || 'Non renseigné'}</span>
+                    </p>
+                    <p className="text-[10px] font-bold uppercase mt-1">
+                      Statut : {r.status === 'termine' ? 'Terminé' : r.status === 'abandonne' ? 'Abandonné' : 'En attente'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setSelectedJourReparations(null)}
+                className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+                Fermer
+              </button>
             </div>
           </div>
         )

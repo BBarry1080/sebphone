@@ -77,11 +77,10 @@ export default function CaisseAccueil({
   onOpenParametresCaisse,
   onOpenPointage,
   onOpenTresorerie,
-  onOpenPrixReparations,
+  onOpenReparationsHub,
   onEditRefundFacture = () => {},
   showParametresCaisseTile = false,
   showTresorerieTile = false,
-  showPrixReparationsTile = false,
   showBenefice = false,
   onAcompteRecorded = () => {},
 }) {
@@ -451,6 +450,7 @@ export default function CaisseAccueil({
 
   const handleGenerateBon = async () => {
     if (!repairForm.nom.trim()) { alert('Nom requis'); return }
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
     const payload = {
       bon_number: repairForm.bon_number,
       client_nom: repairForm.nom.trim(),
@@ -468,6 +468,7 @@ export default function CaisseAccueil({
       montant_paye: repairForm.montant_paye ? Number(repairForm.montant_paye) : 0,
       ecran_modele: repairForm.ecran_modele || null,
       ecran_qualite: repairForm.ecran_qualite || null,
+      staff_name: currentSebUser?.name || 'Staff',
     }
     const { error } = await supabase.from('repairs').insert(payload)
     if (error) { alert('Erreur : ' + error.message); return }
@@ -479,7 +480,6 @@ export default function CaisseAccueil({
     )
     setLastBon(payload)
 
-    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
     const vendeurName = currentSebUser?.name || 'Admin'
     const prixNum = Number(payload.prix || 0)
     const payeNum = Number(payload.montant_paye || 0)
@@ -621,22 +621,12 @@ export default function CaisseAccueil({
           onClick={onOpenPointage}
         />
 
-        {/* RÉPARATIONS */}
-        <div className="relative">
-          <Tile color={COLORS.amber} icon={Wrench}
-            title="Réparations"
-            subtitle="Générer un bon de dépôt"
-            onClick={openRepairModal}
-          />
-          {showPrixReparationsTile && (
-            <button type="button"
-              onClick={(e) => { e.stopPropagation(); onOpenPrixReparations() }}
-              title="Configurer les prix de réparation"
-              className="absolute top-2 right-2 p-1.5 rounded-lg text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-100 z-10">
-              <Settings size={14} strokeWidth={2.2} />
-            </button>
-          )}
-        </div>
+        {/* RÉPARATIONS (hub) */}
+        <Tile color={COLORS.amber} icon={Wrench}
+          title="Réparations"
+          subtitle="Rechercher, planifier, gérer"
+          onClick={onOpenReparationsHub}
+        />
       </div>
 
       {/* MODAL CLIENT */}
