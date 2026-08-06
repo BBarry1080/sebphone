@@ -344,6 +344,13 @@ export default function StockMagasin() {
     date: '', repos: false, heure_debut: '10:00', heure_fin: '20:00', note: '',
   })
   const [sendingReplacement, setSendingReplacement] = useState(false)
+  // Heures supplémentaires — vue employé
+  const [myPendingHeuresSup, setMyPendingHeuresSup] = useState([])
+  const [showDeclareHS, setShowDeclareHS] = useState(false)
+  const [declareHSForm, setDeclareHSForm] = useState({
+    date: new Date().toISOString().slice(0, 10), duree_heures: '', motif: '',
+  })
+  const [savingDeclareHS, setSavingDeclareHS] = useState(false)
 
   // Verrou PIN caisse
   const [caisseSession, setCaisseSession] = useState(null)
@@ -391,6 +398,43 @@ export default function StockMagasin() {
       .maybeSingle()
       .then(({ data }) => setTodayScheduleForLive(data))
   }, [caisseSession])
+
+  const fetchMyPendingHeuresSup = async () => {
+    if (!myStaffRecord?.id) return
+    const { data } = await supabase
+      .from('staff_heures_sup')
+      .select('*')
+      .eq('staff_id', myStaffRecord.id)
+      .order('date', { ascending: false })
+      .limit(10)
+    setMyPendingHeuresSup(data || [])
+  }
+
+  useEffect(() => { fetchMyPendingHeuresSup() }, [myStaffRecord])
+
+  const handleDeclareHeureSup = async () => {
+    if (!declareHSForm.date || !declareHSForm.duree_heures) {
+      alert('Date et durée obligatoires'); return
+    }
+    const duree = Number(declareHSForm.duree_heures)
+    if (!duree || duree <= 0 || duree > 12) {
+      alert('Durée invalide (entre 0 et 12h)'); return
+    }
+    setSavingDeclareHS(true)
+    const { error } = await supabase.from('staff_heures_sup').insert({
+      staff_id: myStaffRecord.id,
+      date: declareHSForm.date,
+      duree_heures: duree,
+      motif: declareHSForm.motif || null,
+      statut: 'en_attente',
+    })
+    setSavingDeclareHS(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    setDeclareHSForm({ date: new Date().toISOString().slice(0, 10), duree_heures: '', motif: '' })
+    setShowDeclareHS(false)
+    fetchMyPendingHeuresSup()
+    alert('✅ Demande envoyée, en attente de validation par le gérant')
+  }
 
   const calcGainDirect = () => {
     if (!pointageAujourdhui || !pointageAujourdhui.heure_arrivee) return null
@@ -3242,6 +3286,78 @@ export default function StockMagasin() {
                   isAdmin={false}
                   readOnly={true}
                 />
+              </div>
+
+              {/* Heures supplémentaires */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                <h3 className="font-bold text-[#1B2A4A] mb-3 flex items-center gap-2">
+                  <Clock size={16} /> Heures supplémentaires
+                </h3>
+
+                {myPendingHeuresSup.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {myPendingHeuresSup.map((h) => (
+                      <div key={h.id} className="flex items-center justify-between gap-2 bg-gray-50 rounded-xl p-2.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-[#1B2A4A]">
+                            {new Date(h.date).toLocaleDateString('fr-BE')} — {h.duree_heures}h
+                          </p>
+                          {h.motif && <p className="text-[10px] text-gray-400 mt-0.5">{h.motif}</p>}
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                          h.statut === 'accepte' ? 'bg-emerald-100 text-emerald-700'
+                          : h.statut === 'refuse' ? 'bg-red-100 text-red-700'
+                          : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {h.statut === 'accepte' ? 'Acceptée' : h.statut === 'refuse' ? 'Refusée' : 'En attente'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!showDeclareHS ? (
+                  <button onClick={() => setShowDeclareHS(true)}
+                    className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm font-bold text-gray-500 hover:border-[#00B4CC] hover:text-[#00B4CC]">
+                    + Déclarer une heure sup
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Date</label>
+                        <input type="date" value={declareHSForm.date}
+                          onChange={(e) => setDeclareHSForm((f) => ({ ...f, date: e.target.value }))}
+                          max={new Date().toISOString().slice(0, 10)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Durée (h)</label>
+                        <input type="number" step="0.25" min="0" max="12" placeholder="ex: 2"
+                          value={declareHSForm.duree_heures}
+                          onChange={(e) => setDeclareHSForm((f) => ({ ...f, duree_heures: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Motif (optionnel)</label>
+                      <input type="text" placeholder="ex: fermeture caisse tardive"
+                        value={declareHSForm.motif}
+                        onChange={(e) => setDeclareHSForm((f) => ({ ...f, motif: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleDeclareHeureSup} disabled={savingDeclareHS}
+                        className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                        {savingDeclareHS ? 'Envoi...' : 'Envoyer la demande'}
+                      </button>
+                      <button onClick={() => setShowDeclareHS(false)}
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Demander un remplacement */}
