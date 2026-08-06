@@ -299,12 +299,20 @@ export default function StockMagasin() {
   const [savingTypePanne, setSavingTypePanne]     = useState(false)
 
   // Délais réparation (sous-section de l'écran Prix)
-  const [sectionPrixDelais, setSectionPrixDelais] = useState('prix') // 'prix' | 'delais'
+  const [sectionPrixDelais, setSectionPrixDelais] = useState('prix') // 'prix' | 'delais' | 'ecrans' | 'taches'
   const [delaiTypesList, setDelaiTypesList]       = useState([])
   const [loadingDelaiTypes, setLoadingDelaiTypes] = useState(false)
   const [editingDelai, setEditingDelai]           = useState(null)
   const [delaiForm, setDelaiForm]                 = useState({ label: '', delai_texte: '', ordre: 0 })
   const [savingDelai, setSavingDelai]             = useState(false)
+
+  // Tâches de clôture (checklist + admin)
+  const [clotureTachesList, setClotureTachesList] = useState([])
+  const [checkedTaches, setCheckedTaches]         = useState({})
+  const [editingTache, setEditingTache]           = useState(null)
+  const [tacheForm, setTacheForm]                 = useState({ label: '', ordre: 0 })
+  const [savingTache, setSavingTache]             = useState(false)
+  const [showTacheForm, setShowTacheForm]         = useState(false)
 
   // Catalogue écrans par modèle
   const [ecranCatalogList, setEcranCatalogList]   = useState([])
@@ -1360,6 +1368,64 @@ export default function StockMagasin() {
     fetchDelaiTypes()
   }
 
+  // ─── Tâches de clôture caisse ───
+  const fetchClotureTaches = async () => {
+    const { data } = await supabase.from('cloture_taches')
+      .select('*').eq('active', true).order('ordre')
+    setClotureTachesList(data || [])
+  }
+
+  const resetTacheForm = () => {
+    setTacheForm({ label: '', ordre: 0 })
+    setEditingTache(null)
+    setShowTacheForm(false)
+  }
+
+  const openEditTache = (row) => {
+    setEditingTache(row)
+    setTacheForm({
+      label: row.label || '',
+      ordre: row.ordre ?? 0,
+    })
+    setShowTacheForm(true)
+  }
+
+  const handleSaveTache = async () => {
+    if (!tacheForm.label.trim()) {
+      alert('Label requis'); return
+    }
+    setSavingTache(true)
+    const payload = {
+      label: tacheForm.label.trim(),
+      ordre: Number(tacheForm.ordre) || 0,
+    }
+    let error
+    if (editingTache) {
+      const { error: e } = await supabase.from('cloture_taches')
+        .update(payload).eq('id', editingTache.id)
+      error = e
+    } else {
+      const { error: e } = await supabase.from('cloture_taches').insert(payload)
+      error = e
+    }
+    setSavingTache(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity(
+      editingTache ? 'cloture_tache_update' : 'cloture_tache_create',
+      `Tâche clôture — ${payload.label}`
+    )
+    resetTacheForm()
+    fetchClotureTaches()
+  }
+
+  const handleDeleteTache = async (row) => {
+    if (!window.confirm(`Supprimer la tâche "${row.label}" ?`)) return
+    const { error } = await supabase.from('cloture_taches').delete().eq('id', row.id)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('cloture_tache_delete', `Tâche clôture supprimée — ${row.label}`)
+    fetchClotureTaches()
+  }
+
   // ─── Catalogue écrans par modèle ───
   const fetchEcranCatalog = async () => {
     setLoadingEcranCatalog(true)
@@ -1774,6 +1840,7 @@ export default function StockMagasin() {
 
   // Fetch délais au montage (pour le sélecteur devis)
   useEffect(() => { fetchDelaiTypes() }, [])
+  useEffect(() => { fetchClotureTaches() }, [])
 
   // Catalogue écrans chargé au mount (nécessaire pour la recherche caisse)
   useEffect(() => { fetchEcranCatalog() }, [])
@@ -2699,6 +2766,8 @@ export default function StockMagasin() {
       tvaRows, reglementsArr, categoriesArr, retraitsArr,
     })
     setPrelevementAmount('')
+    setCheckedTaches({})
+    fetchClotureTaches()
     setShowClosureModal(true)
   }
 
@@ -4907,12 +4976,13 @@ export default function StockMagasin() {
             <p className="text-sm text-gray-500 mt-1">Prix par défaut, min et max par type de panne, délais indicatifs et catalogue d'écrans par modèle</p>
           </div>
 
-          {/* Toggle Prix / Délais / Écrans */}
-          <div className="flex gap-2 mb-4">
+          {/* Toggle Prix / Délais / Écrans / Tâches clôture */}
+          <div className="flex gap-2 mb-4 flex-wrap">
             {[
               { key: 'prix', label: '💰 Prix' },
               { key: 'delais', label: '⏱️ Délais' },
               { key: 'ecrans', label: '📱 Écrans par modèle' },
+              { key: 'taches', label: '✅ Tâches clôture' },
             ].map((s) => (
               <button key={s.key}
                 onClick={() => setSectionPrixDelais(s.key)}
@@ -5340,6 +5410,75 @@ export default function StockMagasin() {
                           )
                         })}
                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {sectionPrixDelais === 'taches' && (
+            <>
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+                {!showTacheForm ? (
+                  <button onClick={() => { setEditingTache(null); setTacheForm({ label: '', ordre: 0 }); setShowTacheForm(true) }}
+                    className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                    + Nouvelle tâche
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-[#1B2A4A]">
+                      {editingTache ? 'Modifier la tâche' : 'Nouvelle tâche'}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-2">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Label</label>
+                        <input type="text" value={tacheForm.label}
+                          onChange={(e) => setTacheForm((f) => ({ ...f, label: e.target.value }))}
+                          placeholder="ex: Vérifier le tiroir-caisse, éteindre les écrans..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Ordre</label>
+                        <input type="number" step="1" value={tacheForm.ordre}
+                          onChange={(e) => setTacheForm((f) => ({ ...f, ordre: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveTache} disabled={savingTache}
+                        className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                        {savingTache ? 'Enregistrement...' : editingTache ? 'Sauvegarder' : 'Créer'}
+                      </button>
+                      <button onClick={resetTacheForm}
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {clotureTachesList.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                  Aucune tâche — cliquez sur "+ Nouvelle tâche" pour commencer.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {clotureTachesList.map((row) => (
+                    <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-[#1B2A4A]">{row.label}</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Ordre {row.ordre ?? 0}</span>
+                      <button onClick={() => openEditTache(row)}
+                        className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => handleDeleteTache(row)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -6510,6 +6649,29 @@ export default function StockMagasin() {
                 placeholder="0"
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm mb-3"/>
             </div>
+
+            {clotureTachesList.length > 0 && (
+              <div className="bg-gray-50 rounded-xl p-3 mb-3">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">
+                  Avant de clôturer
+                </p>
+                <div className="space-y-1.5">
+                  {clotureTachesList.map((t) => (
+                    <label key={t.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <input type="checkbox" checked={!!checkedTaches[t.id]}
+                        onChange={(e) => setCheckedTaches((prev) => ({ ...prev, [t.id]: e.target.checked }))}
+                        className="w-4 h-4 accent-[#00B4CC]" />
+                      {t.label}
+                    </label>
+                  ))}
+                </div>
+                {clotureTachesList.some((t) => !checkedTaches[t.id]) && (
+                  <p className="text-[11px] text-amber-600 font-bold mt-2">
+                    ⚠️ Toutes les tâches ne sont pas cochées
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button onClick={() => setShowClosureModal(false)}
