@@ -1750,8 +1750,14 @@ export default function StockMagasin() {
     // Déduction commission d'origine (vendeur original)
     if (selectedTicket.staff_id) {
       const itemIds = linesToRefund.map((l) => l.item_id)
-      const { data: itemDetails } = await supabase.from('shop_items')
-        .select('id, sous_categorie, shop_categories(name)').in('id', itemIds)
+      const { data: itemDetailsRaw } = await supabase.from('produits_stock_magasin')
+        .select('id, produits_catalogue(sous_categorie, shop_categories(name))')
+        .in('id', itemIds.filter(Boolean))
+      const itemDetails = (itemDetailsRaw || []).map((d) => ({
+        id: d.id,
+        sous_categorie: d.produits_catalogue?.sous_categorie,
+        shop_categories: d.produits_catalogue?.shop_categories,
+      }))
       const { data: rules } = await supabase.from('commission_rules')
         .select('*').eq('active', true)
       const findRule = (catName, sousCat) => {
@@ -2003,11 +2009,43 @@ export default function StockMagasin() {
   const fetchItems = async () => {
     setLoading(true)
     const { data } = await supabase
-      .from('shop_items')
-      .select('*, shop_categories(name, color), fournisseurs(nom)')
+      .from('produits_stock_magasin')
+      .select(`
+        *,
+        produits_catalogue (
+          name, reference, category_id, sous_categorie, image_url,
+          fournisseur_id, description, tva_rate,
+          shop_categories (name, color),
+          fournisseurs (nom)
+        )
+      `)
       .eq('magasin_id', magasin)
-      .order('name')
-    setItems(data || [])
+
+    const flattened = (data || []).map((row) => ({
+      id: row.id,
+      produit_id: row.produit_id,
+      magasin_id: row.magasin_id,
+      quantity: row.quantity,
+      quantity_alert: row.quantity_alert,
+      purchase_price: row.purchase_price,
+      sale_price: row.sale_price,
+      price_min: row.price_min,
+      price_max: row.price_max,
+      barcode: row.barcode,
+      sans_stock: row.sans_stock,
+      name: row.produits_catalogue?.name,
+      reference: row.produits_catalogue?.reference,
+      category_id: row.produits_catalogue?.category_id,
+      sous_categorie: row.produits_catalogue?.sous_categorie,
+      image_url: row.produits_catalogue?.image_url,
+      fournisseur_id: row.produits_catalogue?.fournisseur_id,
+      description: row.produits_catalogue?.description,
+      tva_rate: row.produits_catalogue?.tva_rate,
+      shop_categories: row.produits_catalogue?.shop_categories,
+      fournisseurs: row.produits_catalogue?.fournisseurs,
+    })).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+
+    setItems(flattened)
     setLoading(false)
   }
 
@@ -2147,35 +2185,55 @@ export default function StockMagasin() {
     const categoryName = itemForm.sous_categorie?.trim()
       || categories.find(c => c.id === itemForm.category_id)?.name
       || ''
-    const payload = {
-      ...itemForm,
-      quantity:       itemForm.sans_stock ? 0 : (itemForm.quantity || 0),
-      purchase_price: itemForm.purchase_price || null,
-      quantity_alert: itemForm.sans_stock ? 0 : (itemForm.quantity_alert || 0),
-      barcode:        finalBarcode,
-      reference:      itemForm.reference || null,
+
+    const catalogueParts = {
+      name: itemForm.name,
+      reference: itemForm.reference || null,
+      category_id: itemForm.category_id || null,
       sous_categorie: categoryName,
-      image_url:      itemForm.image_url || null,
+      image_url: itemForm.image_url || null,
       fournisseur_id: itemForm.fournisseur_id || null,
-      sans_stock:     itemForm.sans_stock,
-      tva_rate:       Number(itemForm.tva_rate) || 21,
-      magasin_id: magasin,
-      updated_at: new Date().toISOString(),
+      description: itemForm.description || null,
+      tva_rate: Number(itemForm.tva_rate) || 21,
     }
+
+    const stockParts = {
+      quantity: itemForm.sans_stock ? 0 : (itemForm.quantity || 0),
+      quantity_alert: itemForm.sans_stock ? 0 : (itemForm.quantity_alert || 0),
+      purchase_price: itemForm.purchase_price || null,
+      sale_price: itemForm.sale_price || 0,
+      price_min: itemForm.price_min || 0,
+      price_max: itemForm.price_max || 0,
+      barcode: finalBarcode,
+      sans_stock: itemForm.sans_stock,
+    }
+
     if (editItem) {
-      await supabase.from('shop_items')
-        .update(payload).eq('id', editItem.id)
+      const { error: catErr } = await supabase.from('produits_catalogue')
+        .update(catalogueParts).eq('id', editItem.produit_id)
+      if (catErr) { alert('Erreur catalogue : ' + catErr.message); return }
+
+      const { error: stockErr } = await supabase.from('produits_stock_magasin')
+        .update(stockParts).eq('id', editItem.id)
+      if (stockErr) { alert('Erreur stock : ' + stockErr.message); return }
     } else {
-      await supabase.from('shop_items').insert(payload)
+      const { data: newProduit, error: catErr } = await supabase
+        .from('produits_catalogue').insert(catalogueParts).select().single()
+      if (catErr) { alert('Erreur catalogue : ' + catErr.message); return }
+
+      const { error: stockErr } = await supabase.from('produits_stock_magasin')
+        .insert({ ...stockParts, produit_id: newProduit.id, magasin_id: magasin })
+      if (stockErr) { alert('Erreur stock : ' + stockErr.message); return }
     }
+
     setShowItemModal(false)
     fetchItems()
   }
 
   const handleDeleteItem = async (id) => {
-    if (!window.confirm('Supprimer cet article ?')) return
-    await supabase.from('shop_items').delete().eq('id', id)
-    setItems(prev => prev.filter(i => i.id !== id))
+    if (!window.confirm('Supprimer cet article de ce magasin ?')) return
+    await supabase.from('produits_stock_magasin').delete().eq('id', id)
+    fetchItems()
   }
 
   const openCatModal = (cat = null) => {
@@ -2389,10 +2447,17 @@ export default function StockMagasin() {
       return
     }
 
-    const { data: itemDetails } = await supabase
-      .from('shop_items')
-      .select('id, sous_categorie, tva_rate, shop_categories(name)')
-      .in('id', cart.map((c) => c.item_id))
+    const { data: itemDetailsRaw } = await supabase
+      .from('produits_stock_magasin')
+      .select('id, produits_catalogue(sous_categorie, tva_rate, shop_categories(name))')
+      .in('id', cart.map((c) => c.item_id).filter(Boolean))
+
+    const itemDetails = (itemDetailsRaw || []).map((d) => ({
+      id: d.id,
+      sous_categorie: d.produits_catalogue?.sous_categorie,
+      tva_rate: d.produits_catalogue?.tva_rate,
+      shop_categories: d.produits_catalogue?.shop_categories,
+    }))
 
     const saleItems = cart.map((c) => {
       const detail = itemDetails?.find((d) => d.id === c.item_id)
