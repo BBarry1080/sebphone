@@ -77,12 +77,10 @@ export default function CaisseAccueil({
   onOpenParametresCaisse,
   onOpenPointage,
   onOpenTresorerie,
-  onOpenCommissions,
   onOpenPrixReparations,
   onEditRefundFacture = () => {},
   showParametresCaisseTile = false,
   showTresorerieTile = false,
-  showCommissionsTile = false,
   showPrixReparationsTile = false,
   showBenefice = false,
   onAcompteRecorded = () => {},
@@ -617,21 +615,11 @@ export default function CaisseAccueil({
         )}
 
         {/* POINTAGE (toujours visible pour l'employé connecté) */}
-        <div className="relative">
-          <Tile color={COLORS.teal} icon={UserCheck}
-            title="Pointage"
-            subtitle="Mon planning & mes heures"
-            onClick={onOpenPointage}
-          />
-          {showCommissionsTile && (
-            <button type="button"
-              onClick={(e) => { e.stopPropagation(); onOpenCommissions() }}
-              title="Configurer les commissions"
-              className="absolute top-2 right-2 p-1.5 rounded-lg text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-100 z-10">
-              <Settings size={14} strokeWidth={2.2} />
-            </button>
-          )}
-        </div>
+        <Tile color={COLORS.teal} icon={UserCheck}
+          title="Pointage"
+          subtitle="Mon planning & mes heures"
+          onClick={onOpenPointage}
+        />
 
         {/* RÉPARATIONS */}
         <div className="relative">

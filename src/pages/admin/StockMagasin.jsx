@@ -1877,6 +1877,10 @@ export default function StockMagasin() {
     }
     if (posScreen === 'pointage' && caisseSession?.staffId) {
       fetchMyPointageData()
+      if (trueIsAdmin) {
+        fetchCommissionRules()
+        fetchCategoriesDistinct()
+      }
     }
     if (posScreen === 'caisse' && magasin) {
       fetchPendingRepairs()
@@ -1898,14 +1902,6 @@ export default function StockMagasin() {
       } else {
         fetchTypePannePrix()
         fetchDelaiTypes()
-      }
-    }
-    if (posScreen === 'commissions') {
-      if (!trueIsAdmin) {
-        setPosScreen('accueil')
-      } else {
-        fetchCommissionRules()
-        fetchCategoriesDistinct()
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3152,7 +3148,6 @@ export default function StockMagasin() {
           onOpenParametresCaisse={() => { setPosScreen('parametres'); fetchStaffCaisse() }}
           onOpenPointage={() => setPosScreen('pointage')}
           onOpenTresorerie={() => { setPosScreen('tresorerie'); fetchMouvements(); fetchFournisseursListTreso() }}
-          onOpenCommissions={() => { setPosScreen('commissions'); fetchCommissionRules(); fetchCategoriesDistinct() }}
           onOpenPrixReparations={() => { setPosScreen('prix-reparations'); fetchTypePannePrix() }}
           onEditRefundFacture={(sale) => {
             setSelectedTicket(sale)
@@ -3550,6 +3545,119 @@ export default function StockMagasin() {
                   </div>
                 )}
               </div>
+
+              {trueIsAdmin && (
+                <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                  <h3 className="font-bold text-[#1B2A4A] mb-3 flex items-center gap-2">
+                    <Settings size={16} /> Commissions (configuration admin)
+                  </h3>
+
+                  {/* Formulaire (inline) ou bouton d'ouverture */}
+                  <div className="bg-gray-50 rounded-xl p-3 mb-3">
+                    {!showRuleForm ? (
+                      <button onClick={() => { setEditingRule(null); setRuleForm({ category_name: '', sous_categorie: '', rate: '', active: true }); setShowRuleForm(true) }}
+                        className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                        + Nouvelle règle
+                      </button>
+                    ) : (
+                      <div className="space-y-3">
+                        <h4 className="font-bold text-[#1B2A4A] text-sm">
+                          {editingRule ? 'Modifier la règle' : 'Nouvelle règle'}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
+                            <select value={ruleForm.category_name}
+                              onChange={(e) => setRuleForm((f) => ({ ...f, category_name: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                              <option value="">— Choisir —</option>
+                              {categoriesDistinct.map((n) => (
+                                <option key={n} value={n}>{n}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Sous-catégorie</label>
+                            <input type="text" value={ruleForm.sous_categorie}
+                              onChange={(e) => setRuleForm((f) => ({ ...f, sous_categorie: e.target.value }))}
+                              placeholder="laisser vide = toute la catégorie"
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Taux (%)</label>
+                            <input type="number" min="0" max="100" step="0.5" value={ruleForm.rate}
+                              onChange={(e) => setRuleForm((f) => ({ ...f, rate: e.target.value }))}
+                              placeholder="10"
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                          </div>
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={ruleForm.active}
+                            onChange={(e) => setRuleForm((f) => ({ ...f, active: e.target.checked }))}
+                            className="w-4 h-4 accent-[#00B4CC]" />
+                          <span className="text-sm text-gray-700">Règle active</span>
+                        </label>
+                        <div className="flex gap-2">
+                          <button onClick={handleSaveRule} disabled={savingRule}
+                            className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                            {savingRule ? 'Enregistrement...' : editingRule ? 'Sauvegarder' : 'Créer'}
+                          </button>
+                          <button onClick={resetRuleForm}
+                            className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Liste des règles */}
+                  {loadingRules ? (
+                    <div className="flex items-center justify-center h-40">
+                      <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : commissionRules.length === 0 ? (
+                    <div className="text-center text-gray-400 text-sm py-6">
+                      Aucune règle de commission — cliquez sur "+ Nouvelle règle" pour commencer.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {commissionRules.map((rule) => (
+                        <div key={rule.id}
+                          className={`bg-gray-50 rounded-xl p-3 flex items-center justify-between gap-3 ${rule.active ? '' : 'opacity-60'}`}>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-[#1B2A4A] text-sm">
+                              {rule.category_name}
+                              {rule.sous_categorie && (
+                                <span className="text-gray-500 font-normal"> ({rule.sous_categorie})</span>
+                              )}
+                            </p>
+                            {!rule.active && (
+                              <p className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">Inactive</p>
+                            )}
+                          </div>
+                          <p className="text-xl font-black text-[#00B4CC] flex-shrink-0">
+                            {rule.rate}%
+                          </p>
+                          <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                            <input type="checkbox" checked={!!rule.active}
+                              onChange={() => handleToggleRuleActive(rule)}
+                              className="sr-only peer" />
+                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#00B4CC]
+                                            after:content-[''] after:absolute after:top-0.5 after:left-0.5
+                                            after:bg-white after:rounded-full after:h-5 after:w-5
+                                            after:transition-all peer-checked:after:translate-x-5"></div>
+                          </label>
+                          <button onClick={() => openEditRule(rule)}
+                            className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-white rounded-lg flex-shrink-0">
+                            <Pencil size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -4907,125 +5015,6 @@ export default function StockMagasin() {
       )}
 
       {/* ÉCRAN COMMISSIONS (admin uniquement) */}
-      {posScreen === 'commissions' && trueIsAdmin && (
-        <div className="max-w-4xl mx-auto">
-          <button onClick={() => setPosScreen('accueil')}
-            className="text-xs text-gray-400 hover:text-[#1B2A4A] mb-3">
-            ← Retour à l'accueil
-          </button>
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold text-[#1B2A4A] flex items-center gap-2">
-              <Percent size={22} /> Commissions
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">Taux de commission par catégorie d'article</p>
-          </div>
-
-          {/* Formulaire (inline) ou bouton d'ouverture */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-            {!showRuleForm ? (
-              <button onClick={() => { setEditingRule(null); setRuleForm({ category_name: '', sous_categorie: '', rate: '', active: true }); setShowRuleForm(true) }}
-                className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
-                + Nouvelle règle
-              </button>
-            ) : (
-              <div className="space-y-3">
-                <h3 className="font-bold text-[#1B2A4A]">
-                  {editingRule ? 'Modifier la règle' : 'Nouvelle règle'}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Catégorie</label>
-                    <select value={ruleForm.category_name}
-                      onChange={(e) => setRuleForm((f) => ({ ...f, category_name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-                      <option value="">— Choisir —</option>
-                      {categoriesDistinct.map((n) => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Sous-catégorie</label>
-                    <input type="text" value={ruleForm.sous_categorie}
-                      onChange={(e) => setRuleForm((f) => ({ ...f, sous_categorie: e.target.value }))}
-                      placeholder="laisser vide = toute la catégorie"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Taux (%)</label>
-                    <input type="number" min="0" max="100" step="0.5" value={ruleForm.rate}
-                      onChange={(e) => setRuleForm((f) => ({ ...f, rate: e.target.value }))}
-                      placeholder="10"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={ruleForm.active}
-                    onChange={(e) => setRuleForm((f) => ({ ...f, active: e.target.checked }))}
-                    className="w-4 h-4 accent-[#00B4CC]" />
-                  <span className="text-sm text-gray-700">Règle active</span>
-                </label>
-                <div className="flex gap-2">
-                  <button onClick={handleSaveRule} disabled={savingRule}
-                    className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                    {savingRule ? 'Enregistrement...' : editingRule ? 'Sauvegarder' : 'Créer'}
-                  </button>
-                  <button onClick={resetRuleForm}
-                    className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:border-gray-400">
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Liste des règles */}
-          {loadingRules ? (
-            <div className="flex items-center justify-center h-40">
-              <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : commissionRules.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-              Aucune règle de commission — cliquez sur "+ Nouvelle règle" pour commencer.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {commissionRules.map((rule) => (
-                <div key={rule.id}
-                  className={`bg-white rounded-2xl border p-4 flex items-center justify-between gap-3 ${rule.active ? 'border-gray-100' : 'border-gray-100 opacity-60'}`}>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-[#1B2A4A]">
-                      {rule.category_name}
-                      {rule.sous_categorie && (
-                        <span className="text-gray-500 font-normal"> ({rule.sous_categorie})</span>
-                      )}
-                    </p>
-                    {!rule.active && (
-                      <p className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">Inactive</p>
-                    )}
-                  </div>
-                  <p className="text-2xl font-black text-[#00B4CC] flex-shrink-0">
-                    {rule.rate}%
-                  </p>
-                  <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                    <input type="checkbox" checked={!!rule.active}
-                      onChange={() => handleToggleRuleActive(rule)}
-                      className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#00B4CC]
-                                    after:content-[''] after:absolute after:top-0.5 after:left-0.5
-                                    after:bg-white after:rounded-full after:h-5 after:w-5
-                                    after:transition-all peer-checked:after:translate-x-5"></div>
-                  </label>
-                  <button onClick={() => openEditRule(rule)}
-                    className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg flex-shrink-0">
-                    <Pencil size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ÉCRAN PRIX RÉPARATIONS (admin uniquement) */}
       {posScreen === 'prix-reparations' && trueIsAdmin && (
