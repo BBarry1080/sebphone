@@ -42,7 +42,7 @@ const pad4 = (n) => String(n).padStart(4, '0')
 function Tile({ color, icon: Icon, title, value, subtitle, onClick, span }) {
   return (
     <button onClick={onClick}
-      className={`text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:-translate-y-0.5 transition-all ${
+      className={`w-full text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:-translate-y-0.5 transition-all ${
         span === 2 ? 'md:col-span-2' : ''
       }`}
       style={{ minHeight: 130 }}>
