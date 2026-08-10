@@ -1922,13 +1922,12 @@ export default function StockMagasin() {
       const itemsHtml = (lastSale.items || []).map((c) => {
         return `<tr><td>${c.quantity}× ${c.item_name}</td><td style="text-align:right">${lineTotal(c).toFixed(2)}€</td></tr>`
       }).join('')
-      const html = `<table style="width:100%;border-collapse:collapse">${itemsHtml}</table>`
       const emailjs = (await import('@emailjs/browser')).default
       const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
       await emailjs.send('service_nn74puq', 'template_ticket', {
         to_email: ticketEmailInput.trim(),
         to_name: 'Client',
-        items_html: html,
+        items_html: itemsHtml,
         total: (lastSale.total_amount || 0).toFixed(2) + '€',
         magasin_nom: magasinLabel,
         date_vente: new Date(lastSale.created_at || Date.now()).toLocaleDateString('fr-BE'),
