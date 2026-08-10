@@ -60,8 +60,9 @@ export default function Planning() {
   const handleTraiterDispo = async (dispo, statut) => {
     const currentUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
     if (statut === 'accepte') {
+      let error
       if (dispo.type === 'hebdo') {
-        await supabase.from('staff_disponibilites_hebdo').upsert({
+        const res = await supabase.from('staff_disponibilites_hebdo').upsert({
           staff_id: dispo.staff_id,
           jour_semaine: dispo.jour_semaine,
           repos: dispo.repos,
@@ -69,19 +70,26 @@ export default function Planning() {
           heure_fin: dispo.repos ? null : dispo.heure_fin,
           active: true,
         }, { onConflict: 'staff_id,jour_semaine' })
+        error = res.error
       } else {
-        await supabase.from('staff_schedule_dates').upsert({
+        const res = await supabase.from('staff_schedule_dates').upsert({
           staff_id: dispo.staff_id,
           date: dispo.date,
           repos: dispo.repos,
           heure_debut: dispo.repos ? null : dispo.heure_debut,
           heure_fin: dispo.repos ? null : dispo.heure_fin,
         }, { onConflict: 'staff_id,date' })
+        error = res.error
+      }
+      if (error) {
+        alert('Erreur lors de l\'application de l\'horaire : ' + error.message)
+        return
       }
     }
-    await supabase.from('staff_disponibilites')
+    const { error: updateError } = await supabase.from('staff_disponibilites')
       .update({ statut, traite_par: currentUser?.name || 'Admin', traite_at: new Date().toISOString() })
       .eq('id', dispo.id)
+    if (updateError) { alert('Erreur : ' + updateError.message); return }
     fetchPendingDispos()
   }
 
