@@ -16,7 +16,7 @@ const extractHM = (iso) => {
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
-export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, hourlyWage, isAdmin = false, readOnly = false }) {
+export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, staffMagasin = '', hourlyWage, isAdmin = false, readOnly = false }) {
   const [monthOffset, setMonthOffset] = useState(0)
   const [scheduleDates, setScheduleDates] = useState([])
   const [pointages, setPointages] = useState([])
@@ -216,7 +216,8 @@ export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, 
       const lignes = joursActifs.map((s) =>
         `📅 ${new Date(s.date).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' })} : ${s.heure_debut} - ${s.heure_fin}`
       ).join('\n')
-      const message = `Bonjour ${staffName.split(' ')[0]} ! Voici ton planning pour ${displayDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })} chez SebPhone :\n\n${lignes}\n\nÀ bientôt !`
+      const magasinPart = staffMagasin ? ` (${staffMagasin})` : ''
+      const message = `Bonjour ${staffName.split(' ')[0]} ! Voici ton planning pour ${displayDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })} chez SebPhone${magasinPart} :\n\n${lignes}\n\nÀ bientôt !`
 
       const digits = staffPhone.replace(/\D/g, '')
       const intl = digits.startsWith('0') ? '32' + digits.slice(1)

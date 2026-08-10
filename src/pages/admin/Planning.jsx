@@ -531,6 +531,7 @@ export default function Planning() {
                 staffId={selectedStaff.id}
                 staffName={selectedStaff.name}
                 staffPhone={selectedStaff.telephone}
+                staffMagasin={magasinNom(selectedStaff.magasin_id)}
                 hourlyWage={selectedStaff.hourly_wage || 0}
                 isAdmin={isAdmin}
               />

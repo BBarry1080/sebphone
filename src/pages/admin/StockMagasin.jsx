@@ -3883,6 +3883,7 @@ export default function StockMagasin() {
                   staffId={myStaffRecord.id}
                   staffName={myStaffRecord.name}
                   staffPhone={myStaffRecord.telephone}
+                  staffMagasin={MAGASINS_LIST.find((m) => m.id === myStaffRecord.magasin_id)?.nom || ''}
                   hourlyWage={myStaffRecord.hourly_wage || 0}
                   isAdmin={false}
                   readOnly={true}
