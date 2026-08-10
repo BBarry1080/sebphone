@@ -16,6 +16,7 @@ export default function Planning() {
     .map((m) => PLANNING_MAGASIN_LABELS[m.id] ? { ...m, nom: PLANNING_MAGASIN_LABELS[m.id] } : m)
 
   const [staffList, setStaffList] = useState([])
+  const [staffMagasinFilter, setStaffMagasinFilter] = useState('tous')
   const [loadingStaff, setLoadingStaff] = useState(true)
   const [selectedStaff, setSelectedStaff] = useState(null)
 
@@ -162,6 +163,13 @@ export default function Planning() {
     setAssignForm({ staff_id: '', repos: false, heure_debut: nextStart, heure_fin: '20:00' })
     fetchMagasinVueData()
     fetchSuggestionsForDate(assignDate)
+  }
+
+  const handleRemoveShift = async (scheduleId) => {
+    if (!confirm('Retirer cet employé de ce jour ?')) return
+    const { error } = await supabase.from('staff_schedule_dates').delete().eq('id', scheduleId)
+    if (error) { alert('Erreur : ' + error.message); return }
+    fetchMagasinVueData()
   }
 
   const handleToggleFermeture = async () => {
@@ -427,6 +435,23 @@ export default function Planning() {
       )}
 
       {viewMode === 'employe' && (
+      <>
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        <button onClick={() => setStaffMagasinFilter('tous')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+            staffMagasinFilter === 'tous' ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
+          }`}>
+          Tous
+        </button>
+        {planningMagasins.map((m) => (
+          <button key={m.id} onClick={() => setStaffMagasinFilter(m.id)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+              staffMagasinFilter === m.id ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
+            }`}>
+            {m.nom.replace('Seb Telecom — ', '')}
+          </button>
+        ))}
+      </div>
       <div className="flex gap-4 flex-col lg:flex-row">
         {/* Colonne gauche : liste employés */}
         <div className="w-full lg:w-[300px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 p-2 max-h-[calc(100vh-220px)] overflow-y-auto">
@@ -434,10 +459,10 @@ export default function Planning() {
             <div className="flex items-center justify-center h-40">
               <div className="w-6 h-6 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : staffList.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm py-8">Aucun employé actif</p>
+          ) : staffList.filter((s) => staffMagasinFilter === 'tous' || s.magasin_id === staffMagasinFilter).length === 0 ? (
+            <p className="text-center text-gray-400 text-sm py-8">Aucun employé dans ce magasin</p>
           ) : (
-            staffList.map((s) => {
+            staffList.filter((s) => staffMagasinFilter === 'tous' || s.magasin_id === staffMagasinFilter).map((s) => {
               const initials = s.name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '??'
               const isSel = selectedStaff?.id === s.id
               return (
@@ -479,6 +504,7 @@ export default function Planning() {
           )}
         </div>
       </div>
+      </>
       )}
 
       {viewMode === 'magasin' && (
@@ -621,10 +647,16 @@ export default function Planning() {
                 <p className="text-[10px] font-bold text-cyan-700 uppercase mb-1.5">Déjà planifié ce jour</p>
                 <div className="space-y-1">
                   {alreadyAssignedToday.map((s) => (
-                    <p key={s.id} className="text-xs text-gray-700">
-                      {s.staff?.name || '—'}{' — '}
-                      {s.repos ? 'Repos' : `${fmtHeure(s.heure_debut)}-${fmtHeure(s.heure_fin)}`}
-                    </p>
+                    <div key={s.id} className="flex items-center justify-between text-xs text-gray-700">
+                      <span>
+                        {s.staff?.name || '—'}{' — '}
+                        {s.repos ? 'Repos' : `${fmtHeure(s.heure_debut)}-${fmtHeure(s.heure_fin)}`}
+                      </span>
+                      <button onClick={() => handleRemoveShift(s.id)}
+                        className="text-red-500 hover:text-red-700 font-bold text-sm px-1.5">
+                        ×
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
