@@ -1983,7 +1983,8 @@ export default function StockMagasin() {
       setTicketEmailInput('')
       alert('Ticket envoyé ✅')
     } catch (e) {
-      alert('Erreur envoi : ' + e.message)
+      console.error('Erreur EmailJS complète :', e)
+      alert('Erreur envoi : ' + (e?.text || e?.message || JSON.stringify(e) || 'inconnue'))
     }
     setSendingTicketEmail(false)
   }
