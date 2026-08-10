@@ -123,6 +123,8 @@ export default function Planning() {
     setSuggestedDispoMap(map)
   }
 
+  const alreadyAssignedToday = magasinScheduleDates.filter((s) => s.date === assignDate)
+
   const openAssignShift = (dateStr) => {
     setAssignDate(dateStr)
     setAssignForm({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '18:00' })
@@ -145,8 +147,10 @@ export default function Planning() {
     }, { onConflict: 'staff_id,date' })
     setSavingAssign(false)
     if (error) { alert('Erreur : ' + error.message); return }
-    setShowAssignShift(false)
+    const nextStart = !assignForm.repos && assignForm.heure_fin ? assignForm.heure_fin : '10:00'
+    setAssignForm({ staff_id: '', repos: false, heure_debut: nextStart, heure_fin: '18:00' })
     fetchMagasinVueData()
+    fetchSuggestionsForDate(assignDate)
   }
 
   const handleToggleFermeture = async () => {
@@ -583,11 +587,25 @@ export default function Planning() {
             <button onClick={handleToggleFermeture} disabled={savingAssign}
               className={`w-full py-2 rounded-xl text-xs font-bold border-2 mb-3 disabled:opacity-50 ${
                 assignDateIsClosed
-                  ? 'bg-red-50 border-red-300 text-red-600'
+                  ? 'bg-gray-200 border-gray-400 text-gray-700'
                   : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-600'
               }`}>
               {assignDateIsClosed ? '🔓 Rouvrir le magasin ce jour' : '🔒 Marquer le magasin fermé ce jour'}
             </button>
+
+            {alreadyAssignedToday.length > 0 && (
+              <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-2.5 mb-3">
+                <p className="text-[10px] font-bold text-cyan-700 uppercase mb-1.5">Déjà planifié ce jour</p>
+                <div className="space-y-1">
+                  {alreadyAssignedToday.map((s) => (
+                    <p key={s.id} className="text-xs text-gray-700">
+                      {s.staff?.name || '—'}{' — '}
+                      {s.repos ? 'Repos' : `${fmtHeure(s.heure_debut)}-${fmtHeure(s.heure_fin)}`}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <p className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Employé</p>
             {Object.keys(suggestedDispoMap).length > 0 && (
@@ -645,7 +663,11 @@ export default function Planning() {
 
             <button onClick={handleAssignShift} disabled={savingAssign || !assignForm.staff_id}
               className="w-full py-2.5 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-              {savingAssign ? 'Enregistrement...' : 'Assigner'}
+              {savingAssign ? 'Enregistrement...' : 'Assigner un autre employé ce jour'}
+            </button>
+            <button onClick={() => setShowAssignShift(false)}
+              className="w-full mt-2 py-2 text-gray-500 text-xs font-bold hover:text-[#1B2A4A]">
+              Terminé — fermer
             </button>
           </div>
         </div>
