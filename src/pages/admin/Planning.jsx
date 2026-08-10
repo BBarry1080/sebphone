@@ -41,6 +41,10 @@ export default function Planning() {
   const [remplacementsMois, setRemplacementsMois] = useState([])
   const [assignDateIsClosed, setAssignDateIsClosed] = useState(false)
   const [loadingMagasinVue, setLoadingMagasinVue] = useState(false)
+  const [multiSelectModeMagasin, setMultiSelectModeMagasin] = useState(false)
+  const [selectedDatesMulti, setSelectedDatesMulti] = useState(new Set())
+  const [multiAssignForm, setMultiAssignForm] = useState({ staff_id: '', heure_debut: '10:00', heure_fin: '20:00' })
+  const [savingMultiAssign, setSavingMultiAssign] = useState(false)
 
   // Assignation rapide d'un shift depuis la vue magasin
   const [showAssignShift, setShowAssignShift] = useState(false)
@@ -163,6 +167,36 @@ export default function Planning() {
     setAssignForm({ staff_id: '', repos: false, heure_debut: nextStart, heure_fin: '20:00' })
     fetchMagasinVueData()
     fetchSuggestionsForDate(assignDate)
+  }
+
+  const toggleDateMulti = (dateStr) => {
+    setSelectedDatesMulti((prev) => {
+      const next = new Set(prev)
+      if (next.has(dateStr)) next.delete(dateStr)
+      else next.add(dateStr)
+      return next
+    })
+  }
+
+  const handleMultiAssign = async () => {
+    if (!multiAssignForm.staff_id || selectedDatesMulti.size === 0) {
+      alert('Choisis un employé et au moins un jour'); return
+    }
+    setSavingMultiAssign(true)
+    const rows = [...selectedDatesMulti].map((dateStr) => ({
+      staff_id: multiAssignForm.staff_id,
+      date: dateStr,
+      repos: false,
+      heure_debut: multiAssignForm.heure_debut,
+      heure_fin: multiAssignForm.heure_fin,
+    }))
+    const { error } = await supabase.from('staff_schedule_dates')
+      .upsert(rows, { onConflict: 'staff_id,date' })
+    setSavingMultiAssign(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    setSelectedDatesMulti(new Set())
+    setMultiSelectModeMagasin(false)
+    fetchMagasinVueData()
   }
 
   const handleRemoveShift = async (scheduleId) => {
@@ -521,7 +555,7 @@ export default function Planning() {
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <button onClick={() => setMagasinMonthOffset((o) => o - 1)}
                   className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
@@ -539,10 +573,52 @@ export default function Planning() {
                   <ChevronRight size={18} />
                 </button>
               </div>
-              <p className="text-xs text-gray-400">
-                {magasinStaffList.length} employé(s) actif(s) dans ce magasin
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-gray-400">
+                  {magasinStaffList.length} employé(s) actif(s)
+                </p>
+                <button onClick={() => {
+                    setMultiSelectModeMagasin((v) => !v)
+                    setSelectedDatesMulti(new Set())
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 ${
+                    multiSelectModeMagasin ? 'bg-[#00B4CC] text-white border-[#00B4CC]' : 'bg-white text-gray-600 border-gray-200'
+                  }`}>
+                  ☑️ Assigner sur plusieurs jours
+                </button>
+              </div>
             </div>
+
+            {multiSelectModeMagasin && (
+              <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-3 mb-3">
+                <p className="text-[10px] font-bold text-cyan-700 uppercase mb-2">
+                  {selectedDatesMulti.size} jour(s) sélectionné(s) — clique sur les jours du calendrier
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {magasinStaffList.map((s) => (
+                    <button key={s.id} onClick={() => setMultiAssignForm((f) => ({ ...f, staff_id: s.id }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 ${
+                        multiAssignForm.staff_id === s.id ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white border-gray-200 text-gray-600'
+                      }`}>
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 mb-2">
+                  <input type="time" value={multiAssignForm.heure_debut}
+                    onChange={(e) => setMultiAssignForm((f) => ({ ...f, heure_debut: e.target.value }))}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  <input type="time" value={multiAssignForm.heure_fin}
+                    onChange={(e) => setMultiAssignForm((f) => ({ ...f, heure_fin: e.target.value }))}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <button onClick={handleMultiAssign}
+                  disabled={savingMultiAssign || !multiAssignForm.staff_id || selectedDatesMulti.size === 0}
+                  className="w-full py-2.5 bg-[#00B4CC] text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                  {savingMultiAssign ? 'Enregistrement...' : `Assigner à ${selectedDatesMulti.size} jour(s)`}
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-7 gap-1 mb-1">
               {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map((d) => (
@@ -578,16 +654,25 @@ export default function Planning() {
                           : isPast
                             ? 'border-green-300 bg-green-50'
                             : 'border-blue-300 bg-blue-50'
+                    const isMultiSelected = selectedDatesMulti.has(dateStr)
                     return (
                       <div key={dateStr}
-                        className={`rounded-xl border p-2 min-h-[80px] ${colorCls}`}>
+                        onClick={multiSelectModeMagasin ? () => toggleDateMulti(dateStr) : undefined}
+                        className={`rounded-xl border p-2 min-h-[80px] ${
+                          isMultiSelected ? 'border-[#00B4CC] bg-cyan-100 border-2' : colorCls
+                        } ${multiSelectModeMagasin ? 'cursor-pointer' : ''}`}>
                         <div className="flex items-center justify-between mb-1">
                           <p className="text-[10px] font-bold text-gray-400">{date.getDate()}</p>
-                          <button onClick={() => openAssignShift(dateStr)}
-                            className="w-4 h-4 flex items-center justify-center rounded-full bg-[#1B2A4A] text-white text-[10px] font-bold leading-none hover:bg-[#00B4CC]"
-                            title="Ajouter un employé ce jour">
-                            +
-                          </button>
+                          {!multiSelectModeMagasin && (
+                            <button onClick={() => openAssignShift(dateStr)}
+                              className="w-4 h-4 flex items-center justify-center rounded-full bg-[#1B2A4A] text-white text-[10px] font-bold leading-none hover:bg-[#00B4CC]"
+                              title="Ajouter un employé ce jour">
+                              +
+                            </button>
+                          )}
+                          {multiSelectModeMagasin && isMultiSelected && (
+                            <span className="text-[10px] font-bold text-[#00B4CC]">✓</span>
+                          )}
                         </div>
                         {isClosed ? (
                           <p className="text-[10px] font-bold text-gray-500">🔒 Fermé</p>
