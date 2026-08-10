@@ -55,6 +55,15 @@ export default function StockMagasin() {
   const canSeeTresorerie = usePermission('voir_tresorerie')
 
   const [magasin, setMagasin] = useState('')
+
+  // Tâches récurrentes (rappel par jour/magasin) — distinct de cloture_taches
+  const [tachesDuJour, setTachesDuJour]           = useState([])
+  const [showTacheReminder, setShowTacheReminder] = useState(false)
+  const [showTachesAdmin, setShowTachesAdmin]     = useState(false)
+  const [tachesAdminList, setTachesAdminList]     = useState([])
+  const [tacheRecurrenteForm, setTacheRecurrenteForm] = useState({
+    titre: '', description: '', jours_semaine: [], magasins: [], intervalle_rappel_min: 15,
+  })
   const [categories, setCategories] = useState([])
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -973,6 +982,83 @@ export default function StockMagasin() {
   }
 
   // Magasins ayant déjà au moins une clôture enregistrée
+  // ─── Tâches récurrentes ───
+  const JOURS_SEMAINE = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi']
+  const jourAujourdhui = () => JOURS_SEMAINE[new Date().getDay()]
+
+  const fetchTachesDuJour = async () => {
+    if (!magasin) return
+    const today = jourAujourdhui()
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Brussels' })
+    const { data: taches } = await supabase
+      .from('taches_recurrentes')
+      .select('*')
+      .eq('active', true)
+      .contains('jours_semaine', [today])
+    const applicable = (taches || []).filter((t) =>
+      !t.magasins || t.magasins.length === 0 || t.magasins.includes(magasin)
+    )
+    if (applicable.length === 0) { setTachesDuJour([]); return }
+    const { data: completions } = await supabase
+      .from('taches_recurrentes_completions')
+      .select('tache_id')
+      .eq('date_tache', todayStr)
+      .eq('magasin_id', magasin)
+    const completedIds = new Set((completions || []).map((c) => c.tache_id))
+    setTachesDuJour(applicable.filter((t) => !completedIds.has(t.id)))
+  }
+
+  const handleCompleteTache = async (tacheId) => {
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Brussels' })
+    const { error } = await supabase.from('taches_recurrentes_completions').insert({
+      tache_id: tacheId,
+      date_tache: todayStr,
+      magasin_id: magasin,
+      completed_by: currentSebUser?.name || 'Staff',
+    })
+    if (error) { alert('Erreur : ' + error.message); return }
+    fetchTachesDuJour()
+  }
+
+  const fetchAllTaches = async () => {
+    const { data } = await supabase.from('taches_recurrentes').select('*').order('created_at', { ascending: false })
+    setTachesAdminList(data || [])
+  }
+
+  const handleCreateTache = async () => {
+    if (!tacheRecurrenteForm.titre.trim() || tacheRecurrenteForm.jours_semaine.length === 0) {
+      alert('Titre et au moins un jour sont obligatoires')
+      return
+    }
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const { error } = await supabase.from('taches_recurrentes').insert({
+      titre: tacheRecurrenteForm.titre.trim(),
+      description: tacheRecurrenteForm.description.trim() || null,
+      jours_semaine: tacheRecurrenteForm.jours_semaine,
+      magasins: tacheRecurrenteForm.magasins.length > 0 ? tacheRecurrenteForm.magasins : null,
+      intervalle_rappel_min: tacheRecurrenteForm.intervalle_rappel_min || 15,
+      created_by: currentSebUser?.name || 'Admin',
+    })
+    if (error) { alert('Erreur : ' + error.message); return }
+    setTacheRecurrenteForm({ titre: '', description: '', jours_semaine: [], magasins: [], intervalle_rappel_min: 15 })
+    fetchAllTaches()
+    fetchTachesDuJour()
+  }
+
+  const handleToggleTacheActive = async (tache) => {
+    await supabase.from('taches_recurrentes').update({ active: !tache.active }).eq('id', tache.id)
+    fetchAllTaches()
+    fetchTachesDuJour()
+  }
+
+  const handleDeleteTacheRecurrente = async (id) => {
+    if (!confirm('Supprimer cette tâche définitivement ?')) return
+    await supabase.from('taches_recurrentes').delete().eq('id', id)
+    fetchAllTaches()
+    fetchTachesDuJour()
+  }
+
   const fetchMagasinsAvecHistorique = async () => {
     const { data } = await supabase
       .from('cash_closures')
@@ -1942,6 +2028,19 @@ export default function StockMagasin() {
       fetchTodaysClosure()
     }
   }, [magasin])
+
+  useEffect(() => {
+    if (magasin) fetchTachesDuJour()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [magasin])
+
+  useEffect(() => {
+    if (tachesDuJour.length === 0) return
+    setShowTacheReminder(true)
+    const minInterval = Math.min(...tachesDuJour.map((t) => t.intervalle_rappel_min || 15))
+    const timer = setInterval(() => setShowTacheReminder(true), minInterval * 60 * 1000)
+    return () => clearInterval(timer)
+  }, [tachesDuJour])
 
   const ensurePosCategories = async () => {
     const { data: existing } = await supabase
@@ -3098,6 +3197,23 @@ export default function StockMagasin() {
         </div>
       )}
 
+      {tachesDuJour.length > 0 && (
+        <div className="sticky top-0 z-40 -mx-2 md:-mx-8 mb-4 bg-red-600 text-white px-4 py-2 flex items-center justify-between gap-3 shadow-lg flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-sm">
+              ⚠️ {tachesDuJour.length} tâche{tachesDuJour.length > 1 ? 's' : ''} à faire aujourd'hui :
+            </span>
+            <span className="text-sm opacity-90">
+              {tachesDuJour.map((t) => t.titre).join(', ')}
+            </span>
+          </div>
+          <button onClick={() => setShowTacheReminder(true)}
+            className="bg-white text-red-600 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
+            Voir / Cocher
+          </button>
+        </div>
+      )}
+
 
       {/* Header (accueil uniquement) */}
       {posScreen === 'accueil' && (
@@ -3113,6 +3229,12 @@ export default function StockMagasin() {
                   <option key={m.id} value={m.id}>{m.nom}</option>
                 ))}
               </select>
+            )}
+            {isAdmin && (
+              <button onClick={() => { setShowTachesAdmin(true); fetchAllTaches() }}
+                className="px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:border-[#1B2A4A]">
+                ⚙️ Tâches récurrentes
+              </button>
             )}
             {/* MASQUÉ TEMPORAIREMENT - Nom magasin en lecture seule pour non-admins */}
             {false && !isAdmin && (
@@ -7384,6 +7506,146 @@ export default function StockMagasin() {
           </div>
         )
       })()}
+
+      {/* POPUP RAPPEL TÂCHES DU JOUR (tâches récurrentes) */}
+      {showTacheReminder && tachesDuJour.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 z-[95] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5">
+            <h3 className="font-bold text-[#1B2A4A] text-lg mb-1">🧹 Tâches du jour</h3>
+            <p className="text-xs text-gray-500 mb-4">À faire avant la fin de journée</p>
+            <div className="space-y-2 mb-4 max-h-80 overflow-y-auto">
+              {tachesDuJour.map((t) => (
+                <div key={t.id} className="bg-gray-50 rounded-xl p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-sm text-[#1B2A4A]">{t.titre}</p>
+                    {t.description && <p className="text-xs text-gray-500">{t.description}</p>}
+                  </div>
+                  <button onClick={() => handleCompleteTache(t.id)}
+                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">
+                    ✓ Fait
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setShowTacheReminder(false)}
+              className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+              Fermer (rappel dans {Math.min(...tachesDuJour.map((t) => t.intervalle_rappel_min || 15))} min)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ADMIN — TÂCHES RÉCURRENTES */}
+      {showTachesAdmin && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">Tâches récurrentes</h3>
+              <button onClick={() => setShowTachesAdmin(false)} className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
+              <p className="text-xs font-bold text-gray-500 uppercase">Nouvelle tâche</p>
+              <input type="text" value={tacheRecurrenteForm.titre}
+                onChange={(e) => setTacheRecurrenteForm((f) => ({ ...f, titre: e.target.value }))}
+                placeholder="Ex: Nettoyer le magasin"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              <textarea rows={2} value={tacheRecurrenteForm.description}
+                onChange={(e) => setTacheRecurrenteForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Détail (optionnel)"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              <div>
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Jours concernés</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map((j) => (
+                    <button key={j} type="button"
+                      onClick={() => setTacheRecurrenteForm((f) => ({
+                        ...f,
+                        jours_semaine: f.jours_semaine.includes(j)
+                          ? f.jours_semaine.filter((x) => x !== j)
+                          : [...f.jours_semaine, j],
+                      }))}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${
+                        tacheRecurrenteForm.jours_semaine.includes(j)
+                          ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
+                      }`}>
+                      {j.slice(0,3)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Magasins (vide = tous)</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {MAGASINS_CAISSE.map((m) => (
+                    <button key={m.id} type="button"
+                      onClick={() => setTacheRecurrenteForm((f) => ({
+                        ...f,
+                        magasins: f.magasins.includes(m.id)
+                          ? f.magasins.filter((x) => x !== m.id)
+                          : [...f.magasins, m.id],
+                      }))}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                        tacheRecurrenteForm.magasins.includes(m.id)
+                          ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
+                      }`}>
+                      {m.nom.replace('Seb Telecom — ', '')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-[10px] font-bold text-gray-500 uppercase">Rappel toutes les</p>
+                <input type="number" min="1" value={tacheRecurrenteForm.intervalle_rappel_min}
+                  onChange={(e) => setTacheRecurrenteForm((f) => ({ ...f, intervalle_rappel_min: Number(e.target.value) }))}
+                  className="w-16 px-2 py-1 border border-gray-200 rounded-lg text-sm" />
+                <p className="text-[10px] text-gray-500">minutes</p>
+              </div>
+              <button onClick={handleCreateTache}
+                className="w-full py-2 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A]">
+                + Créer la tâche
+              </button>
+            </div>
+
+            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Tâches existantes</p>
+            {tachesAdminList.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-6">Aucune tâche créée</p>
+            ) : (
+              <div className="space-y-2">
+                {tachesAdminList.map((t) => (
+                  <div key={t.id} className={`rounded-xl p-3 border ${t.active ? 'border-gray-100 bg-white' : 'border-gray-100 bg-gray-50 opacity-60'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-sm text-[#1B2A4A]">{t.titre}</p>
+                        <p className="text-[10px] text-gray-500 capitalize">
+                          {t.jours_semaine.join(', ')} · {t.magasins?.length ? t.magasins.join(', ') : 'Tous les magasins'} · toutes les {t.intervalle_rappel_min} min
+                        </p>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button onClick={() => handleToggleTacheActive(t)}
+                          className="text-xs font-bold px-2 py-1 rounded-lg border border-gray-200 text-gray-600">
+                          {t.active ? 'Désactiver' : 'Activer'}
+                        </button>
+                        <button onClick={() => handleDeleteTacheRecurrente(t.id)}
+                          className="text-xs font-bold px-2 py-1 rounded-lg border border-red-200 text-red-600">
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button onClick={() => setShowTachesAdmin(false)}
+              className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
