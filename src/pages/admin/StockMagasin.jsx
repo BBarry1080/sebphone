@@ -6154,6 +6154,17 @@ export default function StockMagasin() {
                 <Receipt size={16} className="text-[#00B4CC]"/>
                 <span className="text-xs font-bold text-[#00B4CC] whitespace-nowrap">Rechercher un ticket</span>
               </button>
+              <button onClick={() => {
+                  setPosScreen('reparations-hub')
+                  setReparationsHubTab('recherche')
+                  fetchReparationsHubData()
+                  setTimeout(() => setShowNewRepairFromHub(true), 100)
+                }}
+                title="Créer une nouvelle réparation"
+                className="h-9 px-3 rounded-xl border-2 border-amber-200 bg-amber-50 flex items-center gap-1.5 hover:border-amber-400 hover:bg-amber-100 transition-all">
+                <Wrench size={16} className="text-amber-600"/>
+                <span className="text-xs font-bold text-amber-600 whitespace-nowrap">Réparation</span>
+              </button>
               {showMovementMenu && (
                 <div className="absolute top-11 left-0 bg-white rounded-2xl border border-gray-100 shadow-lg p-2 w-48 z-20">
                   <button onClick={() => {
