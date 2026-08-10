@@ -138,6 +138,8 @@ export default function StockMagasin() {
   const [phonesForCaisseSearch, setPhonesForCaisseSearch] = useState([])
   // Nouvelle réparation créée depuis la caisse (via clic écran catalogue)
   const [newRepairsInCart, setNewRepairsInCart]           = useState([])
+  const [posEcranMarqueSel, setPosEcranMarqueSel]         = useState(null)
+  const [posEcranQualiteChoices, setPosEcranQualiteChoices] = useState(null)
   const [showNewRepairForm, setShowNewRepairForm]         = useState(false)
   const [newRepairEcran, setNewRepairEcran]               = useState(null)
   const [newRepairClientData, setNewRepairClientData]     = useState({
@@ -1816,6 +1818,33 @@ export default function StockMagasin() {
     return groups
   }, [ecranCatalogFiltered])
 
+  const posEcranMarques = useMemo(() => {
+    return [...new Set(
+      ecranCatalogList.filter((e) => e.disponible !== false).map((e) => e.marque).filter(Boolean)
+    )].sort()
+  }, [ecranCatalogList])
+
+  const posEcranModelesForMarque = useMemo(() => {
+    if (!posEcranMarqueSel) return {}
+    const groups = {}
+    ecranCatalogList
+      .filter((e) => e.disponible !== false && e.marque === posEcranMarqueSel)
+      .forEach((row) => {
+        const key = row.modele || '—'
+        if (!groups[key]) groups[key] = []
+        groups[key].push(row)
+      })
+    return groups
+  }, [ecranCatalogList, posEcranMarqueSel])
+
+  const handleClickEcranModele = (rows) => {
+    if (rows.length === 1) {
+      openNewRepairForm(rows[0])
+    } else {
+      setPosEcranQualiteChoices(rows)
+    }
+  }
+
   // ─── Recherche de ticket ───
   const handleSearchTickets = async () => {
     const q = (searchQuery || '').trim()
@@ -2262,6 +2291,7 @@ export default function StockMagasin() {
       }
     }
     if (posScreen === 'caisse' && magasin) {
+      if (ecranCatalogList.length === 0) fetchEcranCatalog()
       fetchPendingRepairs()
     }
     if (posScreen === 'tresorerie') {
@@ -6475,6 +6505,63 @@ export default function StockMagasin() {
                 </div>
               )
             ) : (() => {
+              if (selectedPosCategory === 'Écran') {
+                if (!posEcranMarqueSel) {
+                  return posEcranMarques.length === 0 ? (
+                    <p className="text-center text-gray-400 py-8 text-sm">
+                      Aucun écran dans le catalogue — ajoute-les depuis
+                      Réparations → 📱 Écrans par modèle
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {posEcranMarques.map((m) => (
+                        <button key={m} onClick={() => setPosEcranMarqueSel(m)}
+                          className="text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-4 transition-all border border-purple-100 hover:border-purple-300">
+                          <p className="font-bold text-sm text-[#1B2A4A]">{m}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )
+                }
+                const modeleEntries = Object.entries(posEcranModelesForMarque)
+                return (
+                  <div>
+                    <button onClick={() => setPosEcranMarqueSel(null)}
+                      className="text-xs font-bold text-gray-500 hover:text-[#1B2A4A] mb-3">
+                      ← Marques
+                    </button>
+                    {modeleEntries.length === 0 ? (
+                      <p className="text-center text-gray-400 py-8 text-sm">
+                        Aucun écran {posEcranMarqueSel} dans le catalogue
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {modeleEntries.map(([modele, rows]) => {
+                          const single = rows.length === 1
+                          const qualiteLabel = single
+                            ? (rows[0].qualite === 'compatible' ? 'Compatible'
+                              : rows[0].qualite === 'original_equivalent' ? 'Qualité originale'
+                              : '100% Original')
+                            : `${rows.length} qualités`
+                          const prixAffiche = single
+                            ? Number(rows[0].prix_defaut || 0).toFixed(2)
+                            : Math.min(...rows.map((r) => Number(r.prix_defaut || 0))).toFixed(2)
+                          return (
+                            <button key={modele} onClick={() => handleClickEcranModele(rows)}
+                              className="text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-3 transition-all border border-purple-100 hover:border-purple-300">
+                              <p className="font-bold text-xs text-[#1B2A4A] mb-1 line-clamp-2">{modele}</p>
+                              <p className="text-[10px] text-purple-600 font-bold mb-1">{qualiteLabel}</p>
+                              <p className="text-sm font-bold text-purple-700">
+                                {single ? '' : 'dès '}{prixAffiche}€
+                              </p>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
               const posFiltered = items.filter((item) => {
                 if (selectedPosCategory === 'Tout') return true
                 const cat = categories.find((c) => c.name === selectedPosCategory)
@@ -7737,6 +7824,40 @@ export default function StockMagasin() {
       )}
 
       {/* MODAL NOUVELLE RÉPARATION (depuis clic écran catalogue en caisse) */}
+      {posEcranQualiteChoices && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">
+                {posEcranQualiteChoices[0]?.modele}
+              </h3>
+              <button onClick={() => setPosEcranQualiteChoices(null)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">Choisis la qualité</p>
+            <div className="space-y-2">
+              {posEcranQualiteChoices.map((row) => {
+                const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
+                  : row.qualite === 'original_equivalent' ? 'Qualité originale'
+                  : '100% Original'
+                return (
+                  <button key={row.id}
+                    onClick={() => { setPosEcranQualiteChoices(null); openNewRepairForm(row) }}
+                    className="w-full text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-3 border border-purple-100 hover:border-purple-300 flex items-center justify-between">
+                    <span className="text-sm font-bold text-[#1B2A4A]">{qualiteLabel}</span>
+                    <span className="text-sm font-bold text-purple-700">
+                      {Number(row.prix_defaut || 0).toFixed(2)}€
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showNewRepairForm && newRepairEcran && (() => {
         const qualiteLabel = newRepairEcran.qualite === 'compatible' ? 'Compatible'
           : newRepairEcran.qualite === 'original_equivalent' ? 'Qualité originale'
