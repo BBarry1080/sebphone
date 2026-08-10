@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useIsAdmin } from '../../hooks/usePermissions'
 import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
 import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
-import { Calendar } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function Planning() {
   const isAdmin = useIsAdmin()
@@ -21,6 +21,62 @@ export default function Planning() {
   // Disponibilités proposées par les employés
   const [pendingDispos, setPendingDispos] = useState([])
   const [loadingDispos, setLoadingDispos] = useState(false)
+
+  // Vue par magasin
+  const [viewMode, setViewMode] = useState('employe') // 'employe' | 'magasin'
+  const [selectedMagasinVue, setSelectedMagasinVue] = useState(MAGASINS_PHYSIQUES[0]?.id || '')
+  const [magasinMonthOffset, setMagasinMonthOffset] = useState(0)
+  const [magasinStaffList, setMagasinStaffList] = useState([])
+  const [magasinScheduleDates, setMagasinScheduleDates] = useState([])
+  const [loadingMagasinVue, setLoadingMagasinVue] = useState(false)
+
+  const mgPad2 = (n) => String(n).padStart(2, '0')
+  const mgToDateStr = (d) => `${d.getFullYear()}-${mgPad2(d.getMonth() + 1)}-${mgPad2(d.getDate())}`
+
+  const buildMonthCells = (monthOffset) => {
+    const now = new Date()
+    const base = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1)
+    const year = base.getFullYear()
+    const month = base.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const startOffset = (firstDay.getDay() + 6) % 7
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const cells = []
+    for (let i = 0; i < startOffset; i++) cells.push(null)
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d))
+    return cells
+  }
+
+  const fetchMagasinVueData = async () => {
+    if (!selectedMagasinVue) return
+    setLoadingMagasinVue(true)
+    const { data: staffData } = await supabase
+      .from('staff').select('*')
+      .eq('magasin_id', selectedMagasinVue).eq('active', true)
+      .order('name', { ascending: true })
+    setMagasinStaffList(staffData || [])
+    const staffIds = (staffData || []).map((s) => s.id)
+    if (staffIds.length === 0) {
+      setMagasinScheduleDates([])
+      setLoadingMagasinVue(false)
+      return
+    }
+    const now = new Date()
+    const base = new Date(now.getFullYear(), now.getMonth() + magasinMonthOffset, 1)
+    const monthStart = `${base.getFullYear()}-${mgPad2(base.getMonth() + 1)}-01`
+    const lastDay = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate()
+    const monthEnd = `${base.getFullYear()}-${mgPad2(base.getMonth() + 1)}-${mgPad2(lastDay)}`
+    const { data: schedData } = await supabase
+      .from('staff_schedule_dates').select('*, staff(name)')
+      .in('staff_id', staffIds).gte('date', monthStart).lte('date', monthEnd)
+    setMagasinScheduleDates(schedData || [])
+    setLoadingMagasinVue(false)
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (viewMode === 'magasin') fetchMagasinVueData()
+  }, [viewMode, selectedMagasinVue, magasinMonthOffset])
 
   const fetchStaffList = async () => {
     setLoadingStaff(true)
@@ -134,6 +190,21 @@ export default function Planning() {
         <p className="text-sm text-gray-500 mt-1">Horaires et plannings de l'équipe</p>
       </div>
 
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setViewMode('employe')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${
+            viewMode === 'employe' ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+          }`}>
+          👤 Par employé
+        </button>
+        <button onClick={() => setViewMode('magasin')}
+          className={`px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all ${
+            viewMode === 'magasin' ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-white text-gray-600 border-gray-200'
+          }`}>
+          🏬 Par magasin
+        </button>
+      </div>
+
       {(pendingHeuresSup.length > 0 || isAdmin) && (
         <div className="mb-4">
           {pendingHeuresSup.length > 0 && (
@@ -239,6 +310,7 @@ export default function Planning() {
         </div>
       )}
 
+      {viewMode === 'employe' && (
       <div className="flex gap-4 flex-col lg:flex-row">
         {/* Colonne gauche : liste employés */}
         <div className="w-full lg:w-[300px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 p-2 max-h-[calc(100vh-220px)] overflow-y-auto">
@@ -291,6 +363,90 @@ export default function Planning() {
           )}
         </div>
       </div>
+      )}
+
+      {viewMode === 'magasin' && (
+        <div>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {MAGASINS_PHYSIQUES.map((m) => (
+              <button key={m.id} onClick={() => setSelectedMagasinVue(m.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${
+                  selectedMagasinVue === m.id ? 'bg-[#00B4CC] text-white border-[#00B4CC]' : 'bg-white text-gray-600 border-gray-200'
+                }`}>
+                {m.nom}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <button onClick={() => setMagasinMonthOffset((o) => o - 1)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="text-sm font-bold text-[#1B2A4A] capitalize min-w-[140px] text-center">
+                  {(() => {
+                    const now = new Date()
+                    const base = new Date(now.getFullYear(), now.getMonth() + magasinMonthOffset, 1)
+                    return base.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })
+                  })()}
+                </span>
+                <button onClick={() => setMagasinMonthOffset((o) => o + 1)}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">
+                {magasinStaffList.length} employé(s) actif(s) dans ce magasin
+              </p>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map((d) => (
+                <div key={d} className="text-center text-[10px] font-bold uppercase text-gray-400 py-1">
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {loadingMagasinVue ? (
+              <div className="flex items-center justify-center h-40">
+                <div className="w-6 h-6 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-1">
+                {buildMonthCells(magasinMonthOffset).map((date, idx) => {
+                  if (!date) return <div key={`empty-${idx}`} />
+                  const dateStr = mgToDateStr(date)
+                  const workingToday = magasinScheduleDates.filter((s) => s.date === dateStr && !s.repos)
+                  const isHole = magasinStaffList.length > 0 && workingToday.length === 0
+                  return (
+                    <div key={dateStr}
+                      className={`rounded-xl border p-2 min-h-[80px] ${
+                        isHole ? 'border-red-300 bg-red-50' : 'border-gray-100 bg-white'
+                      }`}>
+                      <p className="text-[10px] font-bold text-gray-400 mb-1">{date.getDate()}</p>
+                      {isHole ? (
+                        <p className="text-[10px] font-bold text-red-600">⚠️ Personne</p>
+                      ) : (
+                        <div className="space-y-0.5">
+                          {workingToday.map((s) => (
+                            <p key={s.id} className="text-[10px] text-gray-600 truncate">
+                              {(s.staff?.name || '').split(' ')[0] || '—'}
+                              {s.heure_debut && ` ${s.heure_debut}-${s.heure_fin}`}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
