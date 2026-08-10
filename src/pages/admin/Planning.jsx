@@ -437,14 +437,14 @@ export default function Planning() {
       {viewMode === 'employe' && (
       <>
       <div className="flex flex-wrap gap-1.5 mb-3">
-        <button onClick={() => setStaffMagasinFilter('tous')}
+        <button onClick={() => { setStaffMagasinFilter('tous'); setSelectedStaff(null) }}
           className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
             staffMagasinFilter === 'tous' ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
           }`}>
           Tous
         </button>
         {planningMagasins.map((m) => (
-          <button key={m.id} onClick={() => setStaffMagasinFilter(m.id)}
+          <button key={m.id} onClick={() => { setStaffMagasinFilter(m.id); setSelectedStaff(null) }}
             className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
               staffMagasinFilter === m.id ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
             }`}>
