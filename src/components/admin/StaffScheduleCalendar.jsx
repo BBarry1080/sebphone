@@ -206,6 +206,11 @@ export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, 
       alert('Aucun numéro de téléphone pour cet employé — ajoute-le dans sa fiche')
       return
     }
+    // Ouvre l'onglet EN PREMIER, avant tout calcul — sinon Safari
+    // et certains navigateurs bloquent ou perdent la redirection
+    // et l'onglet reste bloqué sur about:blank
+    const newTab = window.open('', '_blank')
+
     setSendingPlanning(true)
     try {
       const lignes = joursActifs.map((s) =>
@@ -219,9 +224,13 @@ export default function StaffScheduleCalendar({ staffId, staffName, staffPhone, 
         : '32' + digits
       const waLink = `https://wa.me/${intl}?text=${encodeURIComponent(message)}`
 
-      window.open(waLink, '_blank')
+      if (newTab) {
+        newTab.location.href = waLink
+      } else {
+        alert('Le navigateur a bloqué l\'ouverture de WhatsApp — autorise les pop-ups pour ce site puis réessaie.')
+        return
+      }
       logActivity('staff_planning_sent', `Planning de ${displayDate.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' })} envoyé (WhatsApp) à ${staffName}`)
-      alert('📱 WhatsApp ouvert avec le message prêt — vérifie qu\'il parte bien avant de fermer l\'onglet.')
     } finally {
       setSendingPlanning(false)
     }
