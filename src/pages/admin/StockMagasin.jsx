@@ -59,10 +59,12 @@ export default function StockMagasin() {
   // Tâches récurrentes (rappel par jour/magasin) — distinct de cloture_taches
   const [tachesDuJour, setTachesDuJour]           = useState([])
   const [showTacheReminder, setShowTacheReminder] = useState(false)
+  const [pasFaitOpenId, setPasFaitOpenId] = useState(null)
+  const [pasFaitMotif, setPasFaitMotif]   = useState('')
   const [showTachesAdmin, setShowTachesAdmin]     = useState(false)
   const [tachesAdminList, setTachesAdminList]     = useState([])
   const [tacheRecurrenteForm, setTacheRecurrenteForm] = useState({
-    titre: '', description: '', jours_semaine: [], magasins: [], intervalle_rappel_min: 15,
+    titre: '', description: '', type: 'hebdo', jours_semaine: [], date_specifique: '', magasins: [], intervalle_rappel_min: 10,
   })
   const [categories, setCategories] = useState([])
   const [items, setItems] = useState([])
@@ -1044,8 +1046,12 @@ export default function StockMagasin() {
       .from('taches_recurrentes')
       .select('*')
       .eq('active', true)
-      .contains('jours_semaine', [today])
-    const applicable = (taches || []).filter((t) =>
+    const applicableRaw = (taches || []).filter((t) => {
+      const matchesJour = t.jours_semaine && t.jours_semaine.includes(today)
+      const matchesDate = t.date_specifique === todayStr
+      return matchesJour || matchesDate
+    })
+    const applicable = applicableRaw.filter((t) =>
       !t.magasins || t.magasins.length === 0 || t.magasins.includes(magasin)
     )
     if (applicable.length === 0) { setTachesDuJour([]); return }
@@ -1058,16 +1064,20 @@ export default function StockMagasin() {
     setTachesDuJour(applicable.filter((t) => !completedIds.has(t.id)))
   }
 
-  const handleCompleteTache = async (tacheId) => {
+  const handleCompleteTache = async (tacheId, statut = 'fait', motif = null) => {
     const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Brussels' })
-    const { error } = await supabase.from('taches_recurrentes_completions').insert({
+    const { error } = await supabase.from('taches_recurrentes_completions').upsert({
       tache_id: tacheId,
       date_tache: todayStr,
       magasin_id: magasin,
       completed_by: currentSebUser?.name || 'Staff',
-    })
+      statut,
+      motif,
+    }, { onConflict: 'tache_id,date_tache,magasin_id' })
     if (error) { alert('Erreur : ' + error.message); return }
+    setPasFaitOpenId(null)
+    setPasFaitMotif('')
     fetchTachesDuJour()
   }
 
@@ -1077,23 +1087,54 @@ export default function StockMagasin() {
   }
 
   const handleCreateTache = async () => {
-    if (!tacheRecurrenteForm.titre.trim() || tacheRecurrenteForm.jours_semaine.length === 0) {
-      alert('Titre et au moins un jour sont obligatoires')
-      return
+    if (!tacheRecurrenteForm.titre.trim()) {
+      alert('Titre obligatoire'); return
+    }
+    if (tacheRecurrenteForm.type === 'hebdo' && tacheRecurrenteForm.jours_semaine.length === 0) {
+      alert('Choisis au moins un jour'); return
+    }
+    if (tacheRecurrenteForm.type === 'date' && !tacheRecurrenteForm.date_specifique) {
+      alert('Choisis une date'); return
     }
     const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
     const { error } = await supabase.from('taches_recurrentes').insert({
       titre: tacheRecurrenteForm.titre.trim(),
       description: tacheRecurrenteForm.description.trim() || null,
-      jours_semaine: tacheRecurrenteForm.jours_semaine,
+      jours_semaine: tacheRecurrenteForm.type === 'hebdo' ? tacheRecurrenteForm.jours_semaine : [],
+      date_specifique: tacheRecurrenteForm.type === 'date' ? tacheRecurrenteForm.date_specifique : null,
       magasins: tacheRecurrenteForm.magasins.length > 0 ? tacheRecurrenteForm.magasins : null,
-      intervalle_rappel_min: tacheRecurrenteForm.intervalle_rappel_min || 15,
+      intervalle_rappel_min: tacheRecurrenteForm.intervalle_rappel_min || 10,
       created_by: currentSebUser?.name || 'Admin',
     })
     if (error) { alert('Erreur : ' + error.message); return }
-    setTacheRecurrenteForm({ titre: '', description: '', jours_semaine: [], magasins: [], intervalle_rappel_min: 15 })
+    setTacheRecurrenteForm({ titre: '', description: '', type: 'hebdo', jours_semaine: [], date_specifique: '', magasins: [], intervalle_rappel_min: 10 })
     fetchAllTaches()
     fetchTachesDuJour()
+  }
+
+  const playTacheBeep = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const beep = (delay) => {
+        setTimeout(() => {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'sine'
+          osc.frequency.value = 880
+          gain.gain.setValueAtTime(0.001, ctx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01)
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.start()
+          osc.stop(ctx.currentTime + 0.4)
+        }, delay)
+      }
+      beep(0)
+      beep(350)
+    } catch (e) {
+      // navigateur bloque le son avant interaction utilisateur — silencieux
+    }
   }
 
   const handleToggleTacheActive = async (tache) => {
@@ -2198,8 +2239,12 @@ export default function StockMagasin() {
   useEffect(() => {
     if (tachesDuJour.length === 0) return
     setShowTacheReminder(true)
-    const minInterval = Math.min(...tachesDuJour.map((t) => t.intervalle_rappel_min || 15))
-    const timer = setInterval(() => setShowTacheReminder(true), minInterval * 60 * 1000)
+    playTacheBeep()
+    const minInterval = Math.min(...tachesDuJour.map((t) => t.intervalle_rappel_min || 10))
+    const timer = setInterval(() => {
+      setShowTacheReminder(true)
+      playTacheBeep()
+    }, minInterval * 60 * 1000)
     return () => clearInterval(timer)
   }, [tachesDuJour])
 
@@ -7818,21 +7863,41 @@ export default function StockMagasin() {
             <p className="text-xs text-gray-500 mb-4">À faire avant la fin de journée</p>
             <div className="space-y-2 mb-4 max-h-80 overflow-y-auto">
               {tachesDuJour.map((t) => (
-                <div key={t.id} className="bg-gray-50 rounded-xl p-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-bold text-sm text-[#1B2A4A]">{t.titre}</p>
-                    {t.description && <p className="text-xs text-gray-500">{t.description}</p>}
+                <div key={t.id} className="bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-sm text-[#1B2A4A]">{t.titre}</p>
+                      {t.description && <p className="text-xs text-gray-500">{t.description}</p>}
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      <button onClick={() => handleCompleteTache(t.id, 'fait')}
+                        className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">
+                        ✓ Fait
+                      </button>
+                      <button onClick={() => setPasFaitOpenId(pasFaitOpenId === t.id ? null : t.id)}
+                        className="bg-red-50 border border-red-300 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">
+                        ✗ Pas fait
+                      </button>
+                    </div>
                   </div>
-                  <button onClick={() => handleCompleteTache(t.id)}
-                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">
-                    ✓ Fait
-                  </button>
+                  {pasFaitOpenId === t.id && (
+                    <div className="mt-2 flex gap-2">
+                      <input type="text" value={pasFaitMotif}
+                        onChange={(e) => setPasFaitMotif(e.target.value)}
+                        placeholder="Raison (optionnel)"
+                        className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" />
+                      <button onClick={() => handleCompleteTache(t.id, 'pas_fait', pasFaitMotif.trim() || null)}
+                        className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">
+                        Confirmer
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
             <button onClick={() => setShowTacheReminder(false)}
               className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
-              Fermer (rappel dans {Math.min(...tachesDuJour.map((t) => t.intervalle_rappel_min || 15))} min)
+              Fermer (rappel dans {Math.min(...tachesDuJour.map((t) => t.intervalle_rappel_min || 10))} min)
             </button>
           </div>
         </div>
@@ -7859,26 +7924,50 @@ export default function StockMagasin() {
                 onChange={(e) => setTacheRecurrenteForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Détail (optionnel)"
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-              <div>
-                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Jours concernés</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map((j) => (
-                    <button key={j} type="button"
-                      onClick={() => setTacheRecurrenteForm((f) => ({
-                        ...f,
-                        jours_semaine: f.jours_semaine.includes(j)
-                          ? f.jours_semaine.filter((x) => x !== j)
-                          : [...f.jours_semaine, j],
-                      }))}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${
-                        tacheRecurrenteForm.jours_semaine.includes(j)
-                          ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
-                      }`}>
-                      {j.slice(0,3)}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setTacheRecurrenteForm((f) => ({ ...f, type: 'hebdo' }))}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${
+                    tacheRecurrenteForm.type === 'hebdo' ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
+                  }`}>
+                  Récurrent (jour de semaine)
+                </button>
+                <button type="button" onClick={() => setTacheRecurrenteForm((f) => ({ ...f, type: 'date' }))}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${
+                    tacheRecurrenteForm.type === 'date' ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
+                  }`}>
+                  Une seule fois (date précise)
+                </button>
               </div>
+
+              {tacheRecurrenteForm.type === 'hebdo' ? (
+                <div>
+                  <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Jours concernés</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map((j) => (
+                      <button key={j} type="button"
+                        onClick={() => setTacheRecurrenteForm((f) => ({
+                          ...f,
+                          jours_semaine: f.jours_semaine.includes(j)
+                            ? f.jours_semaine.filter((x) => x !== j)
+                            : [...f.jours_semaine, j],
+                        }))}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${
+                          tacheRecurrenteForm.jours_semaine.includes(j)
+                            ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'
+                        }`}>
+                        {j.slice(0,3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Date concernée</p>
+                  <input type="date" value={tacheRecurrenteForm.date_specifique}
+                    onChange={(e) => setTacheRecurrenteForm((f) => ({ ...f, date_specifique: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+              )}
               <div>
                 <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Magasins (vide = tous)</p>
                 <div className="flex flex-wrap gap-1.5">
@@ -7923,7 +8012,10 @@ export default function StockMagasin() {
                       <div>
                         <p className="font-bold text-sm text-[#1B2A4A]">{t.titre}</p>
                         <p className="text-[10px] text-gray-500 capitalize">
-                          {t.jours_semaine.join(', ')} · {t.magasins?.length ? t.magasins.join(', ') : 'Tous les magasins'} · toutes les {t.intervalle_rappel_min} min
+                          {t.date_specifique
+                            ? `Le ${new Date(t.date_specifique).toLocaleDateString('fr-BE')}`
+                            : t.jours_semaine.join(', ')}
+                          {' · '}{t.magasins?.length ? t.magasins.join(', ') : 'Tous les magasins'} · toutes les {t.intervalle_rappel_min} min
                         </p>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
