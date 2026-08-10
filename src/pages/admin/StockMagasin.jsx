@@ -133,6 +133,7 @@ export default function StockMagasin() {
   const [repairsInCart, setRepairsInCart]                 = useState([])
   const [pendingRepairs, setPendingRepairs]               = useState([])
   const [loadingPendingRepairs, setLoadingPendingRepairs] = useState(false)
+  const [phonesForCaisseSearch, setPhonesForCaisseSearch] = useState([])
   // Nouvelle réparation créée depuis la caisse (via clic écran catalogue)
   const [newRepairsInCart, setNewRepairsInCart]           = useState([])
   const [showNewRepairForm, setShowNewRepairForm]         = useState(false)
@@ -2041,6 +2042,16 @@ export default function StockMagasin() {
   // Catalogue écrans chargé au mount (nécessaire pour la recherche caisse)
   useEffect(() => { fetchEcranCatalog() }, [])
 
+  // Téléphones du magasin pour recherche caisse (source cartSearchPhones)
+  useEffect(() => {
+    if (!magasin) return
+    supabase.from('phones')
+      .select('id, name, model, storage, color, price, grade, imei')
+      .neq('status', 'vendu')
+      .eq('magasin_id', magasin)
+      .then(({ data }) => setPhonesForCaisseSearch(data || []))
+  }, [magasin])
+
   // Fetch catalogue écrans à la première activation de l'onglet
   useEffect(() => {
     if (sectionPrixDelais === 'ecrans' && ecranCatalogList.length === 0) {
@@ -2539,7 +2550,15 @@ export default function StockMagasin() {
       ).slice(0, 6).map(e => ({ ...e, _kind: 'ecran' }))
     : []
 
-  const cartSearchResults = [...cartSearchArticles, ...cartSearchEcrans]
+  const cartSearchPhones = cartSearch.length >= 2
+    ? phonesForCaisseSearch.filter(p =>
+        p.name?.toLowerCase().includes(cartSearch.toLowerCase()) ||
+        p.model?.toLowerCase().includes(cartSearch.toLowerCase()) ||
+        p.imei?.includes(cartSearch)
+      ).slice(0, 4).map(p => ({ ...p, _kind: 'phone' }))
+    : []
+
+  const cartSearchResults = [...cartSearchArticles, ...cartSearchEcrans, ...cartSearchPhones]
 
   const addToCart = (item) => {
     setCart(prev => {
@@ -6214,6 +6233,24 @@ export default function StockMagasin() {
                           </p>
                           <p className="text-sm font-bold text-[#00B4CC]">
                             {result.sale_price}€
+                          </p>
+                        </button>
+                      )
+                    }
+                    if (result._kind === 'phone') {
+                      return (
+                        <button key={`ph-${result.id}`}
+                          onClick={() => window.open(`/admin/stock?sale=${result.id}`, '_blank')}
+                          className="text-left bg-blue-50 hover:bg-blue-100 rounded-xl p-3 transition-all border border-blue-100 hover:border-blue-400">
+                          <p className="text-[10px] font-bold text-blue-600 uppercase mb-0.5">📱 Téléphone</p>
+                          <p className="font-bold text-xs text-[#1B2A4A] line-clamp-2">
+                            {result.name || result.model}
+                          </p>
+                          <p className="text-[10px] text-blue-700 font-bold mb-1">
+                            {[result.storage, result.color, result.grade].filter(Boolean).join(' · ')}
+                          </p>
+                          <p className="text-sm font-bold text-blue-700">
+                            {result.price}€
                           </p>
                         </button>
                       )

@@ -4,6 +4,7 @@
 // ALTER TABLE phones ADD COLUMN IF NOT EXISTS parts_replaced JSONB DEFAULT '[]'::jsonb;
 
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Smartphone, Plus, Search, Pencil, Trash2, X, Star, Tag } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useRequirePermission, usePermission, useCurrentUser, useIsAdmin } from '../../hooks/usePermissions'
@@ -1954,6 +1955,22 @@ export default function Stock() {
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [])
+
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    const saleId = searchParams.get('sale')
+    if (saleId && phones.length > 0) {
+      const phone = phones.find((p) => p.id === saleId)
+      if (phone) {
+        setSalePhone(phone)
+        setSaleForm((f) => ({ ...f, imei_confirm: phone.imei || '' }))
+        setShowSaleModal(true)
+        searchParams.delete('sale')
+        setSearchParams(searchParams, { replace: true })
+      }
+    }
+  }, [phones, searchParams])
 
   useEffect(() => {
     if (!isSupabaseReady) return
