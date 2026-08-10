@@ -44,7 +44,7 @@ export default function Planning() {
   // Assignation rapide d'un shift depuis la vue magasin
   const [showAssignShift, setShowAssignShift] = useState(false)
   const [assignDate, setAssignDate] = useState(null)
-  const [assignForm, setAssignForm] = useState({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '18:00' })
+  const [assignForm, setAssignForm] = useState({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '20:00' })
   const [savingAssign, setSavingAssign] = useState(false)
   const [suggestedDispoMap, setSuggestedDispoMap] = useState({})
 
@@ -138,7 +138,7 @@ export default function Planning() {
 
   const openAssignShift = (dateStr) => {
     setAssignDate(dateStr)
-    setAssignForm({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '18:00' })
+    setAssignForm({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '20:00' })
     setAssignDateIsClosed(magasinFermetures.some((f) => f.date === dateStr))
     setShowAssignShift(true)
     fetchSuggestionsForDate(dateStr)
@@ -159,7 +159,7 @@ export default function Planning() {
     setSavingAssign(false)
     if (error) { alert('Erreur : ' + error.message); return }
     const nextStart = assignForm.heure_fin || '10:00'
-    setAssignForm({ staff_id: '', repos: false, heure_debut: nextStart, heure_fin: '18:00' })
+    setAssignForm({ staff_id: '', repos: false, heure_debut: nextStart, heure_fin: '20:00' })
     fetchMagasinVueData()
     fetchSuggestionsForDate(assignDate)
   }
