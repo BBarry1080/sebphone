@@ -94,7 +94,13 @@ export default function Planning() {
       .eq('active', true)
       .eq('repos', false)
     const map = {}
-    ;(data || []).forEach((d) => { map[d.staff_id] = d })
+    ;(data || []).forEach((d) => {
+      map[d.staff_id] = {
+        ...d,
+        heure_debut: (d.heure_debut || '').slice(0, 5),
+        heure_fin: (d.heure_fin || '').slice(0, 5),
+      }
+    })
     setSuggestedDispoMap(map)
   }
 
