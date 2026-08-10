@@ -141,13 +141,13 @@ export default function Planning() {
     const { error } = await supabase.from('staff_schedule_dates').upsert({
       staff_id: assignForm.staff_id,
       date: assignDate,
-      repos: assignForm.repos,
-      heure_debut: assignForm.repos ? null : assignForm.heure_debut,
-      heure_fin: assignForm.repos ? null : assignForm.heure_fin,
+      repos: false,
+      heure_debut: assignForm.heure_debut,
+      heure_fin: assignForm.heure_fin,
     }, { onConflict: 'staff_id,date' })
     setSavingAssign(false)
     if (error) { alert('Erreur : ' + error.message); return }
-    const nextStart = !assignForm.repos && assignForm.heure_fin ? assignForm.heure_fin : '10:00'
+    const nextStart = assignForm.heure_fin || '10:00'
     setAssignForm({ staff_id: '', repos: false, heure_debut: nextStart, heure_fin: '18:00' })
     fetchMagasinVueData()
     fetchSuggestionsForDate(assignDate)
@@ -644,22 +644,14 @@ export default function Planning() {
               )}
             </div>
 
-            <label className="flex items-center gap-2 text-xs text-gray-600 mb-3">
-              <input type="checkbox" checked={assignForm.repos}
-                onChange={(e) => setAssignForm((f) => ({ ...f, repos: e.target.checked }))} />
-              Repos (pas de shift)
-            </label>
-
-            {!assignForm.repos && (
-              <div className="flex gap-2 mb-4">
-                <input type="time" value={assignForm.heure_debut}
-                  onChange={(e) => setAssignForm((f) => ({ ...f, heure_debut: e.target.value }))}
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                <input type="time" value={assignForm.heure_fin}
-                  onChange={(e) => setAssignForm((f) => ({ ...f, heure_fin: e.target.value }))}
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-              </div>
-            )}
+            <div className="flex gap-2 mb-4">
+              <input type="time" value={assignForm.heure_debut}
+                onChange={(e) => setAssignForm((f) => ({ ...f, heure_debut: e.target.value }))}
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              <input type="time" value={assignForm.heure_fin}
+                onChange={(e) => setAssignForm((f) => ({ ...f, heure_fin: e.target.value }))}
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+            </div>
 
             <button onClick={handleAssignShift} disabled={savingAssign || !assignForm.staff_id}
               className="w-full py-2.5 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
