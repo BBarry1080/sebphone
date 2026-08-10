@@ -49,6 +49,7 @@ export default function Planning() {
 
   const mgPad2 = (n) => String(n).padStart(2, '0')
   const mgToDateStr = (d) => `${d.getFullYear()}-${mgPad2(d.getMonth() + 1)}-${mgPad2(d.getDate())}`
+  const fmtHeure = (t) => (t || '').slice(0, 5).replace(':', 'h')
 
   const buildMonthCells = (monthOffset) => {
     const now = new Date()
@@ -549,7 +550,7 @@ export default function Planning() {
                             {workingToday.map((s) => (
                               <p key={s.id} className={`text-[10px] truncate ${isPast ? 'text-green-700' : 'text-blue-700'}`}>
                                 {(s.staff?.name || '').split(' ')[0] || '—'}
-                                {s.heure_debut && ` ${s.heure_debut}-${s.heure_fin}`}
+                                {s.heure_debut && ` ${fmtHeure(s.heure_debut)}-${fmtHeure(s.heure_fin)}`}
                               </p>
                             ))}
                           </div>
@@ -618,7 +619,7 @@ export default function Planning() {
                               : 'bg-gray-50 border-gray-200 text-gray-600'
                         }`}>
                         {suggestion && !isSelected && '✅ '}{s.name}
-                        {suggestion && ` (${suggestion.heure_debut}-${suggestion.heure_fin})`}
+                        {suggestion && ` (${fmtHeure(suggestion.heure_debut)}-${fmtHeure(suggestion.heure_fin)})`}
                       </button>
                     )
                   })
