@@ -147,6 +147,9 @@ export default function StockMagasin() {
   const [pendingSaleData, setPendingSaleData] = useState(null)
   const [showTicket, setShowTicket] = useState(false)
   const [lastSale, setLastSale] = useState(null)
+  const [showEmailTicketForm, setShowEmailTicketForm] = useState(false)
+  const [ticketEmailInput, setTicketEmailInput]       = useState('')
+  const [sendingTicketEmail, setSendingTicketEmail]   = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [salesToday, setSalesToday] = useState([])
   const [caisseTotals, setCaisseTotals] = useState({
@@ -1909,6 +1912,37 @@ export default function StockMagasin() {
   }
 
   // ─── Devis par email ───
+  const handleSendTicketEmail = async () => {
+    if (!ticketEmailInput.trim() || !/\S+@\S+\.\S+/.test(ticketEmailInput)) {
+      alert('Email invalide'); return
+    }
+    if (!lastSale) { alert('Aucun ticket à envoyer'); return }
+    setSendingTicketEmail(true)
+    try {
+      const itemsHtml = (lastSale.items || []).map((c) => {
+        return `<tr><td>${c.qty || c.quantity}× ${c.item_name || c.name}</td><td style="text-align:right">${Number(c.total || c.lineTotal || 0).toFixed(2)}€</td></tr>`
+      }).join('')
+      const html = `<table style="width:100%;border-collapse:collapse">${itemsHtml}</table>`
+      const emailjs = (await import('@emailjs/browser')).default
+      const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
+      await emailjs.send('service_nn74puq', 'template_ticket', {
+        to_email: ticketEmailInput.trim(),
+        to_name: 'Client',
+        items_html: html,
+        total: (lastSale.total_amount || 0).toFixed(2) + '€',
+        magasin_nom: magasinLabel,
+        date_vente: new Date(lastSale.created_at || Date.now()).toLocaleDateString('fr-BE'),
+      }, 'rqbaYNMIGNP6IQB9O')
+      logActivity('ticket_email_sent', `Ticket envoyé par email à ${ticketEmailInput.trim()}`)
+      setShowEmailTicketForm(false)
+      setTicketEmailInput('')
+      alert('Ticket envoyé ✅')
+    } catch (e) {
+      alert('Erreur envoi : ' + e.message)
+    }
+    setSendingTicketEmail(false)
+  }
+
   const handleSendDevis = async () => {
     const email = (devisEmail || '').trim()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -7296,6 +7330,23 @@ export default function StockMagasin() {
                 tvaRate: 21,
               }, () => window.print())}
             />
+            {!showEmailTicketForm ? (
+              <button onClick={() => setShowEmailTicketForm(true)}
+                className="w-full mt-2 py-2.5 border border-[#00B4CC] text-[#00B4CC] rounded-xl text-sm font-bold hover:bg-cyan-50">
+                ✉️ Envoyer par email
+              </button>
+            ) : (
+              <div className="mt-2 flex gap-2">
+                <input type="email" value={ticketEmailInput}
+                  onChange={(e) => setTicketEmailInput(e.target.value)}
+                  placeholder="email@client.com"
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                <button onClick={handleSendTicketEmail} disabled={sendingTicketEmail}
+                  className="px-4 py-2 bg-[#00B4CC] text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                  {sendingTicketEmail ? '...' : 'Envoyer'}
+                </button>
+              </div>
+            )}
             <button onClick={() => setShowTicket(false)}
               className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
               Fermer
