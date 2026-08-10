@@ -37,6 +37,7 @@ export default function Planning() {
   const [magasinStaffList, setMagasinStaffList] = useState([])
   const [magasinScheduleDates, setMagasinScheduleDates] = useState([])
   const [magasinFermetures, setMagasinFermetures] = useState([])
+  const [remplacementsMois, setRemplacementsMois] = useState([])
   const [assignDateIsClosed, setAssignDateIsClosed] = useState(false)
   const [loadingMagasinVue, setLoadingMagasinVue] = useState(false)
 
@@ -87,14 +88,24 @@ export default function Planning() {
       .gte('date', monthStart).lte('date', monthEnd)
     setMagasinFermetures(fermData || [])
 
+    const { data: rempData } = await supabase
+      .from('planning_remplacements').select('*, staff_remplacant:staff_remplacant_id(name), staff_prevu:staff_prevu_id(name)')
+      .eq('magasin_id', selectedMagasinVue)
+      .gte('date', monthStart).lte('date', monthEnd)
+    setRemplacementsMois(rempData || [])
+    const remplacantIds = (rempData || []).map((r) => r.staff_remplacant_id)
+
     if (staffIds.length === 0) {
       setMagasinScheduleDates([])
       setLoadingMagasinVue(false)
       return
     }
-    const { data: schedData } = await supabase
-      .from('staff_schedule_dates').select('*, staff(name)')
-      .in('staff_id', staffIds).gte('date', monthStart).lte('date', monthEnd)
+    const allStaffIds = [...new Set([...staffIds, ...remplacantIds])]
+    const { data: schedData } = allStaffIds.length > 0
+      ? await supabase
+          .from('staff_schedule_dates').select('*, staff(name)')
+          .in('staff_id', allStaffIds).gte('date', monthStart).lte('date', monthEnd)
+      : { data: [] }
     setMagasinScheduleDates(schedData || [])
     setLoadingMagasinVue(false)
   }
@@ -525,15 +536,19 @@ export default function Planning() {
                     const dateStr = mgToDateStr(date)
                     const workingToday = magasinScheduleDates.filter((s) => s.date === dateStr && !s.repos)
                     const isClosed = magasinFermetures.some((f) => f.date === dateStr)
+                    const remplacementsJour = remplacementsMois.filter((r) => r.date === dateStr)
+                    const isReplacement = remplacementsJour.length > 0
                     const isHole = !isClosed && workingToday.length === 0
                     const isPast = dateStr < todayStr
                     const colorCls = isClosed
                       ? 'border-gray-300 bg-gray-100'
-                      : isHole
-                        ? 'border-red-300 bg-red-50'
-                        : isPast
-                          ? 'border-green-300 bg-green-50'
-                          : 'border-blue-300 bg-blue-50'
+                      : isReplacement
+                        ? 'border-orange-300 bg-orange-50'
+                        : isHole
+                          ? 'border-red-300 bg-red-50'
+                          : isPast
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-blue-300 bg-blue-50'
                     return (
                       <div key={dateStr}
                         className={`rounded-xl border p-2 min-h-[80px] ${colorCls}`}>
@@ -551,6 +566,11 @@ export default function Planning() {
                           <p className="text-[10px] font-bold text-red-600">⚠️ Personne</p>
                         ) : (
                           <div className="space-y-0.5">
+                            {isReplacement && remplacementsJour.map((r) => (
+                              <p key={r.id} className="text-[9px] font-bold text-orange-600 truncate">
+                                🔄 {r.staff_remplacant?.name?.split(' ')[0]} → {r.staff_prevu?.name?.split(' ')[0]}
+                              </p>
+                            ))}
                             {workingToday.map((s) => (
                               <p key={s.id} className={`text-[10px] truncate ${isPast ? 'text-green-700' : 'text-blue-700'}`}>
                                 {(s.staff?.name || '').split(' ')[0] || '—'}

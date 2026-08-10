@@ -400,6 +400,12 @@ export default function StockMagasin() {
   // Verrou PIN caisse
   const [caisseSession, setCaisseSession] = useState(null)
   const [todayScheduleForLive, setTodayScheduleForLive] = useState(null)
+  // Détection remplacement à la connexion
+  const [scheduledTodayMismatch, setScheduledTodayMismatch] = useState([])
+  const [showRemplacementAlert, setShowRemplacementAlert] = useState(false)
+  const [remplacementStep, setRemplacementStep] = useState('choix') // 'choix' | 'confirmer'
+  const [selectedPrevuId, setSelectedPrevuId] = useState(null)
+  const [savingRemplacement, setSavingRemplacement] = useState(false)
 
   // Paramètres caisse (PIN/horaires/salaire par employé)
   const [staffListCaisse, setStaffListCaisse]           = useState([])
@@ -790,6 +796,63 @@ export default function StockMagasin() {
     localStorage.setItem(`sebphone_caisse_session_${magasin}`,
       JSON.stringify(session))
     setCaisseSession(session)
+    checkPlanningMismatch(session)
+  }
+
+  const checkPlanningMismatch = async (session) => {
+    if (!session?.staffId || !magasin) return
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const { data: staffData } = await supabase
+      .from('staff').select('id, name')
+      .eq('magasin_id', magasin).eq('active', true)
+    const staffIds = (staffData || []).map((s) => s.id)
+    if (staffIds.length === 0) return
+    const { data: schedData } = await supabase
+      .from('staff_schedule_dates').select('staff_id, heure_debut, heure_fin')
+      .in('staff_id', staffIds).eq('date', todayStr).eq('repos', false)
+      .not('heure_debut', 'is', null)
+    const scheduled = (schedData || [])
+      .map((s) => ({ ...s, name: staffData.find((st) => st.id === s.staff_id)?.name }))
+      .filter((s) => s.name)
+    if (scheduled.length === 0) return
+    const isExpected = scheduled.some((s) => s.staff_id === session.staffId)
+    if (!isExpected) {
+      setScheduledTodayMismatch(scheduled)
+      setSelectedPrevuId(scheduled.length === 1 ? scheduled[0].staff_id : null)
+      setRemplacementStep('choix')
+      setShowRemplacementAlert(true)
+    }
+  }
+
+  const handleErreurConnexion = () => {
+    localStorage.removeItem(`sebphone_caisse_session_${magasin}`)
+    setCaisseSession(null)
+    setShowRemplacementAlert(false)
+    setScheduledTodayMismatch([])
+  }
+
+  const handleConfirmRemplacement = async () => {
+    if (!selectedPrevuId || !caisseSession?.staffId) return
+    setSavingRemplacement(true)
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const prevu = scheduledTodayMismatch.find((s) => s.staff_id === selectedPrevuId)
+    await supabase.from('staff_schedule_dates')
+      .delete().eq('staff_id', caisseSession.staffId).eq('date', todayStr)
+    await supabase.from('staff_schedule_dates')
+      .update({ staff_id: caisseSession.staffId })
+      .eq('staff_id', selectedPrevuId).eq('date', todayStr)
+    const { error } = await supabase.from('planning_remplacements').insert({
+      date: todayStr,
+      magasin_id: magasin,
+      staff_prevu_id: selectedPrevuId,
+      staff_remplacant_id: caisseSession.staffId,
+      heure_debut: prevu?.heure_debut || null,
+      heure_fin: prevu?.heure_fin || null,
+    })
+    setSavingRemplacement(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    setShowRemplacementAlert(false)
+    setScheduledTodayMismatch([])
   }
 
   const handleChangeUser = async () => {
@@ -8038,6 +8101,59 @@ export default function StockMagasin() {
               className="w-full mt-4 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm">
               Fermer
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REMPLACEMENT — planning incohérent à la connexion */}
+      {showRemplacementAlert && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+            <h3 className="font-bold text-[#1B2A4A] text-lg mb-2">⚠️ Souci de planning</h3>
+            {remplacementStep === 'choix' ? (
+              <>
+                <p className="text-sm text-gray-600 mb-3">
+                  {scheduledTodayMismatch.length === 1
+                    ? `${scheduledTodayMismatch[0].name} est prévu(e) aujourd'hui, pas ${caisseSession?.staffName}.`
+                    : `D'autres personnes sont prévues aujourd'hui, pas ${caisseSession?.staffName}.`}
+                </p>
+                {scheduledTodayMismatch.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {scheduledTodayMismatch.map((s) => (
+                      <button key={s.staff_id} onClick={() => setSelectedPrevuId(s.staff_id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 ${
+                          selectedPrevuId === s.staff_id ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]' : 'bg-gray-50 border-gray-200 text-gray-600'
+                        }`}>
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={handleErreurConnexion}
+                  className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold mb-2">
+                  Erreur — je me reconnecte
+                </button>
+                <button onClick={() => setRemplacementStep('confirmer')} disabled={!selectedPrevuId}
+                  className="w-full py-2.5 bg-orange-500 text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                  C'est un remplacement
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  Confirmer que <strong>{caisseSession?.staffName}</strong> remplace{' '}
+                  <strong>{scheduledTodayMismatch.find((s) => s.staff_id === selectedPrevuId)?.name}</strong> aujourd'hui ?
+                </p>
+                <button onClick={handleConfirmRemplacement} disabled={savingRemplacement}
+                  className="w-full py-2.5 bg-orange-500 text-white rounded-xl text-sm font-bold disabled:opacity-50 mb-2">
+                  {savingRemplacement ? 'Enregistrement...' : 'Confirmer le remplacement'}
+                </button>
+                <button onClick={() => setRemplacementStep('choix')}
+                  className="w-full py-2 text-gray-500 text-xs font-bold">
+                  Retour
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
