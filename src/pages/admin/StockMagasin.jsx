@@ -1920,7 +1920,7 @@ export default function StockMagasin() {
     setSendingTicketEmail(true)
     try {
       const itemsHtml = (lastSale.items || []).map((c) => {
-        return `<tr><td>${c.qty || c.quantity}× ${c.item_name || c.name}</td><td style="text-align:right">${Number(c.total || c.lineTotal || 0).toFixed(2)}€</td></tr>`
+        return `<tr><td>${c.quantity}× ${c.item_name}</td><td style="text-align:right">${lineTotal(c).toFixed(2)}€</td></tr>`
       }).join('')
       const html = `<table style="width:100%;border-collapse:collapse">${itemsHtml}</table>`
       const emailjs = (await import('@emailjs/browser')).default
