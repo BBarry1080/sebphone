@@ -1959,6 +1959,74 @@ export default function StockMagasin() {
   }
 
   // ─── Devis par email ───
+  const generateTicketPdfBase64 = async (sale, magasinLabel) => {
+    const { jsPDF } = await import('jspdf')
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    let y = 20
+
+    doc.setFontSize(16)
+    doc.setFont(undefined, 'bold')
+    doc.text('SLT GROUP (SRL)', 20, y)
+    doc.setFontSize(9)
+    doc.setFont(undefined, 'normal')
+    y += 6
+    doc.text('Rue du Bailli 22, 1000 Bruxelles — TVA BE 1028.764.677', 20, y)
+    y += 6
+    doc.text(magasinLabel || '', 20, y)
+    y += 12
+
+    doc.setFontSize(12)
+    doc.setFont(undefined, 'bold')
+    doc.text(`Ticket n° ${sale.ticketNumber || ''}`, 20, y)
+    doc.setFont(undefined, 'normal')
+    doc.setFontSize(9)
+    doc.text(new Date(sale.created_at || Date.now()).toLocaleDateString('fr-BE'), 150, y)
+    y += 10
+
+    doc.setFontSize(10)
+    doc.setFont(undefined, 'bold')
+    doc.text('Article', 20, y)
+    doc.text('Qté', 130, y)
+    doc.text('Prix', 175, y, { align: 'right' })
+    y += 2
+    doc.line(20, y, 190, y)
+    y += 6
+    doc.setFont(undefined, 'normal')
+
+    let totalTTC = 0
+    ;(sale.items || []).forEach((c) => {
+      const tot = lineTotal(c)
+      totalTTC += tot
+      doc.text(String(c.item_name || '').slice(0, 45), 20, y)
+      doc.text(String(c.quantity), 130, y)
+      doc.text(`${tot.toFixed(2)}€`, 175, y, { align: 'right' })
+      y += 6
+      if (y > 270) { doc.addPage(); y = 20 }
+    })
+
+    y += 4
+    doc.line(20, y, 190, y)
+    y += 8
+
+    const rate = 21
+    const totalHT = totalTTC / (1 + rate / 100)
+    const totalTVA = totalTTC - totalHT
+
+    doc.setFontSize(10)
+    doc.text(`Total HT :`, 130, y)
+    doc.text(`${totalHT.toFixed(2)}€`, 175, y, { align: 'right' })
+    y += 6
+    doc.text(`TVA (${rate}%) :`, 130, y)
+    doc.text(`${totalTVA.toFixed(2)}€`, 175, y, { align: 'right' })
+    y += 6
+    doc.setFont(undefined, 'bold')
+    doc.setFontSize(12)
+    doc.text(`Total TTC :`, 130, y)
+    doc.text(`${totalTTC.toFixed(2)}€`, 175, y, { align: 'right' })
+
+    return doc.output('datauristring').split(',')[1]
+  }
+
   const handleSendTicketEmail = async () => {
     if (!ticketEmailInput.trim() || !/\S+@\S+\.\S+/.test(ticketEmailInput)) {
       alert('Email invalide'); return
@@ -1971,6 +2039,7 @@ export default function StockMagasin() {
       }).join('')
       const emailjs = (await import('@emailjs/browser')).default
       const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
+      const pdfBase64 = await generateTicketPdfBase64(lastSale, magasinLabel)
       await emailjs.send('service_nn74puq', 'template_ticket', {
         to_email: ticketEmailInput.trim(),
         to_name: 'Client',
@@ -1978,6 +2047,7 @@ export default function StockMagasin() {
         total: (lastSale.total_amount || 0).toFixed(2) + '€',
         magasin_nom: magasinLabel,
         date_vente: new Date(lastSale.created_at || Date.now()).toLocaleDateString('fr-BE'),
+        my_attachment: pdfBase64,
       }, 'rqbaYNMIGNP6IQB9O')
       logActivity('ticket_email_sent', `Ticket envoyé par email à ${ticketEmailInput.trim()}`)
       setShowEmailTicketForm(false)
