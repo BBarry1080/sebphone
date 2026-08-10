@@ -243,7 +243,7 @@ export default function Planning() {
     fetchPendingHeuresSup()
   }
 
-  const magasinNom = (id) => MAGASINS_PHYSIQUES.find((m) => m.id === id)?.nom || id
+  const magasinNom = (id) => planningMagasins.find((m) => m.id === id)?.nom || MAGASINS_PHYSIQUES.find((m) => m.id === id)?.nom || id
 
   return (
     <div className="max-w-6xl mx-auto">
