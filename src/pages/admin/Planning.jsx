@@ -362,7 +362,10 @@ export default function Planning() {
                     <div>
                       <p className="text-sm font-bold text-[#1B2A4A]">{d.staff?.name || '—'}</p>
                       <p className="text-xs text-gray-500">
-                        {d.type === 'hebdo'
+                        <span className="font-bold text-cyan-700">
+                          {MAGASINS_PHYSIQUES.find((m) => m.id === d.magasin_id)?.nom?.replace('Seb Telecom — ', '') || '—'}
+                        </span>
+                        {' · '}{d.type === 'hebdo'
                           ? `Tous les ${d.jour_semaine}`
                           : new Date(d.date).toLocaleDateString('fr-BE')}
                         {' — '}{d.repos ? 'Repos' : `${d.heure_debut} - ${d.heure_fin}`}

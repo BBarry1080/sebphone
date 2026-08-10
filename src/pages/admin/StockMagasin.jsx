@@ -385,7 +385,7 @@ export default function StockMagasin() {
   const [showProposeDispo, setShowProposeDispo] = useState(false)
   const [dispoForm, setDispoForm] = useState({
     type: 'hebdo', jour_semaine: 'lundi', date: '', repos: false,
-    heure_debut: '10:00', heure_fin: '18:00', motif: '',
+    heure_debut: '10:00', heure_fin: '18:00', motif: '', magasin_id: '',
   })
   const [myDispoList, setMyDispoList] = useState([])
   const [savingDispo, setSavingDispo] = useState(false)
@@ -482,6 +482,9 @@ export default function StockMagasin() {
     if (dispoForm.type === 'date' && !dispoForm.date) {
       alert('Choisis une date'); return
     }
+    if (!dispoForm.magasin_id) {
+      alert('Choisis un magasin'); return
+    }
     setSavingDispo(true)
     const { error } = await supabase.from('staff_disponibilites').insert({
       staff_id: myStaffRecord.id,
@@ -492,10 +495,11 @@ export default function StockMagasin() {
       heure_debut: dispoForm.repos ? null : dispoForm.heure_debut,
       heure_fin: dispoForm.repos ? null : dispoForm.heure_fin,
       motif: dispoForm.motif.trim() || null,
+      magasin_id: dispoForm.magasin_id || null,
     })
     setSavingDispo(false)
     if (error) { alert('Erreur : ' + error.message); return }
-    setDispoForm({ type: 'hebdo', jour_semaine: 'lundi', date: '', repos: false, heure_debut: '10:00', heure_fin: '18:00', motif: '' })
+    setDispoForm({ type: 'hebdo', jour_semaine: 'lundi', date: '', repos: false, heure_debut: '10:00', heure_fin: '18:00', motif: '', magasin_id: '' })
     setShowProposeDispo(false)
     fetchMyDisponibilites()
     alert('Disponibilité envoyée, en attente de validation ✅')
@@ -3909,6 +3913,21 @@ export default function StockMagasin() {
                       </button>
                     </div>
 
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Magasin</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {MAGASINS_CAISSE.map((m) => (
+                          <button key={m.id} type="button"
+                            onClick={() => setDispoForm((f) => ({ ...f, magasin_id: m.id }))}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                              dispoForm.magasin_id === m.id ? 'bg-[#00B4CC] text-white' : 'bg-white border border-gray-200 text-gray-500'
+                            }`}>
+                            {m.nom.replace('Seb Telecom — ', '')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {dispoForm.type === 'hebdo' ? (
                       <div className="flex flex-wrap gap-1.5">
                         {['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map((j) => (
@@ -3957,7 +3976,8 @@ export default function StockMagasin() {
                     {myDispoList.map((d) => (
                       <div key={d.id} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-2">
                         <span className="text-gray-600">
-                          {d.type === 'hebdo' ? `Tous les ${d.jour_semaine}` : new Date(d.date).toLocaleDateString('fr-BE')}
+                          {MAGASINS_CAISSE.find((m) => m.id === d.magasin_id)?.nom?.replace('Seb Telecom — ', '') || '—'}
+                          {' · '}{d.type === 'hebdo' ? `Tous les ${d.jour_semaine}` : new Date(d.date).toLocaleDateString('fr-BE')}
                           {' — '}{d.repos ? 'Repos' : `${d.heure_debut}-${d.heure_fin}`}
                         </span>
                         <span className={`font-bold px-2 py-0.5 rounded-full ${
