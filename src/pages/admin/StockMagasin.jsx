@@ -378,6 +378,14 @@ export default function StockMagasin() {
     date: '', repos: false, heure_debut: '10:00', heure_fin: '20:00', note: '',
   })
   const [sendingReplacement, setSendingReplacement] = useState(false)
+  // Disponibilités proposées par l'employé
+  const [showProposeDispo, setShowProposeDispo] = useState(false)
+  const [dispoForm, setDispoForm] = useState({
+    type: 'hebdo', jour_semaine: 'lundi', date: '', repos: false,
+    heure_debut: '10:00', heure_fin: '18:00', motif: '',
+  })
+  const [myDispoList, setMyDispoList] = useState([])
+  const [savingDispo, setSavingDispo] = useState(false)
   // Heures supplémentaires — vue employé
   const [myPendingHeuresSup, setMyPendingHeuresSup] = useState([])
   const [showDeclareHS, setShowDeclareHS] = useState(false)
@@ -445,6 +453,44 @@ export default function StockMagasin() {
   }
 
   useEffect(() => { fetchMyPendingHeuresSup() }, [myStaffRecord])
+
+  const fetchMyDisponibilites = async () => {
+    if (!myStaffRecord?.id) return
+    const { data } = await supabase.from('staff_disponibilites')
+      .select('*').eq('staff_id', myStaffRecord.id)
+      .order('created_at', { ascending: false }).limit(10)
+    setMyDispoList(data || [])
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchMyDisponibilites() }, [myStaffRecord])
+
+  const handleProposeDispo = async () => {
+    if (!myStaffRecord?.id) return
+    if (dispoForm.type === 'hebdo' && !dispoForm.jour_semaine) {
+      alert('Choisis un jour'); return
+    }
+    if (dispoForm.type === 'date' && !dispoForm.date) {
+      alert('Choisis une date'); return
+    }
+    setSavingDispo(true)
+    const { error } = await supabase.from('staff_disponibilites').insert({
+      staff_id: myStaffRecord.id,
+      type: dispoForm.type,
+      jour_semaine: dispoForm.type === 'hebdo' ? dispoForm.jour_semaine : null,
+      date: dispoForm.type === 'date' ? dispoForm.date : null,
+      repos: dispoForm.repos,
+      heure_debut: dispoForm.repos ? null : dispoForm.heure_debut,
+      heure_fin: dispoForm.repos ? null : dispoForm.heure_fin,
+      motif: dispoForm.motif.trim() || null,
+    })
+    setSavingDispo(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    setDispoForm({ type: 'hebdo', jour_semaine: 'lundi', date: '', repos: false, heure_debut: '10:00', heure_fin: '18:00', motif: '' })
+    setShowProposeDispo(false)
+    fetchMyDisponibilites()
+    alert('Disponibilité envoyée, en attente de validation ✅')
+  }
 
   const handleDeclareHeureSup = async () => {
     if (!declareHSForm.date || !declareHSForm.duree_heures) {
@@ -3639,6 +3685,94 @@ export default function StockMagasin() {
                   isAdmin={false}
                   readOnly={true}
                 />
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 mt-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-[#1B2A4A] flex items-center gap-2">
+                    <Calendar size={16} /> Mes disponibilités
+                  </h3>
+                  <button onClick={() => setShowProposeDispo((v) => !v)}
+                    className="text-xs font-bold text-[#00B4CC] hover:text-[#1B2A4A]">
+                    {showProposeDispo ? 'Annuler' : '+ Proposer'}
+                  </button>
+                </div>
+
+                {showProposeDispo && (
+                  <div className="bg-gray-50 rounded-xl p-3 mb-3 space-y-2.5">
+                    <div className="flex gap-2">
+                      <button onClick={() => setDispoForm((f) => ({ ...f, type: 'hebdo' }))}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${dispoForm.type === 'hebdo' ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'}`}>
+                        Toutes les semaines
+                      </button>
+                      <button onClick={() => setDispoForm((f) => ({ ...f, type: 'date' }))}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${dispoForm.type === 'date' ? 'bg-[#1B2A4A] text-white' : 'bg-white border border-gray-200 text-gray-500'}`}>
+                        Une date précise
+                      </button>
+                    </div>
+
+                    {dispoForm.type === 'hebdo' ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map((j) => (
+                          <button key={j} onClick={() => setDispoForm((f) => ({ ...f, jour_semaine: j }))}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${dispoForm.jour_semaine === j ? 'bg-[#00B4CC] text-white' : 'bg-white border border-gray-200 text-gray-500'}`}>
+                            {j.slice(0,3)}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <input type="date" value={dispoForm.date}
+                        onChange={(e) => setDispoForm((f) => ({ ...f, date: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    )}
+
+                    <label className="flex items-center gap-2 text-xs text-gray-600">
+                      <input type="checkbox" checked={dispoForm.repos}
+                        onChange={(e) => setDispoForm((f) => ({ ...f, repos: e.target.checked }))} />
+                      Repos (pas disponible)
+                    </label>
+
+                    {!dispoForm.repos && (
+                      <div className="flex gap-2">
+                        <input type="time" value={dispoForm.heure_debut}
+                          onChange={(e) => setDispoForm((f) => ({ ...f, heure_debut: e.target.value }))}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                        <input type="time" value={dispoForm.heure_fin}
+                          onChange={(e) => setDispoForm((f) => ({ ...f, heure_fin: e.target.value }))}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                    )}
+
+                    <input type="text" placeholder="Note (optionnel)" value={dispoForm.motif}
+                      onChange={(e) => setDispoForm((f) => ({ ...f, motif: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+
+                    <button onClick={handleProposeDispo} disabled={savingDispo}
+                      className="w-full py-2 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                      {savingDispo ? 'Envoi...' : 'Envoyer la proposition'}
+                    </button>
+                  </div>
+                )}
+
+                {myDispoList.length > 0 && (
+                  <div className="space-y-1.5">
+                    {myDispoList.map((d) => (
+                      <div key={d.id} className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-2">
+                        <span className="text-gray-600">
+                          {d.type === 'hebdo' ? `Tous les ${d.jour_semaine}` : new Date(d.date).toLocaleDateString('fr-BE')}
+                          {' — '}{d.repos ? 'Repos' : `${d.heure_debut}-${d.heure_fin}`}
+                        </span>
+                        <span className={`font-bold px-2 py-0.5 rounded-full ${
+                          d.statut === 'accepte' ? 'bg-green-100 text-green-700'
+                          : d.statut === 'refuse' ? 'bg-red-100 text-red-700'
+                          : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {d.statut === 'accepte' ? 'Acceptée' : d.statut === 'refuse' ? 'Refusée' : 'En attente'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Heures supplémentaires */}

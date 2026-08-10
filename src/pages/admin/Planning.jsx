@@ -18,6 +18,10 @@ export default function Planning() {
   const [addHSForm, setAddHSForm]                   = useState({ staff_id: '', date: '', duree_heures: '', motif: '' })
   const [savingHS, setSavingHS]                     = useState(false)
 
+  // Disponibilités proposées par les employés
+  const [pendingDispos, setPendingDispos] = useState([])
+  const [loadingDispos, setLoadingDispos] = useState(false)
+
   const fetchStaffList = async () => {
     setLoadingStaff(true)
     const { data } = await supabase
@@ -40,8 +44,46 @@ export default function Planning() {
     setLoadingPendingHS(false)
   }
 
+  const fetchPendingDispos = async () => {
+    setLoadingDispos(true)
+    const { data } = await supabase
+      .from('staff_disponibilites').select('*, staff(name)')
+      .eq('statut', 'en_attente').order('created_at', { ascending: false })
+    setPendingDispos(data || [])
+    setLoadingDispos(false)
+  }
+
   useEffect(() => { fetchStaffList() }, [])
   useEffect(() => { fetchPendingHeuresSup() }, [])
+  useEffect(() => { fetchPendingDispos() }, [])
+
+  const handleTraiterDispo = async (dispo, statut) => {
+    const currentUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    if (statut === 'accepte') {
+      if (dispo.type === 'hebdo') {
+        await supabase.from('staff_disponibilites_hebdo').upsert({
+          staff_id: dispo.staff_id,
+          jour_semaine: dispo.jour_semaine,
+          repos: dispo.repos,
+          heure_debut: dispo.repos ? null : dispo.heure_debut,
+          heure_fin: dispo.repos ? null : dispo.heure_fin,
+          active: true,
+        }, { onConflict: 'staff_id,jour_semaine' })
+      } else {
+        await supabase.from('staff_schedule_dates').upsert({
+          staff_id: dispo.staff_id,
+          date: dispo.date,
+          repos: dispo.repos,
+          heure_debut: dispo.repos ? null : dispo.heure_debut,
+          heure_fin: dispo.repos ? null : dispo.heure_fin,
+        }, { onConflict: 'staff_id,date' })
+      }
+    }
+    await supabase.from('staff_disponibilites')
+      .update({ statut, traite_par: currentUser?.name || 'Admin', traite_at: new Date().toISOString() })
+      .eq('id', dispo.id)
+    fetchPendingDispos()
+  }
 
   const handleTraiterHeureSup = async (id, statut) => {
     const currentUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
@@ -108,6 +150,39 @@ export default function Planning() {
                         Accepter
                       </button>
                       <button onClick={() => handleTraiterHeureSup(r.id, 'refuse')}
+                        className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
+                        Refuser
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {pendingDispos.length > 0 && (
+            <div className="bg-cyan-50 border border-cyan-200 rounded-2xl p-4 mb-2">
+              <p className="text-xs font-bold text-cyan-700 uppercase mb-2">
+                📅 {pendingDispos.length} disponibilité(s) proposée(s)
+              </p>
+              <div className="space-y-2">
+                {pendingDispos.map((d) => (
+                  <div key={d.id} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-sm font-bold text-[#1B2A4A]">{d.staff?.name || '—'}</p>
+                      <p className="text-xs text-gray-500">
+                        {d.type === 'hebdo'
+                          ? `Tous les ${d.jour_semaine}`
+                          : new Date(d.date).toLocaleDateString('fr-BE')}
+                        {' — '}{d.repos ? 'Repos' : `${d.heure_debut} - ${d.heure_fin}`}
+                      </p>
+                      {d.motif && <p className="text-xs text-gray-400 italic mt-0.5">"{d.motif}"</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleTraiterDispo(d, 'accepte')}
+                        className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-xs font-bold hover:bg-emerald-600">
+                        Accepter
+                      </button>
+                      <button onClick={() => handleTraiterDispo(d, 'refuse')}
                         className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
                         Refuser
                       </button>
