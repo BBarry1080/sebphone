@@ -36,6 +36,8 @@ export default function Planning() {
   const [magasinMonthOffset, setMagasinMonthOffset] = useState(0)
   const [magasinStaffList, setMagasinStaffList] = useState([])
   const [magasinScheduleDates, setMagasinScheduleDates] = useState([])
+  const [magasinFermetures, setMagasinFermetures] = useState([])
+  const [assignDateIsClosed, setAssignDateIsClosed] = useState(false)
   const [loadingMagasinVue, setLoadingMagasinVue] = useState(false)
 
   // Assignation rapide d'un shift depuis la vue magasin
@@ -71,16 +73,24 @@ export default function Planning() {
       .order('name', { ascending: true })
     setMagasinStaffList(staffData || [])
     const staffIds = (staffData || []).map((s) => s.id)
-    if (staffIds.length === 0) {
-      setMagasinScheduleDates([])
-      setLoadingMagasinVue(false)
-      return
-    }
+
     const now = new Date()
     const base = new Date(now.getFullYear(), now.getMonth() + magasinMonthOffset, 1)
     const monthStart = `${base.getFullYear()}-${mgPad2(base.getMonth() + 1)}-01`
     const lastDay = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate()
     const monthEnd = `${base.getFullYear()}-${mgPad2(base.getMonth() + 1)}-${mgPad2(lastDay)}`
+
+    const { data: fermData } = await supabase
+      .from('magasin_fermetures').select('*')
+      .eq('magasin_id', selectedMagasinVue)
+      .gte('date', monthStart).lte('date', monthEnd)
+    setMagasinFermetures(fermData || [])
+
+    if (staffIds.length === 0) {
+      setMagasinScheduleDates([])
+      setLoadingMagasinVue(false)
+      return
+    }
     const { data: schedData } = await supabase
       .from('staff_schedule_dates').select('*, staff(name)')
       .in('staff_id', staffIds).gte('date', monthStart).lte('date', monthEnd)
@@ -115,6 +125,7 @@ export default function Planning() {
   const openAssignShift = (dateStr) => {
     setAssignDate(dateStr)
     setAssignForm({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '18:00' })
+    setAssignDateIsClosed(magasinFermetures.some((f) => f.date === dateStr))
     setShowAssignShift(true)
     fetchSuggestionsForDate(dateStr)
   }
@@ -133,6 +144,28 @@ export default function Planning() {
     }, { onConflict: 'staff_id,date' })
     setSavingAssign(false)
     if (error) { alert('Erreur : ' + error.message); return }
+    setShowAssignShift(false)
+    fetchMagasinVueData()
+  }
+
+  const handleToggleFermeture = async () => {
+    if (!assignDate || !selectedMagasinVue) return
+    setSavingAssign(true)
+    if (assignDateIsClosed) {
+      const { error } = await supabase.from('magasin_fermetures')
+        .delete().eq('magasin_id', selectedMagasinVue).eq('date', assignDate)
+      setSavingAssign(false)
+      if (error) { alert('Erreur : ' + error.message); return }
+    } else {
+      const currentUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+      const { error } = await supabase.from('magasin_fermetures').upsert({
+        magasin_id: selectedMagasinVue,
+        date: assignDate,
+        created_by: currentUser?.name || 'Admin',
+      }, { onConflict: 'magasin_id,date' })
+      setSavingAssign(false)
+      if (error) { alert('Erreur : ' + error.message); return }
+    }
     setShowAssignShift(false)
     fetchMagasinVueData()
   }
@@ -480,39 +513,49 @@ export default function Planning() {
               </div>
             ) : (
               <div className="grid grid-cols-7 gap-1">
-                {buildMonthCells(magasinMonthOffset).map((date, idx) => {
-                  if (!date) return <div key={`empty-${idx}`} />
-                  const dateStr = mgToDateStr(date)
-                  const workingToday = magasinScheduleDates.filter((s) => s.date === dateStr && !s.repos)
-                  const isHole = workingToday.length === 0
-                  return (
-                    <div key={dateStr}
-                      className={`rounded-xl border p-2 min-h-[80px] ${
-                        isHole ? 'border-red-300 bg-red-50' : 'border-gray-100 bg-white'
-                      }`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] font-bold text-gray-400">{date.getDate()}</p>
-                        <button onClick={() => openAssignShift(dateStr)}
-                          className="w-4 h-4 flex items-center justify-center rounded-full bg-[#1B2A4A] text-white text-[10px] font-bold leading-none hover:bg-[#00B4CC]"
-                          title="Ajouter un employé ce jour">
-                          +
-                        </button>
-                      </div>
-                      {isHole ? (
-                        <p className="text-[10px] font-bold text-red-600">⚠️ Personne</p>
-                      ) : (
-                        <div className="space-y-0.5">
-                          {workingToday.map((s) => (
-                            <p key={s.id} className="text-[10px] text-gray-600 truncate">
-                              {(s.staff?.name || '').split(' ')[0] || '—'}
-                              {s.heure_debut && ` ${s.heure_debut}-${s.heure_fin}`}
-                            </p>
-                          ))}
+                {(() => {
+                  const todayStr = mgToDateStr(new Date())
+                  return buildMonthCells(magasinMonthOffset).map((date, idx) => {
+                    if (!date) return <div key={`empty-${idx}`} />
+                    const dateStr = mgToDateStr(date)
+                    const workingToday = magasinScheduleDates.filter((s) => s.date === dateStr && !s.repos)
+                    const isClosed = magasinFermetures.some((f) => f.date === dateStr)
+                    const isHole = !isClosed && workingToday.length === 0
+                    const isPast = dateStr < todayStr
+                    const colorCls = isClosed || isHole
+                      ? 'border-red-300 bg-red-50'
+                      : isPast
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-blue-300 bg-blue-50'
+                    return (
+                      <div key={dateStr}
+                        className={`rounded-xl border p-2 min-h-[80px] ${colorCls}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[10px] font-bold text-gray-400">{date.getDate()}</p>
+                          <button onClick={() => openAssignShift(dateStr)}
+                            className="w-4 h-4 flex items-center justify-center rounded-full bg-[#1B2A4A] text-white text-[10px] font-bold leading-none hover:bg-[#00B4CC]"
+                            title="Ajouter un employé ce jour">
+                            +
+                          </button>
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                        {isClosed ? (
+                          <p className="text-[10px] font-bold text-red-600">🔒 Fermé</p>
+                        ) : isHole ? (
+                          <p className="text-[10px] font-bold text-red-600">⚠️ Personne</p>
+                        ) : (
+                          <div className="space-y-0.5">
+                            {workingToday.map((s) => (
+                              <p key={s.id} className={`text-[10px] truncate ${isPast ? 'text-green-700' : 'text-blue-700'}`}>
+                                {(s.staff?.name || '').split(' ')[0] || '—'}
+                                {s.heure_debut && ` ${s.heure_debut}-${s.heure_fin}`}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                })()}
               </div>
             )}
           </div>
@@ -533,6 +576,15 @@ export default function Planning() {
             <p className="text-xs text-gray-500 mb-3">
               {assignDate && new Date(assignDate).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
+
+            <button onClick={handleToggleFermeture} disabled={savingAssign}
+              className={`w-full py-2 rounded-xl text-xs font-bold border-2 mb-3 disabled:opacity-50 ${
+                assignDateIsClosed
+                  ? 'bg-red-50 border-red-300 text-red-600'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-600'
+              }`}>
+              {assignDateIsClosed ? '🔓 Rouvrir le magasin ce jour' : '🔒 Marquer le magasin fermé ce jour'}
+            </button>
 
             <p className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Employé</p>
             {Object.keys(suggestedDispoMap).length > 0 && (
