@@ -522,11 +522,13 @@ export default function Planning() {
                     const isClosed = magasinFermetures.some((f) => f.date === dateStr)
                     const isHole = !isClosed && workingToday.length === 0
                     const isPast = dateStr < todayStr
-                    const colorCls = isClosed || isHole
-                      ? 'border-red-300 bg-red-50'
-                      : isPast
-                        ? 'border-green-300 bg-green-50'
-                        : 'border-blue-300 bg-blue-50'
+                    const colorCls = isClosed
+                      ? 'border-gray-300 bg-gray-100'
+                      : isHole
+                        ? 'border-red-300 bg-red-50'
+                        : isPast
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-blue-300 bg-blue-50'
                     return (
                       <div key={dateStr}
                         className={`rounded-xl border p-2 min-h-[80px] ${colorCls}`}>
@@ -539,7 +541,7 @@ export default function Planning() {
                           </button>
                         </div>
                         {isClosed ? (
-                          <p className="text-[10px] font-bold text-red-600">🔒 Fermé</p>
+                          <p className="text-[10px] font-bold text-gray-500">🔒 Fermé</p>
                         ) : isHole ? (
                           <p className="text-[10px] font-bold text-red-600">⚠️ Personne</p>
                         ) : (
