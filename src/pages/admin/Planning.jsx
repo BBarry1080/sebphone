@@ -5,8 +5,16 @@ import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
 import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
+const PLANNING_MAGASINS_EXCLUS = ['marrakech', 'livraison-sebphone']
+const PLANNING_MAGASIN_LABELS = { 'livraison-sebtelecom': 'À domicile' }
+
 export default function Planning() {
   const isAdmin = useIsAdmin()
+
+  const planningMagasins = MAGASINS_PHYSIQUES
+    .filter((m) => !PLANNING_MAGASINS_EXCLUS.includes(m.id))
+    .map((m) => PLANNING_MAGASIN_LABELS[m.id] ? { ...m, nom: PLANNING_MAGASIN_LABELS[m.id] } : m)
+
   const [staffList, setStaffList] = useState([])
   const [loadingStaff, setLoadingStaff] = useState(true)
   const [selectedStaff, setSelectedStaff] = useState(null)
@@ -24,7 +32,7 @@ export default function Planning() {
 
   // Vue par magasin
   const [viewMode, setViewMode] = useState('employe') // 'employe' | 'magasin'
-  const [selectedMagasinVue, setSelectedMagasinVue] = useState(MAGASINS_PHYSIQUES[0]?.id || '')
+  const [selectedMagasinVue, setSelectedMagasinVue] = useState(planningMagasins[0]?.id || '')
   const [magasinMonthOffset, setMagasinMonthOffset] = useState(0)
   const [magasinStaffList, setMagasinStaffList] = useState([])
   const [magasinScheduleDates, setMagasinScheduleDates] = useState([])
@@ -424,7 +432,7 @@ export default function Planning() {
       {viewMode === 'magasin' && (
         <div>
           <div className="flex flex-wrap gap-2 mb-4">
-            {MAGASINS_PHYSIQUES.map((m) => (
+            {planningMagasins.map((m) => (
               <button key={m.id} onClick={() => setSelectedMagasinVue(m.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${
                   selectedMagasinVue === m.id ? 'bg-[#00B4CC] text-white border-[#00B4CC]' : 'bg-white text-gray-600 border-gray-200'
@@ -476,7 +484,7 @@ export default function Planning() {
                   if (!date) return <div key={`empty-${idx}`} />
                   const dateStr = mgToDateStr(date)
                   const workingToday = magasinScheduleDates.filter((s) => s.date === dateStr && !s.repos)
-                  const isHole = magasinStaffList.length > 0 && workingToday.length === 0
+                  const isHole = workingToday.length === 0
                   return (
                     <div key={dateStr}
                       className={`rounded-xl border p-2 min-h-[80px] ${
