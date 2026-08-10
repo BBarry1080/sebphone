@@ -35,6 +35,7 @@ export default function Planning() {
   const [assignDate, setAssignDate] = useState(null)
   const [assignForm, setAssignForm] = useState({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '18:00' })
   const [savingAssign, setSavingAssign] = useState(false)
+  const [suggestedDispoMap, setSuggestedDispoMap] = useState({})
 
   const mgPad2 = (n) => String(n).padStart(2, '0')
   const mgToDateStr = (d) => `${d.getFullYear()}-${mgPad2(d.getMonth() + 1)}-${mgPad2(d.getDate())}`
@@ -79,10 +80,29 @@ export default function Planning() {
     setLoadingMagasinVue(false)
   }
 
+  const JS_DAY_TO_FR = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi']
+
+  const fetchSuggestionsForDate = async (dateStr) => {
+    const staffIds = magasinStaffList.map((s) => s.id)
+    if (staffIds.length === 0) { setSuggestedDispoMap({}); return }
+    const frDay = JS_DAY_TO_FR[new Date(dateStr + 'T12:00:00').getDay()]
+    const { data } = await supabase
+      .from('staff_disponibilites_hebdo')
+      .select('*')
+      .in('staff_id', staffIds)
+      .eq('jour_semaine', frDay)
+      .eq('active', true)
+      .eq('repos', false)
+    const map = {}
+    ;(data || []).forEach((d) => { map[d.staff_id] = d })
+    setSuggestedDispoMap(map)
+  }
+
   const openAssignShift = (dateStr) => {
     setAssignDate(dateStr)
     setAssignForm({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '18:00' })
     setShowAssignShift(true)
+    fetchSuggestionsForDate(dateStr)
   }
 
   const handleAssignShift = async () => {
@@ -501,18 +521,39 @@ export default function Planning() {
             </p>
 
             <p className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Employé</p>
+            {Object.keys(suggestedDispoMap).length > 0 && (
+              <p className="text-[10px] text-green-600 font-bold mb-1.5">✅ Disponibles ce jour d'après leurs préférences</p>
+            )}
             <div className="flex flex-wrap gap-1.5 mb-3">
               {magasinStaffList.length === 0 ? (
                 <p className="text-xs text-gray-400">Aucun employé actif dans ce magasin</p>
               ) : (
-                magasinStaffList.map((s) => (
-                  <button key={s.id} onClick={() => setAssignForm((f) => ({ ...f, staff_id: s.id }))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                      assignForm.staff_id === s.id ? 'bg-[#1B2A4A] text-white' : 'bg-gray-50 border border-gray-200 text-gray-600'
-                    }`}>
-                    {s.name}
-                  </button>
-                ))
+                [...magasinStaffList]
+                  .sort((a, b) => (suggestedDispoMap[b.id] ? 1 : 0) - (suggestedDispoMap[a.id] ? 1 : 0))
+                  .map((s) => {
+                    const suggestion = suggestedDispoMap[s.id]
+                    const isSelected = assignForm.staff_id === s.id
+                    return (
+                      <button key={s.id}
+                        onClick={() => setAssignForm((f) => ({
+                          ...f,
+                          staff_id: s.id,
+                          repos: false,
+                          heure_debut: suggestion?.heure_debut || f.heure_debut,
+                          heure_fin: suggestion?.heure_fin || f.heure_fin,
+                        }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border-2 ${
+                          isSelected
+                            ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                            : suggestion
+                              ? 'bg-green-50 border-green-300 text-green-700'
+                              : 'bg-gray-50 border-gray-200 text-gray-600'
+                        }`}>
+                        {suggestion && !isSelected && '✅ '}{s.name}
+                        {suggestion && ` (${suggestion.heure_debut}-${suggestion.heure_fin})`}
+                      </button>
+                    )
+                  })
               )}
             </div>
 
