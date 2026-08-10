@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useIsAdmin } from '../../hooks/usePermissions'
 import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
 import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 export default function Planning() {
   const isAdmin = useIsAdmin()
@@ -29,6 +29,12 @@ export default function Planning() {
   const [magasinStaffList, setMagasinStaffList] = useState([])
   const [magasinScheduleDates, setMagasinScheduleDates] = useState([])
   const [loadingMagasinVue, setLoadingMagasinVue] = useState(false)
+
+  // Assignation rapide d'un shift depuis la vue magasin
+  const [showAssignShift, setShowAssignShift] = useState(false)
+  const [assignDate, setAssignDate] = useState(null)
+  const [assignForm, setAssignForm] = useState({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '18:00' })
+  const [savingAssign, setSavingAssign] = useState(false)
 
   const mgPad2 = (n) => String(n).padStart(2, '0')
   const mgToDateStr = (d) => `${d.getFullYear()}-${mgPad2(d.getMonth() + 1)}-${mgPad2(d.getDate())}`
@@ -71,6 +77,30 @@ export default function Planning() {
       .in('staff_id', staffIds).gte('date', monthStart).lte('date', monthEnd)
     setMagasinScheduleDates(schedData || [])
     setLoadingMagasinVue(false)
+  }
+
+  const openAssignShift = (dateStr) => {
+    setAssignDate(dateStr)
+    setAssignForm({ staff_id: '', repos: false, heure_debut: '10:00', heure_fin: '18:00' })
+    setShowAssignShift(true)
+  }
+
+  const handleAssignShift = async () => {
+    if (!assignForm.staff_id || !assignDate) {
+      alert('Choisis un employé'); return
+    }
+    setSavingAssign(true)
+    const { error } = await supabase.from('staff_schedule_dates').upsert({
+      staff_id: assignForm.staff_id,
+      date: assignDate,
+      repos: assignForm.repos,
+      heure_debut: assignForm.repos ? null : assignForm.heure_debut,
+      heure_fin: assignForm.repos ? null : assignForm.heure_fin,
+    }, { onConflict: 'staff_id,date' })
+    setSavingAssign(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    setShowAssignShift(false)
+    fetchMagasinVueData()
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -426,7 +456,14 @@ export default function Planning() {
                       className={`rounded-xl border p-2 min-h-[80px] ${
                         isHole ? 'border-red-300 bg-red-50' : 'border-gray-100 bg-white'
                       }`}>
-                      <p className="text-[10px] font-bold text-gray-400 mb-1">{date.getDate()}</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] font-bold text-gray-400">{date.getDate()}</p>
+                        <button onClick={() => openAssignShift(dateStr)}
+                          className="w-4 h-4 flex items-center justify-center rounded-full bg-[#1B2A4A] text-white text-[10px] font-bold leading-none hover:bg-[#00B4CC]"
+                          title="Ajouter un employé ce jour">
+                          +
+                        </button>
+                      </div>
                       {isHole ? (
                         <p className="text-[10px] font-bold text-red-600">⚠️ Personne</p>
                       ) : (
@@ -444,6 +481,62 @@ export default function Planning() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showAssignShift && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">
+                Assigner un shift
+              </h3>
+              <button onClick={() => setShowAssignShift(false)} className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              {assignDate && new Date(assignDate).toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+
+            <p className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Employé</p>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {magasinStaffList.length === 0 ? (
+                <p className="text-xs text-gray-400">Aucun employé actif dans ce magasin</p>
+              ) : (
+                magasinStaffList.map((s) => (
+                  <button key={s.id} onClick={() => setAssignForm((f) => ({ ...f, staff_id: s.id }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                      assignForm.staff_id === s.id ? 'bg-[#1B2A4A] text-white' : 'bg-gray-50 border border-gray-200 text-gray-600'
+                    }`}>
+                    {s.name}
+                  </button>
+                ))
+              )}
+            </div>
+
+            <label className="flex items-center gap-2 text-xs text-gray-600 mb-3">
+              <input type="checkbox" checked={assignForm.repos}
+                onChange={(e) => setAssignForm((f) => ({ ...f, repos: e.target.checked }))} />
+              Repos (pas de shift)
+            </label>
+
+            {!assignForm.repos && (
+              <div className="flex gap-2 mb-4">
+                <input type="time" value={assignForm.heure_debut}
+                  onChange={(e) => setAssignForm((f) => ({ ...f, heure_debut: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                <input type="time" value={assignForm.heure_fin}
+                  onChange={(e) => setAssignForm((f) => ({ ...f, heure_fin: e.target.value }))}
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+            )}
+
+            <button onClick={handleAssignShift} disabled={savingAssign || !assignForm.staff_id}
+              className="w-full py-2.5 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+              {savingAssign ? 'Enregistrement...' : 'Assigner'}
+            </button>
           </div>
         </div>
       )}
