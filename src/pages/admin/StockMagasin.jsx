@@ -326,6 +326,7 @@ export default function StockMagasin() {
   const [showNewRepairFromHub, setShowNewRepairFromHub]   = useState(false)
   const [newRepairFromHubForm, setNewRepairFromHubForm]   = useState({
     nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
+    article_offert: false,
   })
   const [savingNewRepairFromHub, setSavingNewRepairFromHub] = useState(false)
   const [hubPieceStep, setHubPieceStep]           = useState('type') // 'type' | 'marque' | 'modele'
@@ -2574,6 +2575,14 @@ export default function StockMagasin() {
 
   const handleCreateNewRepairFromHub = async () => {
     if (!newRepairFromHubForm.nom.trim()) { alert('Nom du client obligatoire'); return }
+    if (hubPieceRowSel && !newRepairFromHubForm.article_offert) {
+      const prixSaisi = Number(newRepairFromHubForm.prix) || 0
+      const prixMin = Number(hubPieceRowSel.prix_min || 0)
+      if (prixSaisi < prixMin) {
+        alert(`Le prix ne peut pas être inférieur au minimum (${prixMin.toFixed(2)}€) — coche "Article offert" si c'est voulu.`)
+        return
+      }
+    }
     setSavingNewRepairFromHub(true)
     const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
     const { count: repairCount } = await supabase
@@ -2602,7 +2611,7 @@ export default function StockMagasin() {
     setSavingNewRepairFromHub(false)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
-    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '' })
+    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false })
     setHubPieceRowSel(null)
     setShowNewRepairFromHub(false)
     fetchReparationsHubData()
@@ -8224,9 +8233,28 @@ export default function StockMagasin() {
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Prix (€)</label>
                   <input type="number" step="0.01" min="0" value={newRepairFromHubForm.prix}
                     onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, prix: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    className={`w-full px-3 py-2 border rounded-xl text-sm ${
+                      hubPieceRowSel && !newRepairFromHubForm.article_offert &&
+                      Number(newRepairFromHubForm.prix) < Number(hubPieceRowSel.prix_min || 0) &&
+                      newRepairFromHubForm.prix !== ''
+                        ? 'border-red-400 text-red-600'
+                        : 'border-gray-200'
+                    }`} />
+                  {hubPieceRowSel && (
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      Minimum : {Number(hubPieceRowSel.prix_min || 0).toFixed(2)}€
+                    </p>
+                  )}
                 </div>
               </div>
+              {hubPieceRowSel && (
+                <label className="flex items-center gap-2 text-xs text-gray-600 mt-1">
+                  <input type="checkbox" checked={newRepairFromHubForm.article_offert}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, article_offert: e.target.checked }))}
+                    className="w-4 h-4 accent-[#00B4CC]" />
+                  Article offert (autorise un prix en dessous du minimum)
+                </label>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Téléphone</label>
