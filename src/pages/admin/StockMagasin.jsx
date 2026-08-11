@@ -150,6 +150,13 @@ export default function StockMagasin() {
     nom: '', tel: '', email: '', imei: '',
   })
   const [newRepairTechnicien, setNewRepairTechnicien] = useState('')
+  const [newRepairPanneDesc, setNewRepairPanneDesc] = useState('')
+  const [suiviCarteMereList, setSuiviCarteMereList] = useState([])
+  const [loadingSuiviCarteMere, setLoadingSuiviCarteMere] = useState(false)
+  const [showSuiviCarteMere, setShowSuiviCarteMere] = useState(false)
+  const [annulationMotifOpenId, setAnnulationMotifOpenId] = useState(null)
+  const [annulationMotifTexte, setAnnulationMotifTexte] = useState('')
+  const [currentStaffResponsable, setCurrentStaffResponsable] = useState(null)
   const [paymentSplits, setPaymentSplits] = useState([])
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState('cash')
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState('')
@@ -327,7 +334,7 @@ export default function StockMagasin() {
   const [showNewRepairFromHub, setShowNewRepairFromHub]   = useState(false)
   const [newRepairFromHubForm, setNewRepairFromHubForm]   = useState({
     nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
-    article_offert: false, technicien_carte_mere: '',
+    article_offert: false, technicien_carte_mere: '', panne_description: '',
   })
   const [savingNewRepairFromHub, setSavingNewRepairFromHub] = useState(false)
   const [hubPieceStep, setHubPieceStep]           = useState('type') // 'type' | 'marque' | 'modele'
@@ -700,6 +707,7 @@ export default function StockMagasin() {
 
   // Fetch du planning du jour pour compteur "En direct" + détection heure sup au départ
   useEffect(() => {
+    fetchCurrentStaffResponsable().then((resp) => fetchSuiviCarteMere(resp))
     if (!caisseSession) { setTodayScheduleForLive(null); return }
     supabase.from('staff_schedule_dates')
       .select('heure_debut, heure_fin')
@@ -707,6 +715,7 @@ export default function StockMagasin() {
       .eq('date', new Date().toISOString().slice(0, 10))
       .maybeSingle()
       .then(({ data }) => setTodayScheduleForLive(data))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [caisseSession])
 
   const fetchMyPendingHeuresSup = async () => {
@@ -2578,6 +2587,7 @@ export default function StockMagasin() {
       fetchItems()
       fetchCaisseToday()
       fetchFournisseursList()
+      fetchCurrentStaffResponsable().then((resp) => fetchSuiviCarteMere(resp))
       fetchEcranStockMagasin()
       fetchGarantiesList()
       fetchLastClosure().then((closure) => {
@@ -2774,6 +2784,10 @@ export default function StockMagasin() {
       imei: newRepairFromHubForm.imei || null,
       type_panne: newRepairFromHubForm.type_panne || null,
       technicien_carte_mere: newRepairFromHubForm.technicien_carte_mere || null,
+      panne_description: newRepairFromHubForm.panne_description.trim() || null,
+      delai_annonce: hubPieceRowSel?.type_piece === 'carte_mere' ? getDelaiPiece('carte_mere', getStockPourMagasin(hubPieceRowSel.id)) : null,
+      suivi_statut: newRepairFromHubForm.technicien_carte_mere ? 'en_cours' : null,
+      pris_en_charge_par: currentSebUser?.name || null,
       prix: newRepairFromHubForm.prix ? Number(newRepairFromHubForm.prix) : null,
       devis: false,
       tel: newRepairFromHubForm.tel || null,
@@ -2785,7 +2799,7 @@ export default function StockMagasin() {
     setSavingNewRepairFromHub(false)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
-    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '' })
+    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '' })
     setHubPieceRowSel(null)
     setShowNewRepairFromHub(false)
     fetchReparationsHubData()
@@ -2859,10 +2873,13 @@ export default function StockMagasin() {
       email: newRepairClientData.email.trim() || null,
       imei: newRepairClientData.imei.trim() || null,
       technicienCarteMere: newRepairEcran.type_piece === 'carte_mere' ? newRepairTechnicien : null,
+      panneDescription: newRepairEcran.type_piece === 'carte_mere' ? newRepairPanneDesc.trim() || null : null,
+      delaiAnnonce: newRepairEcran.type_piece === 'carte_mere' ? getDelaiPiece('carte_mere', getStockPourMagasin(newRepairEcran.id)) : null,
     }])
     setShowNewRepairForm(false)
     setNewRepairEcran(null)
     setNewRepairTechnicien('')
+    setNewRepairPanneDesc('')
   }
 
   const handleAjouterAuStockRapide = async () => {
@@ -2871,6 +2888,52 @@ export default function StockMagasin() {
     const actuel = getStockPourMagasin(newRepairEcran.id)
     await setStockPourMagasin(newRepairEcran.id, actuel + 1)
     setAddingStockRapide(false)
+  }
+
+  const getViewerIdentity = () => {
+    if (caisseSession?.staffId) return { id: caisseSession.staffId, name: caisseSession.staffName }
+    const su = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    return su?.id ? { id: su.id, name: su.name } : null
+  }
+
+  const fetchCurrentStaffResponsable = async () => {
+    const identity = getViewerIdentity()
+    if (!identity?.id) { setCurrentStaffResponsable([]); return [] }
+    const { data } = await supabase.from('staff').select('responsable_magasins').eq('id', identity.id).maybeSingle()
+    const resp = data?.responsable_magasins || []
+    setCurrentStaffResponsable(resp)
+    return resp
+  }
+
+  const fetchSuiviCarteMere = async (responsablesOverride) => {
+    setLoadingSuiviCarteMere(true)
+    const identity = getViewerIdentity()
+    const { data } = await supabase
+      .from('repairs')
+      .select('*')
+      .eq('suivi_statut', 'en_cours')
+      .order('date', { ascending: true })
+    const responsables = responsablesOverride ?? currentStaffResponsable ?? []
+    const filtered = (data || []).filter((r) =>
+      responsables.includes(r.magasin_id) || r.pris_en_charge_par === identity?.name
+    )
+    setSuiviCarteMereList(filtered)
+    setLoadingSuiviCarteMere(false)
+  }
+
+  const handleTerminerSuivi = async (repairId) => {
+    await supabase.from('repairs').update({ suivi_statut: 'termine' }).eq('id', repairId)
+    fetchSuiviCarteMere()
+  }
+
+  const handleAnnulerSuivi = async (repairId) => {
+    await supabase.from('repairs').update({
+      suivi_statut: 'annule',
+      motif_annulation: annulationMotifTexte.trim() || null,
+    }).eq('id', repairId)
+    setAnnulationMotifOpenId(null)
+    setAnnulationMotifTexte('')
+    fetchSuiviCarteMere()
   }
 
   const removeNewRepairFromCart = (key) => {
@@ -3299,6 +3362,10 @@ export default function StockMagasin() {
           ecran_qualite: r.qualite,
           ecran_id: r.ecran_id || null,
           technicien_carte_mere: r.technicienCarteMere || null,
+          panne_description: r.panneDescription || null,
+          delai_annonce: r.delaiAnnonce || null,
+          suivi_statut: r.technicienCarteMere ? 'en_cours' : null,
+          pris_en_charge_par: caisseSession?.staffName || null,
           prix: r.unit_price,
           montant_paye: r.unit_price,
           devis: false,
@@ -3809,6 +3876,20 @@ export default function StockMagasin() {
             magasinLabel={MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
             onUnlock={handleUnlock}
           />
+        </div>
+      )}
+
+      {suiviCarteMereList.length > 0 && (
+        <div className="sticky top-0 z-40 -mx-2 md:-mx-8 mb-1 bg-purple-700 text-white px-4 py-2 flex items-center justify-between gap-3 shadow-lg flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-sm">
+              🔧 {suiviCarteMereList.length} suivi{suiviCarteMereList.length > 1 ? 's' : ''} carte mère en cours
+            </span>
+          </div>
+          <button onClick={() => setShowSuiviCarteMere(true)}
+            className="bg-white text-purple-700 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
+            Voir le suivi
+          </button>
         </div>
       )}
 
@@ -8539,6 +8620,20 @@ export default function StockMagasin() {
                 {newRepairEcran.type_piece === 'carte_mere' && (
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                      Description de la panne (à écrire à la main)
+                    </label>
+                    <textarea rows={2} value={newRepairPanneDesc}
+                      onChange={(e) => setNewRepairPanneDesc(e.target.value)}
+                      placeholder="ex: ne s'allume plus après contact avec de l'eau"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      Délai annoncé au client : {getDelaiPiece('carte_mere', getStockPourMagasin(newRepairEcran.id))}
+                    </p>
+                  </div>
+                )}
+                {newRepairEcran.type_piece === 'carte_mere' && (
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
                       Technicien carte mère *
                     </label>
                     <select value={newRepairTechnicien}
@@ -8725,6 +8820,17 @@ export default function StockMagasin() {
               {hubPieceRowSel && hubPieceRowSel.type_piece === 'carte_mere' && (
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    Description de la panne (à écrire à la main)
+                  </label>
+                  <textarea rows={2} value={newRepairFromHubForm.panne_description}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, panne_description: e.target.value }))}
+                    placeholder="ex: ne s'allume plus après contact avec de l'eau"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+                </div>
+              )}
+              {hubPieceRowSel && hubPieceRowSel.type_piece === 'carte_mere' && (
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
                     Technicien carte mère *
                   </label>
                   <select value={newRepairFromHubForm.technicien_carte_mere}
@@ -8851,6 +8957,77 @@ export default function StockMagasin() {
       })()}
 
       {/* POPUP RAPPEL TÂCHES DU JOUR (tâches récurrentes) */}
+      {showSuiviCarteMere && (
+        <div className="fixed inset-0 bg-black/50 z-[95] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">🔧 Suivi carte mère</h3>
+              <button onClick={() => setShowSuiviCarteMere(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            {loadingSuiviCarteMere ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="w-7 h-7 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : suiviCarteMereList.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">Aucun suivi en cours</p>
+            ) : (
+              <div className="space-y-2">
+                {suiviCarteMereList.map((r) => (
+                  <div key={r.id} className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div>
+                        <p className="font-bold text-sm text-[#1B2A4A]">{r.client_nom} — {r.appareil}</p>
+                        <p className="text-[10px] text-gray-500">
+                          {r.bon_number} · pris en charge le {new Date(r.date).toLocaleDateString('fr-BE')}
+                          {r.pris_en_charge_par && ` par ${r.pris_en_charge_par}`}
+                        </p>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                        {r.technicien_carte_mere || 'technicien non assigné'}
+                      </span>
+                    </div>
+                    {r.panne_description && (
+                      <p className="text-xs text-gray-600 mt-1">Panne : {r.panne_description}</p>
+                    )}
+                    {r.delai_annonce && (
+                      <p className="text-[10px] text-gray-500">Délai annoncé : {r.delai_annonce}</p>
+                    )}
+                    {r.tel && (
+                      <p className="text-[10px] text-gray-500">Tél : {r.tel}</p>
+                    )}
+                    <div className="flex gap-1.5 mt-2">
+                      <button onClick={() => handleTerminerSuivi(r.id)}
+                        className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold">
+                        ✓ Terminé
+                      </button>
+                      <button onClick={() => setAnnulationMotifOpenId(annulationMotifOpenId === r.id ? null : r.id)}
+                        className="bg-red-50 border border-red-300 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold">
+                        ✗ Annuler la réparation
+                      </button>
+                    </div>
+                    {annulationMotifOpenId === r.id && (
+                      <div className="mt-2 flex gap-2">
+                        <input type="text" value={annulationMotifTexte}
+                          onChange={(e) => setAnnulationMotifTexte(e.target.value)}
+                          placeholder="Motif (téléphone irréparable, client pas d'accord...)"
+                          className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" />
+                        <button onClick={() => handleAnnulerSuivi(r.id)}
+                          className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">
+                          Confirmer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {showTacheReminder && tachesDuJour.length > 0 && (
         <div className="fixed inset-0 bg-black/50 z-[95] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5">
