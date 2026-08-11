@@ -400,6 +400,30 @@ export default function StockMagasin() {
     { id: 'capteur_flex', label: 'Capteur flex', aQualite: false },
   ]
 
+  const DELAIS_PIECE = {
+    ecran:            { enStock: '15 min – 5h', commande: '24h – 72h' },
+    batterie:         { enStock: '15 min – 5h', commande: '24h – 72h' },
+    camera_lens:      { enStock: '15 min – 5h', commande: '24h – 72h' },
+    camera_avant:     { enStock: '15 min – 5h', commande: '24h – 72h' },
+    camera_arriere:   { enStock: '15 min – 5h', commande: '24h – 72h' },
+    chassis:          { enStock: '15 min – 5h', commande: '24h – 72h' },
+    port_chargement:  { enStock: '15 min – 5h', commande: '24h – 72h' },
+    vitre_arriere:    { enStock: '15 min – 5h', commande: '24h – 72h' },
+    boutons:          { enStock: '15 min – 5h', commande: '24h – 72h' },
+    baffle_haut:      { enStock: '15 min – 5h', commande: '24h – 72h' },
+    baffle_bas:       { enStock: '15 min – 5h', commande: '24h – 72h' },
+    micro:            { enStock: '15 min – 5h', commande: '24h – 72h' },
+    capteur_flex:     { enStock: '15 min – 5h', commande: '24h – 72h' },
+    carte_mere:       { enStock: '1 à 4 semaines', commande: '1 à 4 semaines' },
+  }
+
+  const getDelaiPiece = (typePieceId, stockDisponible) => {
+    const d = DELAIS_PIECE[typePieceId]
+    if (!d) return null
+    if (typePieceId === 'carte_mere') return d.enStock
+    return stockDisponible > 0 ? d.enStock : d.commande
+  }
+
   const [newEcranForm, setNewEcranForm]           = useState({
     type_piece: 'ecran',
     marque: '', marqueMode: 'existing',
@@ -7986,6 +8010,9 @@ export default function StockMagasin() {
                       <span className={`text-[10px] font-bold ${stockDisponible <= 0 ? 'text-red-500' : 'text-gray-500'}`}>
                         {stockDisponible} en stock
                       </span>
+                      <span className="text-[10px] text-gray-400 block">
+                        Délai : {getDelaiPiece(posSelectedTypePiece, stockDisponible)}
+                      </span>
                     </div>
                     <span className="text-sm font-bold text-purple-700">
                       {Number(row.prix_defaut || 0).toFixed(2)}€
@@ -8218,6 +8245,9 @@ export default function StockMagasin() {
                     </div>
                     <p className="text-[10px] text-gray-500 mt-1">
                       Fourchette : {Number(hubPieceRowSel.prix_min || 0).toFixed(2)}€ – {Number(hubPieceRowSel.prix_max || 0).toFixed(2)}€
+                    </p>
+                    <p className="text-[10px] text-gray-500">
+                      Délai : {getDelaiPiece(hubPieceRowSel.type_piece, getStockPourMagasin(hubPieceRowSel.id))}
                     </p>
                   </div>
                 )}
