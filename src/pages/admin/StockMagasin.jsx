@@ -2591,6 +2591,7 @@ export default function StockMagasin() {
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
     setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '' })
+    setHubPieceRowSel(null)
     setShowNewRepairFromHub(false)
     fetchReparationsHubData()
   }
@@ -8127,7 +8128,7 @@ export default function StockMagasin() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 my-8">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-[#1B2A4A] text-lg">Nouvelle réparation</h3>
-              <button onClick={() => setShowNewRepairFromHub(false)}
+              <button onClick={() => { setHubPieceRowSel(null); setShowNewRepairFromHub(false) }}
                 className="text-gray-400 hover:text-[#1B2A4A]">
                 <X size={20} />
               </button>
@@ -8198,7 +8199,7 @@ export default function StockMagasin() {
               </p>
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => setShowNewRepairFromHub(false)}
+              <button onClick={() => { setHubPieceRowSel(null); setShowNewRepairFromHub(false) }}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
                 Annuler
               </button>
