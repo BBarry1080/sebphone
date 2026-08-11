@@ -3880,12 +3880,6 @@ export default function StockMagasin() {
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                       )}
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Code modèle (optionnel)</label>
-                      <input type="text" value={newEcranForm.modele_code}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, modele_code: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                    </div>
                     {TYPES_PIECE.find((t) => t.id === newEcranForm.type_piece)?.aQualite && (
                       <div>
                         <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Qualité</label>
