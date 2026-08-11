@@ -358,7 +358,7 @@ export default function StockMagasin() {
   const [editingEcran, setEditingEcran]           = useState(null)
   const [ecranForm, setEcranForm]                 = useState({
     prix_min: '', prix_defaut: '', prix_max: '',
-    cout_achat: '', quantite_stock: '',
+    cout_achat: '', quantite_stock: '', fournisseur_id: '',
     disponible: true, notes: '',
   })
   const [savingEcran, setSavingEcran]             = useState(false)
@@ -406,6 +406,7 @@ export default function StockMagasin() {
     marque: '', marqueMode: 'existing',
     gamme: '', modele: '', modele_code: '',
     qualite: 'compatible',
+    fournisseur_id: '',
     cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
     quantite_stock: '0',
     disponible: true, notes: '',
@@ -1808,6 +1809,7 @@ export default function StockMagasin() {
       prix_max: String(row.prix_max ?? ''),
       cout_achat: String(row.cout_achat ?? ''),
       quantite_stock: String(row.quantite_stock ?? '0'),
+      fournisseur_id: row.fournisseur_id || '',
       disponible: row.disponible !== false,
       notes: row.notes || '',
     })
@@ -1822,6 +1824,7 @@ export default function StockMagasin() {
       prix_max: Number(ecranForm.prix_max) || 0,
       cout_achat: Number(ecranForm.cout_achat) || 0,
       quantite_stock: Number(ecranForm.quantite_stock) || 0,
+      fournisseur_id: ecranForm.fournisseur_id || null,
       disponible: ecranForm.disponible,
       notes: ecranForm.notes || null,
     }).eq('id', editingEcran.id)
@@ -1839,6 +1842,7 @@ export default function StockMagasin() {
       marque: '', marqueMode: 'existing',
       gamme: '', modele: '', modele_code: '',
       qualite: 'compatible',
+      fournisseur_id: '',
       cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
       quantite_stock: '0',
       disponible: true, notes: '',
@@ -1873,6 +1877,7 @@ export default function StockMagasin() {
       prix_defaut: Number(newEcranForm.prix_defaut) || 0,
       prix_max: Number(newEcranForm.prix_max) || 0,
       quantite_stock: Number(newEcranForm.quantite_stock) || 0,
+      fournisseur_id: newEcranForm.fournisseur_id || null,
       notes: newEcranForm.notes.trim() || null,
     })
     setSavingNewEcran(false)
@@ -3892,6 +3897,17 @@ export default function StockMagasin() {
                         </select>
                       </div>
                     )}
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
+                      <select value={newEcranForm.fournisseur_id}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, fournisseur_id: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                        <option value="">Aucun</option>
+                        {fournisseursList.map((f) => (
+                          <option key={f.id} value={f.id}>{f.nom}</option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="flex items-end">
                       <label className="flex items-center gap-2 text-xs text-gray-600 pb-2">
                         <input type="checkbox" checked={newEcranForm.disponible}
@@ -4074,11 +4090,24 @@ export default function StockMagasin() {
                                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                                     </div>
                                   </div>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
-                                    <input type="number" step="1" min="0" value={ecranForm.quantite_stock}
-                                      onChange={(e) => setEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
-                                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                  <div className="flex gap-3 items-end flex-wrap">
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
+                                      <input type="number" step="1" min="0" value={ecranForm.quantite_stock}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
+                                        className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
+                                    <div className="flex-1 min-w-[180px]">
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
+                                      <select value={ecranForm.fournisseur_id}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, fournisseur_id: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                                        <option value="">Aucun</option>
+                                        {fournisseursList.map((f) => (
+                                          <option key={f.id} value={f.id}>{f.nom}</option>
+                                        ))}
+                                      </select>
+                                    </div>
                                   </div>
                                   <label className="flex items-center gap-2 text-xs text-gray-600">
                                     <input type="checkbox" checked={ecranForm.disponible}
