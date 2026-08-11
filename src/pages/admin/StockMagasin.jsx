@@ -360,7 +360,25 @@ export default function StockMagasin() {
 
   // Création d'un nouveau modèle d'écran
   const [showNewEcranForm, setShowNewEcranForm]   = useState(false)
+  const TYPES_PIECE = [
+    { id: 'ecran', label: 'Écran', aQualite: true },
+    { id: 'carte_mere', label: 'Carte mère', aQualite: false },
+    { id: 'port_chargement', label: 'Port de chargement', aQualite: false },
+    { id: 'vitre_arriere', label: 'Vitre arrière', aQualite: false },
+    { id: 'batterie', label: 'Batterie', aQualite: false },
+    { id: 'camera_lens', label: 'Caméra lentille', aQualite: false },
+    { id: 'camera_avant', label: 'Caméra avant', aQualite: false },
+    { id: 'camera_arriere', label: 'Caméra arrière', aQualite: false },
+    { id: 'boutons', label: 'Boutons', aQualite: false },
+    { id: 'baffle_haut', label: 'Baffle du haut', aQualite: false },
+    { id: 'baffle_bas', label: 'Baffle du bas', aQualite: false },
+    { id: 'micro', label: 'Micro', aQualite: false },
+    { id: 'chassis', label: 'Châssis', aQualite: false },
+    { id: 'capteur_flex', label: 'Capteur flex', aQualite: false },
+  ]
+
   const [newEcranForm, setNewEcranForm]           = useState({
+    type_piece: 'ecran',
     marque: '', marqueMode: 'existing',
     gamme: '', modele: '', modele_code: '',
     qualite: 'compatible',
@@ -1740,6 +1758,7 @@ export default function StockMagasin() {
 
   const resetNewEcranForm = () => {
     setNewEcranForm({
+      type_piece: 'ecran',
       marque: '', marqueMode: 'existing',
       gamme: '', modele: '', modele_code: '',
       qualite: 'compatible',
@@ -1756,17 +1775,20 @@ export default function StockMagasin() {
       alert('Marque, gamme et modèle sont obligatoires')
       return
     }
-    if (!['compatible', 'original_equivalent', 'original'].includes(newEcranForm.qualite)) {
+    const typePieceInfo = TYPES_PIECE.find((t) => t.id === newEcranForm.type_piece)
+    const qualiteAEnvoyer = typePieceInfo?.aQualite ? newEcranForm.qualite : 'compatible'
+    if (typePieceInfo?.aQualite && !['compatible', 'original_equivalent', 'original'].includes(newEcranForm.qualite)) {
       alert('Qualité invalide')
       return
     }
     setSavingNewEcran(true)
     const { error } = await supabase.from('reparation_ecrans').insert({
+      type_piece: newEcranForm.type_piece,
       marque,
       gamme,
       modele,
       modele_code: newEcranForm.modele_code.trim() || null,
-      qualite: newEcranForm.qualite,
+      qualite: qualiteAEnvoyer,
       disponible: newEcranForm.disponible,
       cout_achat: Number(newEcranForm.cout_achat) || 0,
       prix_min: Number(newEcranForm.prix_min) || 0,
@@ -1777,7 +1799,7 @@ export default function StockMagasin() {
     setSavingNewEcran(false)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('ecran_create',
-      `Nouveau modèle — ${marque} ${modele} (${newEcranForm.qualite})`)
+      `Nouvelle pièce — ${typePieceInfo?.label || newEcranForm.type_piece} — ${marque} ${modele}`)
     resetNewEcranForm()
     setShowNewEcranForm(false)
     fetchEcranCatalog()
@@ -5983,7 +6005,17 @@ export default function StockMagasin() {
                 </button>
               ) : (
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-3">
-                  <h3 className="font-bold text-[#1B2A4A]">Nouveau modèle</h3>
+                  <h3 className="font-bold text-[#1B2A4A]">Nouvelle pièce</h3>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Type de pièce</label>
+                    <select value={newEcranForm.type_piece}
+                      onChange={(e) => setNewEcranForm((f) => ({ ...f, type_piece: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                      {TYPES_PIECE.map((t) => (
+                        <option key={t.id} value={t.id}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Marque</label>
@@ -6031,16 +6063,18 @@ export default function StockMagasin() {
                         onChange={(e) => setNewEcranForm((f) => ({ ...f, modele_code: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                     </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Qualité</label>
-                      <select value={newEcranForm.qualite}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, qualite: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
-                        <option value="compatible">Compatible</option>
-                        <option value="original_equivalent">Qualité originale</option>
-                        <option value="original">100% Original</option>
-                      </select>
-                    </div>
+                    {TYPES_PIECE.find((t) => t.id === newEcranForm.type_piece)?.aQualite && (
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Qualité</label>
+                        <select value={newEcranForm.qualite}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, qualite: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                          <option value="compatible">Compatible</option>
+                          <option value="original_equivalent">Qualité originale</option>
+                          <option value="original">100% Original</option>
+                        </select>
+                      </div>
+                    )}
                     <div className="flex items-end">
                       <label className="flex items-center gap-2 text-xs text-gray-600 pb-2">
                         <input type="checkbox" checked={newEcranForm.disponible}
