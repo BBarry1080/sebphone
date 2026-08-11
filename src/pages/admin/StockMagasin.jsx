@@ -1847,10 +1847,10 @@ export default function StockMagasin() {
 
   const handleCreateEcran = async () => {
     const marque = newEcranForm.marque.trim()
-    const gamme = newEcranForm.gamme.trim()
     const modele = newEcranForm.modele.trim()
-    if (!marque || !gamme || !modele) {
-      alert('Marque, gamme et modèle sont obligatoires')
+    const gamme = modele
+    if (!marque || !modele) {
+      alert('Marque et modèle sont obligatoires')
       return
     }
     const typePieceInfo = TYPES_PIECE.find((t) => t.id === newEcranForm.type_piece)
@@ -3875,18 +3875,7 @@ export default function StockMagasin() {
                       )}
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Gamme</label>
-                      <input type="text" value={newEcranForm.gamme}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, gamme: e.target.value }))}
-                        placeholder="ex: iPhone 11"
-                        list="gammes-existantes"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                      <datalist id="gammes-existantes">
-                        {ecranGammesDistinct.map((g) => <option key={g} value={g} />)}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Modèle précis</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Modèle</label>
                       {newEcranForm.marque === 'Apple' ? (
                         <select value={newEcranForm.modele}
                           onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
