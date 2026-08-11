@@ -156,6 +156,8 @@ export default function StockMagasin() {
   const [showSuiviCarteMere, setShowSuiviCarteMere] = useState(false)
   const [annulationMotifOpenId, setAnnulationMotifOpenId] = useState(null)
   const [annulationMotifTexte, setAnnulationMotifTexte] = useState('')
+  const [annulationRembourser, setAnnulationRembourser] = useState(false)
+  const [processingAnnulation, setProcessingAnnulation] = useState(false)
   const [currentStaffResponsable, setCurrentStaffResponsable] = useState(null)
   const [paymentSplits, setPaymentSplits] = useState([])
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState('cash')
@@ -2926,13 +2928,76 @@ export default function StockMagasin() {
     fetchSuiviCarteMere()
   }
 
-  const handleAnnulerSuivi = async (repairId) => {
+  const rembourserReparationAnnulee = async (repair) => {
+    const montant = Number(repair.montant_paye) || 0
+    if (montant <= 0) return { ok: true }
+    const { data: saleItems } = await supabase.from('shop_sale_items')
+      .select('sale_id, created_at').eq('repair_id', repair.id)
+      .order('created_at', { ascending: false }).limit(1)
+    const saleItem = saleItems?.[0]
+    if (!saleItem) {
+      return { ok: false, message: "Ticket d'origine introuvable — rembourse manuellement via Rechercher un ticket." }
+    }
+    const { data: originalSale } = await supabase.from('shop_sales')
+      .select('*').eq('id', saleItem.sale_id).maybeSingle()
+    if (!originalSale) {
+      return { ok: false, message: "Vente d'origine introuvable — rembourse manuellement via Rechercher un ticket." }
+    }
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const staffNameNow = currentSebUser?.name || 'Staff'
+    const staffIdNow = currentSebUser?.role === 'employe' ? currentSebUser?.id : null
+    const refundPM = originalSale.payment_method === 'mixed' ? 'cash' : (originalSale.payment_method || 'cash')
+    const montantNeg = -montant
+    const { data: refundSale, error: refundErr } = await supabase.from('shop_sales').insert({
+      magasin_id: repair.magasin_id,
+      staff_id: staffIdNow,
+      staff_name: staffNameNow,
+      total_amount: montantNeg,
+      payment_method: refundPM,
+      cash_amount: refundPM === 'cash' ? montantNeg : 0,
+      bancontact_amount: refundPM === 'bancontact' ? montantNeg : 0,
+      virement_amount: refundPM === 'virement' ? montantNeg : 0,
+      change_amount: 0, change_confirmed: true, global_discount: 0,
+      sale_type: 'remboursement',
+      reference: originalSale.id,
+    }).select().single()
+    if (refundErr) return { ok: false, message: 'Erreur remboursement : ' + refundErr.message }
+    await supabase.from('shop_sale_items').insert({
+      sale_id: refundSale.id,
+      item_id: null,
+      item_name: `Remboursement — réparation carte mère annulée ${repair.bon_number}`,
+      quantity: 1,
+      unit_price: montant,
+      total_price: montantNeg,
+      discount_type: null, discount_value: 0,
+      tva_rate: 21,
+      line_type: 'reparation',
+      repair_id: repair.id,
+    })
+    await supabase.from('repairs').update({ montant_paye: 0 }).eq('id', repair.id)
+    logActivity('repair_cancel_refund',
+      `Remboursement de ${montant.toFixed(2)}€ pour l'annulation de la réparation ${repair.bon_number}`)
+    return { ok: true }
+  }
+
+  const handleAnnulerSuivi = async (repair) => {
+    setProcessingAnnulation(true)
+    if (annulationRembourser && Number(repair.montant_paye) > 0) {
+      const result = await rembourserReparationAnnulee(repair)
+      if (!result.ok) {
+        alert(result.message)
+        setProcessingAnnulation(false)
+        return
+      }
+    }
     await supabase.from('repairs').update({
       suivi_statut: 'annule',
       motif_annulation: annulationMotifTexte.trim() || null,
-    }).eq('id', repairId)
+    }).eq('id', repair.id)
     setAnnulationMotifOpenId(null)
     setAnnulationMotifTexte('')
+    setAnnulationRembourser(false)
+    setProcessingAnnulation(false)
     fetchSuiviCarteMere()
   }
 
@@ -9009,14 +9074,22 @@ export default function StockMagasin() {
                       </button>
                     </div>
                     {annulationMotifOpenId === r.id && (
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-2 space-y-2">
                         <input type="text" value={annulationMotifTexte}
                           onChange={(e) => setAnnulationMotifTexte(e.target.value)}
                           placeholder="Motif (téléphone irréparable, client pas d'accord...)"
-                          className="flex-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" />
-                        <button onClick={() => handleAnnulerSuivi(r.id)}
-                          className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">
-                          Confirmer
+                          className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs" />
+                        {Number(r.montant_paye) > 0 && (
+                          <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
+                            <input type="checkbox" checked={annulationRembourser}
+                              onChange={(e) => setAnnulationRembourser(e.target.checked)}
+                              className="w-4 h-4 accent-red-600" />
+                            Rembourser {Number(r.montant_paye).toFixed(2)}€ au client
+                          </label>
+                        )}
+                        <button onClick={() => handleAnnulerSuivi(r)} disabled={processingAnnulation}
+                          className="w-full bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50">
+                          {processingAnnulation ? 'Traitement...' : 'Confirmer l\'annulation'}
                         </button>
                       </div>
                     )}
