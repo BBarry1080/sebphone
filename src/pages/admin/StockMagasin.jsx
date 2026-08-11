@@ -3781,6 +3781,19 @@ export default function StockMagasin() {
             </h1>
             <p className="text-sm text-gray-500 mt-1">Catégories & inventaire</p>
           </div>
+          {isAdmin && (
+            <div className="mb-4">
+              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Magasin</label>
+              <select value={magasin}
+                onChange={e => setMagasin(e.target.value)}
+                className="px-3 py-2 border border-gray-200
+                           rounded-xl text-sm">
+                {MAGASINS_LIST.filter(m => !m.virtuel).map(m => (
+                  <option key={m.id} value={m.id}>{m.nom}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex gap-2 mb-4">
             {[
               { key: 'stock', label: 'Stock' },
