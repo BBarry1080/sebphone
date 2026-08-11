@@ -43,7 +43,7 @@ export default function AdminLogin() {
           permissions: null,
         }))
         localStorage.setItem('sebphone_admin', 'true')
-        navigate('/admin')
+        navigate('/admin/stock-magasin')
         return
       }
 
@@ -77,7 +77,7 @@ export default function AdminLogin() {
             .update({ last_login: new Date().toISOString() })
             .eq('id', staffData.id)
 
-          navigate('/admin')
+          navigate('/admin/stock-magasin')
           return
         }
       }

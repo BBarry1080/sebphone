@@ -170,7 +170,7 @@ export default function App() {
               <AdminLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route index element={<Navigate to="/admin/stock-magasin" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="stock" element={<Stock />} />
             <Route path="stock-magasin" element={<StockMagasin />} />
