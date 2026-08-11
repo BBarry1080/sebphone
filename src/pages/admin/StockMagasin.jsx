@@ -2908,9 +2908,12 @@ export default function StockMagasin() {
       newRepairEcran.qualite === 'compatible' ? 'Compatible'
       : newRepairEcran.qualite === 'original_equivalent' ? 'Qualité originale'
       : '100% Original'
+    const typePieceLabel = TYPES_PIECE.find((t) => t.id === newRepairEcran.type_piece)?.label || 'Pièce'
     setNewRepairsInCart((prev) => [...prev, {
       key: `${newRepairEcran.id}-${Date.now()}`,
       ecran_id: newRepairEcran.id,
+      typePiece: newRepairEcran.type_piece,
+      typePieceLabel,
       modele: newRepairEcran.modele,
       qualite: newRepairEcran.qualite,
       qualiteLabel,
@@ -3397,17 +3400,33 @@ export default function StockMagasin() {
       shop_categories: d.produits_catalogue?.shop_categories,
     }))
 
-    const saleItems = cart.map((c) => {
+    const remiseRatio = cartArticlesSubtotal > 0
+      ? globalDiscountAmount / cartArticlesSubtotal
+      : 0
+    const round2 = (n) => Math.round(n * 100) / 100
+    let sommeRepartieCalculee = 0
+    const saleItems = cart.map((c, idx) => {
       const detail = itemDetails?.find((d) => d.id === c.item_id)
+      const brut = lineTotal(c)
+      const estDerniereLigne = idx === cart.length - 1
+      let totalApresRemise
+      if (estDerniereLigne) {
+        totalApresRemise = round2(brut - remiseRatio * brut - (sommeRepartieCalculee))
+        totalApresRemise = round2((cartArticlesSubtotal - globalDiscountAmount) - sommeRepartieCalculee)
+      } else {
+        totalApresRemise = round2(brut * (1 - remiseRatio))
+        sommeRepartieCalculee += totalApresRemise
+      }
       return {
         sale_id: sale.id,
         item_id: c.item_id,
         item_name: c.item_name,
         quantity: c.quantity,
         unit_price: c.unit_price,
-        total_price: lineTotal(c),
+        total_price: Math.max(0, totalApresRemise),
         discount_type: c.discountType || null,
         discount_value: c.discount || 0,
+        remise_globale_appliquee: globalDiscountAmount > 0 ? round2(brut - totalApresRemise) : 0,
         tva_rate: detail?.tva_rate ?? 21,
       }
     })
@@ -3467,7 +3486,7 @@ export default function StockMagasin() {
           date: todayStr,
           appareil: r.modele,
           imei: r.imei,
-          type_panne: 'Écran cassé',
+          type_panne: r.typePieceLabel || 'Écran cassé',
           ecran_modele: r.modele,
           ecran_qualite: r.qualite,
           ecran_id: r.ecran_id || null,
@@ -3491,12 +3510,12 @@ export default function StockMagasin() {
             clientNom: newRepair.client_nom,
             appareil: newRepair.appareil,
             imei: newRepair.imei,
-            typePanne: `Écran cassé — ${r.qualiteLabel}`,
+            typePanne: `${r.typePieceLabel || 'Pièce'} — ${r.qualiteLabel}`,
           })
           newRepairSaleItems.push({
             sale_id: sale.id,
             item_id: null,
-            item_name: `Réparation écran — ${r.modele} (${r.qualiteLabel})`,
+            item_name: `Réparation ${(r.typePieceLabel || 'pièce').toLowerCase()} — ${r.modele} (${r.qualiteLabel})`,
             quantity: 1,
             unit_price: r.unit_price,
             total_price: r.unit_price,
@@ -3507,18 +3526,11 @@ export default function StockMagasin() {
             repair_id: newRepair.id,
           })
           if (r.ecran_id) {
-            const { data: stockRow } = await supabase
-              .from('reparation_ecrans_stock_magasin')
-              .select('quantite_stock')
-              .eq('ecran_id', r.ecran_id).eq('magasin_id', magasin)
-              .maybeSingle()
-            const current = stockRow?.quantite_stock || 0
-            await supabase.from('reparation_ecrans_stock_magasin')
-              .upsert({
-                ecran_id: r.ecran_id,
-                magasin_id: magasin,
-                quantite_stock: Math.max(0, current - 1),
-              }, { onConflict: 'ecran_id,magasin_id' })
+            await supabase.rpc('decrementer_stock_piece', {
+              p_ecran_id: r.ecran_id,
+              p_magasin_id: magasin,
+              p_quantite: 1,
+            })
           }
           await logActivity('repair_created_from_caisse',
             `Réparation créée depuis la caisse — ${r.modele} (${r.qualiteLabel}) pour ${r.clientNom}`)
@@ -3585,7 +3597,7 @@ export default function StockMagasin() {
         })),
         ...newRepairsInCart.map((r) => ({
           item_id: null,
-          item_name: `Réparation écran — ${r.modele} (${r.qualiteLabel})`,
+          item_name: `Réparation ${(r.typePieceLabel || 'pièce').toLowerCase()} — ${r.modele} (${r.qualiteLabel})`,
           quantity: 1,
           unit_price: r.unit_price,
           discount: 0,
@@ -4189,7 +4201,7 @@ export default function StockMagasin() {
             {[
               { key: 'stock', label: 'Stock' },
               { key: 'categories', label: 'Catégories' },
-              ...(trueIsAdmin ? [{ key: 'pieces', label: '📱 Réparations' }, { key: 'garanties', label: '🛡️ Garanties' }] : []),
+              ...(trueIsAdmin ? [{ key: 'pieces', label: '📱 Réparations' }, { key: 'garanties', label: '🛡️ Garanties' }, { key: 'taches', label: '✅ Tâches clôture' }] : []),
             ].map(tab => (
               <button key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
@@ -4605,6 +4617,74 @@ export default function StockMagasin() {
                 )
               })()}
             </div>
+          )}
+          {activeTab === 'taches' && trueIsAdmin && (
+            <>
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+                {!showTacheForm ? (
+                  <button onClick={() => { setEditingTache(null); setTacheForm({ label: '', ordre: 0 }); setShowTacheForm(true) }}
+                    className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                    + Nouvelle tâche
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-[#1B2A4A]">
+                      {editingTache ? 'Modifier la tâche' : 'Nouvelle tâche'}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="md:col-span-2">
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Label</label>
+                        <input type="text" value={tacheForm.label}
+                          onChange={(e) => setTacheForm((f) => ({ ...f, label: e.target.value }))}
+                          placeholder="ex: Vérifier le tiroir-caisse, éteindre les écrans..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Ordre</label>
+                        <input type="number" step="1" value={tacheForm.ordre}
+                          onChange={(e) => setTacheForm((f) => ({ ...f, ordre: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveTache} disabled={savingTache}
+                        className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                        {savingTache ? 'Enregistrement...' : editingTache ? 'Sauvegarder' : 'Créer'}
+                      </button>
+                      <button onClick={resetTacheForm}
+                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {clotureTachesList.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                  Aucune tâche — cliquez sur "+ Nouvelle tâche" pour commencer.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {clotureTachesList.map((row) => (
+                    <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-[#1B2A4A]">{row.label}</p>
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">Ordre {row.ordre ?? 0}</span>
+                      <button onClick={() => openEditTache(row)}
+                        className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => handleDeleteTache(row)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
@@ -6780,7 +6860,6 @@ export default function StockMagasin() {
               { key: 'calendrier', label: '📅 Calendrier' },
               ...(trueIsAdmin ? [
                 { key: 'delais', label: '⏱️ Délais' },
-                { key: 'taches', label: '✅ Tâches clôture' },
               ] : []),
             ].map((s) => (
               <button key={s.key}
@@ -7001,74 +7080,6 @@ export default function StockMagasin() {
           )}
 
 
-          {sectionPrixDelais === 'taches' && trueIsAdmin && (
-            <>
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-                {!showTacheForm ? (
-                  <button onClick={() => { setEditingTache(null); setTacheForm({ label: '', ordre: 0 }); setShowTacheForm(true) }}
-                    className="bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
-                    + Nouvelle tâche
-                  </button>
-                ) : (
-                  <div className="space-y-3">
-                    <h3 className="font-bold text-[#1B2A4A]">
-                      {editingTache ? 'Modifier la tâche' : 'Nouvelle tâche'}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="md:col-span-2">
-                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Label</label>
-                        <input type="text" value={tacheForm.label}
-                          onChange={(e) => setTacheForm((f) => ({ ...f, label: e.target.value }))}
-                          placeholder="ex: Vérifier le tiroir-caisse, éteindre les écrans..."
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Ordre</label>
-                        <input type="number" step="1" value={tacheForm.ordre}
-                          onChange={(e) => setTacheForm((f) => ({ ...f, ordre: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={handleSaveTache} disabled={savingTache}
-                        className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                        {savingTache ? 'Enregistrement...' : editingTache ? 'Sauvegarder' : 'Créer'}
-                      </button>
-                      <button onClick={resetTacheForm}
-                        className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
-                        Annuler
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {clotureTachesList.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-                  Aucune tâche — cliquez sur "+ Nouvelle tâche" pour commencer.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {clotureTachesList.map((row) => (
-                    <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-[#1B2A4A]">{row.label}</p>
-                      </div>
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">Ordre {row.ordre ?? 0}</span>
-                      <button onClick={() => openEditTache(row)}
-                        className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
-                        <Pencil size={14} />
-                      </button>
-                      <button onClick={() => handleDeleteTache(row)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
         </div>
       )}
 
@@ -8607,6 +8618,9 @@ export default function StockMagasin() {
                 })),
                 tvaRate: 21,
               }, () => window.print())}
+              extraLines={globalDiscountAmount > 0 ? [
+                { label: 'Remise', value: `-${globalDiscountAmount.toFixed(2)}€` }
+              ] : null}
             />
             {!showEmailTicketForm ? (
               <button onClick={() => setShowEmailTicketForm(true)}
