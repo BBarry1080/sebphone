@@ -3983,6 +3983,39 @@ export default function StockMagasin() {
                 </div>
               ) : (
                 <div className="space-y-5">
+                  {ecranMarqueFilter === 'Apple' && (() => {
+                    const configuredModeles = new Set(
+                      ecranCatalogList.filter((e) => e.marque === 'Apple').map((e) => e.modele)
+                    )
+                    const missing = IPHONE_MODELES.filter((m) => !configuredModeles.has(m))
+                    if (missing.length === 0) return null
+                    return (
+                      <div className="mb-5">
+                        <p className="text-xs font-bold uppercase text-gray-400 mb-2">
+                          Modèles non configurés ({missing.length})
+                        </p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {missing.map((m) => (
+                            <button key={m} type="button"
+                              onClick={() => {
+                                setNewEcranForm((f) => ({
+                                  ...f,
+                                  type_piece: 'ecran',
+                                  marque: 'Apple',
+                                  marqueMode: 'existing',
+                                  modele: m,
+                                }))
+                                setShowNewEcranForm(true)
+                              }}
+                              className="text-left bg-gray-50 hover:bg-purple-50 rounded-xl p-3 border border-gray-100 hover:border-purple-300 transition-all">
+                              <p className="text-xs font-bold text-gray-600">{m}</p>
+                              <p className="text-[10px] text-gray-400 mt-0.5">Non disponible</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
                   {Object.entries(ecranGroupedByGamme).map(([gamme, rows]) => (
                     <div key={gamme}>
                       <p className="text-xs font-bold uppercase text-gray-400 mb-2">{gamme}</p>
