@@ -70,6 +70,9 @@ export default function StockMagasin() {
     titre: '', description: '', type: 'hebdo', jours_semaine: [], date_specifique: '', magasins: [], intervalle_rappel_min: 10,
     assigne_a_id: '',
   })
+  const [showQuickTacheModal, setShowQuickTacheModal] = useState(false)
+  const [quickTacheForm, setQuickTacheForm] = useState({ titre: '', description: '', date: '', assigne_a_id: '' })
+  const [savingQuickTache, setSavingQuickTache] = useState(false)
   const [categories, setCategories] = useState([])
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1452,6 +1455,41 @@ export default function StockMagasin() {
     setTacheRecurrenteForm({ titre: '', description: '', type: 'hebdo', jours_semaine: [], date_specifique: '', magasins: [], intervalle_rappel_min: 10, assigne_a_id: '' })
     fetchAllTaches()
     fetchTachesDuJour()
+  }
+
+  const openQuickTacheModal = () => {
+    const identity = getViewerIdentity ? getViewerIdentity() : null
+    const demain = new Date()
+    demain.setDate(demain.getDate() + 1)
+    setQuickTacheForm({
+      titre: '', description: '',
+      date: demain.toISOString().slice(0, 10),
+      assigne_a_id: identity?.id || '',
+    })
+    setShowQuickTacheModal(true)
+    if (staffListCaisse.length === 0) fetchStaffCaisse()
+  }
+
+  const handleCreateQuickTache = async () => {
+    if (!quickTacheForm.titre.trim()) { alert('Titre obligatoire'); return }
+    if (!quickTacheForm.date) { alert('Choisis une date'); return }
+    setSavingQuickTache(true)
+    const identity = getViewerIdentity ? getViewerIdentity() : null
+    const { error } = await supabase.from('taches_recurrentes').insert({
+      titre: quickTacheForm.titre.trim(),
+      description: quickTacheForm.description.trim() || null,
+      jours_semaine: [],
+      date_specifique: quickTacheForm.date,
+      magasins: magasin ? [magasin] : null,
+      assigne_a_id: quickTacheForm.assigne_a_id || null,
+      intervalle_rappel_min: 10,
+      created_by: identity?.name || 'Staff',
+    })
+    setSavingQuickTache(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    setShowQuickTacheModal(false)
+    fetchTachesDuJour()
+    alert('✅ Tâche créée')
   }
 
   const playTacheBeep = () => {
@@ -7169,6 +7207,12 @@ export default function StockMagasin() {
                 <span className="text-base leading-none">🛡️</span>
                 <span className="text-xs font-bold text-purple-600 whitespace-nowrap">Garantie</span>
               </button>
+              <button onClick={openQuickTacheModal}
+                title="Créer une tâche pour toi-même ou un collègue"
+                className="h-9 px-3 rounded-xl border-2 border-orange-200 bg-orange-50 flex items-center gap-1.5 hover:border-orange-400 hover:bg-orange-100 transition-all">
+                <span className="text-base leading-none">📝</span>
+                <span className="text-xs font-bold text-orange-600 whitespace-nowrap">Tâche</span>
+              </button>
               {showMovementMenu && (
                 <div className="absolute top-11 left-0 bg-white rounded-2xl border border-gray-100 shadow-lg p-2 w-48 z-20">
                   <button onClick={() => {
@@ -9029,6 +9073,61 @@ export default function StockMagasin() {
       })()}
 
       {/* POPUP RAPPEL TÂCHES DU JOUR (tâches récurrentes) */}
+      {showQuickTacheModal && (
+        <div className="fixed inset-0 bg-black/50 z-[95] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">📝 Nouvelle tâche</h3>
+              <button onClick={() => setShowQuickTacheModal(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Titre *</label>
+                <input type="text" autoFocus value={quickTacheForm.titre}
+                  onChange={(e) => setQuickTacheForm((f) => ({ ...f, titre: e.target.value }))}
+                  placeholder="ex: Rappeler le fournisseur écrans"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Détail (optionnel)</label>
+                <textarea rows={2} value={quickTacheForm.description}
+                  onChange={(e) => setQuickTacheForm((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Date</label>
+                <input type="date" value={quickTacheForm.date}
+                  onChange={(e) => setQuickTacheForm((f) => ({ ...f, date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Pour qui</label>
+                <select value={quickTacheForm.assigne_a_id}
+                  onChange={(e) => setQuickTacheForm((f) => ({ ...f, assigne_a_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  {staffListCaisse.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowQuickTacheModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
+                Annuler
+              </button>
+              <button onClick={handleCreateQuickTache} disabled={savingQuickTache}
+                className="flex-1 py-2.5 bg-orange-600 text-white rounded-xl text-sm font-bold hover:bg-orange-700 disabled:opacity-50">
+                {savingQuickTache ? 'Création...' : 'Créer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSuiviCarteMere && (
         <div className="fixed inset-0 bg-black/50 z-[95] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 max-h-[85vh] overflow-y-auto">
