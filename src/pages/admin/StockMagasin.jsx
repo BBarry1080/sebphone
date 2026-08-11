@@ -1889,16 +1889,6 @@ export default function StockMagasin() {
     [ecranCatalogList]
   )
 
-  const ecranGammesDistinct = useMemo(() => {
-    if (!newEcranForm.marque) return []
-    return [...new Set(
-      ecranCatalogList
-        .filter((e) => e.marque === newEcranForm.marque)
-        .map((e) => e.gamme)
-        .filter(Boolean)
-    )].sort()
-  }, [ecranCatalogList, newEcranForm.marque])
-
   const ecranCatalogFiltered = useMemo(() => (
     ecranCatalogList.filter((row) => {
       if (ecranMarqueFilter !== 'all' && row.marque !== ecranMarqueFilter) return false
