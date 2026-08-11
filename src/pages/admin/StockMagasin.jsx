@@ -3985,7 +3985,7 @@ export default function StockMagasin() {
                 <div className="space-y-5">
                   {ecranMarqueFilter === 'Apple' && (() => {
                     const configuredModeles = new Set(
-                      ecranCatalogList.filter((e) => e.marque === 'Apple').map((e) => e.modele)
+                      ecranCatalogList.filter((e) => e.marque === 'Apple' && e.type_piece === 'ecran').map((e) => e.modele)
                     )
                     const missing = IPHONE_MODELES.filter((m) => !configuredModeles.has(m))
                     if (missing.length === 0) return null
