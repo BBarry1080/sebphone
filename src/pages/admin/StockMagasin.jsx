@@ -8587,6 +8587,10 @@ export default function StockMagasin() {
               tvaRate={21}
               paperWidth="80mm"
               repairInfoList={lastSale.repairInfoList || []}
+              totalOverride={lastSale.total_amount}
+              extraLines={Number(lastSale.global_discount || 0) > 0 ? [
+                { label: 'Remise', value: `-${Number(lastSale.global_discount).toFixed(2)}€` }
+              ] : null}
               onPrint={() => printViaAgent({
                 companyName: 'SLT GROUP (SRL)',
                 tva: 'BE 1028.764.677',
@@ -8618,9 +8622,6 @@ export default function StockMagasin() {
                 })),
                 tvaRate: 21,
               }, () => window.print())}
-              extraLines={globalDiscountAmount > 0 ? [
-                { label: 'Remise', value: `-${globalDiscountAmount.toFixed(2)}€` }
-              ] : null}
             />
             {!showEmailTicketForm ? (
               <button onClick={() => setShowEmailTicketForm(true)}

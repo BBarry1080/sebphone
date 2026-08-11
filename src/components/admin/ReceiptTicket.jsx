@@ -74,9 +74,11 @@ export default function ReceiptTicket({
   repairInfo = null,
   repairInfoList = null,
   extraLines = null,
+  totalOverride = null,
 }) {
   const [signature, setSignature] = useState("");
-  const total = items.reduce((s, i) => s + i.tot, 0);
+  const computedTotal = items.reduce((s, i) => s + i.tot, 0);
+  const total = totalOverride != null ? Number(totalOverride) : computedTotal;
   const totalQte = items.reduce((s, i) => s + i.qte, 0);
   const tva = tvaBreakdown(total, tvaRate);
 
