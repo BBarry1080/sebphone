@@ -334,6 +334,21 @@ export default function StockMagasin() {
   const [hubPieceMarqueSel, setHubPieceMarqueSel] = useState(null)
   const [hubPieceRowSel, setHubPieceRowSel]       = useState(null)
   const [showHubPiecePicker, setShowHubPiecePicker] = useState(false)
+  const [showGarantieModal, setShowGarantieModal] = useState(false)
+  const [garantieStep, setGarantieStep] = useState('recherche')
+  const [garantieSearchQuery, setGarantieSearchQuery] = useState('')
+  const [garantieSearchResults, setGarantieSearchResults] = useState([])
+  const [loadingGarantieSearch, setLoadingGarantieSearch] = useState(false)
+  const [garantieRepairSel, setGarantieRepairSel] = useState(null)
+  const [garantieForm, setGarantieForm] = useState({ client_nom: '', tel: '', email: '', imei: '', motif: '' })
+  const [garantiePieceStep, setGarantiePieceStep] = useState('type')
+  const [garantiePieceTypeSel, setGarantiePieceTypeSel] = useState(null)
+  const [garantiePieceMarqueSel, setGarantiePieceMarqueSel] = useState(null)
+  const [garantiePieceSel, setGarantiePieceSel] = useState(null)
+  const [garantieFournisseurId, setGarantieFournisseurId] = useState('')
+  const [savingGarantie, setSavingGarantie] = useState(false)
+  const [garantiesList, setGarantiesList] = useState([])
+  const [loadingGaranties, setLoadingGaranties] = useState(false)
   const [delaiTypesList, setDelaiTypesList]       = useState([])
   const [loadingDelaiTypes, setLoadingDelaiTypes] = useState(false)
   const [editingDelai, setEditingDelai]           = useState(null)
@@ -435,6 +450,115 @@ export default function StockMagasin() {
   })
   const [savingNewEcran, setSavingNewEcran]       = useState(false)
   const [showDelaiForm, setShowDelaiForm]         = useState(false)
+
+  const fetchGarantiesList = async () => {
+    if (!magasin) return
+    setLoadingGaranties(true)
+    const { data } = await supabase
+      .from('garanties')
+      .select('*, reparation_ecrans(marque, modele, qualite), fournisseurs(nom)')
+      .eq('magasin_id', magasin)
+      .order('date_retour', { ascending: false })
+    setGarantiesList(data || [])
+    setLoadingGaranties(false)
+  }
+
+  const openGarantieModal = () => {
+    setGarantieStep('recherche')
+    setGarantieSearchQuery('')
+    setGarantieSearchResults([])
+    setGarantieRepairSel(null)
+    setGarantieForm({ client_nom: '', tel: '', email: '', imei: '', motif: '' })
+    setGarantiePieceStep('type')
+    setGarantiePieceTypeSel(null)
+    setGarantiePieceMarqueSel(null)
+    setGarantiePieceSel(null)
+    setGarantieFournisseurId('')
+    setShowGarantieModal(true)
+    if (ecranCatalogList.length === 0) fetchEcranCatalog()
+    if (fournisseursList.length === 0) fetchFournisseursList()
+  }
+
+  const searchRepairsForGarantie = async () => {
+    const q = garantieSearchQuery.trim()
+    if (!q) { setGarantieSearchResults([]); return }
+    setLoadingGarantieSearch(true)
+    const { data } = await supabase.from('repairs')
+      .select('*')
+      .eq('magasin_id', magasin)
+      .or(`client_nom.ilike.%${q}%,tel.ilike.%${q}%,bon_number.ilike.%${q}%,imei.ilike.%${q}%`)
+      .order('date', { ascending: false })
+      .limit(20)
+    setGarantieSearchResults(data || [])
+    setLoadingGarantieSearch(false)
+  }
+
+  const selectGarantieRepair = (repair) => {
+    setGarantieRepairSel(repair)
+    setGarantieForm({
+      client_nom: repair.client_nom || '',
+      tel: repair.tel || '',
+      email: repair.email || '',
+      imei: repair.imei || '',
+      motif: '',
+    })
+    setGarantieStep('form')
+  }
+
+  const startManualGarantie = () => {
+    setGarantieRepairSel(null)
+    setGarantieForm({ client_nom: '', tel: '', email: '', imei: '', motif: '' })
+    setGarantieStep('form')
+  }
+
+  const garantiePieceMarques = useMemo(() => {
+    if (!garantiePieceTypeSel) return []
+    return [...new Set(
+      ecranCatalogList.filter((e) => e.disponible !== false && e.type_piece === garantiePieceTypeSel).map((e) => e.marque).filter(Boolean)
+    )].sort()
+  }, [ecranCatalogList, garantiePieceTypeSel])
+
+  const garantiePieceModelesForMarque = useMemo(() => {
+    if (!garantiePieceTypeSel || !garantiePieceMarqueSel) return {}
+    const groups = {}
+    ecranCatalogList
+      .filter((e) => e.disponible !== false && e.type_piece === garantiePieceTypeSel && e.marque === garantiePieceMarqueSel)
+      .forEach((row) => {
+        const key = row.modele || '—'
+        if (!groups[key]) groups[key] = []
+        groups[key].push(row)
+      })
+    return groups
+  }, [ecranCatalogList, garantiePieceTypeSel, garantiePieceMarqueSel])
+
+  const handleSaveGarantie = async () => {
+    if (!garantieForm.client_nom.trim()) { alert('Nom du client obligatoire'); return }
+    if (!garantiePieceSel) { alert('Choisis la pièce utilisée pour la garantie'); return }
+    setSavingGarantie(true)
+    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const { error } = await supabase.from('garanties').insert({
+      repair_id: garantieRepairSel?.id || null,
+      magasin_id: magasin,
+      client_nom: garantieForm.client_nom.trim(),
+      tel: garantieForm.tel.trim() || null,
+      email: garantieForm.email.trim() || null,
+      imei: garantieForm.imei.trim() || null,
+      ecran_id: garantiePieceSel.id,
+      fournisseur_id: garantieFournisseurId || null,
+      date_retour: new Date().toISOString().slice(0, 10),
+      motif: garantieForm.motif.trim() || null,
+      staff_name: currentSebUser?.name || 'Staff',
+    })
+    if (!error) {
+      const actuel = getStockPourMagasin(garantiePieceSel.id)
+      await setStockPourMagasin(garantiePieceSel.id, actuel - 1)
+    }
+    setSavingGarantie(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('garantie_create', `Garantie enregistrée pour ${garantieForm.client_nom.trim()}`)
+    setShowGarantieModal(false)
+    fetchGarantiesList()
+  }
 
   const hubPieceMarques = useMemo(() => {
     if (!hubPieceTypeSel) return []
@@ -2377,6 +2501,9 @@ export default function StockMagasin() {
       fetchEcranStockMagasin()
       fetchEcranCatalog()
     }
+    if (activeTab === 'garanties' && garantiesList.length === 0) {
+      fetchGarantiesList()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionPrixDelais])
 
@@ -2435,6 +2562,7 @@ export default function StockMagasin() {
       fetchCaisseToday()
       fetchFournisseursList()
       fetchEcranStockMagasin()
+      fetchGarantiesList()
       fetchLastClosure().then((closure) => {
         fetchMovementsSince(closure?.period_end || '1970-01-01T00:00:00Z')
       })
@@ -3840,7 +3968,7 @@ export default function StockMagasin() {
             {[
               { key: 'stock', label: 'Stock' },
               { key: 'categories', label: 'Catégories' },
-              ...(trueIsAdmin ? [{ key: 'pieces', label: '📱 Réparations' }] : []),
+              ...(trueIsAdmin ? [{ key: 'pieces', label: '📱 Réparations' }, { key: 'garanties', label: '🛡️ Garanties' }] : []),
             ].map(tab => (
               <button key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
@@ -4183,7 +4311,262 @@ export default function StockMagasin() {
               )}
             </>
           )}
+          {activeTab === 'garanties' && trueIsAdmin && (
+            <div>
+              {loadingGaranties ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : garantiesList.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                  Aucune garantie enregistrée pour ce magasin
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {garantiesList.map((g) => {
+                    const qLabel = g.reparation_ecrans?.qualite === 'compatible' ? 'Compatible'
+                      : g.reparation_ecrans?.qualite === 'original_equivalent' ? 'Qualité originale'
+                      : g.reparation_ecrans?.qualite === 'original' ? '100% Original' : ''
+                    return (
+                      <div key={g.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div>
+                            <p className="font-bold text-[#1B2A4A]">{g.client_nom}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(g.date_retour).toLocaleDateString('fr-BE')} · {g.tel || 'sans tél.'}
+                              {g.repair_id ? ' · lié à un bon' : ' · fiche manuelle'}
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
+                            {g.reparation_ecrans?.marque} {g.reparation_ecrans?.modele} {qLabel && `— ${qLabel}`}
+                          </span>
+                        </div>
+                        {g.motif && (
+                          <p className="text-xs text-gray-500 mt-1">Motif : {g.motif}</p>
+                        )}
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          Fournisseur : {g.fournisseurs?.nom || '—'} · Par {g.staff_name || '—'}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </>
+      )}
+
+      {showGarantieModal && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">🛡️ Garantie</h3>
+              <button onClick={() => setShowGarantieModal(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+
+            {garantieStep === 'recherche' && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  Cherche le client par nom, téléphone, IMEI ou numéro de bon.
+                </p>
+                <div className="flex gap-2">
+                  <input type="text" autoFocus value={garantieSearchQuery}
+                    onChange={(e) => setGarantieSearchQuery(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') searchRepairsForGarantie() }}
+                    placeholder="Nom, téléphone, IMEI, BON-..."
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  <button onClick={searchRepairsForGarantie} disabled={loadingGarantieSearch}
+                    className="px-4 py-2 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold disabled:opacity-50">
+                    {loadingGarantieSearch ? '...' : '🔍'}
+                  </button>
+                </div>
+                {garantieSearchResults.length > 0 && (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {garantieSearchResults.map((r) => (
+                      <button key={r.id} onClick={() => selectGarantieRepair(r)}
+                        className="w-full text-left bg-gray-50 hover:bg-purple-50 rounded-xl p-3 border border-gray-100 hover:border-purple-300">
+                        <p className="text-sm font-bold text-[#1B2A4A]">{r.client_nom}</p>
+                        <p className="text-[10px] text-gray-500">
+                          {r.bon_number} · {r.appareil || '—'} · {r.tel || 'sans tél.'}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {garantieSearchQuery && garantieSearchResults.length === 0 && !loadingGarantieSearch && (
+                  <p className="text-xs text-gray-400 text-center py-2">Aucun résultat</p>
+                )}
+                <button onClick={startManualGarantie}
+                  className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm font-bold text-gray-500 hover:border-purple-300 hover:text-purple-600">
+                  + Client non trouvé — fiche manuelle
+                </button>
+              </div>
+            )}
+
+            {garantieStep === 'form' && (
+              <div className="space-y-3">
+                {garantieRepairSel && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                    <p className="text-xs font-bold text-purple-700">
+                      Lié au bon {garantieRepairSel.bon_number}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nom du client *</label>
+                  <input type="text" value={garantieForm.client_nom}
+                    onChange={(e) => setGarantieForm((f) => ({ ...f, client_nom: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Téléphone</label>
+                    <input type="tel" value={garantieForm.tel}
+                      onChange={(e) => setGarantieForm((f) => ({ ...f, tel: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">IMEI</label>
+                    <input type="text" value={garantieForm.imei}
+                      onChange={(e) => setGarantieForm((f) => ({ ...f, imei: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Motif du retour</label>
+                  <input type="text" value={garantieForm.motif}
+                    onChange={(e) => setGarantieForm((f) => ({ ...f, motif: e.target.value }))}
+                    placeholder="ex: écran qui scintille"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+
+                <div className="pt-2 border-t border-gray-100">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Pièce utilisée pour la garantie</label>
+                  {!garantiePieceSel ? (
+                    <button onClick={() => setGarantiePieceStep('type')}
+                      className="w-full px-3 py-2 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 text-left hover:border-purple-300 hover:text-purple-600">
+                      + Choisir une pièce du catalogue
+                    </button>
+                  ) : (
+                    <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-[#1B2A4A]">{garantiePieceSel.modele}</p>
+                          <p className="text-xs text-purple-700">
+                            {garantiePieceSel.qualite === 'compatible' ? 'Compatible'
+                              : garantiePieceSel.qualite === 'original_equivalent' ? 'Qualité originale'
+                              : '100% Original'}
+                          </p>
+                        </div>
+                        <button onClick={() => { setGarantiePieceSel(null); setGarantiePieceStep('type') }}
+                          className="text-xs font-bold text-purple-700 hover:text-purple-900">
+                          Changer
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Stock ici : {getStockPourMagasin(garantiePieceSel.id)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {garantiePieceStep === 'type' && !garantiePieceSel && (
+                  <div className="border border-gray-100 rounded-xl p-2 max-h-48 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {TYPES_PIECE.map((t) => (
+                        <button key={t.id}
+                          onClick={() => { setGarantiePieceTypeSel(t.id); setGarantiePieceStep('marque') }}
+                          className="text-left bg-gray-50 hover:bg-purple-50 rounded-lg px-2 py-1.5 text-xs font-bold text-gray-600 hover:text-purple-700">
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {garantiePieceStep === 'marque' && !garantiePieceSel && (
+                  <div className="border border-gray-100 rounded-xl p-2">
+                    <button onClick={() => setGarantiePieceStep('type')}
+                      className="text-[10px] font-bold text-gray-500 hover:text-[#1B2A4A] mb-2">
+                      ← Type de pièce
+                    </button>
+                    <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
+                      {garantiePieceMarques.length === 0 ? (
+                        <p className="col-span-2 text-[10px] text-gray-400 text-center py-2">Aucune marque</p>
+                      ) : garantiePieceMarques.map((m) => (
+                        <button key={m}
+                          onClick={() => { setGarantiePieceMarqueSel(m); setGarantiePieceStep('modele') }}
+                          className="text-left bg-gray-50 hover:bg-purple-50 rounded-lg px-2 py-1.5 text-xs font-bold text-gray-600 hover:text-purple-700">
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {garantiePieceStep === 'modele' && !garantiePieceSel && (
+                  <div className="border border-gray-100 rounded-xl p-2">
+                    <button onClick={() => setGarantiePieceStep('marque')}
+                      className="text-[10px] font-bold text-gray-500 hover:text-[#1B2A4A] mb-2">
+                      ← Marques
+                    </button>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                      {Object.entries(garantiePieceModelesForMarque).map(([modele, rows]) => (
+                        rows.length === 1 ? (
+                          <button key={modele} onClick={() => setGarantiePieceSel(rows[0])}
+                            className="w-full text-left bg-gray-50 hover:bg-purple-50 rounded-lg px-2 py-1.5 text-xs font-bold text-gray-600 hover:text-purple-700 flex justify-between">
+                            <span>{modele}</span>
+                            <span className="text-gray-400">{getStockPourMagasin(rows[0].id)} en stock</span>
+                          </button>
+                        ) : (
+                          <div key={modele} className="bg-gray-50 rounded-lg p-1.5">
+                            <p className="text-[10px] font-bold text-gray-600 px-1">{modele}</p>
+                            {rows.map((row) => {
+                              const qLabel = row.qualite === 'compatible' ? 'Compatible'
+                                : row.qualite === 'original_equivalent' ? 'Qualité originale' : '100% Original'
+                              return (
+                                <button key={row.id} onClick={() => setGarantiePieceSel(row)}
+                                  className="w-full text-left hover:bg-purple-50 rounded px-1 py-1 text-[11px] text-gray-600 hover:text-purple-700 flex justify-between">
+                                  <span>{qLabel}</span>
+                                  <span className="text-gray-400">{getStockPourMagasin(row.id)} en stock</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
+                  <select value={garantieFournisseurId}
+                    onChange={(e) => setGarantieFournisseurId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                    <option value="">Aucun</option>
+                    {fournisseursList.map((f) => (
+                      <option key={f.id} value={f.id}>{f.nom}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => setShowGarantieModal(false)}
+                    className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
+                    Annuler
+                  </button>
+                  <button onClick={handleSaveGarantie} disabled={savingGarantie}
+                    className="flex-1 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 disabled:opacity-50">
+                    {savingGarantie ? 'Enregistrement...' : 'Enregistrer la garantie'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Bouton retour pour Caisse */}
@@ -6560,6 +6943,12 @@ export default function StockMagasin() {
                 className="h-9 px-3 rounded-xl border-2 border-amber-200 bg-amber-50 flex items-center gap-1.5 hover:border-amber-400 hover:bg-amber-100 transition-all">
                 <Wrench size={16} className="text-amber-600"/>
                 <span className="text-xs font-bold text-amber-600 whitespace-nowrap">Réparation</span>
+              </button>
+              <button onClick={openGarantieModal}
+                title="Enregistrer un retour sous garantie"
+                className="h-9 px-3 rounded-xl border-2 border-purple-200 bg-purple-50 flex items-center gap-1.5 hover:border-purple-400 hover:bg-purple-100 transition-all">
+                <span className="text-base leading-none">🛡️</span>
+                <span className="text-xs font-bold text-purple-600 whitespace-nowrap">Garantie</span>
               </button>
               {showMovementMenu && (
                 <div className="absolute top-11 left-0 bg-white rounded-2xl border border-gray-100 shadow-lg p-2 w-48 z-20">
