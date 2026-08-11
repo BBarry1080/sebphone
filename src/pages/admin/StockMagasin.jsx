@@ -352,6 +352,8 @@ export default function StockMagasin() {
   const [newRepairFromHubForm, setNewRepairFromHubForm]   = useState({
     nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
     article_offert: false, technicien_carte_mere: '', panne_description: '',
+    encaisser: 'non',
+    montant_encaisse: '',
   })
   const [savingNewRepairFromHub, setSavingNewRepairFromHub] = useState(false)
   const [hubPieceStep, setHubPieceStep]           = useState('type') // 'type' | 'marque' | 'modele'
@@ -2950,28 +2952,27 @@ export default function StockMagasin() {
     }
 
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
-    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '' })
+    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '', encaisser: 'non', montant_encaisse: '' })
     setHubPieceRowSel(null)
     setShowNewRepairFromHub(false)
     fetchReparationsHubData()
     await fetchPendingRepairs()
 
-    // Propose d'encaisser immediatement : la reparation part dans le panier,
-    // ou reste en attente pour etre encaissee plus tard (meme partiellement)
-    if (window.confirm(
-      `Réparation ${bonNumber} créée (${prixRepair.toFixed(2)}€).\n\n` +
-      `Le client paie maintenant ?\n\n` +
-      `OK = ajouter au panier pour encaisser\n` +
-      `Annuler = laisser en attente (visible dans 🔧 En attente jusqu'au paiement)`
-    )) {
-      addRepairToCart({
-        id: createdRepair?.id,
-        bon_number: bonNumber,
-        client_nom: newRepairFromHubForm.nom.trim(),
-        prix: prixRepair,
-        montant_paye: 0,
-      })
-      setPosScreen('caisse')
+    // Encaissement immediat selon le choix fait dans la fiche
+    if (newRepairFromHubForm.encaisser !== 'non') {
+      const montantVoulu = newRepairFromHubForm.encaisser === 'total'
+        ? prixRepair
+        : Math.min(Number(newRepairFromHubForm.montant_encaisse) || 0, prixRepair)
+      if (montantVoulu > 0) {
+        addRepairToCart({
+          id: createdRepair?.id,
+          bon_number: bonNumber,
+          client_nom: newRepairFromHubForm.nom.trim(),
+          prix: prixRepair,
+          montant_paye: 0,
+        }, montantVoulu)
+        setPosScreen('caisse')
+      }
     }
   }
 
@@ -2991,14 +2992,19 @@ export default function StockMagasin() {
     setLoadingPendingRepairs(false)
   }
 
-  const addRepairToCart = (repair) => {
+  // montantPreRempli permet de proposer un acompte des l'ajout au panier,
+  // sans fausser solde_total qui reste le vrai reste du
+  const addRepairToCart = (repair, montantPreRempli = null) => {
     if (repairsInCart.find((r) => r.repair_id === repair.id)) return
     const solde = (Number(repair.prix) || 0) - (Number(repair.montant_paye) || 0)
+    const montant = montantPreRempli != null
+      ? Math.min(Math.max(Number(montantPreRempli) || 0, 0), solde)
+      : solde
     setRepairsInCart((prev) => [...prev, {
       repair_id: repair.id,
       bon_number: repair.bon_number,
       client_nom: repair.client_nom,
-      unit_price: solde,
+      unit_price: montant,
       solde_total: solde,
       quantity: 1,
     }])
@@ -3022,6 +3028,13 @@ export default function StockMagasin() {
     }))
   }
 
+  // ANCIEN FLUX — plus aucun appelant depuis que le catalogue de pieces
+  // est devenu consultatif. Conserve en sommeil le temps de valider le
+  // nouveau flux (bouton Reparation). Toute la chaine qui en depend est
+  // egalement inatteignable : modal "Reparation — {modele}",
+  // confirmAddNewRepairToCart, newRepairsInCart, et le bloc du checkout
+  // "for (const r of newRepairsInCart)". A supprimer ensemble, jamais separement.
+  // eslint-disable-next-line no-unused-vars
   const openNewRepairForm = (ecranRow) => {
     setNewRepairEcran(ecranRow)
     setNewRepairClientData({ nom: '', tel: '', email: '', imei: '' })
@@ -7088,7 +7101,7 @@ export default function StockMagasin() {
               </h1>
               <p className="text-sm text-gray-500 mt-1">Recherche, planning et gestion des réparations</p>
             </div>
-            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '' }); setShowNewRepairFromHub(true) }}
+            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', encaisser: 'non', montant_encaisse: '' }); setShowNewRepairFromHub(true) }}
               className="flex items-center gap-1.5 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
               <Plus size={16} /> Nouvelle réparation
             </button>
@@ -7591,10 +7604,14 @@ export default function StockMagasin() {
                     const qualiteLabel = result.qualite === 'compatible' ? 'Compatible'
                       : result.qualite === 'original_equivalent' ? 'Qualité originale'
                       : '100% Original'
+                    const stockEcran = getStockPourMagasin(result.id)
                     return (
-                      <button key={`ecr-${result.id}`}
-                        onClick={() => openNewRepairForm(result)}
-                        className="text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-3 transition-all border border-purple-100 hover:border-purple-300">
+                      <div key={`ecr-${result.id}`}
+                        className={`text-left rounded-xl p-3 border ${
+                          stockEcran > 0
+                            ? 'bg-purple-50 border-purple-100'
+                            : 'bg-gray-50 border-gray-100'
+                        }`}>
                         <p className="text-[10px] font-bold text-purple-600 uppercase mb-0.5">🔧 Réparation</p>
                         <p className="font-bold text-xs text-[#1B2A4A] line-clamp-2">
                           {result.modele}
@@ -7603,7 +7620,10 @@ export default function StockMagasin() {
                         <p className="text-sm font-bold text-purple-700">
                           {Number(result.prix_defaut || 0).toFixed(2)}€
                         </p>
-                      </button>
+                        <p className={`text-[10px] font-bold ${stockEcran > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {stockEcran} en stock
+                        </p>
+                      </div>
                     )
                   })}
                 </div>
@@ -7799,11 +7819,7 @@ export default function StockMagasin() {
                             <button key={modele}
                               onClick={() => {
                                 if (!hasAny) return
-                                if (rows.length === 1) {
-                                  openNewRepairForm(rows[0])
-                                } else {
-                                  setPosEcranQualiteChoices({ modele, rows })
-                                }
+                                setPosEcranQualiteChoices({ modele, rows })
                               }}
                               disabled={!hasAny}
                               className={`text-left rounded-xl p-3 transition-all border ${
@@ -9133,7 +9149,7 @@ export default function StockMagasin() {
                 <X size={20} />
               </button>
             </div>
-            <p className="text-xs text-gray-500 mb-3">Choisis la qualité</p>
+            <p className="text-xs text-gray-500 mb-3">Stock disponible dans ce magasin</p>
             <div className="space-y-2">
               {posEcranQualiteChoices.rows.map((row) => {
                 const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
@@ -9141,9 +9157,12 @@ export default function StockMagasin() {
                   : '100% Original'
                 const stockDisponible = getStockPourMagasin(row.id)
                 return (
-                  <button key={row.id}
-                    onClick={() => { setPosEcranQualiteChoices(null); openNewRepairForm(row) }}
-                    className="w-full text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-3 border border-purple-100 hover:border-purple-300 flex items-center justify-between">
+                  <div key={row.id}
+                    className={`w-full text-left rounded-xl p-3 border flex items-center justify-between ${
+                      stockDisponible > 0
+                        ? 'bg-purple-50 border-purple-100'
+                        : 'bg-gray-50 border-gray-100'
+                    }`}>
                     <div>
                       <span className="text-sm font-bold text-[#1B2A4A] block">{qualiteLabel}</span>
                       <span className={`text-[10px] font-bold ${stockDisponible <= 0 ? 'text-red-500' : 'text-gray-500'}`}>
@@ -9156,10 +9175,13 @@ export default function StockMagasin() {
                     <span className="text-sm font-bold text-purple-700">
                       {Number(row.prix_defaut || 0).toFixed(2)}€
                     </span>
-                  </button>
+                  </div>
                 )
               })}
             </div>
+            <p className="text-[10px] text-gray-400 italic mt-3 text-center">
+              Pour créer une réparation, utilise le bouton 🔧 Réparation en haut
+            </p>
           </div>
         </div>
       )}
@@ -9523,9 +9545,59 @@ export default function StockMagasin() {
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                 </div>
               </div>
-              <p className="text-[10px] text-gray-400 italic">
-                Pour enregistrer un acompte, prend le paiement via la caisse (panier "Réparations en attente").
-              </p>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-xs font-bold text-emerald-800 mb-2">💰 Le client paie maintenant ?</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { key: 'non', label: 'Rien' },
+                    { key: 'acompte', label: 'Acompte' },
+                    { key: 'total', label: 'Tout' },
+                  ].map((opt) => (
+                    <button key={opt.key} type="button"
+                      onClick={() => setNewRepairFromHubForm((f) => ({
+                        ...f,
+                        encaisser: opt.key,
+                        montant_encaisse: opt.key === 'total' ? String(f.prix || '') : opt.key === 'non' ? '' : f.montant_encaisse,
+                      }))}
+                      className={`py-2 rounded-lg text-xs font-bold border-2 transition-all ${
+                        newRepairFromHubForm.encaisser === opt.key
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-emerald-400'
+                      }`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {newRepairFromHubForm.encaisser === 'acompte' && (
+                  <div className="mt-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Montant de l'acompte (€)</label>
+                    <input type="number" step="0.5" min="0" max={newRepairFromHubForm.prix || undefined}
+                      value={newRepairFromHubForm.montant_encaisse}
+                      onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, montant_encaisse: e.target.value }))}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  </div>
+                )}
+                {newRepairFromHubForm.encaisser !== 'non' && Number(newRepairFromHubForm.prix) > 0 && (
+                  <p className="text-[10px] font-bold mt-2">
+                    {(() => {
+                      const encaisse = newRepairFromHubForm.encaisser === 'total'
+                        ? Number(newRepairFromHubForm.prix) || 0
+                        : Number(newRepairFromHubForm.montant_encaisse) || 0
+                      const reste = (Number(newRepairFromHubForm.prix) || 0) - encaisse
+                      return reste > 0.01
+                        ? <span className="text-amber-700">Reste dû : {reste.toFixed(2)}€ — restera dans "🔧 En attente"</span>
+                        : <span className="text-emerald-700">✓ Payé intégralement</span>
+                    })()}
+                  </p>
+                )}
+                {newRepairFromHubForm.encaisser !== 'non' && (
+                  <p className="text-[10px] font-bold text-emerald-800 mt-1.5 bg-white rounded-lg px-2 py-1.5">
+                    ⚠️ Le paiement n'est pas encore fait — la réparation partira dans le panier,
+                    il faudra valider l'encaissement pour qu'il soit enregistré.
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={() => { setHubPieceRowSel(null); setShowNewRepairFromHub(false) }}
