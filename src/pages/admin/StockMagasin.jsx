@@ -149,6 +149,7 @@ export default function StockMagasin() {
   const [newRepairClientData, setNewRepairClientData]     = useState({
     nom: '', tel: '', email: '', imei: '',
   })
+  const [newRepairTechnicien, setNewRepairTechnicien] = useState('')
   const [paymentSplits, setPaymentSplits] = useState([])
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState('cash')
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState('')
@@ -326,7 +327,7 @@ export default function StockMagasin() {
   const [showNewRepairFromHub, setShowNewRepairFromHub]   = useState(false)
   const [newRepairFromHubForm, setNewRepairFromHubForm]   = useState({
     nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
-    article_offert: false,
+    article_offert: false, technicien_carte_mere: '',
   })
   const [savingNewRepairFromHub, setSavingNewRepairFromHub] = useState(false)
   const [hubPieceStep, setHubPieceStep]           = useState('type') // 'type' | 'marque' | 'modele'
@@ -414,6 +415,12 @@ export default function StockMagasin() {
     { id: 'micro', label: 'Micro', aQualite: false },
     { id: 'chassis', label: 'Châssis', aQualite: false },
     { id: 'capteur_flex', label: 'Capteur flex', aQualite: false },
+  ]
+
+  const TECHNICIENS_CARTE_MERE = [
+    'Ali — Place Bara',
+    'Le Brésilien — Charleroi',
+    'Najib — Place Bara',
   ]
 
   const DELAIS_PIECE = {
@@ -2737,6 +2744,10 @@ export default function StockMagasin() {
 
   const handleCreateNewRepairFromHub = async () => {
     if (!newRepairFromHubForm.nom.trim()) { alert('Nom du client obligatoire'); return }
+    if (hubPieceRowSel && hubPieceRowSel.type_piece === 'carte_mere' && !newRepairFromHubForm.technicien_carte_mere) {
+      alert('Choisis le technicien qui fera la réparation carte mère')
+      return
+    }
     if (hubPieceRowSel && !newRepairFromHubForm.article_offert) {
       const prixSaisi = Number(newRepairFromHubForm.prix) || 0
       const prixMin = Number(hubPieceRowSel.prix_min || 0)
@@ -2762,6 +2773,7 @@ export default function StockMagasin() {
       appareil: newRepairFromHubForm.appareil || null,
       imei: newRepairFromHubForm.imei || null,
       type_panne: newRepairFromHubForm.type_panne || null,
+      technicien_carte_mere: newRepairFromHubForm.technicien_carte_mere || null,
       prix: newRepairFromHubForm.prix ? Number(newRepairFromHubForm.prix) : null,
       devis: false,
       tel: newRepairFromHubForm.tel || null,
@@ -2773,7 +2785,7 @@ export default function StockMagasin() {
     setSavingNewRepairFromHub(false)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
-    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false })
+    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '' })
     setHubPieceRowSel(null)
     setShowNewRepairFromHub(false)
     fetchReparationsHubData()
@@ -2817,6 +2829,7 @@ export default function StockMagasin() {
   const openNewRepairForm = (ecranRow) => {
     setNewRepairEcran(ecranRow)
     setNewRepairClientData({ nom: '', tel: '', email: '', imei: '' })
+    setNewRepairTechnicien('')
     setShowNewRepairForm(true)
     setCartSearch('')
   }
@@ -2824,6 +2837,10 @@ export default function StockMagasin() {
   const confirmAddNewRepairToCart = () => {
     if (!newRepairClientData.nom.trim()) {
       alert('Le nom du client est obligatoire')
+      return
+    }
+    if (newRepairEcran.type_piece === 'carte_mere' && !newRepairTechnicien) {
+      alert('Choisis le technicien qui fera la réparation carte mère')
       return
     }
     const qualiteLabel =
@@ -2841,9 +2858,11 @@ export default function StockMagasin() {
       tel: newRepairClientData.tel.trim() || null,
       email: newRepairClientData.email.trim() || null,
       imei: newRepairClientData.imei.trim() || null,
+      technicienCarteMere: newRepairEcran.type_piece === 'carte_mere' ? newRepairTechnicien : null,
     }])
     setShowNewRepairForm(false)
     setNewRepairEcran(null)
+    setNewRepairTechnicien('')
   }
 
   const handleAjouterAuStockRapide = async () => {
@@ -3279,6 +3298,7 @@ export default function StockMagasin() {
           ecran_modele: r.modele,
           ecran_qualite: r.qualite,
           ecran_id: r.ecran_id || null,
+          technicien_carte_mere: r.technicienCarteMere || null,
           prix: r.unit_price,
           montant_paye: r.unit_price,
           devis: false,
@@ -8516,6 +8536,21 @@ export default function StockMagasin() {
                     onChange={(e) => setNewRepairClientData((f) => ({ ...f, imei: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono" />
                 </div>
+                {newRepairEcran.type_piece === 'carte_mere' && (
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                      Technicien carte mère *
+                    </label>
+                    <select value={newRepairTechnicien}
+                      onChange={(e) => setNewRepairTechnicien(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                      <option value="">— Choisir —</option>
+                      {TECHNICIENS_CARTE_MERE.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {newRepairEcran.disponible_sur_commande && (
@@ -8687,6 +8722,21 @@ export default function StockMagasin() {
                   </div>
                 )}
               </div>
+              {hubPieceRowSel && hubPieceRowSel.type_piece === 'carte_mere' && (
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    Technicien carte mère *
+                  </label>
+                  <select value={newRepairFromHubForm.technicien_carte_mere}
+                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, technicien_carte_mere: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                    <option value="">— Choisir —</option>
+                    {TECHNICIENS_CARTE_MERE.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">IMEI</label>
