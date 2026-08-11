@@ -9396,9 +9396,14 @@ export default function StockMagasin() {
                               {getStockPourMagasin(rows[0].id)} en stock ici
                             </span>
                           </div>
-                          <span className="text-sm font-bold text-purple-700">
-                            {Number(rows[0].prix_defaut || 0).toFixed(2)}€
-                          </span>
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-purple-700 block">
+                              {Number(rows[0].prix_defaut || 0).toFixed(2)}€
+                            </span>
+                            <span className="text-[9px] text-gray-400">
+                              min {Number(rows[0].prix_min || 0).toFixed(2)}€
+                            </span>
+                          </div>
                         </button>
                       ) : (
                         <div key={modele} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
