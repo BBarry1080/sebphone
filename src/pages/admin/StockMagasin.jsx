@@ -18,6 +18,7 @@ import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
 import PhoneSaleModal from '../../components/admin/PhoneSaleModal'
 import { calcSalairePeriode, getWeekBounds, calcDureeHeures, isShiftFinished } from '../../lib/calcSalaire'
 import { logActivity } from '../../lib/logActivity'
+import { LOGO_SEBPHONE_BASE64, LOGO_SEBTELECOM_BASE64 } from '../../lib/logos'
 
 const POS_CATEGORIES = [
   'Téléphone',
@@ -2473,16 +2474,14 @@ export default function StockMagasin() {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
     let y = 20
 
-    doc.setFontSize(16)
-    doc.setFont(undefined, 'bold')
-    doc.text('SLT GROUP (SRL)', 20, y)
+    doc.addImage(LOGO_SEBTELECOM_BASE64, 'PNG', 20, y, 30, 30)
     doc.setFontSize(9)
     doc.setFont(undefined, 'normal')
-    y += 6
-    doc.text('Rue du Bailli 22, 1000 Bruxelles — TVA BE 1028.764.677', 20, y)
-    y += 6
-    doc.text(magasinLabel || '', 20, y)
-    y += 12
+    doc.text('SLT GROUP (SRL)', 55, y + 8)
+    doc.text('Rue du Bailli 22, 1000 Bruxelles', 55, y + 14)
+    doc.text('TVA BE 1028.764.677', 55, y + 20)
+    doc.text(magasinLabel || '', 55, y + 26)
+    y += 38
 
     doc.setFontSize(12)
     doc.setFont(undefined, 'bold')
