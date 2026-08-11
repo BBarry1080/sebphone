@@ -458,7 +458,7 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
   )
   const [stockLocation, setStockLocation] = useState(phone?.stock_location || '')
   const [deposit, setDeposit]     = useState(phone?.deposit_amount || 50)
-  const [magasins, setMagasins]   = useState(phone?.magasins || [])
+  const [magasinId, setMagasinId] = useState(phone?.magasin_id || phone?.magasins?.[0] || '')
   const [notes, setNotes]         = useState(phone?.notes || '')
   const initialPartsReplaced = (() => {
     const raw = phone?.parts_replaced
@@ -580,12 +580,6 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleMagasinToggle = (id) => {
-    setMagasins((prev) =>
-      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
-    )
-  }
-
   const togglePart = (part) => {
     setPartsReplaced((prev) => {
       const next = prev.includes(part) ? prev.filter((p) => p !== part) : [...prev, part]
@@ -641,7 +635,8 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
         price_pro:      pricePro !== '' && pricePro != null ? parseFloat(pricePro) : null,
         purchase_price: purchasePrice !== '' ? parseFloat(purchasePrice) : null,
         deposit_amount: parseFloat(deposit) || 50,
-        magasins:       magasins || [],
+        magasin_id:     magasinId || null,
+        magasins:       magasinId ? [magasinId] : [],
         notes:          notes || null,
         battery_health: batteryHealth !== '' ? parseInt(batteryHealth) : null,
         imei:           imei.trim() || null,
@@ -653,7 +648,7 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
         categorie:      categorie || 'telephone',
         has_esim:       hasEsim,
         added_by:         currentUser.name || 'Admin',
-        added_by_magasin: currentUser.magasin_id || magasins?.[0] || null,
+        added_by_magasin: currentUser.magasin_id || magasinId || null,
       }
 
       if (isSurCommande) {
@@ -666,6 +661,7 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
         phoneData.purchase_price = 0
         phoneData.delai_commande = '1h à 72h'
         phoneData.battery_health = null
+        phoneData.magasin_id = null
         phoneData.magasins = []
         phoneData.tva_regime = 'marge'
         phoneData.parts_replaced = []
@@ -1394,31 +1390,23 @@ function PhoneModal({ phone, onClose, onSaved, priceSettings, modelLimits }) {
             </div>
           </div>
 
-          {/* ── Section 4 — Magasins ── */}
+          {/* ── Section 4 — Magasin ── */}
           {!isSurCommande && (
             <div>
-              <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Disponible en magasin</h3>
-              <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-[#1B2A4A] mb-3">Magasin *</h3>
+              <select
+                value={magasinId}
+                onChange={(e) => setMagasinId(e.target.value)}
+                className={`w-full px-3 py-2.5 border rounded-xl text-sm bg-white focus:border-[#00B4CC] outline-none ${
+                  !magasinId ? 'border-orange-300' : 'border-gray-200'
+                }`}
+              >
+                <option value="">— Sélectionner le magasin —</option>
                 {MAGASINS.map((magasin) => (
-                  <label
-                    key={magasin.id}
-                    className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${
-                      magasins.includes(magasin.id)
-                        ? 'border-[#00B4CC] bg-cyan-50'
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={magasins.includes(magasin.id)}
-                      onChange={() => handleMagasinToggle(magasin.id)}
-                      className="w-4 h-4 accent-[#00B4CC]"
-                    />
-                    <span className="text-sm text-gray-700">{magasin.nom}</span>
-                  </label>
+                  <option key={magasin.id} value={magasin.id}>{magasin.nom}</option>
                 ))}
-              </div>
-              {magasins.length === 0 && (
+              </select>
+              {!magasinId && (
                 <p className="text-xs text-orange-500 mt-1.5">⚠️ Aucun magasin sélectionné</p>
               )}
             </div>
