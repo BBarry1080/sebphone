@@ -352,13 +352,14 @@ export default function StockMagasin() {
 
   // Catalogue écrans par modèle
   const [ecranCatalogList, setEcranCatalogList]   = useState([])
+  const [ecranStockParMagasin, setEcranStockParMagasin] = useState({})
   const [loadingEcranCatalog, setLoadingEcranCatalog] = useState(false)
   const [ecranMarqueFilter, setEcranMarqueFilter] = useState('Samsung')
   const [ecranSearch, setEcranSearch]             = useState('')
   const [editingEcran, setEditingEcran]           = useState(null)
   const [ecranForm, setEcranForm]                 = useState({
     prix_min: '', prix_defaut: '', prix_max: '',
-    cout_achat: '', quantite_stock: '', fournisseur_id: '',
+    cout_achat: '', fournisseur_id: '',
     disponible: true, notes: '',
   })
   const [savingEcran, setSavingEcran]             = useState(false)
@@ -408,7 +409,6 @@ export default function StockMagasin() {
     qualite: 'compatible',
     fournisseur_id: '',
     cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
-    quantite_stock: '0',
     disponible: true, notes: '',
   })
   const [savingNewEcran, setSavingNewEcran]       = useState(false)
@@ -1801,6 +1801,32 @@ export default function StockMagasin() {
     setLoadingEcranCatalog(false)
   }
 
+  const fetchEcranStockMagasin = async () => {
+    if (!magasin) return
+    const { data } = await supabase
+      .from('reparation_ecrans_stock_magasin')
+      .select('ecran_id, quantite_stock')
+      .eq('magasin_id', magasin)
+    const map = {}
+    ;(data || []).forEach((row) => { map[row.ecran_id] = row.quantite_stock })
+    setEcranStockParMagasin(map)
+  }
+
+  const getStockPourMagasin = (ecranId) => ecranStockParMagasin[ecranId] ?? 0
+
+  const setStockPourMagasin = async (ecranId, nouvelleQuantite) => {
+    if (!magasin) return
+    const { error } = await supabase
+      .from('reparation_ecrans_stock_magasin')
+      .upsert({
+        ecran_id: ecranId,
+        magasin_id: magasin,
+        quantite_stock: Math.max(0, Number(nouvelleQuantite) || 0),
+      }, { onConflict: 'ecran_id,magasin_id' })
+    if (error) { alert('Erreur stock : ' + error.message); return }
+    fetchEcranStockMagasin()
+  }
+
   const openEditEcran = (row) => {
     setEditingEcran(row)
     setEcranForm({
@@ -1808,7 +1834,6 @@ export default function StockMagasin() {
       prix_defaut: String(row.prix_defaut ?? ''),
       prix_max: String(row.prix_max ?? ''),
       cout_achat: String(row.cout_achat ?? ''),
-      quantite_stock: String(row.quantite_stock ?? '0'),
       fournisseur_id: row.fournisseur_id || '',
       disponible: row.disponible !== false,
       notes: row.notes || '',
@@ -1823,7 +1848,6 @@ export default function StockMagasin() {
       prix_defaut: Number(ecranForm.prix_defaut) || 0,
       prix_max: Number(ecranForm.prix_max) || 0,
       cout_achat: Number(ecranForm.cout_achat) || 0,
-      quantite_stock: Number(ecranForm.quantite_stock) || 0,
       fournisseur_id: ecranForm.fournisseur_id || null,
       disponible: ecranForm.disponible,
       notes: ecranForm.notes || null,
@@ -1844,7 +1868,6 @@ export default function StockMagasin() {
       qualite: 'compatible',
       fournisseur_id: '',
       cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
-      quantite_stock: '0',
       disponible: true, notes: '',
     })
   }
@@ -1876,7 +1899,6 @@ export default function StockMagasin() {
       prix_min: Number(newEcranForm.prix_min) || 0,
       prix_defaut: Number(newEcranForm.prix_defaut) || 0,
       prix_max: Number(newEcranForm.prix_max) || 0,
-      quantite_stock: Number(newEcranForm.quantite_stock) || 0,
       fournisseur_id: newEcranForm.fournisseur_id || null,
       notes: newEcranForm.notes.trim() || null,
     })
@@ -2350,6 +2372,7 @@ export default function StockMagasin() {
   // Fetch catalogue écrans à la première activation de l'onglet
   useEffect(() => {
     if (activeTab === 'pieces' && ecranCatalogList.length === 0) {
+      fetchEcranStockMagasin()
       fetchEcranCatalog()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2410,6 +2433,7 @@ export default function StockMagasin() {
       fetchItems()
       fetchCaisseToday()
       fetchFournisseursList()
+      fetchEcranStockMagasin()
       fetchLastClosure().then((closure) => {
         fetchMovementsSince(closure?.period_end || '1970-01-01T00:00:00Z')
       })
@@ -3131,13 +3155,18 @@ export default function StockMagasin() {
             repair_id: newRepair.id,
           })
           if (r.ecran_id) {
-            const { data: ecranRow } = await supabase
-              .from('reparation_ecrans').select('quantite_stock').eq('id', r.ecran_id).single()
-            if (ecranRow) {
-              await supabase.from('reparation_ecrans')
-                .update({ quantite_stock: Math.max(0, (ecranRow.quantite_stock || 0) - 1) })
-                .eq('id', r.ecran_id)
-            }
+            const { data: stockRow } = await supabase
+              .from('reparation_ecrans_stock_magasin')
+              .select('quantite_stock')
+              .eq('ecran_id', r.ecran_id).eq('magasin_id', magasin)
+              .maybeSingle()
+            const current = stockRow?.quantite_stock || 0
+            await supabase.from('reparation_ecrans_stock_magasin')
+              .upsert({
+                ecran_id: r.ecran_id,
+                magasin_id: magasin,
+                quantite_stock: Math.max(0, current - 1),
+              }, { onConflict: 'ecran_id,magasin_id' })
           }
           await logActivity('repair_created_from_caisse',
             `Réparation créée depuis la caisse — ${r.modele} (${r.qualiteLabel}) pour ${r.clientNom}`)
@@ -3943,12 +3972,9 @@ export default function StockMagasin() {
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
-                    <input type="number" step="1" min="0" value={newEcranForm.quantite_stock}
-                      onChange={(e) => setNewEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
-                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                  </div>
+                  <p className="text-[10px] text-gray-400 italic">
+                    La quantité en stock se règle magasin par magasin, juste après la création du modèle.
+                  </p>
                   <div className="flex gap-2">
                     <button onClick={handleCreateEcran} disabled={savingNewEcran}
                       className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
@@ -4049,9 +4075,9 @@ export default function StockMagasin() {
                                         <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
                                       </div>
                                       <div>
-                                        <p className="text-[9px] text-gray-400 uppercase">Stock</p>
-                                        <p className={`font-bold ${(row.quantite_stock || 0) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
-                                          {row.quantite_stock || 0}
+                                        <p className="text-[9px] text-gray-400 uppercase">Stock ici</p>
+                                        <p className={`font-bold ${getStockPourMagasin(row.id) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                                          {getStockPourMagasin(row.id)}
                                         </p>
                                       </div>
                                     </div>
@@ -4092,9 +4118,12 @@ export default function StockMagasin() {
                                   </div>
                                   <div className="flex gap-3 items-end flex-wrap">
                                     <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
-                                      <input type="number" step="1" min="0" value={ecranForm.quantite_stock}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                                        Quantité — {MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
+                                      </label>
+                                      <input key={editingEcran?.id} type="number" step="1" min="0"
+                                        defaultValue={getStockPourMagasin(editingEcran?.id)}
+                                        onBlur={(e) => setStockPourMagasin(editingEcran?.id, e.target.value)}
                                         className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                                     </div>
                                     <div className="flex-1 min-w-[180px]">
@@ -8035,7 +8064,7 @@ export default function StockMagasin() {
                 const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
                   : row.qualite === 'original_equivalent' ? 'Qualité originale'
                   : '100% Original'
-                const stockDisponible = row.quantite_stock || 0
+                const stockDisponible = getStockPourMagasin(row.id)
                 return (
                   <button key={row.id}
                     onClick={() => { setPosEcranQualiteChoices(null); openNewRepairForm(row) }}
