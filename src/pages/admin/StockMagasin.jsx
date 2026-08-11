@@ -312,13 +312,6 @@ export default function StockMagasin() {
   const [calMonthOffsetTreso, setCalMonthOffsetTreso]       = useState(0)
   const [selectedJourMouvements, setSelectedJourMouvements] = useState(null)
 
-  // Prix réparations
-  const [typePannePrixList, setTypePannePrixList] = useState([])
-  const [loadingTypePannePrix, setLoadingTypePannePrix] = useState(false)
-  const [editingTypePanne, setEditingTypePanne]   = useState(null)
-  const [tpForm, setTpForm]                       = useState({ prix_defaut: '', prix_min: '', prix_max: '' })
-  const [savingTypePanne, setSavingTypePanne]     = useState(false)
-
   // Délais réparation (sous-section de l'écran Prix)
   const [sectionPrixDelais, setSectionPrixDelais] = useState('prix') // 'prix' | 'delais' | 'ecrans' | 'taches'
 
@@ -1641,39 +1634,6 @@ export default function StockMagasin() {
     fetchCommissionRules()
   }
 
-  // ─── Prix réparations ───
-  const fetchTypePannePrix = async () => {
-    setLoadingTypePannePrix(true)
-    const { data } = await supabase.from('type_panne_prix')
-      .select('*').order('type_panne', { ascending: true })
-    setTypePannePrixList(data || [])
-    setLoadingTypePannePrix(false)
-  }
-
-  const openEditTypePanne = (row) => {
-    setEditingTypePanne(row)
-    setTpForm({
-      prix_defaut: String(row.prix_defaut ?? ''),
-      prix_min: String(row.prix_min ?? ''),
-      prix_max: String(row.prix_max ?? ''),
-    })
-  }
-
-  const handleSaveTypePanne = async () => {
-    if (!editingTypePanne) return
-    setSavingTypePanne(true)
-    const { error } = await supabase.from('type_panne_prix').update({
-      prix_defaut: Number(tpForm.prix_defaut) || 0,
-      prix_min: Number(tpForm.prix_min) || 0,
-      prix_max: Number(tpForm.prix_max) || 0,
-    }).eq('id', editingTypePanne.id)
-    setSavingTypePanne(false)
-    if (error) { alert('Erreur : ' + error.message); return }
-    logActivity('type_panne_prix_update', `Prix mis à jour pour ${editingTypePanne.type_panne}`)
-    setEditingTypePanne(null)
-    fetchTypePannePrix()
-  }
-
   // ─── Délais réparation ───
   const fetchDelaiTypes = async () => {
     setLoadingDelaiTypes(true)
@@ -2437,7 +2397,6 @@ export default function StockMagasin() {
       if (sectionPrixDelais === 'ecrans') setSectionPrixDelais('recherche')
       fetchReparationsHubData()
       if (trueIsAdmin) {
-        fetchTypePannePrix()
         fetchDelaiTypes()
       }
     }
@@ -6147,7 +6106,6 @@ export default function StockMagasin() {
               { key: 'recherche', label: '🔍 Recherche' },
               { key: 'calendrier', label: '📅 Calendrier' },
               ...(trueIsAdmin ? [
-                { key: 'prix', label: '💰 Prix' },
                 { key: 'delais', label: '⏱️ Délais' },
                 { key: 'taches', label: '✅ Tâches clôture' },
               ] : []),
@@ -6287,89 +6245,6 @@ export default function StockMagasin() {
               </div>
             )
           })()}
-
-          {sectionPrixDelais === 'prix' && trueIsAdmin && (
-            loadingTypePannePrix ? (
-              <div className="flex items-center justify-center h-40">
-                <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : typePannePrixList.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-                Aucun type de panne configuré en base
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {typePannePrixList.map((row) => {
-                  const isEditing = editingTypePanne?.id === row.id
-                  return (
-                    <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-[#1B2A4A]">{row.type_panne}</p>
-                        </div>
-                        {!isEditing && (
-                          <>
-                            <div className="flex gap-4 text-xs">
-                              <div>
-                                <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
-                                <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
-                              </div>
-                              <div>
-                                <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
-                                <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
-                              </div>
-                              <div>
-                                <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
-                                <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
-                              </div>
-                            </div>
-                            <button onClick={() => openEditTypePanne(row)}
-                              className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
-                              <Pencil size={14} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                      {isEditing && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
-                              <input type="number" step="0.5" min="0" value={tpForm.prix_defaut}
-                                onChange={(e) => setTpForm((f) => ({ ...f, prix_defaut: e.target.value }))}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
-                              <input type="number" step="0.5" min="0" value={tpForm.prix_min}
-                                onChange={(e) => setTpForm((f) => ({ ...f, prix_min: e.target.value }))}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
-                              <input type="number" step="0.5" min="0" value={tpForm.prix_max}
-                                onChange={(e) => setTpForm((f) => ({ ...f, prix_max: e.target.value }))}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={handleSaveTypePanne} disabled={savingTypePanne}
-                              className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                              {savingTypePanne ? 'Enregistrement...' : 'Enregistrer'}
-                            </button>
-                            <button onClick={() => setEditingTypePanne(null)}
-                              className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
-                              Annuler
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          )}
 
           {sectionPrixDelais === 'delais' && trueIsAdmin && (
             <>
