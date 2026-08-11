@@ -358,7 +358,7 @@ export default function StockMagasin() {
   const [editingEcran, setEditingEcran]           = useState(null)
   const [ecranForm, setEcranForm]                 = useState({
     prix_min: '', prix_defaut: '', prix_max: '',
-    cout_achat: '',
+    cout_achat: '', quantite_stock: '',
     disponible: true, notes: '',
   })
   const [savingEcran, setSavingEcran]             = useState(false)
@@ -407,6 +407,7 @@ export default function StockMagasin() {
     gamme: '', modele: '', modele_code: '',
     qualite: 'compatible',
     cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
+    quantite_stock: '0',
     disponible: true, notes: '',
   })
   const [savingNewEcran, setSavingNewEcran]       = useState(false)
@@ -1806,6 +1807,7 @@ export default function StockMagasin() {
       prix_defaut: String(row.prix_defaut ?? ''),
       prix_max: String(row.prix_max ?? ''),
       cout_achat: String(row.cout_achat ?? ''),
+      quantite_stock: String(row.quantite_stock ?? '0'),
       disponible: row.disponible !== false,
       notes: row.notes || '',
     })
@@ -1819,6 +1821,7 @@ export default function StockMagasin() {
       prix_defaut: Number(ecranForm.prix_defaut) || 0,
       prix_max: Number(ecranForm.prix_max) || 0,
       cout_achat: Number(ecranForm.cout_achat) || 0,
+      quantite_stock: Number(ecranForm.quantite_stock) || 0,
       disponible: ecranForm.disponible,
       notes: ecranForm.notes || null,
     }).eq('id', editingEcran.id)
@@ -1837,6 +1840,7 @@ export default function StockMagasin() {
       gamme: '', modele: '', modele_code: '',
       qualite: 'compatible',
       cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
+      quantite_stock: '0',
       disponible: true, notes: '',
     })
   }
@@ -1868,6 +1872,7 @@ export default function StockMagasin() {
       prix_min: Number(newEcranForm.prix_min) || 0,
       prix_defaut: Number(newEcranForm.prix_defaut) || 0,
       prix_max: Number(newEcranForm.prix_max) || 0,
+      quantite_stock: Number(newEcranForm.quantite_stock) || 0,
       notes: newEcranForm.notes.trim() || null,
     })
     setSavingNewEcran(false)
@@ -3098,6 +3103,7 @@ export default function StockMagasin() {
           type_panne: 'Écran cassé',
           ecran_modele: r.modele,
           ecran_qualite: r.qualite,
+          ecran_id: r.ecran_id || null,
           prix: r.unit_price,
           montant_paye: r.unit_price,
           devis: false,
@@ -3128,6 +3134,15 @@ export default function StockMagasin() {
             line_type: 'reparation',
             repair_id: newRepair.id,
           })
+          if (r.ecran_id) {
+            const { data: ecranRow } = await supabase
+              .from('reparation_ecrans').select('quantite_stock').eq('id', r.ecran_id).single()
+            if (ecranRow) {
+              await supabase.from('reparation_ecrans')
+                .update({ quantite_stock: Math.max(0, (ecranRow.quantite_stock || 0) - 1) })
+                .eq('id', r.ecran_id)
+            }
+          }
           await logActivity('repair_created_from_caisse',
             `Réparation créée depuis la caisse — ${r.modele} (${r.qualiteLabel}) pour ${r.clientNom}`)
         }
@@ -6186,6 +6201,12 @@ export default function StockMagasin() {
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                     </div>
                   </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
+                    <input type="number" step="1" min="0" value={newEcranForm.quantite_stock}
+                      onChange={(e) => setNewEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
+                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={handleCreateEcran} disabled={savingNewEcran}
                       className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
@@ -6252,6 +6273,12 @@ export default function StockMagasin() {
                                         <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
                                         <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
                                       </div>
+                                      <div>
+                                        <p className="text-[9px] text-gray-400 uppercase">Stock</p>
+                                        <p className={`font-bold ${(row.quantite_stock || 0) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                                          {row.quantite_stock || 0}
+                                        </p>
+                                      </div>
                                     </div>
                                     <button onClick={() => openEditEcran(row)}
                                       className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
@@ -6287,6 +6314,12 @@ export default function StockMagasin() {
                                         onChange={(e) => setEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
                                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                                     </div>
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
+                                    <input type="number" step="1" min="0" value={ecranForm.quantite_stock}
+                                      onChange={(e) => setEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
+                                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                                   </div>
                                   <label className="flex items-center gap-2 text-xs text-gray-600">
                                     <input type="checkbox" checked={ecranForm.disponible}
@@ -7953,11 +7986,17 @@ export default function StockMagasin() {
                 const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
                   : row.qualite === 'original_equivalent' ? 'Qualité originale'
                   : '100% Original'
+                const stockDisponible = row.quantite_stock || 0
                 return (
                   <button key={row.id}
                     onClick={() => { setPosEcranQualiteChoices(null); openNewRepairForm(row) }}
                     className="w-full text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-3 border border-purple-100 hover:border-purple-300 flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#1B2A4A]">{qualiteLabel}</span>
+                    <div>
+                      <span className="text-sm font-bold text-[#1B2A4A] block">{qualiteLabel}</span>
+                      <span className={`text-[10px] font-bold ${stockDisponible <= 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                        {stockDisponible} en stock
+                      </span>
+                    </div>
                     <span className="text-sm font-bold text-purple-700">
                       {Number(row.prix_defaut || 0).toFixed(2)}€
                     </span>
