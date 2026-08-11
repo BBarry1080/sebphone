@@ -2354,7 +2354,7 @@ export default function StockMagasin() {
 
   // Fetch catalogue écrans à la première activation de l'onglet
   useEffect(() => {
-    if (sectionPrixDelais === 'ecrans' && ecranCatalogList.length === 0) {
+    if (activeTab === 'pieces' && ecranCatalogList.length === 0) {
       fetchEcranCatalog()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2399,6 +2399,7 @@ export default function StockMagasin() {
       }
     }
     if (posScreen === 'reparations-hub') {
+      if (sectionPrixDelais === 'ecrans') setSectionPrixDelais('recherche')
       fetchReparationsHubData()
       if (trueIsAdmin) {
         fetchTypePannePrix()
@@ -3798,6 +3799,7 @@ export default function StockMagasin() {
             {[
               { key: 'stock', label: 'Stock' },
               { key: 'categories', label: 'Catégories' },
+              ...(trueIsAdmin ? [{ key: 'pieces', label: '📱 Pièces par modèle' }] : []),
             ].map(tab => (
               <button key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
@@ -3810,6 +3812,302 @@ export default function StockMagasin() {
               </button>
             ))}
           </div>
+          {activeTab === 'pieces' && trueIsAdmin && (
+            <>
+              {/* Barre filtres */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4 flex flex-col md:flex-row gap-2 items-stretch md:items-center">
+                <select value={ecranMarqueFilter}
+                  onChange={(e) => setEcranMarqueFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white md:w-48">
+                  <option value="all">Toutes les marques</option>
+                  {ecranMarquesDistinct.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <input type="text" value={ecranSearch}
+                  onChange={(e) => setEcranSearch(e.target.value)}
+                  placeholder="Rechercher un modèle..."
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                <span className="text-xs font-bold text-gray-400 uppercase whitespace-nowrap md:ml-2">
+                  {ecranCatalogFiltered.length} résultat{ecranCatalogFiltered.length > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {!showNewEcranForm ? (
+                <button onClick={() => setShowNewEcranForm(true)}
+                  className="mb-4 flex items-center gap-1.5 bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                  <Plus size={16}/> Nouveau modèle
+                </button>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-3">
+                  <h3 className="font-bold text-[#1B2A4A]">Nouvelle pièce</h3>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Type de pièce</label>
+                    <select value={newEcranForm.type_piece}
+                      onChange={(e) => setNewEcranForm((f) => ({ ...f, type_piece: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                      {TYPES_PIECE.map((t) => (
+                        <option key={t.id} value={t.id}>{t.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Marque</label>
+                      <select value={newEcranForm.marqueMode === 'custom' ? '__autre__' : newEcranForm.marque}
+                        onChange={(e) => {
+                          if (e.target.value === '__autre__') {
+                            setNewEcranForm((f) => ({ ...f, marque: '', marqueMode: 'custom' }))
+                          } else {
+                            setNewEcranForm((f) => ({ ...f, marque: e.target.value, marqueMode: 'existing', gamme: '' }))
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                        <option value="">— Choisir —</option>
+                        {ecranMarquesDistinct.map((m) => <option key={m} value={m}>{m}</option>)}
+                        <option value="__autre__">+ Autre marque…</option>
+                      </select>
+                      {newEcranForm.marqueMode === 'custom' && (
+                        <input type="text" value={newEcranForm.marque}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, marque: e.target.value }))}
+                          placeholder="Nom de la marque"
+                          className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Gamme</label>
+                      <input type="text" value={newEcranForm.gamme}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, gamme: e.target.value }))}
+                        placeholder="ex: iPhone 11"
+                        list="gammes-existantes"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      <datalist id="gammes-existantes">
+                        {ecranGammesDistinct.map((g) => <option key={g} value={g} />)}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Modèle précis</label>
+                      {newEcranForm.marque === 'Apple' ? (
+                        <select value={newEcranForm.modele}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                          <option value="">— Choisir —</option>
+                          {IPHONE_MODELES.map((m) => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      ) : (
+                        <input type="text" value={newEcranForm.modele}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
+                          placeholder="ex: iPhone 11 Pro"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Code modèle (optionnel)</label>
+                      <input type="text" value={newEcranForm.modele_code}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, modele_code: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    {TYPES_PIECE.find((t) => t.id === newEcranForm.type_piece)?.aQualite && (
+                      <div>
+                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Qualité</label>
+                        <select value={newEcranForm.qualite}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, qualite: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                          <option value="compatible">Compatible</option>
+                          <option value="original_equivalent">Qualité originale</option>
+                          <option value="original">100% Original</option>
+                        </select>
+                      </div>
+                    )}
+                    <div className="flex items-end">
+                      <label className="flex items-center gap-2 text-xs text-gray-600 pb-2">
+                        <input type="checkbox" checked={newEcranForm.disponible}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, disponible: e.target.checked }))}
+                          className="w-4 h-4 accent-[#00B4CC]" />
+                        Disponible à la vente
+                      </label>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
+                      <input type="number" step="0.5" min="0" value={newEcranForm.cout_achat}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, cout_achat: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
+                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_min}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
+                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_defaut}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
+                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_max}
+                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
+                    <input type="number" step="1" min="0" value={newEcranForm.quantite_stock}
+                      onChange={(e) => setNewEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
+                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={handleCreateEcran} disabled={savingNewEcran}
+                      className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                      {savingNewEcran ? 'Création...' : 'Créer le modèle'}
+                    </button>
+                    <button onClick={() => { resetNewEcranForm(); setShowNewEcranForm(false) }}
+                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {loadingEcranCatalog ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : ecranCatalogFiltered.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                  Aucun écran trouvé.
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {Object.entries(ecranGroupedByGamme).map(([gamme, rows]) => (
+                    <div key={gamme}>
+                      <p className="text-xs font-bold uppercase text-gray-400 mb-2">{gamme}</p>
+                      <div className="space-y-2">
+                        {rows.map((row) => {
+                          const isEditing = editingEcran?.id === row.id
+                          const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
+                            : row.qualite === 'original_equivalent' ? 'Qualité originale'
+                            : '100% Original'
+                          return (
+                            <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                              <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-bold text-[#1B2A4A]">{row.modele}</p>
+                                  {row.modele_code && (
+                                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{row.modele_code}</p>
+                                  )}
+                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700">
+                                      {qualiteLabel}
+                                    </span>
+                                    {!row.disponible && (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                                        Non disponible
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {!isEditing && (
+                                  <>
+                                    <div className="flex gap-4 text-xs">
+                                      <div>
+                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
+                                        <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
+                                        <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
+                                        <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[9px] text-gray-400 uppercase">Stock</p>
+                                        <p className={`font-bold ${(row.quantite_stock || 0) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                                          {row.quantite_stock || 0}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button onClick={() => openEditEcran(row)}
+                                      className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                                      <Pencil size={14} />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                              {isEditing && (
+                                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                                  <div className="grid grid-cols-4 gap-2">
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
+                                      <input type="number" step="0.5" min="0" value={ecranForm.cout_achat}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, cout_achat: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
+                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_defaut}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
+                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_min}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
+                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_max}
+                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
+                                    <input type="number" step="1" min="0" value={ecranForm.quantite_stock}
+                                      onChange={(e) => setEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
+                                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                                  </div>
+                                  <label className="flex items-center gap-2 text-xs text-gray-600">
+                                    <input type="checkbox" checked={ecranForm.disponible}
+                                      onChange={(e) => setEcranForm((f) => ({ ...f, disponible: e.target.checked }))}
+                                      className="w-4 h-4 accent-[#00B4CC]" />
+                                    Disponible à la vente
+                                  </label>
+                                  <div>
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Notes</label>
+                                    <textarea rows={2} value={ecranForm.notes}
+                                      onChange={(e) => setEcranForm((f) => ({ ...f, notes: e.target.value }))}
+                                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <button onClick={handleSaveEcran} disabled={savingEcran}
+                                      className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                                      {savingEcran ? 'Enregistrement...' : 'Enregistrer'}
+                                    </button>
+                                    <button onClick={() => setEditingEcran(null)}
+                                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                                      Annuler
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
 
@@ -5760,7 +6058,7 @@ export default function StockMagasin() {
             </button>
           </div>
 
-          {/* Toggle Recherche / Calendrier / (admin) Prix / Délais / Écrans / Tâches */}
+          {/* Toggle Recherche / Calendrier / (admin) Prix / Délais / Tâches */}
           <div className="flex gap-2 mb-4 flex-wrap">
             {[
               { key: 'recherche', label: '🔍 Recherche' },
@@ -5768,7 +6066,6 @@ export default function StockMagasin() {
               ...(trueIsAdmin ? [
                 { key: 'prix', label: '💰 Prix' },
                 { key: 'delais', label: '⏱️ Délais' },
-                { key: 'ecrans', label: '📱 Écrans par modèle' },
                 { key: 'taches', label: '✅ Tâches clôture' },
               ] : []),
             ].map((s) => (
@@ -6072,302 +6369,6 @@ export default function StockMagasin() {
             </>
           )}
 
-          {sectionPrixDelais === 'ecrans' && trueIsAdmin && (
-            <>
-              {/* Barre filtres */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4 flex flex-col md:flex-row gap-2 items-stretch md:items-center">
-                <select value={ecranMarqueFilter}
-                  onChange={(e) => setEcranMarqueFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white md:w-48">
-                  <option value="all">Toutes les marques</option>
-                  {ecranMarquesDistinct.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-                <input type="text" value={ecranSearch}
-                  onChange={(e) => setEcranSearch(e.target.value)}
-                  placeholder="Rechercher un modèle..."
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                <span className="text-xs font-bold text-gray-400 uppercase whitespace-nowrap md:ml-2">
-                  {ecranCatalogFiltered.length} résultat{ecranCatalogFiltered.length > 1 ? 's' : ''}
-                </span>
-              </div>
-
-              {!showNewEcranForm ? (
-                <button onClick={() => setShowNewEcranForm(true)}
-                  className="mb-4 flex items-center gap-1.5 bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
-                  <Plus size={16}/> Nouveau modèle
-                </button>
-              ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-3">
-                  <h3 className="font-bold text-[#1B2A4A]">Nouvelle pièce</h3>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Type de pièce</label>
-                    <select value={newEcranForm.type_piece}
-                      onChange={(e) => setNewEcranForm((f) => ({ ...f, type_piece: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
-                      {TYPES_PIECE.map((t) => (
-                        <option key={t.id} value={t.id}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Marque</label>
-                      <select value={newEcranForm.marqueMode === 'custom' ? '__autre__' : newEcranForm.marque}
-                        onChange={(e) => {
-                          if (e.target.value === '__autre__') {
-                            setNewEcranForm((f) => ({ ...f, marque: '', marqueMode: 'custom' }))
-                          } else {
-                            setNewEcranForm((f) => ({ ...f, marque: e.target.value, marqueMode: 'existing', gamme: '' }))
-                          }
-                        }}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
-                        <option value="">— Choisir —</option>
-                        {ecranMarquesDistinct.map((m) => <option key={m} value={m}>{m}</option>)}
-                        <option value="__autre__">+ Autre marque…</option>
-                      </select>
-                      {newEcranForm.marqueMode === 'custom' && (
-                        <input type="text" value={newEcranForm.marque}
-                          onChange={(e) => setNewEcranForm((f) => ({ ...f, marque: e.target.value }))}
-                          placeholder="Nom de la marque"
-                          className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Gamme</label>
-                      <input type="text" value={newEcranForm.gamme}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, gamme: e.target.value }))}
-                        placeholder="ex: iPhone 11"
-                        list="gammes-existantes"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                      <datalist id="gammes-existantes">
-                        {ecranGammesDistinct.map((g) => <option key={g} value={g} />)}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Modèle précis</label>
-                      {newEcranForm.marque === 'Apple' ? (
-                        <select value={newEcranForm.modele}
-                          onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
-                          <option value="">— Choisir —</option>
-                          {IPHONE_MODELES.map((m) => <option key={m} value={m}>{m}</option>)}
-                        </select>
-                      ) : (
-                        <input type="text" value={newEcranForm.modele}
-                          onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
-                          placeholder="ex: iPhone 11 Pro"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                      )}
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Code modèle (optionnel)</label>
-                      <input type="text" value={newEcranForm.modele_code}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, modele_code: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                    </div>
-                    {TYPES_PIECE.find((t) => t.id === newEcranForm.type_piece)?.aQualite && (
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Qualité</label>
-                        <select value={newEcranForm.qualite}
-                          onChange={(e) => setNewEcranForm((f) => ({ ...f, qualite: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
-                          <option value="compatible">Compatible</option>
-                          <option value="original_equivalent">Qualité originale</option>
-                          <option value="original">100% Original</option>
-                        </select>
-                      </div>
-                    )}
-                    <div className="flex items-end">
-                      <label className="flex items-center gap-2 text-xs text-gray-600 pb-2">
-                        <input type="checkbox" checked={newEcranForm.disponible}
-                          onChange={(e) => setNewEcranForm((f) => ({ ...f, disponible: e.target.checked }))}
-                          className="w-4 h-4 accent-[#00B4CC]" />
-                        Disponible à la vente
-                      </label>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
-                      <input type="number" step="0.5" min="0" value={newEcranForm.cout_achat}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, cout_achat: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
-                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_min}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
-                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_defaut}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
-                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_max}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
-                    <input type="number" step="1" min="0" value={newEcranForm.quantite_stock}
-                      onChange={(e) => setNewEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
-                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={handleCreateEcran} disabled={savingNewEcran}
-                      className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                      {savingNewEcran ? 'Création...' : 'Créer le modèle'}
-                    </button>
-                    <button onClick={() => { resetNewEcranForm(); setShowNewEcranForm(false) }}
-                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
-                      Annuler
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {loadingEcranCatalog ? (
-                <div className="flex items-center justify-center h-40">
-                  <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : ecranCatalogFiltered.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-                  Aucun écran trouvé.
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {Object.entries(ecranGroupedByGamme).map(([gamme, rows]) => (
-                    <div key={gamme}>
-                      <p className="text-xs font-bold uppercase text-gray-400 mb-2">{gamme}</p>
-                      <div className="space-y-2">
-                        {rows.map((row) => {
-                          const isEditing = editingEcran?.id === row.id
-                          const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
-                            : row.qualite === 'original_equivalent' ? 'Qualité originale'
-                            : '100% Original'
-                          return (
-                            <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                              <div className="flex items-center justify-between gap-3 flex-wrap">
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-bold text-[#1B2A4A]">{row.modele}</p>
-                                  {row.modele_code && (
-                                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{row.modele_code}</p>
-                                  )}
-                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700">
-                                      {qualiteLabel}
-                                    </span>
-                                    {!row.disponible && (
-                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                                        Non disponible
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                {!isEditing && (
-                                  <>
-                                    <div className="flex gap-4 text-xs">
-                                      <div>
-                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
-                                        <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
-                                        <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
-                                        <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-[9px] text-gray-400 uppercase">Stock</p>
-                                        <p className={`font-bold ${(row.quantite_stock || 0) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
-                                          {row.quantite_stock || 0}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <button onClick={() => openEditEcran(row)}
-                                      className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
-                                      <Pencil size={14} />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                              {isEditing && (
-                                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
-                                  <div className="grid grid-cols-4 gap-2">
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
-                                      <input type="number" step="0.5" min="0" value={ecranForm.cout_achat}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, cout_achat: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
-                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_defaut}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
-                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_min}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
-                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_max}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Quantité en stock</label>
-                                    <input type="number" step="1" min="0" value={ecranForm.quantite_stock}
-                                      onChange={(e) => setEcranForm((f) => ({ ...f, quantite_stock: e.target.value }))}
-                                      className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                  </div>
-                                  <label className="flex items-center gap-2 text-xs text-gray-600">
-                                    <input type="checkbox" checked={ecranForm.disponible}
-                                      onChange={(e) => setEcranForm((f) => ({ ...f, disponible: e.target.checked }))}
-                                      className="w-4 h-4 accent-[#00B4CC]" />
-                                    Disponible à la vente
-                                  </label>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Notes</label>
-                                    <textarea rows={2} value={ecranForm.notes}
-                                      onChange={(e) => setEcranForm((f) => ({ ...f, notes: e.target.value }))}
-                                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <button onClick={handleSaveEcran} disabled={savingEcran}
-                                      className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                                      {savingEcran ? 'Enregistrement...' : 'Enregistrer'}
-                                    </button>
-                                    <button onClick={() => setEditingEcran(null)}
-                                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
-                                      Annuler
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
 
           {sectionPrixDelais === 'taches' && trueIsAdmin && (
             <>
