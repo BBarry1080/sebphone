@@ -2918,6 +2918,9 @@ export default function StockMagasin() {
       appareil: newRepairFromHubForm.appareil || null,
       imei: newRepairFromHubForm.imei || null,
       type_panne: newRepairFromHubForm.type_panne || null,
+      ecran_id: hubPieceRowSel?.id || null,
+      ecran_modele: hubPieceRowSel?.modele || null,
+      ecran_qualite: hubPieceRowSel?.qualite || null,
       technicien_carte_mere: newRepairFromHubForm.technicien_carte_mere || null,
       panne_description: newRepairFromHubForm.panne_description.trim() || null,
       delai_annonce: hubPieceRowSel?.type_piece === 'carte_mere' ? getDelaiPiece('carte_mere', getStockPourMagasin(hubPieceRowSel.id)) : null,
@@ -2933,6 +2936,19 @@ export default function StockMagasin() {
     }).select().single()
     setSavingNewRepairFromHub(false)
     if (error) { alert('Erreur : ' + error.message); return }
+
+    // La piece est reservee des la creation du bon : elle sort du stock
+    // maintenant, et y retournera si la reparation est annulee
+    if (hubPieceRowSel?.id) {
+      const { error: stockErr } = await supabase.rpc('decrementer_stock_piece', {
+        p_ecran_id: hubPieceRowSel.id,
+        p_magasin_id: magasin,
+        p_quantite: 1,
+      })
+      if (stockErr) alert('Réparation créée, mais le stock n\'a pas pu être décrémenté : ' + stockErr.message)
+      else fetchEcranStockMagasin()
+    }
+
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
     setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '' })
     setHubPieceRowSel(null)
@@ -3172,14 +3188,77 @@ export default function StockMagasin() {
       }
     }
     await supabase.from('repairs').update({
+      status: 'abandonne',
       suivi_statut: 'annule',
       motif_annulation: annulationMotifTexte.trim() || null,
     }).eq('id', repair.id)
+    await remettrePieceEnStock(repair)
     setAnnulationMotifOpenId(null)
     setAnnulationMotifTexte('')
     setAnnulationRembourser(false)
     setProcessingAnnulation(false)
     fetchSuiviCarteMere()
+  }
+
+  // Remise en stock d'une piece reservee, partagee par les deux flux
+  // d'annulation (bon de reparation et suivi carte mere)
+  const remettrePieceEnStock = async (repair) => {
+    if (!repair?.ecran_id) return
+    const { data: stockRow } = await supabase
+      .from('reparation_ecrans_stock_magasin')
+      .select('quantite_stock')
+      .eq('ecran_id', repair.ecran_id)
+      .eq('magasin_id', repair.magasin_id)
+      .maybeSingle()
+    const { error } = await supabase
+      .from('reparation_ecrans_stock_magasin')
+      .upsert({
+        ecran_id: repair.ecran_id,
+        magasin_id: repair.magasin_id,
+        quantite_stock: (Number(stockRow?.quantite_stock) || 0) + 1,
+      }, { onConflict: 'ecran_id,magasin_id' })
+    if (error) alert('La pièce n\'a pas pu être remise en stock : ' + error.message)
+    else if (repair.magasin_id === magasin) fetchEcranStockMagasin()
+  }
+
+  const handleAnnulerReparation = async (repair) => {
+    const motif = window.prompt(
+      `Annuler la réparation ${repair.bon_number} — ${repair.client_nom} ?\n\n` +
+      (repair.ecran_id ? 'La pièce réservée sera remise en stock automatiquement.\n\n' : '') +
+      'Motif de l\'annulation :'
+    )
+    if (motif === null) return
+
+    const dejaPaye = Number(repair.montant_paye) || 0
+    let rembourser = false
+    if (dejaPaye > 0) {
+      rembourser = window.confirm(
+        `Ce client a déjà payé ${dejaPaye.toFixed(2)}€.\n\n` +
+        `OK = rembourser maintenant (ligne négative en caisse)\n` +
+        `Annuler = ne pas rembourser pour l'instant`
+      )
+      if (rembourser) {
+        const result = await rembourserReparationAnnulee(repair)
+        if (!result.ok) { alert(result.message); return }
+      }
+    }
+
+    const { error } = await supabase.from('repairs')
+      .update({
+        status: 'abandonne',
+        suivi_statut: 'annule',
+        motif_annulation: motif.trim() || null,
+      })
+      .eq('id', repair.id)
+    if (error) { alert('Erreur : ' + error.message); return }
+
+    await remettrePieceEnStock(repair)
+
+    logActivity('repair_cancelled',
+      `Réparation annulée — ${repair.bon_number} (${motif.trim() || 'sans motif'})${rembourser ? ` — remboursé ${dejaPaye.toFixed(2)}€` : ''}`)
+    fetchPendingRepairs()
+    fetchReparationsHubData()
+    fetchCaisseToday()
   }
 
   const removeNewRepairFromCart = (key) => {
@@ -7343,12 +7422,32 @@ export default function StockMagasin() {
                 ) : (
                   pendingRepairs.map((r) => {
                     const solde = (Number(r.prix) || 0) - (Number(r.montant_paye) || 0)
+                    const joursDepuis = Math.floor(
+                      (Date.now() - new Date(r.created_at).getTime()) / 86400000
+                    )
                     return (
-                      <button key={r.id} onClick={() => addRepairToCart(r)}
-                        className="w-full text-left bg-amber-50 hover:bg-amber-100 rounded-lg p-1.5 transition-all">
-                        <p className="text-[9px] font-bold text-[#1B2A4A] truncate">{r.client_nom}</p>
-                        <p className="text-[9px] text-amber-700 font-bold">{solde.toFixed(2)}€</p>
-                      </button>
+                      <div key={r.id} className="bg-amber-50 hover:bg-amber-100 rounded-lg p-1.5 transition-all">
+                        <button onClick={() => addRepairToCart(r)} className="w-full text-left">
+                          <p className="text-[9px] font-bold text-[#1B2A4A] truncate">
+                            {r.bon_number} · {r.client_nom}
+                          </p>
+                          <p className="text-[9px] text-amber-700 font-bold">
+                            {solde.toFixed(2)}€
+                            {Number(r.montant_paye) > 0 && (
+                              <span className="text-gray-400 font-normal"> (acompte {Number(r.montant_paye).toFixed(2)}€)</span>
+                            )}
+                          </p>
+                          {joursDepuis > 0 && (
+                            <p className={`text-[8px] ${joursDepuis >= 7 ? 'text-red-500 font-bold' : 'text-gray-400'}`}>
+                              déposé il y a {joursDepuis}j
+                            </p>
+                          )}
+                        </button>
+                        <button onClick={() => handleAnnulerReparation(r)}
+                          className="w-full mt-0.5 text-[8px] text-gray-400 hover:text-red-600 text-left">
+                          ✕ Annuler
+                        </button>
+                      </div>
                     )
                   })
                 )}
