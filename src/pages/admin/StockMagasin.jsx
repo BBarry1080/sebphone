@@ -20,8 +20,11 @@ import { logActivity } from '../../lib/logActivity'
 const POS_CATEGORIES = [
   'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
   'Carte mémoire', 'Ordinateur', 'Tablette', 'PlayStation',
-  'Écran', 'Caméra', 'Batterie', 'Vitre arrière',
   'Autre téléphone', 'Écran Samsung',
+  'Écran', 'Carte mère', 'Port de chargement', 'Vitre arrière',
+  'Batterie', 'Caméra lentille', 'Caméra avant', 'Caméra arrière',
+  'Boutons', 'Baffle du haut', 'Baffle du bas', 'Micro',
+  'Châssis', 'Capteur flex',
 ]
 
 // Couleur par magasin — pastilles du calendrier et cartes du coffre
@@ -1940,24 +1943,34 @@ export default function StockMagasin() {
     return groups
   }, [ecranCatalogFiltered])
 
+  const posCategorieToTypePiece = (catName) =>
+    TYPES_PIECE.find((t) => t.label === catName)?.id || null
+
+  const posSelectedTypePiece = useMemo(
+    () => posCategorieToTypePiece(selectedPosCategory),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedPosCategory]
+  )
+
   const posEcranMarques = useMemo(() => {
+    if (!posSelectedTypePiece) return []
     return [...new Set(
-      ecranCatalogList.filter((e) => e.disponible !== false && e.type_piece === 'ecran').map((e) => e.marque).filter(Boolean)
+      ecranCatalogList.filter((e) => e.disponible !== false && e.type_piece === posSelectedTypePiece).map((e) => e.marque).filter(Boolean)
     )].sort()
-  }, [ecranCatalogList])
+  }, [ecranCatalogList, posSelectedTypePiece])
 
   const posEcranModelesForMarque = useMemo(() => {
-    if (!posEcranMarqueSel) return {}
+    if (!posEcranMarqueSel || !posSelectedTypePiece) return {}
     const groups = {}
     ecranCatalogList
-      .filter((e) => e.disponible !== false && e.type_piece === 'ecran' && e.marque === posEcranMarqueSel)
+      .filter((e) => e.disponible !== false && e.type_piece === posSelectedTypePiece && e.marque === posEcranMarqueSel)
       .forEach((row) => {
         const key = row.modele || '—'
         if (!groups[key]) groups[key] = []
         groups[key].push(row)
       })
     return groups
-  }, [ecranCatalogList, posEcranMarqueSel])
+  }, [ecranCatalogList, posEcranMarqueSel, posSelectedTypePiece])
 
   // ─── Recherche de ticket ───
   const handleSearchTickets = async () => {
@@ -6565,7 +6578,7 @@ export default function StockMagasin() {
 
           {/* COLONNE GAUCHE — Catégories + Réparations en attente */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-2 flex flex-col">
-            <button onClick={() => setSelectedPosCategory('Tout')}
+            <button onClick={() => { setSelectedPosCategory('Tout'); setPosEcranMarqueSel(null) }}
               className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
                 ${selectedPosCategory === 'Tout'
                   ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
@@ -6574,7 +6587,7 @@ export default function StockMagasin() {
             </button>
             {POS_CATEGORIES.map((catName) => (
               <button key={catName}
-                onClick={() => setSelectedPosCategory(catName)}
+                onClick={() => { setSelectedPosCategory(catName); setPosEcranMarqueSel(null) }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
                   ${selectedPosCategory === catName
                     ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
@@ -6732,12 +6745,13 @@ export default function StockMagasin() {
                 </div>
               )
             ) : (() => {
-              if (selectedPosCategory === 'Écran') {
+              if (posSelectedTypePiece) {
+                const typePieceLabel = TYPES_PIECE.find((t) => t.id === posSelectedTypePiece)?.label || selectedPosCategory
                 if (!posEcranMarqueSel) {
                   return posEcranMarques.length === 0 ? (
                     <p className="text-center text-gray-400 py-8 text-sm">
-                      Aucun écran dans le catalogue — ajoute-les depuis
-                      Réparations → 📱 Écrans par modèle
+                      Aucune pièce "{typePieceLabel}" dans le catalogue — ajoute-les depuis
+                      Gestion de stock → 📱 Réparations
                     </p>
                   ) : (
                     <div className="grid grid-cols-3 gap-2">
@@ -6750,7 +6764,7 @@ export default function StockMagasin() {
                     </div>
                   )
                 }
-                const isApple = posEcranMarqueSel === 'Apple'
+                const isApple = posEcranMarqueSel === 'Apple' && posSelectedTypePiece === 'ecran'
                 const modelesAAfficher = isApple
                   ? IPHONE_MODELES
                   : Object.keys(posEcranModelesForMarque)
@@ -6763,7 +6777,7 @@ export default function StockMagasin() {
                     <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Modèles</p>
                     {modelesAAfficher.length === 0 ? (
                       <p className="text-center text-gray-400 py-8 text-sm">
-                        Aucun écran {posEcranMarqueSel} dans le catalogue
+                        Aucune pièce {posEcranMarqueSel} dans le catalogue
                       </p>
                     ) : (
                       <div className="grid grid-cols-3 gap-2">
@@ -6771,7 +6785,15 @@ export default function StockMagasin() {
                           const rows = posEcranModelesForMarque[modele] || []
                           const hasAny = rows.length > 0
                           return (
-                            <button key={modele} onClick={() => setPosEcranQualiteChoices({ modele, rows })}
+                            <button key={modele}
+                              onClick={() => {
+                                if (!hasAny) return
+                                if (rows.length === 1) {
+                                  openNewRepairForm(rows[0])
+                                } else {
+                                  setPosEcranQualiteChoices({ modele, rows })
+                                }
+                              }}
                               disabled={!hasAny}
                               className={`text-left rounded-xl p-3 transition-all border ${
                                 hasAny
