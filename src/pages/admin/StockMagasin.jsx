@@ -68,6 +68,7 @@ export default function StockMagasin() {
   const [tachesAdminList, setTachesAdminList]     = useState([])
   const [tacheRecurrenteForm, setTacheRecurrenteForm] = useState({
     titre: '', description: '', type: 'hebdo', jours_semaine: [], date_specifique: '', magasins: [], intervalle_rappel_min: 10,
+    assigne_a_id: '',
   })
   const [categories, setCategories] = useState([])
   const [items, setItems] = useState([])
@@ -1388,9 +1389,12 @@ export default function StockMagasin() {
       const matchesDate = t.date_specifique === todayStr
       return matchesJour || matchesDate
     })
-    const applicable = applicableRaw.filter((t) =>
-      !t.magasins || t.magasins.length === 0 || t.magasins.includes(magasin)
-    )
+    const viewerIdentity = getViewerIdentity ? getViewerIdentity() : null
+    const applicable = applicableRaw.filter((t) => {
+      const magasinOk = !t.magasins || t.magasins.length === 0 || t.magasins.includes(magasin)
+      const assignationOk = !t.assigne_a_id || t.assigne_a_id === viewerIdentity?.id
+      return magasinOk && assignationOk
+    })
     if (applicable.length === 0) { setTachesDuJour([]); return }
     const { data: completions } = await supabase
       .from('taches_recurrentes_completions')
@@ -1441,10 +1445,11 @@ export default function StockMagasin() {
       date_specifique: tacheRecurrenteForm.type === 'date' ? tacheRecurrenteForm.date_specifique : null,
       magasins: tacheRecurrenteForm.magasins.length > 0 ? tacheRecurrenteForm.magasins : null,
       intervalle_rappel_min: tacheRecurrenteForm.intervalle_rappel_min || 10,
+      assigne_a_id: tacheRecurrenteForm.assigne_a_id || null,
       created_by: currentSebUser?.name || 'Admin',
     })
     if (error) { alert('Erreur : ' + error.message); return }
-    setTacheRecurrenteForm({ titre: '', description: '', type: 'hebdo', jours_semaine: [], date_specifique: '', magasins: [], intervalle_rappel_min: 10 })
+    setTacheRecurrenteForm({ titre: '', description: '', type: 'hebdo', jours_semaine: [], date_specifique: '', magasins: [], intervalle_rappel_min: 10, assigne_a_id: '' })
     fetchAllTaches()
     fetchTachesDuJour()
   }
@@ -2490,6 +2495,8 @@ export default function StockMagasin() {
 
       logActivity('devis_sent', `Devis envoyé à ${email} — ${cartTotal.toFixed(2)}€${delaiTexteFinal ? ' — ' + delaiTexteFinal : ''}`)
       setCart([])
+      setRepairsInCart([])
+      setNewRepairsInCart([])
       setPaymentSplits([])
       setCurrentPaymentAmount('')
       setGlobalDiscountValue('')
@@ -9239,6 +9246,20 @@ export default function StockMagasin() {
                   onChange={(e) => setTacheRecurrenteForm((f) => ({ ...f, intervalle_rappel_min: Number(e.target.value) }))}
                   className="w-16 px-2 py-1 border border-gray-200 rounded-lg text-sm" />
                 <p className="text-[10px] text-gray-500">minutes</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">
+                  Assigner à (vide = tout le magasin)
+                </p>
+                <select value={tacheRecurrenteForm.assigne_a_id}
+                  onChange={(e) => setTacheRecurrenteForm((f) => ({ ...f, assigne_a_id: e.target.value }))}
+                  onFocus={() => { if (staffListCaisse.length === 0) fetchStaffCaisse() }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="">Tout le magasin</option>
+                  {staffListCaisse.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
               </div>
               <button onClick={handleCreateTache}
                 className="w-full py-2 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A]">
