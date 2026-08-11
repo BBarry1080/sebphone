@@ -365,6 +365,25 @@ export default function StockMagasin() {
 
   // Création d'un nouveau modèle d'écran
   const [showNewEcranForm, setShowNewEcranForm]   = useState(false)
+  const IPHONE_MODELES = [
+    'iPhone', 'iPhone 3G', 'iPhone 3GS',
+    'iPhone 4', 'iPhone 4S',
+    'iPhone 5', 'iPhone 5C', 'iPhone 5S',
+    'iPhone 6', 'iPhone 6 Plus', 'iPhone 6S', 'iPhone 6S Plus',
+    'iPhone SE (1re génération)',
+    'iPhone 7', 'iPhone 7 Plus', 'iPhone 8', 'iPhone 8 Plus',
+    'iPhone X', 'iPhone XR', 'iPhone XS', 'iPhone XS Max',
+    'iPhone 11', 'iPhone 11 Pro', 'iPhone 11 Pro Max',
+    'iPhone SE (2e génération)',
+    'iPhone 12 mini', 'iPhone 12', 'iPhone 12 Pro', 'iPhone 12 Pro Max',
+    'iPhone 13 mini', 'iPhone 13', 'iPhone 13 Pro', 'iPhone 13 Pro Max',
+    'iPhone SE (3e génération)',
+    'iPhone 14', 'iPhone 14 Plus', 'iPhone 14 Pro', 'iPhone 14 Pro Max',
+    'iPhone 15', 'iPhone 15 Plus', 'iPhone 15 Pro', 'iPhone 15 Pro Max',
+    'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max', 'iPhone 16e',
+    'iPhone 17', 'iPhone Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max', 'iPhone 17e',
+  ]
+
   const TYPES_PIECE = [
     { id: 'ecran', label: 'Écran', aQualite: true },
     { id: 'carte_mere', label: 'Carte mère', aQualite: false },
@@ -1897,7 +1916,7 @@ export default function StockMagasin() {
 
   const posEcranMarques = useMemo(() => {
     return [...new Set(
-      ecranCatalogList.filter((e) => e.disponible !== false).map((e) => e.marque).filter(Boolean)
+      ecranCatalogList.filter((e) => e.disponible !== false && e.type_piece === 'ecran').map((e) => e.marque).filter(Boolean)
     )].sort()
   }, [ecranCatalogList])
 
@@ -1905,7 +1924,7 @@ export default function StockMagasin() {
     if (!posEcranMarqueSel) return {}
     const groups = {}
     ecranCatalogList
-      .filter((e) => e.disponible !== false && e.marque === posEcranMarqueSel)
+      .filter((e) => e.disponible !== false && e.type_piece === 'ecran' && e.marque === posEcranMarqueSel)
       .forEach((row) => {
         const key = row.modele || '—'
         if (!groups[key]) groups[key] = []
@@ -1913,14 +1932,6 @@ export default function StockMagasin() {
       })
     return groups
   }, [ecranCatalogList, posEcranMarqueSel])
-
-  const handleClickEcranModele = (rows) => {
-    if (rows.length === 1) {
-      openNewRepairForm(rows[0])
-    } else {
-      setPosEcranQualiteChoices(rows)
-    }
-  }
 
   // ─── Recherche de ticket ───
   const handleSearchTickets = async () => {
@@ -6108,10 +6119,19 @@ export default function StockMagasin() {
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Modèle précis</label>
-                      <input type="text" value={newEcranForm.modele}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
-                        placeholder="ex: iPhone 11 Pro"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      {newEcranForm.marque === 'Apple' ? (
+                        <select value={newEcranForm.modele}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
+                          <option value="">— Choisir —</option>
+                          {IPHONE_MODELES.map((m) => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      ) : (
+                        <input type="text" value={newEcranForm.modele}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, modele: e.target.value }))}
+                          placeholder="ex: iPhone 11 Pro"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                      )}
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Code modèle (optionnel)</label>
@@ -6613,37 +6633,38 @@ export default function StockMagasin() {
                     </div>
                   )
                 }
-                const modeleEntries = Object.entries(posEcranModelesForMarque)
+                const isApple = posEcranMarqueSel === 'Apple'
+                const modelesAAfficher = isApple
+                  ? IPHONE_MODELES
+                  : Object.keys(posEcranModelesForMarque)
                 return (
                   <div>
                     <button onClick={() => setPosEcranMarqueSel(null)}
                       className="text-xs font-bold text-gray-500 hover:text-[#1B2A4A] mb-3">
                       ← Marques
                     </button>
-                    {modeleEntries.length === 0 ? (
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Modèles</p>
+                    {modelesAAfficher.length === 0 ? (
                       <p className="text-center text-gray-400 py-8 text-sm">
                         Aucun écran {posEcranMarqueSel} dans le catalogue
                       </p>
                     ) : (
                       <div className="grid grid-cols-3 gap-2">
-                        {modeleEntries.map(([modele, rows]) => {
-                          const single = rows.length === 1
-                          const qualiteLabel = single
-                            ? (rows[0].qualite === 'compatible' ? 'Compatible'
-                              : rows[0].qualite === 'original_equivalent' ? 'Qualité originale'
-                              : '100% Original')
-                            : `${rows.length} qualités`
-                          const prixAffiche = single
-                            ? Number(rows[0].prix_defaut || 0).toFixed(2)
-                            : Math.min(...rows.map((r) => Number(r.prix_defaut || 0))).toFixed(2)
+                        {modelesAAfficher.map((modele) => {
+                          const rows = posEcranModelesForMarque[modele] || []
+                          const hasAny = rows.length > 0
                           return (
-                            <button key={modele} onClick={() => handleClickEcranModele(rows)}
-                              className="text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-3 transition-all border border-purple-100 hover:border-purple-300">
-                              <p className="font-bold text-xs text-[#1B2A4A] mb-1 line-clamp-2">{modele}</p>
-                              <p className="text-[10px] text-purple-600 font-bold mb-1">{qualiteLabel}</p>
-                              <p className="text-sm font-bold text-purple-700">
-                                {single ? '' : 'dès '}{prixAffiche}€
-                              </p>
+                            <button key={modele} onClick={() => setPosEcranQualiteChoices({ modele, rows })}
+                              disabled={!hasAny}
+                              className={`text-left rounded-xl p-3 transition-all border ${
+                                hasAny
+                                  ? 'bg-purple-50 hover:bg-purple-100 border-purple-100 hover:border-purple-300'
+                                  : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'
+                              }`}>
+                              <p className="font-bold text-xs text-[#1B2A4A] line-clamp-2">{modele}</p>
+                              {!hasAny && (
+                                <p className="text-[10px] text-gray-400 mt-1">Non disponible</p>
+                              )}
                             </button>
                           )
                         })}
@@ -7919,7 +7940,7 @@ export default function StockMagasin() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-[#1B2A4A] text-lg">
-                {posEcranQualiteChoices[0]?.modele}
+                {posEcranQualiteChoices.modele}
               </h3>
               <button onClick={() => setPosEcranQualiteChoices(null)}
                 className="text-gray-400 hover:text-[#1B2A4A]">
@@ -7928,7 +7949,7 @@ export default function StockMagasin() {
             </div>
             <p className="text-xs text-gray-500 mb-3">Choisis la qualité</p>
             <div className="space-y-2">
-              {posEcranQualiteChoices.map((row) => {
+              {posEcranQualiteChoices.rows.map((row) => {
                 const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
                   : row.qualite === 'original_equivalent' ? 'Qualité originale'
                   : '100% Original'
