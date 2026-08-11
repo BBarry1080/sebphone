@@ -331,6 +331,11 @@ export default function StockMagasin() {
     nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
   })
   const [savingNewRepairFromHub, setSavingNewRepairFromHub] = useState(false)
+  const [hubPieceStep, setHubPieceStep]           = useState('type') // 'type' | 'marque' | 'modele'
+  const [hubPieceTypeSel, setHubPieceTypeSel]     = useState(null)
+  const [hubPieceMarqueSel, setHubPieceMarqueSel] = useState(null)
+  const [hubPieceRowSel, setHubPieceRowSel]       = useState(null)
+  const [showHubPiecePicker, setShowHubPiecePicker] = useState(false)
   const [delaiTypesList, setDelaiTypesList]       = useState([])
   const [loadingDelaiTypes, setLoadingDelaiTypes] = useState(false)
   const [editingDelai, setEditingDelai]           = useState(null)
@@ -387,6 +392,56 @@ export default function StockMagasin() {
   })
   const [savingNewEcran, setSavingNewEcran]       = useState(false)
   const [showDelaiForm, setShowDelaiForm]         = useState(false)
+
+  const hubPieceMarques = useMemo(() => {
+    if (!hubPieceTypeSel) return []
+    return [...new Set(
+      ecranCatalogList
+        .filter((e) => e.disponible !== false && e.type_piece === hubPieceTypeSel)
+        .map((e) => e.marque)
+        .filter(Boolean)
+    )].sort()
+  }, [ecranCatalogList, hubPieceTypeSel])
+
+  const hubPieceModeles = useMemo(() => {
+    if (!hubPieceTypeSel || !hubPieceMarqueSel) return {}
+    const groups = {}
+    ecranCatalogList
+      .filter((e) => e.disponible !== false && e.type_piece === hubPieceTypeSel && e.marque === hubPieceMarqueSel)
+      .forEach((row) => {
+        const key = row.modele || '—'
+        if (!groups[key]) groups[key] = []
+        groups[key].push(row)
+      })
+    return groups
+  }, [ecranCatalogList, hubPieceTypeSel, hubPieceMarqueSel])
+
+  const openHubPiecePicker = () => {
+    if (ecranCatalogList.length === 0) fetchEcranCatalog()
+    setHubPieceStep('type')
+    setHubPieceTypeSel(null)
+    setHubPieceMarqueSel(null)
+    setHubPieceRowSel(null)
+    setShowHubPiecePicker(true)
+  }
+
+  const selectHubPieceRow = (row) => {
+    const typeLabel = TYPES_PIECE.find((t) => t.id === row.type_piece)?.label || row.type_piece
+    const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
+      : row.qualite === 'original_equivalent' ? 'Qualité originale'
+      : '100% Original'
+    const panneTexte = TYPES_PIECE.find((t) => t.id === row.type_piece)?.aQualite
+      ? `${typeLabel} — ${qualiteLabel}`
+      : typeLabel
+    setHubPieceRowSel(row)
+    setNewRepairFromHubForm((f) => ({
+      ...f,
+      appareil: row.modele,
+      type_panne: panneTexte,
+      prix: String(row.prix_defaut || 0),
+    }))
+    setShowHubPiecePicker(false)
+  }
 
   // Devis — délai estimé
   const [devisDelaiId, setDevisDelaiId]           = useState('')
@@ -7965,6 +8020,107 @@ export default function StockMagasin() {
         )
       })()}
 
+      {showHubPiecePicker && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">
+                {hubPieceStep === 'type' ? 'Type de pièce'
+                  : hubPieceStep === 'marque' ? 'Marque'
+                  : 'Modèle'}
+              </h3>
+              <button onClick={() => setShowHubPiecePicker(false)} className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+
+            {hubPieceStep === 'type' && (
+              <div className="grid grid-cols-2 gap-2">
+                {TYPES_PIECE.map((t) => (
+                  <button key={t.id}
+                    onClick={() => { setHubPieceTypeSel(t.id); setHubPieceStep('marque') }}
+                    className="text-left bg-gray-50 hover:bg-purple-50 rounded-xl p-3 border border-gray-100 hover:border-purple-300">
+                    <p className="text-sm font-bold text-[#1B2A4A]">{t.label}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {hubPieceStep === 'marque' && (
+              <div>
+                <button onClick={() => setHubPieceStep('type')}
+                  className="text-xs font-bold text-gray-500 hover:text-[#1B2A4A] mb-3">
+                  ← Type de pièce
+                </button>
+                {hubPieceMarques.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-8">
+                    Aucune pièce de ce type dans le catalogue
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {hubPieceMarques.map((m) => (
+                      <button key={m}
+                        onClick={() => { setHubPieceMarqueSel(m); setHubPieceStep('modele') }}
+                        className="text-left bg-gray-50 hover:bg-purple-50 rounded-xl p-3 border border-gray-100 hover:border-purple-300">
+                        <p className="text-sm font-bold text-[#1B2A4A]">{m}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {hubPieceStep === 'modele' && (
+              <div>
+                <button onClick={() => setHubPieceStep('marque')}
+                  className="text-xs font-bold text-gray-500 hover:text-[#1B2A4A] mb-3">
+                  ← Marques
+                </button>
+                {Object.keys(hubPieceModeles).length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-8">
+                    Aucun modèle {hubPieceMarqueSel} dans le catalogue
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {Object.entries(hubPieceModeles).map(([modele, rows]) => (
+                      rows.length === 1 ? (
+                        <button key={modele} onClick={() => selectHubPieceRow(rows[0])}
+                          className="w-full text-left bg-gray-50 hover:bg-purple-50 rounded-xl p-3 border border-gray-100 hover:border-purple-300 flex items-center justify-between">
+                          <span className="text-sm font-bold text-[#1B2A4A]">{modele}</span>
+                          <span className="text-sm font-bold text-purple-700">
+                            {Number(rows[0].prix_defaut || 0).toFixed(2)}€
+                          </span>
+                        </button>
+                      ) : (
+                        <div key={modele} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                          <p className="text-sm font-bold text-[#1B2A4A] mb-2">{modele}</p>
+                          <div className="space-y-1.5">
+                            {rows.map((row) => {
+                              const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
+                                : row.qualite === 'original_equivalent' ? 'Qualité originale'
+                                : '100% Original'
+                              return (
+                                <button key={row.id} onClick={() => selectHubPieceRow(row)}
+                                  className="w-full text-left bg-white hover:bg-purple-50 rounded-lg p-2 border border-gray-200 hover:border-purple-300 flex items-center justify-between">
+                                  <span className="text-xs font-bold text-gray-700">{qualiteLabel}</span>
+                                  <span className="text-xs font-bold text-purple-700">
+                                    {Number(row.prix_defaut || 0).toFixed(2)}€
+                                  </span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* MODAL NOUVELLE RÉPARATION (depuis le hub) */}
       {showNewRepairFromHub && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
@@ -7984,28 +8140,37 @@ export default function StockMagasin() {
                   placeholder="Nom et prénom"
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
               </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Pièce concernée</label>
+                {!hubPieceRowSel ? (
+                  <button type="button" onClick={openHubPiecePicker}
+                    className="w-full px-3 py-2 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 text-left hover:border-[#00B4CC] hover:text-[#00B4CC]">
+                    + Choisir une pièce du catalogue
+                  </button>
+                ) : (
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-[#1B2A4A]">{newRepairFromHubForm.appareil}</p>
+                        <p className="text-xs text-purple-700 font-bold">{newRepairFromHubForm.type_panne}</p>
+                      </div>
+                      <button type="button" onClick={openHubPiecePicker}
+                        className="text-xs font-bold text-purple-700 hover:text-purple-900">
+                        Changer
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Fourchette : {Number(hubPieceRowSel.prix_min || 0).toFixed(2)}€ – {Number(hubPieceRowSel.prix_max || 0).toFixed(2)}€
+                    </p>
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Appareil</label>
-                  <input type="text" value={newRepairFromHubForm.appareil}
-                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, appareil: e.target.value }))}
-                    placeholder="ex: iPhone 13"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">IMEI</label>
                   <input type="text" value={newRepairFromHubForm.imei}
                     onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, imei: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm font-mono" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Type de panne</label>
-                  <input type="text" value={newRepairFromHubForm.type_panne}
-                    onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, type_panne: e.target.value }))}
-                    placeholder="ex: Écran cassé"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Prix (€)</label>
