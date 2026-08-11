@@ -2472,65 +2472,103 @@ export default function StockMagasin() {
   const generateTicketPdfBase64 = async (sale, magasinLabel) => {
     const { jsPDF } = await import('jspdf')
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-    let y = 20
+    const pageWidth = 210
 
-    doc.addImage(LOGO_SEBTELECOM_BASE64, 'PNG', 20, y, 30, 30)
+    doc.setFillColor(27, 42, 74)
+    doc.rect(0, 0, pageWidth, 35, 'F')
+    doc.addImage(LOGO_SEBTELECOM_BASE64, 'PNG', 15, 7, 21, 21)
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(20)
+    doc.setFont(undefined, 'bold')
+    doc.text('Facture', 42, 20)
     doc.setFontSize(9)
     doc.setFont(undefined, 'normal')
-    doc.text('SLT GROUP (SRL)', 55, y + 8)
-    doc.text('Rue du Bailli 22, 1000 Bruxelles', 55, y + 14)
-    doc.text('TVA BE 1028.764.677', 55, y + 20)
-    doc.text(magasinLabel || '', 55, y + 26)
-    y += 38
+    doc.text('SLT GROUP (SRL)', pageWidth - 15, 14, { align: 'right' })
+    doc.text('Rue du Bailli 22, 1000 Bruxelles', pageWidth - 15, 19, { align: 'right' })
+    doc.text('TVA BE 1028.764.677', pageWidth - 15, 24, { align: 'right' })
 
-    doc.setFontSize(12)
-    doc.setFont(undefined, 'bold')
-    doc.text(`Ticket n° ${sale.ticketNumber || ''}`, 20, y)
-    doc.setFont(undefined, 'normal')
+    doc.setTextColor(0, 0, 0)
+    let y = 48
+
+    if (sale.clientNom) {
+      doc.setFontSize(9)
+      doc.setFont(undefined, 'bold')
+      doc.text('CLIENT', 15, y)
+      doc.setFont(undefined, 'normal')
+      doc.setFontSize(11)
+      doc.text(sale.clientNom, 15, y + 6)
+    }
     doc.setFontSize(9)
-    doc.text(new Date(sale.created_at || Date.now()).toLocaleDateString('fr-BE'), 150, y)
-    y += 10
+    doc.setFont(undefined, 'normal')
+    doc.text(`Date : ${new Date(sale.created_at || Date.now()).toLocaleDateString('fr-BE')}`, pageWidth - 15, y, { align: 'right' })
+    doc.text(`Ticket n° ${sale.ticketNumber || ''}`, pageWidth - 15, y + 5, { align: 'right' })
+    doc.text(`Magasin : ${magasinLabel || ''}`, pageWidth - 15, y + 10, { align: 'right' })
+    if (sale.staffName) {
+      doc.text(`Vendeur : ${sale.staffName}`, pageWidth - 15, y + 15, { align: 'right' })
+    }
 
-    doc.setFontSize(10)
+    y += 28
+    doc.setFontSize(9)
     doc.setFont(undefined, 'bold')
-    doc.text('Article', 20, y)
-    doc.text('Qté', 130, y)
-    doc.text('Prix', 175, y, { align: 'right' })
+    doc.setDrawColor(27, 42, 74)
+    doc.setLineWidth(0.5)
+    doc.line(15, y, pageWidth - 15, y)
+    y += 5
+    doc.text('Description', 15, y)
+    doc.text('Qté', 120, y, { align: 'center' })
+    doc.text('Prix HT', 155, y, { align: 'right' })
+    doc.text('Total TTC', pageWidth - 15, y, { align: 'right' })
     y += 2
-    doc.line(20, y, 190, y)
+    doc.line(15, y, pageWidth - 15, y)
     y += 6
-    doc.setFont(undefined, 'normal')
 
+    doc.setFont(undefined, 'normal')
+    const rate = 21
     let totalTTC = 0
     ;(sale.items || []).forEach((c) => {
       const tot = lineTotal(c)
       totalTTC += tot
-      doc.text(String(c.item_name || '').slice(0, 45), 20, y)
-      doc.text(String(c.quantity), 130, y)
-      doc.text(`${tot.toFixed(2)}€`, 175, y, { align: 'right' })
+      const totHT = tot / (1 + rate / 100)
+      doc.text(String(c.item_name || '').slice(0, 55), 15, y)
+      doc.text(String(c.quantity), 120, y, { align: 'center' })
+      doc.text(`${totHT.toFixed(2)}€`, 155, y, { align: 'right' })
+      doc.text(`${tot.toFixed(2)}€`, pageWidth - 15, y, { align: 'right' })
       y += 6
-      if (y > 270) { doc.addPage(); y = 20 }
+      if (y > 260) { doc.addPage(); y = 20 }
     })
 
-    y += 4
-    doc.line(20, y, 190, y)
-    y += 8
-
-    const rate = 21
+    y += 6
     const totalHT = totalTTC / (1 + rate / 100)
     const totalTVA = totalTTC - totalHT
 
     doc.setFontSize(10)
-    doc.text(`Total HT :`, 130, y)
-    doc.text(`${totalHT.toFixed(2)}€`, 175, y, { align: 'right' })
+    doc.text('Total HT', 155, y, { align: 'right' })
+    doc.text(`${totalHT.toFixed(2)}€`, pageWidth - 15, y, { align: 'right' })
+    y += 5
+    doc.text(`TVA (${rate}%)`, 155, y, { align: 'right' })
+    doc.text(`${totalTVA.toFixed(2)}€`, pageWidth - 15, y, { align: 'right' })
+    y += 2
+    doc.setDrawColor(200, 200, 200)
+    doc.setLineWidth(0.2)
+    doc.line(140, y, pageWidth - 15, y)
     y += 6
-    doc.text(`TVA (${rate}%) :`, 130, y)
-    doc.text(`${totalTVA.toFixed(2)}€`, 175, y, { align: 'right' })
-    y += 6
+    doc.setFontSize(13)
     doc.setFont(undefined, 'bold')
-    doc.setFontSize(12)
-    doc.text(`Total TTC :`, 130, y)
-    doc.text(`${totalTTC.toFixed(2)}€`, 175, y, { align: 'right' })
+    doc.setTextColor(0, 180, 204)
+    doc.text('Total TTC', 155, y, { align: 'right' })
+    doc.text(`${totalTTC.toFixed(2)}€`, pageWidth - 15, y, { align: 'right' })
+
+    doc.setTextColor(120, 120, 120)
+    doc.setFontSize(8)
+    doc.setFont(undefined, 'normal')
+    doc.text(
+      'SLT GROUP (SRL) — Rue du Bailli 22, 1000 Bruxelles — TVA BE 1028.764.677',
+      pageWidth / 2, 285, { align: 'center' }
+    )
+    doc.text(
+      '@sebtelecom — Instagram / TikTok / Snapchat',
+      pageWidth / 2, 290, { align: 'center' }
+    )
 
     return doc.output('datauristring').split(',')[1]
   }
