@@ -2884,6 +2884,10 @@ export default function StockMagasin() {
 
   const handleCreateNewRepairFromHub = async () => {
     if (!newRepairFromHubForm.nom.trim()) { alert('Nom du client obligatoire'); return }
+    if (!newRepairFromHubForm.prix || Number(newRepairFromHubForm.prix) <= 0) {
+      alert('Le prix est obligatoire — sans lui, la réparation ne pourra jamais être encaissée')
+      return
+    }
     if (hubPieceRowSel && hubPieceRowSel.type_piece === 'carte_mere' && !newRepairFromHubForm.technicien_carte_mere) {
       alert('Choisis le technicien qui fera la réparation carte mère')
       return
@@ -2904,7 +2908,8 @@ export default function StockMagasin() {
       .from('clients').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
     const bonNumber = 'BON-' + String((repairCount || 0) + 1).padStart(4, '0')
     const clientNumber = 'CL-' + String((clientCount || 0) + 1).padStart(4, '0')
-    const { error } = await supabase.from('repairs').insert({
+    const prixRepair = Number(newRepairFromHubForm.prix) || 0
+    const { data: createdRepair, error } = await supabase.from('repairs').insert({
       bon_number: bonNumber,
       client_nom: newRepairFromHubForm.nom.trim(),
       client_number: clientNumber,
@@ -2918,14 +2923,14 @@ export default function StockMagasin() {
       delai_annonce: hubPieceRowSel?.type_piece === 'carte_mere' ? getDelaiPiece('carte_mere', getStockPourMagasin(hubPieceRowSel.id)) : null,
       suivi_statut: newRepairFromHubForm.technicien_carte_mere ? 'en_cours' : null,
       pris_en_charge_par: currentSebUser?.name || null,
-      prix: newRepairFromHubForm.prix ? Number(newRepairFromHubForm.prix) : null,
+      prix: prixRepair,
       devis: false,
       tel: newRepairFromHubForm.tel || null,
       email: newRepairFromHubForm.email || null,
       status: 'en_attente',
       montant_paye: 0,
       staff_name: currentSebUser?.name || 'Staff',
-    })
+    }).select().single()
     setSavingNewRepairFromHub(false)
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
@@ -2933,6 +2938,25 @@ export default function StockMagasin() {
     setHubPieceRowSel(null)
     setShowNewRepairFromHub(false)
     fetchReparationsHubData()
+    await fetchPendingRepairs()
+
+    // Propose d'encaisser immediatement : la reparation part dans le panier,
+    // ou reste en attente pour etre encaissee plus tard (meme partiellement)
+    if (window.confirm(
+      `Réparation ${bonNumber} créée (${prixRepair.toFixed(2)}€).\n\n` +
+      `Le client paie maintenant ?\n\n` +
+      `OK = ajouter au panier pour encaisser\n` +
+      `Annuler = laisser en attente (visible dans 🔧 En attente jusqu'au paiement)`
+    )) {
+      addRepairToCart({
+        id: createdRepair?.id,
+        bon_number: bonNumber,
+        client_nom: newRepairFromHubForm.nom.trim(),
+        prix: prixRepair,
+        montant_paye: 0,
+      })
+      setPosScreen('caisse')
+    }
   }
 
   // ─── Réparations en attente (à ajouter au panier caisse) ───
@@ -2959,6 +2983,7 @@ export default function StockMagasin() {
       bon_number: repair.bon_number,
       client_nom: repair.client_nom,
       unit_price: solde,
+      solde_total: solde,
       quantity: 1,
     }])
     setPendingRepairs((prev) => prev.filter((r) => r.id !== repair.id))
@@ -2968,6 +2993,17 @@ export default function StockMagasin() {
     const removed = repairsInCart.find((r) => r.repair_id === repairId)
     setRepairsInCart((prev) => prev.filter((r) => r.repair_id !== repairId))
     if (removed) fetchPendingRepairs()
+  }
+
+  // Permet d'encaisser un acompte partiel : le montant saisi ne peut
+  // pas depasser le solde du, et le reliquat restera en attente
+  const updateRepairCartAmount = (repairId, nouveauMontant) => {
+    setRepairsInCart((prev) => prev.map((r) => {
+      if (r.repair_id !== repairId) return r
+      const max = Number(r.solde_total ?? r.unit_price) || 0
+      const val = Math.min(Math.max(Number(nouveauMontant) || 0, 0), max)
+      return { ...r, unit_price: val }
+    }))
   }
 
   const openNewRepairForm = (ecranRow) => {
@@ -7741,21 +7777,33 @@ export default function StockMagasin() {
             ) : (
               <>
                 <div className="space-y-2 mb-4 flex-1 overflow-y-auto">
-                  {repairsInCart.map((r) => (
-                    <div key={r.repair_id} className="flex items-center justify-between gap-2 bg-amber-50 rounded-xl p-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-[#1B2A4A] truncate">
-                          🔧 {r.bon_number} — {r.client_nom}
-                        </p>
-                        <p className="text-[10px] text-gray-500">Solde réparation</p>
+                  {repairsInCart.map((r) => {
+                    const soldeTotal = Number(r.solde_total ?? r.unit_price) || 0
+                    const restera = soldeTotal - (Number(r.unit_price) || 0)
+                    return (
+                      <div key={r.repair_id} className="flex items-center justify-between gap-2 bg-amber-50 rounded-xl p-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-[#1B2A4A] truncate">
+                            🔧 {r.bon_number} — {r.client_nom}
+                          </p>
+                          <p className="text-[10px] text-gray-500">
+                            Solde dû : {soldeTotal.toFixed(2)}€
+                            {restera > 0.01 && (
+                              <span className="text-amber-700 font-bold"> · restera {restera.toFixed(2)}€</span>
+                            )}
+                          </p>
+                        </div>
+                        <input type="number" step="0.5" min="0" max={soldeTotal}
+                          value={r.unit_price}
+                          onChange={(e) => updateRepairCartAmount(r.repair_id, e.target.value)}
+                          className="w-20 px-2 py-1 border border-amber-300 rounded-lg text-sm font-bold text-right" />
+                        <button onClick={() => removeRepairFromCart(r.repair_id)}
+                          className="text-gray-400 hover:text-red-600">
+                          <Trash2 size={14} />
+                        </button>
                       </div>
-                      <span className="text-sm font-bold text-[#1B2A4A]">{r.unit_price.toFixed(2)}€</span>
-                      <button onClick={() => removeRepairFromCart(r.repair_id)}
-                        className="text-gray-400 hover:text-red-600">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
+                    )
+                  })}
                   {newRepairsInCart.map((r) => (
                     <div key={r.key} className="flex items-center justify-between gap-2 bg-purple-50 rounded-xl p-2">
                       <div className="min-w-0 flex-1">
