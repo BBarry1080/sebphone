@@ -10,6 +10,7 @@ import { CartProvider as LegacyCartProvider } from './context/CartContext';
 import { CartProvider } from './contexts/CartContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import ScrollToTop from './components/utils/ScrollToTop';
+import GlobalTacheAlert from './components/GlobalTacheAlert';
 import Header from './components/layout/Header';
 import MobileHeader from './components/layout/MobileHeader';
 import BottomNav from './components/layout/BottomNav';
@@ -76,6 +77,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <GlobalTacheAlert />
       <LanguageProvider>
       <LegacyCartProvider>
       <CartProvider>
