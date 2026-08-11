@@ -349,6 +349,7 @@ export default function StockMagasin() {
   const [savingGarantie, setSavingGarantie] = useState(false)
   const [garantiesList, setGarantiesList] = useState([])
   const [loadingGaranties, setLoadingGaranties] = useState(false)
+  const [garantieFiltreRetour, setGarantieFiltreRetour] = useState('tous')
   const [delaiTypesList, setDelaiTypesList]       = useState([])
   const [loadingDelaiTypes, setLoadingDelaiTypes] = useState(false)
   const [editingDelai, setEditingDelai]           = useState(null)
@@ -557,6 +558,15 @@ export default function StockMagasin() {
     if (error) { alert('Erreur : ' + error.message); return }
     logActivity('garantie_create', `Garantie enregistrée pour ${garantieForm.client_nom.trim()}`)
     setShowGarantieModal(false)
+    fetchGarantiesList()
+  }
+
+  const toggleRetourFournisseur = async (garantie) => {
+    const nouveauStatut = !garantie.retourne_fournisseur
+    await supabase.from('garanties').update({
+      retourne_fournisseur: nouveauStatut,
+      date_retour_fournisseur: nouveauStatut ? new Date().toISOString().slice(0, 10) : null,
+    }).eq('id', garantie.id)
     fetchGarantiesList()
   }
 
@@ -4313,45 +4323,76 @@ export default function StockMagasin() {
           )}
           {activeTab === 'garanties' && trueIsAdmin && (
             <div>
+              <div className="flex gap-2 mb-4">
+                {[
+                  { key: 'tous', label: 'Toutes' },
+                  { key: 'attente', label: 'En attente de retour' },
+                  { key: 'retourne', label: 'Déjà retournées' },
+                ].map((f) => (
+                  <button key={f.key} onClick={() => setGarantieFiltreRetour(f.key)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 transition-all ${
+                      garantieFiltreRetour === f.key
+                        ? 'bg-purple-600 text-white border-purple-600'
+                        : 'bg-white text-gray-600 border-gray-200'
+                    }`}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
               {loadingGaranties ? (
                 <div className="flex items-center justify-center h-40">
                   <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
                 </div>
-              ) : garantiesList.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-                  Aucune garantie enregistrée pour ce magasin
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {garantiesList.map((g) => {
-                    const qLabel = g.reparation_ecrans?.qualite === 'compatible' ? 'Compatible'
-                      : g.reparation_ecrans?.qualite === 'original_equivalent' ? 'Qualité originale'
-                      : g.reparation_ecrans?.qualite === 'original' ? '100% Original' : ''
-                    return (
-                      <div key={g.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <div>
-                            <p className="font-bold text-[#1B2A4A]">{g.client_nom}</p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(g.date_retour).toLocaleDateString('fr-BE')} · {g.tel || 'sans tél.'}
-                              {g.repair_id ? ' · lié à un bon' : ' · fiche manuelle'}
-                            </p>
+              ) : (() => {
+                const filtered = garantiesList.filter((g) => {
+                  if (garantieFiltreRetour === 'attente') return !g.retourne_fournisseur
+                  if (garantieFiltreRetour === 'retourne') return g.retourne_fournisseur
+                  return true
+                })
+                return filtered.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
+                    Aucune garantie ici
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filtered.map((g) => {
+                      const qLabel = g.reparation_ecrans?.qualite === 'compatible' ? 'Compatible'
+                        : g.reparation_ecrans?.qualite === 'original_equivalent' ? 'Qualité originale'
+                        : g.reparation_ecrans?.qualite === 'original' ? '100% Original' : ''
+                      return (
+                        <div key={g.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div>
+                              <p className="font-bold text-[#1B2A4A]">{g.client_nom}</p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(g.date_retour).toLocaleDateString('fr-BE')} · {g.tel || 'sans tél.'}
+                                {g.repair_id ? ' · lié à un bon' : ' · fiche manuelle'}
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
+                              {g.reparation_ecrans?.marque} {g.reparation_ecrans?.modele} {qLabel && `— ${qLabel}`}
+                            </span>
                           </div>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
-                            {g.reparation_ecrans?.marque} {g.reparation_ecrans?.modele} {qLabel && `— ${qLabel}`}
-                          </span>
+                          {g.motif && (
+                            <p className="text-xs text-gray-500 mt-1">Motif : {g.motif}</p>
+                          )}
+                          <p className="text-[10px] text-gray-400 mt-1">
+                            Fournisseur (écran défectueux) : {g.fournisseurs?.nom || '—'} · Par {g.staff_name || '—'}
+                          </p>
+                          <label className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 text-xs font-bold text-gray-600 cursor-pointer">
+                            <input type="checkbox" checked={!!g.retourne_fournisseur}
+                              onChange={() => toggleRetourFournisseur(g)}
+                              className="w-4 h-4 accent-purple-600" />
+                            {g.retourne_fournisseur
+                              ? `Retourné au fournisseur le ${g.date_retour_fournisseur ? new Date(g.date_retour_fournisseur).toLocaleDateString('fr-BE') : ''}`
+                              : 'Marquer comme retourné au fournisseur'}
+                          </label>
                         </div>
-                        {g.motif && (
-                          <p className="text-xs text-gray-500 mt-1">Motif : {g.motif}</p>
-                        )}
-                        <p className="text-[10px] text-gray-400 mt-1">
-                          Fournisseur : {g.fournisseurs?.nom || '—'} · Par {g.staff_name || '—'}
-                        </p>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           )}
         </>
@@ -4542,7 +4583,12 @@ export default function StockMagasin() {
                 )}
 
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    Fournisseur de l'écran défectueux (à retourner)
+                  </label>
+                  <p className="text-[10px] text-gray-400 mb-1">
+                    Pas le fournisseur du stock utilisé pour remplacer — celui de la pièce que le client rapporte.
+                  </p>
                   <select value={garantieFournisseurId}
                     onChange={(e) => setGarantieFournisseurId(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
