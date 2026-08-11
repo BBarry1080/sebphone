@@ -14,10 +14,12 @@ import ZFinancierReport from '../../components/admin/ZFinancierReport'
 import CaisseAccueil from '../../components/admin/CaisseAccueil'
 import CaissePinLock from '../../components/admin/CaissePinLock'
 import StaffScheduleCalendar from '../../components/admin/StaffScheduleCalendar'
+import PhoneSaleModal from '../../components/admin/PhoneSaleModal'
 import { calcSalairePeriode, getWeekBounds, calcDureeHeures, isShiftFinished } from '../../lib/calcSalaire'
 import { logActivity } from '../../lib/logActivity'
 
 const POS_CATEGORIES = [
+  'Téléphone',
   'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
   'Carte mémoire', 'Ordinateur', 'Tablette', 'PlayStation',
   'Autre téléphone', 'Écran Samsung',
@@ -145,6 +147,12 @@ export default function StockMagasin() {
   const [pendingRepairs, setPendingRepairs]               = useState([])
   const [loadingPendingRepairs, setLoadingPendingRepairs] = useState(false)
   const [phonesForCaisseSearch, setPhonesForCaisseSearch] = useState([])
+  const [allPhonesForCaisse, setAllPhonesForCaisse] = useState([])
+  const [posPhoneMarqueSel, setPosPhoneMarqueSel] = useState(null)
+  const [posPhoneSaleTarget, setPosPhoneSaleTarget] = useState(null)
+  const [transferingPhoneId, setTransferingPhoneId] = useState(null)
+  const [phonePriceSettings, setPhonePriceSettings] = useState({ min: 0, max: 5000 })
+  const [phoneModelLimits, setPhoneModelLimits] = useState([])
   // Nouvelle réparation créée depuis la caisse (via clic écran catalogue)
   const [newRepairsInCart, setNewRepairsInCart]           = useState([])
   const [posEcranMarqueSel, setPosEcranMarqueSel]         = useState(null)
@@ -2171,6 +2179,22 @@ export default function StockMagasin() {
     return groups
   }, [ecranCatalogList, posEcranMarqueSel, posSelectedTypePiece])
 
+  const isPhoneCategory = selectedPosCategory === 'Téléphone'
+
+  const posPhoneMarques = useMemo(() => {
+    if (!isPhoneCategory) return []
+    return [...new Set(allPhonesForCaisse.map((p) => p.brand).filter(Boolean))].sort()
+  }, [allPhonesForCaisse, isPhoneCategory])
+
+  const posPhonesForMarque = useMemo(() => {
+    if (!posPhoneMarqueSel || !isPhoneCategory) return { ici: [], ailleurs: [] }
+    const filtered = allPhonesForCaisse.filter((p) => p.brand === posPhoneMarqueSel)
+    return {
+      ici: filtered.filter((p) => p.magasin_id === magasin),
+      ailleurs: filtered.filter((p) => p.magasin_id !== magasin),
+    }
+  }, [allPhonesForCaisse, posPhoneMarqueSel, isPhoneCategory, magasin])
+
   // ─── Recherche de ticket ───
   const handleSearchTickets = async () => {
     const q = (searchQuery || '').trim()
@@ -2577,15 +2601,40 @@ export default function StockMagasin() {
   // Catalogue écrans chargé au mount (nécessaire pour la recherche caisse)
   useEffect(() => { fetchEcranCatalog() }, [])
 
-  // Téléphones du magasin pour recherche caisse (source cartSearchPhones)
+  // Téléphones TOUS magasins pour la caisse (categorie Telephone + recherche)
+  const fetchAllPhonesForCaisse = async () => {
+    const { data, error } = await supabase.from('phones')
+      .select('id, name, model, brand, storage, color, price, grade, imei, magasin_id, status, condition, tva_regime, purchase_price, magasins')
+      .eq('status', 'disponible')
+      .order('created_at', { ascending: false })
+    if (error) { console.warn('Erreur chargement telephones caisse:', error.message); return }
+    setAllPhonesForCaisse(data || [])
+    setPhonesForCaisseSearch((data || []).filter((p) => p.magasin_id === magasin))
+  }
+
   useEffect(() => {
     if (!magasin) return
-    supabase.from('phones')
-      .select('id, name, model, storage, color, price, grade, imei')
-      .neq('status', 'vendu')
-      .eq('magasin_id', magasin)
-      .then(({ data }) => setPhonesForCaisseSearch(data || []))
+    fetchAllPhonesForCaisse()
+    const channel = supabase
+      .channel('caisse-phones-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'phones' }, fetchAllPhonesForCaisse)
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [magasin])
+
+  // Limites de prix, necessaires a PhoneSaleModal
+  useEffect(() => {
+    supabase.from('price_settings').select('*').eq('id', 1).maybeSingle()
+      .then(({ data }) => {
+        if (data) setPhonePriceSettings({
+          min: Number(data.global_min) || 0,
+          max: Number(data.global_max) || 5000,
+        })
+      })
+    supabase.from('model_price_limits').select('*')
+      .then(({ data }) => setPhoneModelLimits(data || []))
+  }, [])
 
   // Fetch catalogue écrans à la première activation de l'onglet
   useEffect(() => {
@@ -2959,6 +3008,20 @@ export default function StockMagasin() {
     const actuel = getStockPourMagasin(newRepairEcran.id)
     await setStockPourMagasin(newRepairEcran.id, actuel + 1)
     setAddingStockRapide(false)
+  }
+
+  // Transfert autorise a tous les grades, volontairement (decision metier)
+  const handleTransfererPhone = async (phoneRow) => {
+    const nomMagasinActuel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
+    if (!window.confirm(`Transferer ${phoneRow.name || phoneRow.model} vers ${nomMagasinActuel} ?`)) return
+    setTransferingPhoneId(phoneRow.id)
+    const { error } = await supabase.from('phones')
+      .update({ magasin_id: magasin, magasins: [magasin] })
+      .eq('id', phoneRow.id)
+    setTransferingPhoneId(null)
+    if (error) { alert('Erreur transfert : ' + error.message); return }
+    logActivity('phone_transfer', `Transfert ${phoneRow.name || phoneRow.model} vers ${nomMagasinActuel}`)
+    fetchAllPhonesForCaisse()
   }
 
   const getViewerIdentity = () => {
@@ -7192,7 +7255,7 @@ export default function StockMagasin() {
 
           {/* COLONNE GAUCHE — Catégories + Réparations en attente */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-2 flex flex-col">
-            <button onClick={() => { setSelectedPosCategory('Tout'); setPosEcranMarqueSel(null) }}
+            <button onClick={() => { setSelectedPosCategory('Tout'); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
               className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
                 ${selectedPosCategory === 'Tout'
                   ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
@@ -7201,7 +7264,7 @@ export default function StockMagasin() {
             </button>
             {POS_CATEGORIES.map((catName) => (
               <button key={catName}
-                onClick={() => { setSelectedPosCategory(catName); setPosEcranMarqueSel(null) }}
+                onClick={() => { setSelectedPosCategory(catName); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
                   ${selectedPosCategory === catName
                     ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
@@ -7335,7 +7398,7 @@ export default function StockMagasin() {
                     if (result._kind === 'phone') {
                       return (
                         <button key={`ph-${result.id}`}
-                          onClick={() => window.open(`/admin/stock?sale=${result.id}`, '_blank')}
+                          onClick={() => setPosPhoneSaleTarget(result)}
                           className="text-left bg-blue-50 hover:bg-blue-100 rounded-xl p-3 transition-all border border-blue-100 hover:border-blue-400">
                           <p className="text-[10px] font-bold text-blue-600 uppercase mb-0.5">📱 Téléphone</p>
                           <p className="font-bold text-xs text-[#1B2A4A] line-clamp-2">
@@ -7371,6 +7434,98 @@ export default function StockMagasin() {
                 </div>
               )
             ) : (() => {
+              if (isPhoneCategory) {
+                if (!posPhoneMarqueSel) {
+                  return posPhoneMarques.length === 0 ? (
+                    <p className="text-center text-gray-400 py-8 text-sm">
+                      Aucun téléphone disponible en stock
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {posPhoneMarques.map((m) => {
+                        const nbIci = allPhonesForCaisse.filter((p) => p.brand === m && p.magasin_id === magasin).length
+                        const nbTotal = allPhonesForCaisse.filter((p) => p.brand === m).length
+                        return (
+                          <button key={m} onClick={() => setPosPhoneMarqueSel(m)}
+                            className="text-left bg-blue-50 hover:bg-blue-100 rounded-xl p-4 transition-all border border-blue-100 hover:border-blue-300">
+                            <p className="font-bold text-sm text-[#1B2A4A]">{m}</p>
+                            <p className="text-[10px] text-blue-700 font-bold mt-0.5">
+                              {nbIci} ici{nbTotal > nbIci ? ` · ${nbTotal - nbIci} ailleurs` : ''}
+                            </p>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                }
+                const { ici, ailleurs } = posPhonesForMarque
+                const renderPhoneCard = (p, isAilleurs) => {
+                  const nomMag = MAGASINS_LIST.find((m) => m.id === p.magasin_id)?.nom?.replace('Seb Telecom — ', '') || p.magasin_id
+                  return (
+                    <div key={p.id}
+                      className={`text-left rounded-xl p-3 border ${
+                        isAilleurs ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-100'
+                      }`}>
+                      <p className="font-bold text-xs text-[#1B2A4A] line-clamp-2">{p.name || p.model}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        {[p.storage, p.color, p.grade].filter(Boolean).join(' · ')}
+                      </p>
+                      {p.imei && (
+                        <p className="text-[9px] text-gray-400 font-mono mt-0.5">{p.imei}</p>
+                      )}
+                      <p className="text-sm font-bold text-blue-700 mt-1">{p.price}€</p>
+                      {isAilleurs ? (
+                        <>
+                          <p className="text-[10px] font-bold text-amber-700 mt-1">📍 {nomMag}</p>
+                          <button onClick={() => handleTransfererPhone(p)}
+                            disabled={transferingPhoneId === p.id}
+                            className="w-full mt-1.5 py-1.5 border-2 border-dashed border-amber-300 text-amber-700 rounded-lg text-[10px] font-bold hover:bg-amber-50 disabled:opacity-50">
+                            {transferingPhoneId === p.id ? 'Transfert...' : '↓ Transférer ici'}
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => setPosPhoneSaleTarget(p)}
+                          className="w-full mt-1.5 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-bold hover:bg-blue-700">
+                          Vendre
+                        </button>
+                      )}
+                    </div>
+                  )
+                }
+                return (
+                  <div>
+                    <button onClick={() => setPosPhoneMarqueSel(null)}
+                      className="text-xs font-bold text-gray-500 hover:text-[#1B2A4A] mb-3">
+                      ← Marques
+                    </button>
+                    {ici.length > 0 && (
+                      <>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">
+                          Dans ce magasin ({ici.length})
+                        </p>
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                          {ici.map((p) => renderPhoneCard(p, false))}
+                        </div>
+                      </>
+                    )}
+                    {ailleurs.length > 0 && (
+                      <>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">
+                          Dans les autres magasins ({ailleurs.length})
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {ailleurs.map((p) => renderPhoneCard(p, true))}
+                        </div>
+                      </>
+                    )}
+                    {ici.length === 0 && ailleurs.length === 0 && (
+                      <p className="text-center text-gray-400 py-8 text-sm">
+                        Aucun téléphone {posPhoneMarqueSel} disponible
+                      </p>
+                    )}
+                  </div>
+                )
+              }
               if (posSelectedTypePiece) {
                 const typePieceLabel = TYPES_PIECE.find((t) => t.id === posSelectedTypePiece)?.label || selectedPosCategory
                 if (!posEcranMarqueSel) {
@@ -9251,6 +9406,16 @@ export default function StockMagasin() {
             </div>
           </div>
         </div>
+      )}
+
+      {posPhoneSaleTarget && (
+        <PhoneSaleModal
+          phone={posPhoneSaleTarget}
+          onClose={() => setPosPhoneSaleTarget(null)}
+          onSold={fetchAllPhonesForCaisse}
+          priceSettings={phonePriceSettings}
+          modelLimits={phoneModelLimits}
+        />
       )}
 
       {showSuiviCarteMere && (
