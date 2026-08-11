@@ -8,6 +8,7 @@ import { Plus, X, Pencil, Trash2, Search, Receipt,
          PiggyBank, ChevronLeft, ChevronRight, Percent,
          Image as ImageIcon, Upload } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
+import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import ReceiptTicket from '../../components/admin/ReceiptTicket'
 import ZFinancierReport from '../../components/admin/ZFinancierReport'
@@ -148,7 +149,6 @@ export default function StockMagasin() {
   const [loadingPendingRepairs, setLoadingPendingRepairs] = useState(false)
   const [allPhonesForCaisse, setAllPhonesForCaisse] = useState([])
   const [posPhoneMarqueSel, setPosPhoneMarqueSel] = useState(null)
-  const [posPhoneModeleOuvert, setPosPhoneModeleOuvert] = useState(null)
   const [posPhoneSaleTarget, setPosPhoneSaleTarget] = useState(null)
   const [transferingPhoneId, setTransferingPhoneId] = useState(null)
   const [phonePriceSettings, setPhonePriceSettings] = useState({ min: 0, max: 5000 })
@@ -423,6 +423,17 @@ export default function StockMagasin() {
     'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max', 'iPhone 16e',
     'iPhone 17', 'iPhone Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max', 'iPhone 17e',
   ]
+
+  const CONDITION_LABELS_PHONE = {
+    neuf: 'Neuf',
+    reconditionne: 'Reconditionné',
+    occasion: 'Occasion',
+  }
+  const CONDITION_COLORS_PHONE = {
+    neuf: 'bg-green-50 text-green-700',
+    reconditionne: 'bg-cyan-50 text-cyan-700',
+    occasion: 'bg-gray-100 text-gray-700',
+  }
 
   const TYPES_PIECE = [
     { id: 'ecran', label: 'Écran', aQualite: true },
@@ -2186,21 +2197,16 @@ export default function StockMagasin() {
     return [...new Set(allPhonesForCaisse.map((p) => p.brand).filter(Boolean))].sort()
   }, [allPhonesForCaisse, isPhoneCategory])
 
-  const posPhonesGroupes = useMemo(() => {
+  const posPhonesListe = useMemo(() => {
     if (!posPhoneMarqueSel || !isPhoneCategory) return []
-    const groups = {}
-    allPhonesForCaisse
+    return allPhonesForCaisse
       .filter((p) => p.brand === posPhoneMarqueSel)
-      .forEach((p) => {
-        const key = p.name || p.model || '—'
-        if (!groups[key]) groups[key] = { modele: key, ici: [], ailleurs: [] }
-        if (p.magasin_id === magasin) groups[key].ici.push(p)
-        else groups[key].ailleurs.push(p)
+      .sort((a, b) => {
+        const aIci = a.magasin_id === magasin ? 0 : 1
+        const bIci = b.magasin_id === magasin ? 0 : 1
+        if (aIci !== bIci) return aIci - bIci
+        return (a.name || a.model || '').localeCompare(b.name || b.model || '')
       })
-    return Object.values(groups).sort((a, b) => {
-      if (b.ici.length !== a.ici.length) return b.ici.length - a.ici.length
-      return a.modele.localeCompare(b.modele)
-    })
   }, [allPhonesForCaisse, posPhoneMarqueSel, isPhoneCategory, magasin])
 
   // ─── Recherche de ticket ───
@@ -2612,7 +2618,7 @@ export default function StockMagasin() {
   // Téléphones TOUS magasins pour la caisse (categorie Telephone + recherche)
   const fetchAllPhonesForCaisse = async () => {
     const { data, error } = await supabase.from('phones')
-      .select('id, name, model, brand, storage, color, price, grade, imei, magasin_id, status, condition, tva_regime, purchase_price, magasins')
+      .select('id, name, model, brand, storage, color, price, grade, imei, magasin_id, status, condition, tva_regime, purchase_price, magasins, battery_health, parts_replaced, has_esim, added_by, added_by_magasin, fournisseur')
       .eq('status', 'disponible')
       .order('created_at', { ascending: false })
     if (error) { console.warn('Erreur chargement telephones caisse:', error.message); return }
@@ -7494,76 +7500,119 @@ export default function StockMagasin() {
                 }
                 return (
                   <div>
-                    <button onClick={() => { setPosPhoneMarqueSel(null); setPosPhoneModeleOuvert(null) }}
+                    <button onClick={() => setPosPhoneMarqueSel(null)}
                       className="text-xs font-bold text-gray-500 hover:text-[#1B2A4A] mb-3">
                       ← Marques
                     </button>
-                    {posPhonesGroupes.length === 0 ? (
+                    {posPhonesListe.length === 0 ? (
                       <p className="text-center text-gray-400 py-8 text-sm">
                         Aucun téléphone {posPhoneMarqueSel} disponible
                       </p>
                     ) : (
                       <div className="space-y-1.5">
-                        {posPhonesGroupes.map((g) => {
-                          const isOpen = posPhoneModeleOuvert === g.modele
-                          const prixMin = Math.min(...[...g.ici, ...g.ailleurs].map((p) => Number(p.price) || 0))
+                        {posPhonesListe.map((p) => {
+                          const isAilleurs = p.magasin_id !== magasin
+                          const nomMag = MAGASINS_LIST.find((m) => m.id === p.magasin_id)?.nom?.replace('Seb Telecom — ', '') || p.magasin_id
+                          const marge = p.purchase_price != null ? Number(p.price) - Number(p.purchase_price) : null
                           return (
-                            <div key={g.modele} className="border border-gray-200 rounded-xl overflow-hidden">
-                              <button
-                                onClick={() => setPosPhoneModeleOuvert(isOpen ? null : g.modele)}
-                                className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition-all ${
-                                  isOpen ? 'bg-blue-100' : 'bg-blue-50 hover:bg-blue-100'
-                                }`}>
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-bold text-sm text-[#1B2A4A] truncate">{g.modele}</p>
-                                  <p className="text-[10px] font-bold text-blue-700 mt-0.5">
-                                    {g.ici.length > 0 && `${g.ici.length} ici`}
-                                    {g.ici.length > 0 && g.ailleurs.length > 0 && ' · '}
-                                    {g.ailleurs.length > 0 && (
-                                      <span className="text-amber-700">{g.ailleurs.length} ailleurs</span>
-                                    )}
-                                    {' · dès '}{prixMin}€
+                            <div key={p.id}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border ${
+                                isAilleurs ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'
+                              }`}>
+                              <div className="w-11 h-11 bg-gray-50 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+                                <img
+                                  src={getPhoneImage(p.model || p.name, p.color)}
+                                  alt={p.name || p.model}
+                                  className="w-full h-full object-contain p-0.5"
+                                  onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+                                />
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-[#1B2A4A] leading-tight">
+                                  {p.name || p.model}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {[p.storage, p.color].filter(Boolean).join(' · ')}
+                                </p>
+                                {p.imei && (
+                                  <p className="text-[10px] text-gray-400 font-mono">IMEI : {p.imei}</p>
+                                )}
+                                {p.added_by && (
+                                  <p className="text-[10px] text-gray-400">👤 {p.added_by}</p>
+                                )}
+                              </div>
+
+                              <div className="flex flex-col gap-1 shrink-0 w-28">
+                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold w-fit ${CONDITION_COLORS_PHONE[p.condition] || 'bg-gray-100 text-gray-700'}`}>
+                                  {CONDITION_LABELS_PHONE[p.condition] || p.condition || '—'}
+                                </span>
+                                {p.grade && (
+                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 w-fit">
+                                    {p.grade}
+                                  </span>
+                                )}
+                                {p.has_esim && (
+                                  <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-[#1B2A4A] text-white w-fit">
+                                    eSIM
+                                  </span>
+                                )}
+                                {Array.isArray(p.parts_replaced) && p.parts_replaced.length > 0 && (
+                                  <div className="flex flex-wrap gap-0.5">
+                                    {p.parts_replaced.map((part, i) => (
+                                      <span key={i}
+                                        className="text-[9px] bg-orange-50 text-orange-700 border border-orange-200 px-1 py-0.5 rounded">
+                                        {part}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="shrink-0 w-12 text-center">
+                                {p.battery_health != null ? (
+                                  <span className={`text-sm font-bold ${
+                                    p.battery_health >= 85 ? 'text-green-600'
+                                    : p.battery_health >= 75 ? 'text-orange-500'
+                                    : 'text-red-500'
+                                  }`}>
+                                    {p.battery_health}%
+                                  </span>
+                                ) : <span className="text-gray-300 text-sm">—</span>}
+                              </div>
+
+                              <div className="shrink-0 w-24 text-right">
+                                <p className="text-base font-bold text-blue-700">{p.price}€</p>
+                                {trueIsAdmin && marge != null && (
+                                  <p className="text-[10px] whitespace-nowrap">
+                                    <span className="text-gray-400">{p.purchase_price}€</span>
+                                    <span className={`font-bold ${marge >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                      {' / '}{marge >= 0 ? '+' : ''}{marge}€
+                                    </span>
                                   </p>
-                                </div>
-                                <span className="text-gray-400 text-xs shrink-0">{isOpen ? '▲' : '▼'}</span>
-                              </button>
-                              {isOpen && (
-                                <div className="p-2 bg-white space-y-1.5">
-                                  {[...g.ici, ...g.ailleurs].map((p) => {
-                                    const isAilleurs = p.magasin_id !== magasin
-                                    const nomMag = MAGASINS_LIST.find((m) => m.id === p.magasin_id)?.nom?.replace('Seb Telecom — ', '') || p.magasin_id
-                                    return (
-                                      <div key={p.id}
-                                        className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg ${
-                                          isAilleurs ? 'bg-amber-50' : 'bg-gray-50'
-                                        }`}>
-                                        <div className="min-w-0 flex-1">
-                                          <p className="text-xs font-bold text-[#1B2A4A]">
-                                            {[p.storage, p.color].filter(Boolean).join(' · ')}
-                                          </p>
-                                          <p className="text-[10px] text-gray-500">
-                                            {p.grade || '—'}
-                                            {isAilleurs && <span className="text-amber-700 font-bold"> · 📍 {nomMag}</span>}
-                                          </p>
-                                        </div>
-                                        <span className="text-sm font-bold text-blue-700 shrink-0">{p.price}€</span>
-                                        {isAilleurs ? (
-                                          <button onClick={() => handleTransfererPhone(p)}
-                                            disabled={transferingPhoneId === p.id}
-                                            className="shrink-0 px-2.5 py-1.5 border-2 border-dashed border-amber-300 text-amber-700 rounded-lg text-[10px] font-bold hover:bg-amber-100 disabled:opacity-50 whitespace-nowrap">
-                                            {transferingPhoneId === p.id ? '...' : '↓ Ici'}
-                                          </button>
-                                        ) : (
-                                          <button onClick={() => setPosPhoneSaleTarget(p)}
-                                            className="shrink-0 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 whitespace-nowrap">
-                                            Vendre
-                                          </button>
-                                        )}
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              )}
+                                )}
+                              </div>
+
+                              <div className="shrink-0 w-28 text-right">
+                                {isAilleurs && (
+                                  <p className="text-[10px] font-bold text-amber-700 mb-1">📍 {nomMag}</p>
+                                )}
+                                {trueIsAdmin && p.fournisseur && (
+                                  <p className="text-[10px] text-gray-400 mb-1 truncate">{p.fournisseur}</p>
+                                )}
+                                {isAilleurs ? (
+                                  <button onClick={() => handleTransfererPhone(p)}
+                                    disabled={transferingPhoneId === p.id}
+                                    className="w-full px-2 py-1.5 border-2 border-dashed border-amber-300 text-amber-700 rounded-lg text-[10px] font-bold hover:bg-amber-100 disabled:opacity-50">
+                                    {transferingPhoneId === p.id ? '...' : '↓ Transférer'}
+                                  </button>
+                                ) : (
+                                  <button onClick={() => setPosPhoneSaleTarget(p)}
+                                    className="w-full px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
+                                    Vendre
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )
                         })}
