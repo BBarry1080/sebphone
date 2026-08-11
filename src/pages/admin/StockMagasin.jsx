@@ -141,6 +141,7 @@ export default function StockMagasin() {
   const [posEcranMarqueSel, setPosEcranMarqueSel]         = useState(null)
   const [posEcranQualiteChoices, setPosEcranQualiteChoices] = useState(null)
   const [showNewRepairForm, setShowNewRepairForm]         = useState(false)
+  const [addingStockRapide, setAddingStockRapide] = useState(false)
   const [newRepairEcran, setNewRepairEcran]               = useState(null)
   const [newRepairClientData, setNewRepairClientData]     = useState({
     nom: '', tel: '', email: '', imei: '',
@@ -360,7 +361,7 @@ export default function StockMagasin() {
   const [ecranForm, setEcranForm]                 = useState({
     prix_min: '', prix_defaut: '', prix_max: '',
     cout_achat: '', fournisseur_id: '',
-    disponible: true, notes: '',
+    disponible: true, disponible_sur_commande: false, notes: '',
   })
   const [savingEcran, setSavingEcran]             = useState(false)
 
@@ -409,7 +410,7 @@ export default function StockMagasin() {
     qualite: 'compatible',
     fournisseur_id: '',
     cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
-    disponible: true, notes: '',
+    disponible: true, disponible_sur_commande: false, notes: '',
   })
   const [savingNewEcran, setSavingNewEcran]       = useState(false)
   const [showDelaiForm, setShowDelaiForm]         = useState(false)
@@ -1836,6 +1837,7 @@ export default function StockMagasin() {
       cout_achat: String(row.cout_achat ?? ''),
       fournisseur_id: row.fournisseur_id || '',
       disponible: row.disponible !== false,
+      disponible_sur_commande: row.disponible_sur_commande || false,
       notes: row.notes || '',
     })
   }
@@ -1850,6 +1852,7 @@ export default function StockMagasin() {
       cout_achat: Number(ecranForm.cout_achat) || 0,
       fournisseur_id: ecranForm.fournisseur_id || null,
       disponible: ecranForm.disponible,
+      disponible_sur_commande: ecranForm.disponible_sur_commande,
       notes: ecranForm.notes || null,
     }).eq('id', editingEcran.id)
     setSavingEcran(false)
@@ -1868,7 +1871,7 @@ export default function StockMagasin() {
       qualite: 'compatible',
       fournisseur_id: '',
       cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
-      disponible: true, notes: '',
+      disponible: true, disponible_sur_commande: false, notes: '',
     })
   }
 
@@ -1895,6 +1898,7 @@ export default function StockMagasin() {
       modele_code: newEcranForm.modele_code.trim() || null,
       qualite: qualiteAEnvoyer,
       disponible: newEcranForm.disponible,
+      disponible_sur_commande: newEcranForm.disponible_sur_commande,
       cout_achat: Number(newEcranForm.cout_achat) || 0,
       prix_min: Number(newEcranForm.prix_min) || 0,
       prix_defaut: Number(newEcranForm.prix_defaut) || 0,
@@ -2697,6 +2701,14 @@ export default function StockMagasin() {
     }])
     setShowNewRepairForm(false)
     setNewRepairEcran(null)
+  }
+
+  const handleAjouterAuStockRapide = async () => {
+    if (!newRepairEcran) return
+    setAddingStockRapide(true)
+    const actuel = getStockPourMagasin(newRepairEcran.id)
+    await setStockPourMagasin(newRepairEcran.id, actuel + 1)
+    setAddingStockRapide(false)
   }
 
   const removeNewRepairFromCart = (key) => {
@@ -3939,10 +3951,10 @@ export default function StockMagasin() {
                     </div>
                     <div className="flex items-end">
                       <label className="flex items-center gap-2 text-xs text-gray-600 pb-2">
-                        <input type="checkbox" checked={newEcranForm.disponible}
-                          onChange={(e) => setNewEcranForm((f) => ({ ...f, disponible: e.target.checked }))}
+                        <input type="checkbox" checked={newEcranForm.disponible_sur_commande}
+                          onChange={(e) => setNewEcranForm((f) => ({ ...f, disponible_sur_commande: e.target.checked }))}
                           className="w-4 h-4 accent-[#00B4CC]" />
-                        Disponible à la vente
+                        Disponible sur commande
                       </label>
                     </div>
                   </div>
@@ -4139,17 +4151,11 @@ export default function StockMagasin() {
                                     </div>
                                   </div>
                                   <label className="flex items-center gap-2 text-xs text-gray-600">
-                                    <input type="checkbox" checked={ecranForm.disponible}
-                                      onChange={(e) => setEcranForm((f) => ({ ...f, disponible: e.target.checked }))}
+                                    <input type="checkbox" checked={ecranForm.disponible_sur_commande}
+                                      onChange={(e) => setEcranForm((f) => ({ ...f, disponible_sur_commande: e.target.checked }))}
                                       className="w-4 h-4 accent-[#00B4CC]" />
-                                    Disponible à la vente
+                                    Disponible sur commande
                                   </label>
-                                  <div>
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Notes</label>
-                                    <textarea rows={2} value={ecranForm.notes}
-                                      onChange={(e) => setEcranForm((f) => ({ ...f, notes: e.target.value }))}
-                                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none" />
-                                  </div>
                                   <div className="flex gap-2">
                                     <button onClick={handleSaveEcran} disabled={savingEcran}
                                       className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
@@ -8144,6 +8150,12 @@ export default function StockMagasin() {
                 </div>
               </div>
 
+              {newRepairEcran.disponible_sur_commande && (
+                <button onClick={handleAjouterAuStockRapide} disabled={addingStockRapide}
+                  className="w-full mt-3 py-2 border-2 border-dashed border-cyan-300 text-cyan-700 rounded-xl text-xs font-bold hover:bg-cyan-50 disabled:opacity-50">
+                  {addingStockRapide ? 'Ajout...' : `+ Ajouter au stock (${getStockPourMagasin(newRepairEcran.id)} actuellement)`}
+                </button>
+              )}
               <div className="flex gap-2 mt-4">
                 <button onClick={() => { setShowNewRepairForm(false); setNewRepairEcran(null) }}
                   className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
