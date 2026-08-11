@@ -3799,7 +3799,7 @@ export default function StockMagasin() {
             {[
               { key: 'stock', label: 'Stock' },
               { key: 'categories', label: 'Catégories' },
-              ...(trueIsAdmin ? [{ key: 'pieces', label: '📱 Pièces par modèle' }] : []),
+              ...(trueIsAdmin ? [{ key: 'pieces', label: '📱 Réparations' }] : []),
             ].map(tab => (
               <button key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
