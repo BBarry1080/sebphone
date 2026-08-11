@@ -73,6 +73,7 @@ export default function StockMagasin() {
   const [showQuickTacheModal, setShowQuickTacheModal] = useState(false)
   const [quickTacheForm, setQuickTacheForm] = useState({ titre: '', description: '', date: '', assigne_a_id: '' })
   const [savingQuickTache, setSavingQuickTache] = useState(false)
+  const [quickTacheMagasinId, setQuickTacheMagasinId] = useState('')
   const [categories, setCategories] = useState([])
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -96,6 +97,7 @@ export default function StockMagasin() {
     description: '',
     image_url: '', fournisseur_id: '',
     sans_stock: false,
+    disponible_sur_commande: false,
     tva_rate: 21,
   })
 
@@ -1466,6 +1468,7 @@ export default function StockMagasin() {
       date: demain.toISOString().slice(0, 10),
       assigne_a_id: identity?.id || '',
     })
+    setQuickTacheMagasinId(magasin || '')
     setShowQuickTacheModal(true)
     if (staffListCaisse.length === 0) fetchStaffCaisse()
   }
@@ -1473,6 +1476,7 @@ export default function StockMagasin() {
   const handleCreateQuickTache = async () => {
     if (!quickTacheForm.titre.trim()) { alert('Titre obligatoire'); return }
     if (!quickTacheForm.date) { alert('Choisis une date'); return }
+    if (!quickTacheMagasinId) { alert('Choisis un magasin'); return }
     setSavingQuickTache(true)
     const identity = getViewerIdentity ? getViewerIdentity() : null
     const { error } = await supabase.from('taches_recurrentes').insert({
@@ -1480,8 +1484,8 @@ export default function StockMagasin() {
       description: quickTacheForm.description.trim() || null,
       jours_semaine: [],
       date_specifique: quickTacheForm.date,
-      magasins: magasin ? [magasin] : null,
-      assigne_a_id: quickTacheForm.assigne_a_id || null,
+      magasins: [quickTacheMagasinId],
+      assigne_a_id: null,
       intervalle_rappel_min: 10,
       created_by: identity?.name || 'Staff',
     })
@@ -3095,6 +3099,7 @@ export default function StockMagasin() {
       image_url: item.image_url || '',
       fournisseur_id: item.fournisseur_id || '',
       sans_stock: !!item.sans_stock,
+      disponible_sur_commande: !!item.disponible_sur_commande,
       tva_rate: item.tva_rate ?? 21,
     } : {
       name: '', reference: '', barcode: '',
@@ -3105,6 +3110,7 @@ export default function StockMagasin() {
       description: '',
       image_url: '', fournisseur_id: '',
       sans_stock: false,
+      disponible_sur_commande: false,
       tva_rate: 21,
     })
     setShowItemModal(true)
@@ -3139,6 +3145,7 @@ export default function StockMagasin() {
       price_max: itemForm.price_max || 0,
       barcode: finalBarcode,
       sans_stock: itemForm.sans_stock,
+      disponible_sur_commande: itemForm.disponible_sur_commande,
     }
 
     if (editItem) {
@@ -8033,7 +8040,7 @@ export default function StockMagasin() {
                 </select>
               </div>
 
-              {/* MASQUÉ TEMPORAIREMENT - Quantité + Alerte stock bas */}
+              {/* Article sans stock */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-amber-800">Article sans stock (prix libre)</p>
@@ -8050,18 +8057,38 @@ export default function StockMagasin() {
                 </label>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
-                  Quantité minimum
-                </label>
-                <input type="number" value={itemForm.quantity_alert}
-                  onChange={e => setItemForm(f => ({ ...f, quantity_alert: Number(e.target.value) }))}
-                  placeholder="3"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Seuil en dessous duquel une alerte de stock bas s'affiche.
-                </p>
-              </div>
+              {!itemForm.sans_stock && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                      Quantité en stock
+                    </label>
+                    <input type="number" value={itemForm.quantity}
+                      onChange={e => setItemForm(f => ({ ...f, quantity: Number(e.target.value) }))}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                      Quantité minimum
+                    </label>
+                    <input type="number" value={itemForm.quantity_alert}
+                      onChange={e => setItemForm(f => ({ ...f, quantity_alert: Number(e.target.value) }))}
+                      placeholder="3"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"/>
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      Alerte de stock bas.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-600 cursor-pointer">
+                <input type="checkbox" checked={itemForm.disponible_sur_commande}
+                  onChange={(e) => setItemForm((f) => ({ ...f, disponible_sur_commande: e.target.checked }))}
+                  className="w-4 h-4 accent-[#00B4CC]" />
+                Disponible sur commande (pas en stock, mais peut être commandé)
+              </label>
 
               <div className={`grid ${trueIsAdmin ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
                 {trueIsAdmin && (
@@ -9119,14 +9146,19 @@ export default function StockMagasin() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Pour qui</label>
-                <select value={quickTacheForm.assigne_a_id}
-                  onChange={(e) => setQuickTacheForm((f) => ({ ...f, assigne_a_id: e.target.value }))}
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                  Pour le magasin
+                </label>
+                <select value={quickTacheMagasinId}
+                  onChange={(e) => setQuickTacheMagasinId(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-                  {staffListCaisse.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                  {MAGASINS_CAISSE.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nom.replace('Seb Telecom — ', '')}</option>
                   ))}
                 </select>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Visible par toute personne connectée dans ce magasin ce jour-là, y compris un remplaçant.
+                </p>
               </div>
             </div>
             <div className="flex gap-2 mt-4">
