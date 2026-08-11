@@ -37,7 +37,9 @@ export default function AdminLogin() {
           name: 'Admin',
           email: cleanEmail,
           role: 'admin',
+          grade: 'admin',
           magasin_id: null,
+          responsable_magasins: null,
           permissions: null,
         }))
         localStorage.setItem('sebphone_admin', 'true')
@@ -64,7 +66,9 @@ export default function AdminLogin() {
             name: staffData.name,
             email: cleanEmail,
             role: staffData.is_admin ? 'admin' : 'employe',
+            grade: staffData.grade || (staffData.is_admin ? 'admin' : 'vendeur'),
             magasin_id: staffData.magasin_id,
+            responsable_magasins: staffData.responsable_magasins || [],
             permissions: staffData.permissions,
           }))
           localStorage.setItem('sebphone_admin', 'true')

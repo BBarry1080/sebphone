@@ -104,6 +104,22 @@ const DEFAULT_PERMS = Object.fromEntries(
   ALL_PERMISSIONS.map((p) => [p, false])
 )
 
+const GRADES = [
+  { id: 'admin', label: 'Admin' },
+  { id: 'responsable', label: 'Responsable' },
+  { id: 'technicien', label: 'Technicien' },
+  { id: 'vendeur', label: 'Vendeur' },
+  { id: 'stagiaire', label: 'Stagiaire' },
+]
+
+const GRADE_TO_LEGACY_PERMS = {
+  admin: Object.fromEntries(ALL_PERMISSIONS.map((p) => [p, true])),
+  responsable: Object.fromEntries(ALL_PERMISSIONS.map((p) => [p, true])),
+  technicien: { stock_magasin: true, caisse: true, voir_clients: true, voir_clients_interesses: true },
+  vendeur: { stock_magasin: true, caisse: true, voir_clients: true, voir_clients_interesses: true },
+  stagiaire: { stock_magasin: true, caisse: true },
+}
+
 const IPHONE_CHRONO_ORDER = [
   ...IPHONE_DATABASE.map((i) => i.model),
   ...IPHONE_ON_DEMAND.map((i) => i.model),
@@ -252,20 +268,31 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
   const [firstName, setFirstName] = useState(isEdit ? (employee.name?.split(' ')[0] || '') : '')
   const [lastName,  setLastName]  = useState(isEdit ? (employee.name?.split(' ').slice(1).join(' ') || '') : '')
   const [password,  setPassword]  = useState('')
-  const [magasin,   setMagasin]   = useState(isEdit ? employee.magasin_id : (MAGASINS_LIST[0]?.id || ''))
+  const [emailEdited, setEmailEdited] = useState(isEdit)
+  const [email, setEmail] = useState(isEdit ? (employee.email || '') : '')
+  const [grade, setGrade] = useState(isEdit ? (employee.grade || (employee.is_admin ? 'admin' : 'vendeur')) : 'vendeur')
+  const [selectedMagasins, setSelectedMagasins] = useState(
+    isEdit ? (employee.responsable_magasins || (employee.magasin_id ? [employee.magasin_id] : [])) : []
+  )
   const [pinCode,   setPinCode]   = useState(isEdit ? (employee.pin_code || '') : '')
   const [hourlyWage, setHourlyWage] = useState(isEdit ? (employee.hourly_wage ?? '') : '')
   const [telephone, setTelephone] = useState(isEdit ? (employee.telephone || '') : '')
-  const [perms,     setPerms]     = useState(isEdit ? { ...DEFAULT_PERMS, ...employee.permissions } : { ...DEFAULT_PERMS })
-  const [isAdminAccount, setIsAdminAccount] = useState(isEdit ? !!employee.is_admin : false)
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState(null)
 
-  const email = (firstName && lastName) ? generateEmail(firstName, lastName) : ''
+  useEffect(() => {
+    if (!emailEdited && firstName && lastName) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEmail(generateEmail(firstName, lastName))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstName, lastName])
 
   const handleSave = async () => {
     if (!firstName || !lastName) { setError('Prénom et nom requis'); return }
+    if (!email.trim()) { setError('Email requis'); return }
     if (!isEdit && password.length < 8) { setError('Mot de passe min. 8 caractères'); return }
+    if (grade !== 'admin' && selectedMagasins.length === 0) { setError('Sélectionne au moins un magasin'); return }
 
     if (pinCode) {
       if (!/^\d{4}$/.test(pinCode)) {
@@ -290,12 +317,14 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
     const data = {
       name:       `${firstName} ${lastName}`.trim(),
       email,
-      magasin_id: magasin,
+      grade,
+      magasin_id: selectedMagasins[0] || null,
+      responsable_magasins: grade === 'admin' ? null : selectedMagasins,
       pin_code:   pinCode || null,
       hourly_wage: Number(hourlyWage) || 0,
       telephone:  telephone || null,
-      permissions: perms,
-      is_admin:   isAdminAccount,
+      permissions: GRADE_TO_LEGACY_PERMS[grade] || {},
+      is_admin:   grade === 'admin',
       active:     true,
     }
     if (!isEdit || password) {
@@ -359,12 +388,16 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-[#1B2A4A] block mb-1">Email généré</label>
+            <label className="text-xs font-semibold text-[#1B2A4A] block mb-1">Email</label>
             <input
               value={email}
-              readOnly
-              className="w-full px-3 py-2.5 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+              onChange={(e) => { setEmail(e.target.value); setEmailEdited(true) }}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC]"
+              placeholder="prenom.nom@sebphone.be"
             />
+            <p className="text-[10px] text-gray-400 mt-1">
+              Généré automatiquement depuis le prénom/nom — modifiable si besoin.
+            </p>
           </div>
 
           <div>
@@ -380,18 +413,31 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
             />
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-[#1B2A4A] block mb-1">Magasin assigné</label>
-            <select
-              value={magasin}
-              onChange={(e) => setMagasin(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#00B4CC] bg-white"
-            >
-              {MAGASINS_LIST.map((m) => (
-                <option key={m.id} value={m.id}>{m.nom}</option>
-              ))}
-            </select>
-          </div>
+          {grade !== 'admin' && (
+            <div>
+              <label className="text-xs font-semibold text-[#1B2A4A] block mb-1">
+                Magasin(s) assigné(s)
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {MAGASINS_LIST.map((m) => (
+                  <button key={m.id} type="button"
+                    onClick={() => setSelectedMagasins((prev) =>
+                      prev.includes(m.id) ? prev.filter((x) => x !== m.id) : [...prev, m.id]
+                    )}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border-2 ${
+                      selectedMagasins.includes(m.id)
+                        ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                        : 'bg-white border-gray-200 text-gray-500'
+                    }`}>
+                    {m.nom.replace('Seb Telecom — ', '')}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">
+                Cette personne ne verra que les données de ces magasins.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-semibold text-[#1B2A4A] block mb-1">Téléphone (WhatsApp)</label>
@@ -436,50 +482,42 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
             </div>
           </div>
 
-          {currentUserIsAdmin && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-amber-800">Compte administrateur</p>
-                <p className="text-xs text-amber-600">Accès complet à tout SebPhone, comme un admin classique</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={isAdminAccount}
-                  onChange={(e) => setIsAdminAccount(e.target.checked)}
-                  className="sr-only peer" />
-                <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-amber-500
-                                after:content-[''] after:absolute after:top-0.5 after:left-0.5
-                                after:bg-white after:rounded-full after:h-5 after:w-5
-                                after:transition-all peer-checked:after:translate-x-5"></div>
-              </label>
-            </div>
-          )}
-
-          {isAdminAccount && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              ⚠️ Les droits individuels ci-dessous n'auront plus d'effet — ce compte aura automatiquement accès à tout.
-            </p>
-          )}
-
-          <div className={isAdminAccount ? 'opacity-40 pointer-events-none' : ''}>
-            <label className="text-xs font-semibold text-[#1B2A4A] block mb-3">Droits d'accès</label>
-            <div className="flex flex-col gap-4">
-              {PERMISSION_GROUPS.map((group) => (
-                <div key={group.label} className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs font-bold text-[#1B2A4A] uppercase tracking-wide mb-2">{group.label}</p>
-                  <div className="flex flex-col gap-2">
-                    {group.perms.map(({ key, label }) => (
-                      <div key={key} className="flex items-center justify-between gap-3">
-                        <span className="text-sm text-[#333]">{label}</span>
-                        <Toggle
-                          checked={!!perms[key]}
-                          onChange={(v) => setPerms((p) => ({ ...p, [key]: v }))}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+          <div>
+            <label className="text-xs font-semibold text-[#1B2A4A] block mb-2">Grade</label>
+            <div className="grid grid-cols-2 gap-2">
+              {GRADES.map((g) => (
+                <button key={g.id} type="button"
+                  onClick={() => setGrade(g.id)}
+                  disabled={g.id === 'admin' && !currentUserIsAdmin}
+                  className={`px-3 py-2.5 rounded-xl text-sm font-bold border-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                    grade === g.id
+                      ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                      : 'bg-white border-gray-200 text-gray-600'
+                  }`}>
+                  {g.label}
+                </button>
               ))}
             </div>
+            {grade === 'admin' && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2">
+                ⚠️ Accès complet à tout SebPhone, tous les magasins, automatiquement.
+              </p>
+            )}
+            {grade === 'responsable' && (
+              <p className="text-[10px] text-gray-400 mt-2">
+                Accès à tout, mais uniquement pour le(s) magasin(s) sélectionné(s) ci-dessus.
+              </p>
+            )}
+            {(grade === 'technicien' || grade === 'vendeur') && (
+              <p className="text-[10px] text-gray-400 mt-2">
+                Accès : Caisse, Clôture, Réparations, Planning, Clients, Clients intéressés — pour le(s) magasin(s) sélectionné(s).
+              </p>
+            )}
+            {grade === 'stagiaire' && (
+              <p className="text-[10px] text-gray-400 mt-2">
+                Accès : Caisse uniquement, pour le(s) magasin(s) sélectionné(s).
+              </p>
+            )}
           </div>
 
           {error && (
