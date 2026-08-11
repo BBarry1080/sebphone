@@ -1091,6 +1091,8 @@ export default function StockMagasin() {
     const session = {
       staffId: staffRecord.id,
       staffName: staffRecord.name,
+      responsableMagasins: staffRecord.responsable_magasins || [],
+      grade: staffRecord.grade || null,
       pointageId,
       dateStr: new Date().toISOString().slice(0, 10),
       arrivalDisplay: arrivalTimeISO
@@ -1105,6 +1107,10 @@ export default function StockMagasin() {
 
   const checkPlanningMismatch = async (session) => {
     if (!session?.staffId || !magasin) return
+    // Un responsable du magasin y est toujours legitime : pas de controle
+    // de planning pour lui, il n'a pas de creneau fixe sur ses magasins.
+    if (session.responsableMagasins?.includes(magasin)) return
+    if (session.grade === 'admin' || session.grade === 'responsable') return
     const todayStr = new Date().toISOString().slice(0, 10)
     const { data: staffData } = await supabase
       .from('staff').select('id, name')
@@ -4227,7 +4233,19 @@ export default function StockMagasin() {
     }>
 
       {!caisseSession && magasin && (
-        <div className="fixed inset-0 z-[100] backdrop-blur-md bg-black/40 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] backdrop-blur-md bg-black/40 flex flex-col items-center justify-center p-4 gap-3">
+          <div className="bg-white rounded-2xl shadow-xl px-4 py-3">
+            <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block text-center">
+              Magasin
+            </label>
+            <select value={magasin}
+              onChange={(e) => setMagasin(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white font-bold text-[#1B2A4A]">
+              {MAGASINS_CAISSE.map((m) => (
+                <option key={m.id} value={m.id}>{m.nom.replace('Seb Telecom — ', '')}</option>
+              ))}
+            </select>
+          </div>
           <CaissePinLock
             magasin={magasin}
             magasinLabel={MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
