@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { MAGASINS_ADMIN as MAGASINS_LIST, MAGASINS } from '../../utils/magasins'
 import { sha256 } from 'js-sha256'
-import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History, BarChart2 } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, Shield, Store, CheckCircle, History, BarChart2, FileText } from 'lucide-react'
 import { ALL_PERMISSIONS, useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import { logActivity } from '../../lib/logActivity'
 import { calcSalairePeriode } from '../../lib/calcSalaire'
@@ -11,6 +11,209 @@ import { IPHONE_ON_DEMAND } from '../../data/iphoneOnDemand'
 import { IPHONE_DATABASE } from '../../data/iphoneDatabase'
 import { PHONES_DATABASE } from '../../data/phonesDatabase'
 import { MODELS_BY_CATEGORIE } from '../../data/catalogConstants'
+import emailjs from '@emailjs/browser'
+import { generateTicketPdfBase64 } from '../../utils/generateTicketPdf'
+import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
+import { generateFactureParticulierPdf } from '../../utils/generateFactureParticulierPdf'
+import { generateFactureSocietePdf } from '../../utils/generateFactureSocietePdf'
+import { generateReviewGooglePdf } from '../../utils/generateReviewGooglePdf'
+import { generateOrderConfirmationPdf } from '../../utils/sendEmail'
+import { generateProConfirmPdf } from '../../utils/generateProConfirmPdf'
+import { generateRewardPdf } from '../../utils/generateRewardPdf'
+
+const EMAILJS_SERVICE_ID = 'service_nn74puq'
+const EMAILJS_PUBLIC_KEY = 'rqbaYNMIGNP6IQB9O'
+
+const DOC_TYPES = [
+  {
+    key: 'ticket',
+    label: 'Ticket de caisse',
+    templateId: 'template_ticket',
+    generatePdf: (data) => generateTicketPdfBase64(data.sale, data.magasinLabel),
+    sampleData: {
+      sale: {
+        clientNom: 'Aliou Ngom',
+        created_at: '2026-01-15T14:30:00.000Z',
+        ticketNumber: 'T-042',
+        staffName: 'Seb',
+        total_amount: 74.99,
+        items: [
+          { item_name: 'Coque iPhone 15 Silicone Noir', quantity: 1, unit_price: 29.99 },
+          { item_name: 'Verre trempé iPhone 15', quantity: 3, unit_price: 15.00 },
+        ],
+      },
+      magasinLabel: 'Seb Telecom — Anderlecht',
+      to_name: 'Aliou Ngom',
+      items_html: '<tr><td>1× Coque iPhone 15 Silicone Noir</td><td style="text-align:right">29.99€</td></tr><tr><td>3× Verre trempé iPhone 15</td><td style="text-align:right">45.00€</td></tr>',
+      total: '74.99€',
+      magasin_nom: 'Seb Telecom — Anderlecht',
+      date_vente: '15/01/2026',
+    },
+  },
+  {
+    key: 'devis',
+    label: 'Devis',
+    templateId: 'template_devis',
+    generatePdf: (data) => generateDevisPdfBase64(data.cartArg, data.totalArg, data.magasinLabel, data.delaiTexte),
+    sampleData: {
+      cartArg: [
+        { item_name: 'iPhone 13 128Go Bleu (Grade A)', quantity: 1, unit_price: 449.00 },
+        { item_name: 'Coque silicone iPhone 13', quantity: 1, unit_price: 24.99 },
+      ],
+      totalArg: 473.99,
+      magasinLabel: 'Seb Telecom — Anderlecht',
+      delaiTexte: 'Livraison sous 3 jours ouvrés',
+      to_name: 'Aliou Ngom',
+      items_html: '<table style="width:100%;border-collapse:collapse"><tr><td>1× iPhone 13 128Go Bleu (Grade A)</td><td style="text-align:right">449.00€</td></tr><tr><td>1× Coque silicone iPhone 13</td><td style="text-align:right">24.99€</td></tr></table>',
+      total: '473.99€',
+      magasin_nom: 'Seb Telecom — Anderlecht',
+      delai_texte: 'Livraison sous 3 jours ouvrés',
+    },
+  },
+  {
+    key: 'facture_particulier',
+    label: 'Facture particulier',
+    templateId: 'template_pzv7w8d',
+    generatePdf: (data) => generateFactureParticulierPdf(data),
+    sampleData: {
+      to_name: 'Aliou Ngom',
+      email_type: 'facture',
+      phone_name: 'iPhone 13 128Go',
+      phone_color: 'Bleu',
+      phone_storage: '128Go',
+      phone_condition: 'Reconditionné',
+      phone_grade: 'A',
+      phone_imei: '356789012345678',
+      price_total: '449.00€',
+      price_original: '499.00€',
+      discount_amount: '50.00€',
+      deposit_paid: '449.00€',
+      remaining: '0€',
+      payment_label: 'Montant total payé ✓',
+      accessories_total: '0€',
+      accessory_pack: 'Aucun',
+      battery_replace: 'Non',
+      warning_message: '',
+      payment_method: 'Bancontact',
+      tva_mention: "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)",
+      magasin_nom: 'Seb Telecom — Anderlecht',
+      magasin_adresse: 'Bergensesteenweg 711, 1070 Anderlecht',
+      reservation_code: 'RES-20260115-XY42',
+      reservation_url: 'https://sebphone.be/commande/RES-20260115-XY42',
+      invoice_url: 'https://sebphone.be/facture/RES-20260115-XY42',
+      pickup_date: '15/01/2026',
+      warranty_expiry: '15/01/2028',
+    },
+  },
+  {
+    key: 'facture_societe',
+    label: 'Facture société',
+    templateId: 'template_qukek6a',
+    generatePdf: (data) => generateFactureSocietePdf(data),
+    sampleData: {
+      to_name: 'SLT Group SRL',
+      company_name: 'SLT Group SRL',
+      company_vat: 'BE1028764677',
+      company_address: 'Rue du Bailli 22, 1000 Bruxelles',
+      company_phone: '+32 2 123 45 67',
+      company_tva_regime: 'marge',
+      phone_name: 'iPhone 14 Pro 256Go',
+      phone_color: 'Noir sidéral',
+      phone_storage: '256Go',
+      phone_condition: 'Neuf',
+      phone_grade: 'A',
+      phone_imei: '356789012345679',
+      price_original: '1199.00€',
+      discount_amount: '100.00€',
+      discount_label: 'Remise 10%',
+      price_final: '1099.00€',
+      payment_method: 'Virement',
+      tva_regime: 'marge',
+      tva_mention: "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)",
+      magasin_nom: 'Seb Telecom — Anderlecht',
+      magasin_adresse: 'Bergensesteenweg 711, 1070 Anderlecht',
+      sale_date: '15/01/2026',
+      reservation_code: 'RES-20260115-PRO7',
+      invoice_url: 'https://sebphone.be/facture/RES-20260115-PRO7',
+      warranty_expiry: '15/01/2028',
+    },
+  },
+  {
+    key: 'review_google',
+    label: 'Invitation avis Google',
+    templateId: 'template_jg2nh5n',
+    generatePdf: (data) => generateReviewGooglePdf(data),
+    sampleData: {
+      to_name: 'Aliou Ngom',
+      customer_name: 'Aliou Ngom',
+      phone_name: 'iPhone 13 128Go',
+      magasin_nom: 'Seb Telecom — Anderlecht',
+      google_review_url: 'https://g.page/r/CY6Xxxxxxxxxxxx/review',
+      review_page_url: 'https://sebphone.be/avis?email=client%40example.com&magasin=anderlecht',
+    },
+  },
+  {
+    key: 'order_confirmation',
+    label: 'Confirmation de commande',
+    templateId: 'template_hfoq4dg',
+    generatePdf: (data) => generateOrderConfirmationPdf(data),
+    sampleData: {
+      to_name: 'Aliou Ngom',
+      phone_name: 'iPhone 13 128Go',
+      phone_color: 'Bleu',
+      phone_storage: '128Go',
+      phone_grade: 'A',
+      phone_condition: 'Reconditionné',
+      payment_mode: 'acompte',
+      price_total: '449€',
+      deposit_paid: '50€',
+      remaining: '399€',
+      payment_label: 'Acompte payé ✓',
+      warning_message: "L'acompte de 50€ n'est pas remboursable.",
+      reservation_code: 'RES-20260115-XY42',
+      reservation_url: 'https://sebphone.be/commande/RES-20260115-XY42',
+      pickup_mode: 'Click & Collect',
+      magasin_nom: 'Seb Telecom — Anderlecht',
+      magasin_adresse: 'Bergensesteenweg 711, 1070 Anderlecht',
+      magasin_gmaps: '#',
+      pickup_date: 'mercredi 15 janvier 2026',
+      accessory_pack: 'Aucun',
+      battery_replace: 'Non',
+      accessories_total: '0€',
+      reply_to: 'contact@sebphone.be',
+    },
+  },
+  {
+    key: 'pro_confirm',
+    label: 'Confirmation compte Pro',
+    templateId: 'template_rs9zkwo',
+    generatePdf: (data) => generateProConfirmPdf(data),
+    sampleData: {
+      to_name: 'Aliou Ngom',
+      contact_name: 'Aliou Ngom',
+      company_name: 'AK Telecom',
+      vat_number: 'BE0987654321',
+      subject: 'Compte professionnel approuvé',
+      status_label: 'Compte approuvé !',
+      status_class: 'status-approved',
+      message: 'Félicitations ! Votre compte professionnel SebPhone a été approuvé. Vous pouvez dès maintenant accéder à notre catalogue exclusif réservé aux revendeurs.',
+    },
+  },
+  {
+    key: 'reward_avis',
+    label: 'Récompense fidélité (avis)',
+    templateId: 'template_202rbo1',
+    generatePdf: (data) => generateRewardPdf(data),
+    sampleData: {
+      to_name: 'Aliou Ngom',
+      customer_name: 'Aliou Ngom',
+      promo_code: 'AVIS3MAG-A7X2K9',
+      reward_type: 'une coque au choix',
+      reward_description: 'Merci ! Vous avez posté 3 avis. Voici votre cadeau : une coque au choix offerte !',
+      magasins_count: 3,
+    },
+  },
+]
 
 const SALT = 'sebphone_salt_2026'
 
@@ -554,6 +757,78 @@ export default function Parametres() {
   const [showModal, setShowModal] = useState(false)
   const [editEmployee, setEditEmployee] = useState(null)
 
+  const [selectedDocType, setSelectedDocType] = useState(DOC_TYPES[0].key)
+  const [jsonData, setJsonData]               = useState(JSON.stringify(DOC_TYPES[0].sampleData, null, 2))
+  const [jsonError, setJsonError]             = useState('')
+  const [generatedPdfBase64, setGeneratedPdfBase64] = useState(null)
+  const [generating, setGenerating]           = useState(false)
+  const [sendEmail, setSendEmail]             = useState('')
+  const [sending, setSending]                 = useState(false)
+
+  const handleDocTypeChange = (key) => {
+    const t = DOC_TYPES.find((x) => x.key === key) || DOC_TYPES[0]
+    setSelectedDocType(key)
+    setJsonData(JSON.stringify(t.sampleData, null, 2))
+    setJsonError('')
+    setGeneratedPdfBase64(null)
+  }
+
+  const handleJsonChange = (val) => {
+    setJsonData(val)
+    try { JSON.parse(val); setJsonError('') }
+    catch (e) { setJsonError(e.message) }
+  }
+
+  const handleGeneratePdf = async () => {
+    if (jsonError) return
+    try {
+      setGenerating(true)
+      setGeneratedPdfBase64(null)
+      const data = JSON.parse(jsonData)
+      const type = DOC_TYPES.find((x) => x.key === selectedDocType)
+      const b64 = await type.generatePdf(data)
+      setGeneratedPdfBase64(b64)
+    } catch (e) {
+      console.error('Erreur génération PDF:', e)
+      alert('Erreur génération : ' + (e?.message || String(e)))
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleSendTemplateEmail = async () => {
+    if (!generatedPdfBase64) return
+    if (!/^\S+@\S+\.\S+$/.test(sendEmail)) { alert('Email invalide'); return }
+    try {
+      setSending(true)
+      const data = JSON.parse(jsonData)
+      const type = DOC_TYPES.find((x) => x.key === selectedDocType)
+      await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        type.templateId,
+        { ...data, to_email: sendEmail, my_attachment: generatedPdfBase64 },
+        EMAILJS_PUBLIC_KEY,
+      )
+      alert('Email envoyé ✅')
+    } catch (e) {
+      console.error('Erreur envoi email:', e)
+      alert('Erreur envoi : ' + (e?.text || e?.message || JSON.stringify(e)))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleDownloadPdf = () => {
+    if (!generatedPdfBase64) return
+    const type = DOC_TYPES.find((x) => x.key === selectedDocType)
+    const link = document.createElement('a')
+    link.href = `data:application/pdf;base64,${generatedPdfBase64}`
+    link.download = `${type.key}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const [globalMin, setGlobalMin]   = useState(0)
   const [globalMax, setGlobalMax]   = useState(5000)
   const [globalMinPro, setGlobalMinPro] = useState(0)
@@ -1046,6 +1321,7 @@ export default function Parametres() {
           { key: 'general',      label: 'Général' },
           { key: 'historique',   label: 'Historique', icon: History },
           ...(showSuiviTab ? [{ key: 'suivi', label: 'Suivi', icon: BarChart2 }] : []),
+          ...(isAdmin ? [{ key: 'templates_pdf', label: 'Templates PDF', icon: FileText }] : []),
         ].map((t) => (
           <button
             key={t.key}
@@ -1645,6 +1921,112 @@ export default function Parametres() {
             </div>
           )}
         </>
+      )}
+
+      {tab === 'templates_pdf' && isAdmin && (
+        <div className="space-y-5">
+          <div>
+            <h2 className="font-bold text-[#1B2A4A] text-lg mb-1 flex items-center gap-2">
+              <FileText size={18} /> Templates PDF
+            </h2>
+            <p className="text-xs text-gray-500">
+              Génère et envoie un aperçu de chacun des 8 documents PDF avec des données éditables.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[280px_1fr]">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Type de document</label>
+              <select
+                value={selectedDocType}
+                onChange={(e) => handleDocTypeChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+              >
+                {DOC_TYPES.map((t) => (
+                  <option key={t.key} value={t.key}>{t.label}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-gray-400 mt-2">
+                Template EmailJS :{' '}
+                <code className="text-[#1B2A4A]">
+                  {DOC_TYPES.find((t) => t.key === selectedDocType)?.templateId}
+                </code>
+              </p>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                Données (JSON éditable)
+              </label>
+              <textarea
+                value={jsonData}
+                onChange={(e) => handleJsonChange(e.target.value)}
+                rows={16}
+                spellCheck={false}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:border-[#00B4CC]"
+              />
+              {jsonError && (
+                <p className="text-xs text-red-600 mt-1">JSON invalide : {jsonError}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleGeneratePdf}
+              disabled={!!jsonError || generating}
+              className="px-4 py-2 rounded-xl bg-[#1B2A4A] text-white text-sm font-bold hover:bg-[#00B4CC] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {generating ? 'Génération…' : 'Générer le PDF'}
+            </button>
+            {generatedPdfBase64 && (
+              <button
+                onClick={handleDownloadPdf}
+                className="px-4 py-2 rounded-xl bg-gray-100 text-[#1B2A4A] text-sm font-bold hover:bg-gray-200"
+              >
+                Télécharger
+              </button>
+            )}
+          </div>
+
+          {generatedPdfBase64 && (
+            <>
+              <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                <embed
+                  src={`data:application/pdf;base64,${generatedPdfBase64}`}
+                  type="application/pdf"
+                  width="100%"
+                  height="500"
+                />
+              </div>
+
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50">
+                <label className="text-xs font-bold text-gray-500 uppercase mb-1 block">
+                  Envoyer un test par email
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="email"
+                    value={sendEmail}
+                    onChange={(e) => setSendEmail(e.target.value)}
+                    placeholder="destinataire@example.com"
+                    className="flex-1 min-w-[240px] px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                  />
+                  <button
+                    onClick={handleSendTemplateEmail}
+                    disabled={sending || !sendEmail}
+                    className="px-4 py-2 rounded-xl bg-[#00B4CC] text-white text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {sending ? 'Envoi…' : 'Envoyer'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-2">
+                  Le PDF généré ci-dessus sera joint automatiquement en tant que <code>my_attachment</code>.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {showStaffDetail && currentDetailEmp && (
