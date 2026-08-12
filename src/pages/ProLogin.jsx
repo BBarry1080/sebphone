@@ -5,6 +5,7 @@ import { supabase, isSupabaseReady } from '../lib/supabase'
 import { sha256 } from 'js-sha256'
 import emailjs from '@emailjs/browser'
 import { useLanguage } from '../contexts/LanguageContext'
+import { generateProConfirmPdf } from '../utils/generateProConfirmPdf'
 
 const SALT = 'sebphone_salt_2026'
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
@@ -129,20 +130,22 @@ export default function ProLogin() {
 
       // Notification best-effort à l'équipe
       try {
+        const proPayload = {
+          to_email: cleanEmail,
+          to_name: form.contact_name,
+          contact_name: form.contact_name,
+          company_name: form.company_name,
+          vat_number: form.vat_number || 'Non renseigné',
+          subject: 'Demande de compte professionnel reçue',
+          status_label: 'Demande reçue !',
+          status_class: 'status-pending',
+          message: 'Nous avons bien reçu votre demande de compte professionnel. Notre équipe va l\'examiner et vous recevrez une réponse dans un délai de 1h à 72h. Merci de votre confiance.',
+        }
+        const pdfBase64 = await generateProConfirmPdf(proPayload)
         await emailjs.send(
           EMAILJS_SERVICE_ID,
           PRO_TEMPLATE_ID,
-          {
-            to_email: cleanEmail,
-            to_name: form.contact_name,
-            contact_name: form.contact_name,
-            company_name: form.company_name,
-            vat_number: form.vat_number || 'Non renseigné',
-            subject: 'Demande de compte professionnel reçue',
-            status_label: 'Demande reçue !',
-            status_class: 'status-pending',
-            message: 'Nous avons bien reçu votre demande de compte professionnel. Notre équipe va l\'examiner et vous recevrez une réponse dans un délai de 1h à 72h. Merci de votre confiance.',
-          },
+          { ...proPayload, my_attachment: pdfBase64 },
           EMAILJS_PUBLIC_KEY,
         )
       } catch (mailErr) {

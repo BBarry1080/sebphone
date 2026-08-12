@@ -1,10 +1,84 @@
 import emailjs from '@emailjs/browser'
+import { LOGO_SEBPHONE_BASE64 } from '../lib/logos'
 
 const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
 const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_hfoq4dg'
 const PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'rqbaYNMIGNP6IQB9O'
 
 emailjs.init(PUBLIC_KEY)
+
+async function generateOrderConfirmationPdf(p) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const pageWidth = 210
+
+  doc.setFillColor(27, 42, 74)
+  doc.rect(0, 0, pageWidth, 35, 'F')
+  doc.addImage(LOGO_SEBPHONE_BASE64, 'PNG', 15, 7, 21, 21)
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(18)
+  doc.setFont(undefined, 'bold')
+  doc.text('Confirmation de commande', 42, 20)
+  doc.setFontSize(9)
+  doc.setFont(undefined, 'normal')
+  doc.text('SLT GROUP (SRL)', pageWidth - 15, 14, { align: 'right' })
+  doc.text('Rue du Bailli 22, 1000 Bruxelles', pageWidth - 15, 19, { align: 'right' })
+  doc.text('TVA BE 1028.764.677', pageWidth - 15, 24, { align: 'right' })
+
+  doc.setTextColor(0, 0, 0)
+  let y = 48
+
+  doc.setFontSize(11)
+  doc.setFont(undefined, 'bold')
+  doc.text(`Bonjour ${p.to_name || 'Client'},`, 15, y); y += 8
+  doc.setFont(undefined, 'normal')
+  doc.setFontSize(10)
+  doc.text('Votre commande est confirmée. Voici le récapitulatif :', 15, y); y += 10
+
+  doc.setDrawColor(27, 42, 74); doc.setLineWidth(0.5)
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFont(undefined, 'bold'); doc.setFontSize(11)
+  doc.text('Appareil', 15, y); y += 6
+  doc.setFont(undefined, 'normal'); doc.setFontSize(10)
+  doc.text(`${p.phone_name || ''}`, 15, y); y += 5
+  doc.text(`Couleur : ${p.phone_color || '—'}   ·   Stockage : ${p.phone_storage || '—'}   ·   Grade : ${p.phone_grade || '—'}`, 15, y); y += 8
+
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFont(undefined, 'bold'); doc.setFontSize(11)
+  doc.text('Paiement', 15, y); y += 6
+  doc.setFont(undefined, 'normal'); doc.setFontSize(10)
+  doc.text(`${p.payment_label || ''}`, 15, y); y += 5
+  doc.text(`Payé : ${p.deposit_paid || '—'}   ·   Restant : ${p.remaining || '—'}   ·   Total : ${p.price_total || '—'}`, 15, y); y += 6
+  if (p.warning_message) {
+    doc.setTextColor(200, 100, 0)
+    doc.text(p.warning_message, 15, y); doc.setTextColor(0, 0, 0); y += 6
+  }
+  y += 2
+
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFont(undefined, 'bold'); doc.setFontSize(11)
+  doc.text('Retrait / Livraison', 15, y); y += 6
+  doc.setFont(undefined, 'normal'); doc.setFontSize(10)
+  doc.text(`${p.pickup_mode || ''}   ·   ${p.pickup_date || ''}`, 15, y); y += 5
+  doc.text(`${p.magasin_nom || ''} — ${p.magasin_adresse || ''}`, 15, y); y += 5
+  doc.text(`Accessoires : ${p.accessory_pack || 'Aucun'}   ·   Remplacement batterie : ${p.battery_replace || 'Non'}`, 15, y); y += 8
+
+  doc.setDrawColor(27, 42, 74); doc.setLineWidth(0.5)
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFont(undefined, 'bold')
+  doc.setTextColor(0, 180, 204)
+  doc.text(`Référence : ${p.reservation_code || ''}`, 15, y)
+
+  doc.setTextColor(120, 120, 120)
+  doc.setFontSize(8)
+  doc.setFont(undefined, 'normal')
+  doc.text('SLT GROUP (SRL) — Rue du Bailli 22, 1000 Bruxelles — TVA BE 1028.764.677',
+    pageWidth / 2, 285, { align: 'center' })
+  doc.text('@sebtelecom — Instagram / TikTok / Snapchat',
+    pageWidth / 2, 290, { align: 'center' })
+
+  return doc.output('datauristring').split(',')[1]
+}
 
 export async function sendConfirmationEmail(params) {
   const {
@@ -95,10 +169,11 @@ export async function sendConfirmationEmail(params) {
   }
 
   try {
+    const pdfBase64 = await generateOrderConfirmationPdf(templateParams)
     await emailjs.send(
       SERVICE_ID,
       TEMPLATE_ID,
-      templateParams
+      { ...templateParams, my_attachment: pdfBase64 }
     )
     return true
   } catch (error) {

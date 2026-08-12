@@ -4,10 +4,214 @@ import { supabase } from '../../lib/supabase'
 import emailjs from '@emailjs/browser'
 import { MAGASINS_PHYSIQUES, MAGASINS as MAGASINS_MAP } from '../../utils/magasins'
 import { GOOGLE_REVIEW_LINKS } from '../../data/googleReviews'
+import { LOGO_SEBPHONE_BASE64 } from '../../lib/logos'
 
 const EMAILJS_SERVICE_ID   = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
 const EMAILJS_PUBLIC_KEY   = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMIGNP6IQB9O'
 const INVOICE_TEMPLATE_ID  = 'template_pzv7w8d'
+
+// ─── Générateurs PDF (pièces jointes emails) ───
+const pdfHeader = (doc, title) => {
+  const pageWidth = 210
+  doc.setFillColor(27, 42, 74)
+  doc.rect(0, 0, pageWidth, 35, 'F')
+  doc.addImage(LOGO_SEBPHONE_BASE64, 'PNG', 15, 7, 21, 21)
+  doc.setTextColor(255, 255, 255)
+  doc.setFontSize(20)
+  doc.setFont(undefined, 'bold')
+  doc.text(title, 42, 20)
+  doc.setFontSize(9)
+  doc.setFont(undefined, 'normal')
+  doc.text('SLT GROUP (SRL)', pageWidth - 15, 14, { align: 'right' })
+  doc.text('Rue du Bailli 22, 1000 Bruxelles', pageWidth - 15, 19, { align: 'right' })
+  doc.text('TVA BE 1028.764.677', pageWidth - 15, 24, { align: 'right' })
+  doc.setTextColor(0, 0, 0)
+}
+
+const pdfFooter = (doc) => {
+  const pageWidth = 210
+  doc.setTextColor(120, 120, 120)
+  doc.setFontSize(8)
+  doc.setFont(undefined, 'normal')
+  doc.text('SLT GROUP (SRL) — Rue du Bailli 22, 1000 Bruxelles — TVA BE 1028.764.677',
+    pageWidth / 2, 285, { align: 'center' })
+  doc.text('@sebtelecom — Instagram / TikTok / Snapchat',
+    pageWidth / 2, 290, { align: 'center' })
+}
+
+const generateFactureParticulierPdf = async (p) => {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const pageWidth = 210
+  pdfHeader(doc, 'Facture')
+  let y = 48
+
+  doc.setFontSize(9)
+  doc.setFont(undefined, 'bold')
+  doc.text('CLIENT', 15, y)
+  doc.setFont(undefined, 'normal')
+  doc.setFontSize(11)
+  doc.text(p.to_name || '', 15, y + 6)
+  doc.setFontSize(9)
+  doc.text(`Date : ${p.pickup_date || ''}`, pageWidth - 15, y, { align: 'right' })
+  doc.text(`Réf : ${p.reservation_code || ''}`, pageWidth - 15, y + 5, { align: 'right' })
+  doc.text(`Magasin : ${p.magasin_nom || ''}`, pageWidth - 15, y + 10, { align: 'right' })
+
+  y += 26
+  doc.setFontSize(11)
+  doc.setFont(undefined, 'bold')
+  doc.setDrawColor(27, 42, 74)
+  doc.setLineWidth(0.5)
+  doc.line(15, y, pageWidth - 15, y)
+  y += 6
+  doc.text('Appareil', 15, y)
+  y += 6
+  doc.setFont(undefined, 'normal')
+  doc.setFontSize(10)
+  doc.text(`${p.phone_name || ''}`, 15, y); y += 5
+  doc.text(`Couleur : ${p.phone_color || '—'}   ·   Stockage : ${p.phone_storage || '—'}`, 15, y); y += 5
+  doc.text(`État : ${p.phone_condition || '—'}   ·   Grade : ${p.phone_grade || '—'}`, 15, y); y += 5
+  doc.text(`IMEI : ${p.phone_imei || '—'}`, 15, y); y += 8
+
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFont(undefined, 'bold'); doc.setFontSize(11)
+  doc.text('Prix', 15, y); y += 6
+  doc.setFont(undefined, 'normal'); doc.setFontSize(10)
+  doc.text('Prix initial', 15, y)
+  doc.text(`${p.price_original || '—'}`, pageWidth - 15, y, { align: 'right' }); y += 5
+  if (p.discount_amount && p.discount_amount !== '0€') {
+    doc.text('Remise', 15, y)
+    doc.text(`-${p.discount_amount}`, pageWidth - 15, y, { align: 'right' }); y += 5
+  }
+  doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2)
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.setTextColor(0, 180, 204)
+  doc.text('Total', 15, y)
+  doc.text(`${p.price_total || '—'}`, pageWidth - 15, y, { align: 'right' })
+  doc.setTextColor(0, 0, 0); y += 8
+
+  doc.setFontSize(9); doc.setFont(undefined, 'normal')
+  doc.text(`${p.payment_label || ''}   ·   ${p.payment_method || ''}`, 15, y); y += 5
+  doc.text(`Payé : ${p.deposit_paid || '—'}   ·   Restant : ${p.remaining || '—'}`, 15, y); y += 6
+  if (p.warning_message) {
+    doc.setTextColor(200, 100, 0)
+    doc.text(p.warning_message, 15, y); doc.setTextColor(0, 0, 0); y += 6
+  }
+
+  y += 4
+  doc.setDrawColor(27, 42, 74); doc.setLineWidth(0.5)
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFontSize(9)
+  doc.text(`${p.magasin_nom || ''} — ${p.magasin_adresse || ''}`, 15, y); y += 5
+  doc.text(`Garantie 24 mois — jusqu'au ${p.warranty_expiry || '—'}`, 15, y); y += 8
+  doc.setFont(undefined, 'italic'); doc.setTextColor(120, 120, 120)
+  doc.text(p.tva_mention || '', 15, y)
+
+  pdfFooter(doc)
+  return doc.output('datauristring').split(',')[1]
+}
+
+const generateFactureSocietePdf = async (p) => {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const pageWidth = 210
+  pdfHeader(doc, 'Facture')
+  let y = 48
+
+  doc.setFontSize(9)
+  doc.setFont(undefined, 'bold')
+  doc.text('FACTURÉ À', 15, y)
+  doc.setFont(undefined, 'normal')
+  doc.setFontSize(11)
+  doc.text(p.company_name || '', 15, y + 6)
+  doc.setFontSize(9)
+  doc.text(`TVA ${p.company_vat || '—'}`, 15, y + 11)
+  doc.text(p.company_address || '—', 15, y + 16)
+  if (p.company_phone) doc.text(`Tél : ${p.company_phone}`, 15, y + 21)
+  doc.text(`Date : ${p.sale_date || ''}`, pageWidth - 15, y, { align: 'right' })
+  doc.text(`Réf : ${p.reservation_code || ''}`, pageWidth - 15, y + 5, { align: 'right' })
+  doc.text(`Magasin : ${p.magasin_nom || ''}`, pageWidth - 15, y + 10, { align: 'right' })
+
+  y += 32
+  doc.setFontSize(11); doc.setFont(undefined, 'bold')
+  doc.setDrawColor(27, 42, 74); doc.setLineWidth(0.5)
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.text('Appareil', 15, y); y += 6
+  doc.setFont(undefined, 'normal'); doc.setFontSize(10)
+  doc.text(`${p.phone_name || ''}`, 15, y); y += 5
+  doc.text(`Couleur : ${p.phone_color || '—'}   ·   Stockage : ${p.phone_storage || '—'}`, 15, y); y += 5
+  doc.text(`État : ${p.phone_condition || '—'}   ·   Grade : ${p.phone_grade || '—'}`, 15, y); y += 5
+  doc.text(`IMEI : ${p.phone_imei || '—'}`, 15, y); y += 8
+
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFont(undefined, 'bold'); doc.setFontSize(11)
+  doc.text('Prix', 15, y); y += 6
+  doc.setFont(undefined, 'normal'); doc.setFontSize(10)
+  doc.text('Prix initial', 15, y)
+  doc.text(`${p.price_original || '—'}`, pageWidth - 15, y, { align: 'right' }); y += 5
+  if (p.discount_amount && p.discount_amount !== '0€') {
+    doc.text(p.discount_label || 'Remise', 15, y)
+    doc.text(`-${p.discount_amount}`, pageWidth - 15, y, { align: 'right' }); y += 5
+  }
+  doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2)
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.setTextColor(0, 180, 204)
+  doc.text('Total', 15, y)
+  doc.text(`${p.price_final || '—'}`, pageWidth - 15, y, { align: 'right' })
+  doc.setTextColor(0, 0, 0); y += 8
+
+  doc.setFontSize(9); doc.setFont(undefined, 'normal')
+  doc.text(`Paiement : ${p.payment_method || ''}`, 15, y); y += 8
+  doc.setDrawColor(27, 42, 74); doc.setLineWidth(0.5)
+  doc.line(15, y, pageWidth - 15, y); y += 6
+  doc.text(`${p.magasin_nom || ''} — ${p.magasin_adresse || ''}`, 15, y); y += 5
+  doc.text(`Garantie 24 mois — jusqu'au ${p.warranty_expiry || '—'}`, 15, y); y += 8
+  doc.setFont(undefined, 'italic'); doc.setTextColor(120, 120, 120)
+  doc.text(p.tva_mention || '', 15, y)
+
+  pdfFooter(doc)
+  return doc.output('datauristring').split(',')[1]
+}
+
+const generateReviewGooglePdf = async (p) => {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const pageWidth = 210
+  pdfHeader(doc, 'Merci !')
+  let y = 60
+
+  doc.setFontSize(22)
+  doc.setFont(undefined, 'bold')
+  doc.setTextColor(27, 42, 74)
+  doc.text(`Merci ${p.to_name || ''} !`, pageWidth / 2, y, { align: 'center' })
+  y += 15
+
+  doc.setFontSize(12)
+  doc.setFont(undefined, 'normal')
+  doc.setTextColor(60, 60, 60)
+  const line = `Vous avez acquis votre ${p.phone_name || 'téléphone'} chez ${p.magasin_nom || 'nous'}.`
+  doc.text(line, pageWidth / 2, y, { align: 'center' })
+  y += 20
+
+  doc.setFontSize(11)
+  doc.setTextColor(0, 0, 0)
+  doc.text('Prenez 30 secondes pour laisser un avis Google :', pageWidth / 2, y, { align: 'center' })
+  y += 15
+
+  doc.setFontSize(14)
+  doc.setFont(undefined, 'bold')
+  doc.setTextColor(0, 180, 204)
+  const url = p.google_review_url || ''
+  const urlLines = doc.splitTextToSize(url, pageWidth - 30)
+  urlLines.forEach((l) => {
+    doc.text(l, pageWidth / 2, y, { align: 'center' })
+    y += 8
+  })
+
+  pdfFooter(doc)
+  return doc.output('datauristring').split(',')[1]
+}
+
 
 export default function PhoneSaleModal({ phone, onClose, onSold, priceSettings, modelLimits }) {
   const [saleLoading, setSaleLoading]     = useState(false)
@@ -196,41 +400,43 @@ export default function PhoneSaleModal({ phone, onClose, onSold, priceSettings, 
           expiry.setMonth(expiry.getMonth() + 24)
           const magasin  = MAGASINS_MAP[saleForm.sale_magasin]
 
+          const facturePayload = {
+            to_email:         saleForm.customer_email,
+            to_name:          `${saleForm.customer_firstname} ${saleForm.customer_name}`,
+            email_type:       'facture',
+            phone_name:       phone.name || phone.model,
+            phone_color:      phone.color || '—',
+            phone_storage:    phone.storage || '—',
+            phone_condition:  phone.condition || '—',
+            phone_grade:      phone.grade || '—',
+            phone_imei:       phone.imei || '—',
+            price_total:      `${finalPrice.toFixed(2)}€`,
+            price_original:   `${salePriceNum.toFixed(2)}€`,
+            discount_amount:  discountAmount > 0 ? `${discountAmount.toFixed(2)}€` : '0€',
+            deposit_paid:     `${finalPrice.toFixed(2)}€`,
+            remaining:        '0€',
+            payment_label:    'Montant total payé ✓',
+            accessories_total: '0€',
+            accessory_pack:   'Aucun',
+            battery_replace:  'Non',
+            warning_message:  '',
+            payment_method:   paymentMethodLabel,
+            tva_mention:      phone.tva_regime === 'marge'
+              ? "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)"
+              : 'TVA 21% incluse',
+            magasin_nom:      magasin?.nom || 'SebPhone',
+            magasin_adresse:  magasin?.adresse || 'sebphone.be',
+            reservation_code: reservationCode,
+            reservation_url:  `https://sebphone.be/commande/${reservationCode}`,
+            invoice_url:      `https://sebphone.be/facture/${reservationCode}`,
+            pickup_date:      now.toLocaleDateString('fr-BE'),
+            warranty_expiry:  expiry.toLocaleDateString('fr-BE'),
+          }
+          const pdfBase64 = await generateFactureParticulierPdf(facturePayload)
           await emailjs.send(
             EMAILJS_SERVICE_ID,
             INVOICE_TEMPLATE_ID,
-            {
-              to_email:         saleForm.customer_email,
-              to_name:          `${saleForm.customer_firstname} ${saleForm.customer_name}`,
-              email_type:       'facture',
-              phone_name:       phone.name || phone.model,
-              phone_color:      phone.color || '—',
-              phone_storage:    phone.storage || '—',
-              phone_condition:  phone.condition || '—',
-              phone_grade:      phone.grade || '—',
-              phone_imei:       phone.imei || '—',
-              price_total:      `${finalPrice.toFixed(2)}€`,
-              price_original:   `${salePriceNum.toFixed(2)}€`,
-              discount_amount:  discountAmount > 0 ? `${discountAmount.toFixed(2)}€` : '0€',
-              deposit_paid:     `${finalPrice.toFixed(2)}€`,
-              remaining:        '0€',
-              payment_label:    'Montant total payé ✓',
-              accessories_total: '0€',
-              accessory_pack:   'Aucun',
-              battery_replace:  'Non',
-              warning_message:  '',
-              payment_method:   paymentMethodLabel,
-              tva_mention:      phone.tva_regime === 'marge'
-                ? "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)"
-                : 'TVA 21% incluse',
-              magasin_nom:      magasin?.nom || 'SebPhone',
-              magasin_adresse:  magasin?.adresse || 'sebphone.be',
-              reservation_code: reservationCode,
-              reservation_url:  `https://sebphone.be/commande/${reservationCode}`,
-              invoice_url:      `https://sebphone.be/facture/${reservationCode}`,
-              pickup_date:      now.toLocaleDateString('fr-BE'),
-              warranty_expiry:  expiry.toLocaleDateString('fr-BE'),
-            },
+            { ...facturePayload, my_attachment: pdfBase64 },
             EMAILJS_PUBLIC_KEY
           )
         } catch (emailErr) {
@@ -242,18 +448,20 @@ export default function PhoneSaleModal({ phone, onClose, onSold, priceSettings, 
       try {
         const reviewLink = GOOGLE_REVIEW_LINKS[saleForm.sale_magasin]
         if (reviewLink && saleForm.customer_email) {
+          const reviewPayload = {
+            to_email: saleForm.customer_email,
+            to_name: `${saleForm.customer_firstname} ${saleForm.customer_name}`,
+            customer_name: `${saleForm.customer_firstname} ${saleForm.customer_name}`,
+            phone_name: phone.name || phone.model,
+            magasin_nom: reviewLink.nom,
+            google_review_url: reviewLink.url,
+            review_page_url: `https://sebphone.be/avis?email=${encodeURIComponent(saleForm.customer_email)}&magasin=${saleForm.sale_magasin}`,
+          }
+          const pdfBase64 = await generateReviewGooglePdf(reviewPayload)
           await emailjs.send(
             EMAILJS_SERVICE_ID,
             'template_jg2nh5n',
-            {
-              to_email: saleForm.customer_email,
-              to_name: `${saleForm.customer_firstname} ${saleForm.customer_name}`,
-              customer_name: `${saleForm.customer_firstname} ${saleForm.customer_name}`,
-              phone_name: phone.name || phone.model,
-              magasin_nom: reviewLink.nom,
-              google_review_url: reviewLink.url,
-              review_page_url: `https://sebphone.be/avis?email=${encodeURIComponent(saleForm.customer_email)}&magasin=${saleForm.sale_magasin}`,
-            },
+            { ...reviewPayload, my_attachment: pdfBase64 },
             EMAILJS_PUBLIC_KEY
           )
         }
@@ -309,10 +517,7 @@ export default function PhoneSaleModal({ phone, onClose, onSold, priceSettings, 
           expiry.setMonth(expiry.getMonth() + 24)
           const magasin = MAGASINS_MAP[saleForm.sale_magasin]
 
-          await emailjs.send(
-            EMAILJS_SERVICE_ID,
-            'template_qukek6a',
-            {
+          const societePayload = {
               to_email:           saleForm.company_email,
               to_name:            saleForm.company_name,
               company_name:       saleForm.company_name,
@@ -343,7 +548,12 @@ export default function PhoneSaleModal({ phone, onClose, onSold, priceSettings, 
               reservation_code:   reservationCode,
               invoice_url:        `https://sebphone.be/facture/${reservationCode}`,
               warranty_expiry:    expiry.toLocaleDateString('fr-BE'),
-            },
+          }
+          const pdfBase64 = await generateFactureSocietePdf(societePayload)
+          await emailjs.send(
+            EMAILJS_SERVICE_ID,
+            'template_qukek6a',
+            { ...societePayload, my_attachment: pdfBase64 },
             EMAILJS_PUBLIC_KEY
           )
         } catch (err) {

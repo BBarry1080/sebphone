@@ -3,6 +3,7 @@ import { Check, X, Building2, Smartphone } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useCurrentUser } from '../../hooks/usePermissions'
 import emailjs from '@emailjs/browser'
+import { generateProConfirmPdf } from '../../utils/generateProConfirmPdf'
 
 const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
 const EMAILJS_PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMIGNP6IQB9O'
@@ -66,7 +67,7 @@ export default function ProAdmin() {
         .eq('id', acc.id)
 
       try {
-        await emailjs.send(EMAILJS_SERVICE_ID, PRO_TEMPLATE_ID, {
+        const approvePayload = {
           to_email: acc.email,
           to_name: acc.contact_name,
           contact_name: acc.contact_name,
@@ -76,7 +77,14 @@ export default function ProAdmin() {
           status_label: 'Compte approuvé !',
           status_class: 'status-approved',
           message: 'Félicitations ! Votre compte professionnel SebPhone a été approuvé. Vous pouvez dès maintenant accéder à notre catalogue exclusif réservé aux revendeurs.',
-        }, EMAILJS_PUBLIC_KEY)
+        }
+        const pdfBase64 = await generateProConfirmPdf(approvePayload)
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          PRO_TEMPLATE_ID,
+          { ...approvePayload, my_attachment: pdfBase64 },
+          EMAILJS_PUBLIC_KEY,
+        )
       } catch (emailErr) {
         console.warn('Email approbation non envoyé:', emailErr)
       }
@@ -100,7 +108,7 @@ export default function ProAdmin() {
         .eq('id', acc.id)
 
       try {
-        await emailjs.send(EMAILJS_SERVICE_ID, PRO_TEMPLATE_ID, {
+        const rejectPayload = {
           to_email: acc.email,
           to_name: acc.contact_name,
           contact_name: acc.contact_name,
@@ -110,7 +118,14 @@ export default function ProAdmin() {
           status_label: 'Demande non retenue',
           status_class: 'status-pending',
           message: 'Après examen de votre dossier, nous ne sommes pas en mesure d\'approuver votre demande de compte professionnel pour le moment. Pour toute question, contactez-nous à contact@sebphone.be.',
-        }, EMAILJS_PUBLIC_KEY)
+        }
+        const pdfBase64 = await generateProConfirmPdf(rejectPayload)
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          PRO_TEMPLATE_ID,
+          { ...rejectPayload, my_attachment: pdfBase64 },
+          EMAILJS_PUBLIC_KEY,
+        )
       } catch (emailErr) {
         console.warn('Email refus non envoyé:', emailErr)
       }
