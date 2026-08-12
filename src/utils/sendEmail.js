@@ -7,7 +7,7 @@ const PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'rqbaYNMIGNP6IQB
 
 emailjs.init(PUBLIC_KEY)
 
-async function generateOrderConfirmationPdf(p) {
+export async function generateOrderConfirmationPdf(p) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageWidth = 210
