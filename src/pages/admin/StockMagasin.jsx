@@ -3670,10 +3670,14 @@ export default function StockMagasin() {
     // Mise à jour du montant_paye de chaque réparation encaissée
     for (const r of repairsInCart) {
       const { data: rep } = await supabase.from('repairs')
-        .select('montant_paye').eq('id', r.repair_id).single()
+        .select('montant_paye, prix').eq('id', r.repair_id).single()
       const nouveauMontant = (Number(rep?.montant_paye) || 0) + r.unit_price
+      const prixTotal = Number(rep?.prix) || 0
       await supabase.from('repairs')
-        .update({ montant_paye: nouveauMontant })
+        .update({
+          montant_paye: nouveauMontant,
+          status: (nouveauMontant >= prixTotal - 0.01) ? 'termine' : 'en_attente',
+        })
         .eq('id', r.repair_id)
       await logActivity('repair_payment_completed',
         `Solde réparation encaissé — ${r.bon_number} (${r.unit_price.toFixed(2)}€)`)
