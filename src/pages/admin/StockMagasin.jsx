@@ -173,6 +173,8 @@ export default function StockMagasin() {
   const [suiviCarteMereList, setSuiviCarteMereList] = useState([])
   const [loadingSuiviCarteMere, setLoadingSuiviCarteMere] = useState(false)
   const [showSuiviCarteMere, setShowSuiviCarteMere] = useState(false)
+  const [showPendingRepairsPanel, setShowPendingRepairsPanel] = useState(false)
+  const [pendingRepairDetail, setPendingRepairDetail] = useState(null)
   const [annulationMotifOpenId, setAnnulationMotifOpenId] = useState(null)
   const [annulationMotifTexte, setAnnulationMotifTexte] = useState('')
   const [annulationRembourser, setAnnulationRembourser] = useState(false)
@@ -2673,7 +2675,6 @@ export default function StockMagasin() {
     }
     if (posScreen === 'caisse' && magasin) {
       if (ecranCatalogList.length === 0) fetchEcranCatalog()
-      fetchPendingRepairs()
     }
     if (posScreen === 'tresorerie') {
       if (!trueIsAdmin && !canSeeTresorerie) {
@@ -2705,6 +2706,7 @@ export default function StockMagasin() {
       fetchCurrentStaffResponsable().then((resp) => fetchSuiviCarteMere(resp))
       fetchEcranStockMagasin()
       fetchGarantiesList()
+      fetchPendingRepairs()
       fetchLastClosure().then((closure) => {
         fetchMovementsSince(closure?.period_end || '1970-01-01T00:00:00Z')
       })
@@ -4247,6 +4249,22 @@ export default function StockMagasin() {
           <button onClick={() => setShowSuiviCarteMere(true)}
             className="bg-white text-purple-700 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
             Voir le suivi
+          </button>
+        </div>
+      )}
+
+      {pendingRepairs.length > 0 && (
+        <div className="sticky top-0 z-40 -mx-2 md:-mx-8 mb-1 bg-amber-500 text-white px-4 py-2 flex items-center justify-between gap-3 shadow-lg flex-wrap">
+          <span className="font-bold text-sm">
+            🔧 {pendingRepairs.length} réparation{pendingRepairs.length > 1 ? 's' : ''} à encaisser
+            {' · '}
+            {pendingRepairs
+              .reduce((s, r) => s + ((Number(r.prix) || 0) - (Number(r.montant_paye) || 0)), 0)
+              .toFixed(2)}€
+          </span>
+          <button onClick={() => setShowPendingRepairsPanel(true)}
+            className="bg-white text-amber-700 px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap">
+            Voir / encaisser
           </button>
         </div>
       )}
@@ -9840,6 +9858,98 @@ export default function StockMagasin() {
           priceSettings={phonePriceSettings}
           modelLimits={phoneModelLimits}
         />
+      )}
+
+      {showPendingRepairsPanel && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">🔧 Réparations à encaisser</h3>
+              <button onClick={() => { setShowPendingRepairsPanel(false); setPendingRepairDetail(null) }}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+
+            {pendingRepairs.length === 0 ? (
+              <p className="text-center text-gray-400 py-8 text-sm">Aucune réparation en attente</p>
+            ) : (
+              <div className="space-y-2">
+                {pendingRepairs.map((r) => {
+                  const solde = (Number(r.prix) || 0) - (Number(r.montant_paye) || 0)
+                  const ouvert = pendingRepairDetail === r.id
+                  return (
+                    <div key={r.id} className="border border-amber-200 rounded-xl overflow-hidden">
+                      <button onClick={() => setPendingRepairDetail(ouvert ? null : r.id)}
+                        className="w-full text-left bg-amber-50 hover:bg-amber-100 px-3 py-2.5 flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-[#1B2A4A] truncate">
+                            {r.bon_number} · {r.client_nom}
+                          </p>
+                          <p className="text-[10px] text-gray-500 truncate">
+                            {r.appareil || '—'}{r.type_panne ? ` · ${r.type_panne}` : ''}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-amber-700">{solde.toFixed(2)}€</p>
+                          {Number(r.montant_paye) > 0 && (
+                            <p className="text-[9px] text-gray-400">acompte {Number(r.montant_paye).toFixed(2)}€</p>
+                          )}
+                        </div>
+                        <span className="text-gray-400 text-xs">{ouvert ? '▲' : '▼'}</span>
+                      </button>
+
+                      {ouvert && (
+                        <div className="p-3 bg-white space-y-1.5 text-xs">
+                          <p><span className="text-gray-400">Déposé le </span>
+                            <span className="font-bold">{r.date ? new Date(r.date).toLocaleDateString('fr-BE') : '—'}</span></p>
+                          {r.tel && <p><span className="text-gray-400">Tél. </span><span className="font-bold">{r.tel}</span></p>}
+                          {r.imei && <p><span className="text-gray-400">IMEI </span><span className="font-mono">{r.imei}</span></p>}
+                          {r.panne_description && (
+                            <p><span className="text-gray-400">Panne : </span>{r.panne_description}</p>
+                          )}
+                          {r.technicien_carte_mere && (
+                            <p><span className="text-gray-400">Technicien : </span>
+                              <span className="font-bold">{r.technicien_carte_mere}</span></p>
+                          )}
+                          <p>
+                            <span className="text-gray-400">Prix total </span>
+                            <span className="font-bold">{Number(r.prix || 0).toFixed(2)}€</span>
+                            {Number(r.montant_paye) > 0 && (
+                              <span className="text-gray-400"> · déjà payé {Number(r.montant_paye).toFixed(2)}€</span>
+                            )}
+                          </p>
+                          {r.suivi_statut === 'en_cours' && (
+                            <p className="text-purple-700 font-bold">⏳ Encore en atelier</p>
+                          )}
+                          <div className="flex gap-2 pt-1">
+                            <button onClick={() => {
+                                addRepairToCart(r)
+                                setShowPendingRepairsPanel(false)
+                                setPendingRepairDetail(null)
+                                setPosScreen('caisse')
+                              }}
+                              className="flex-1 py-2 bg-[#1B2A4A] text-white rounded-lg text-xs font-bold hover:bg-[#00B4CC]">
+                              Encaisser {solde.toFixed(2)}€
+                            </button>
+                            <button onClick={() => {
+                                setShowPendingRepairsPanel(false)
+                                setPendingRepairDetail(null)
+                                handleAnnulerReparation(r)
+                              }}
+                              className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-500 hover:text-red-600">
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {showSuiviCarteMere && (
