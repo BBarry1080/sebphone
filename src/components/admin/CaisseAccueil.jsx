@@ -6,6 +6,7 @@ import ReceiptTicket from './ReceiptTicket'
 import {
   ShoppingCart, Users, Truck, Boxes, Wrench, ClipboardList, X,
   Plus, Pencil, Trash2, Settings, UserCheck, History, PiggyBank,
+  Euro, Briefcase, Ticket, Calendar, Bell,
 } from 'lucide-react'
 
 const COLORS = {
@@ -39,27 +40,23 @@ const PANNE_OPTIONS = [
 
 const pad4 = (n) => String(n).padStart(4, '0')
 
-function Tile({ color, icon: Icon, title, value, subtitle, onClick, span }) {
+// Carte d'acces rapide, style maquette : icone pastel a gauche,
+// titre + description, fleche en bas a droite
+function QuickCard({ color, icon: Icon, title, description, onClick }) {
   return (
     <button onClick={onClick}
-      className={`w-full text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:-translate-y-0.5 transition-all ${
-        span === 2 ? 'md:col-span-2' : ''
-      }`}
-      style={{ minHeight: 130 }}>
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ background: `${color}20`, color }}>
-          <Icon size={22} strokeWidth={2.2} />
+      className="w-full text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:-translate-y-0.5 transition-all flex flex-col justify-between"
+      style={{ minHeight: 150 }}>
+      <div>
+        <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-3"
+          style={{ background: `${color}1a`, color }}>
+          <Icon size={20} strokeWidth={2.2} />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold uppercase text-gray-400 tracking-wide">{title}</p>
-          {value !== undefined && (
-            <p className="text-xl md:text-2xl font-bold mt-1" style={{ color: COLORS.navy }}>
-              {value}
-            </p>
-          )}
-          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
-        </div>
+        <p className="font-bold text-base" style={{ color: COLORS.navy }}>{title}</p>
+        <p className="text-xs text-gray-500 mt-1 leading-relaxed">{description}</p>
+      </div>
+      <div className="flex justify-end mt-3">
+        <span className="text-gray-300 text-lg">→</span>
       </div>
     </button>
   )
@@ -551,106 +548,145 @@ export default function CaisseAccueil({
         }
       `}</style>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* EN-TETE */}
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: COLORS.navy }}>
+            Bonjour, Admin 👋
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Voici un aperçu de votre activité aujourd'hui.
+          </p>
+        </div>
+      </div>
 
-        {/* AUJOURD'HUI (feature, span 2) — cliquable */}
-        <div
-          onClick={openDetailJour}
-          className="md:col-span-2 rounded-2xl p-6 text-white shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
-          style={{ background: `linear-gradient(135deg, ${COLORS.navy} 0%, ${COLORS.teal} 100%)` }}>
-          <p className="text-xs font-bold uppercase opacity-70 tracking-wide">Aujourd'hui</p>
-          <p className="text-sm opacity-70 mt-1">{magasinLabel || magasinName(magasin)}</p>
-          <div className={showBenefice ? 'grid grid-cols-2 md:grid-cols-4 gap-4 mt-4' : 'grid grid-cols-2 md:grid-cols-3 gap-4 mt-4'}>
-            <div>
-              <p className="text-[10px] uppercase opacity-70">CA du jour</p>
-              <p className="text-2xl font-bold mt-1">{Number(caTotal).toFixed(2)}€</p>
+      {/* APERCU DU JOUR + DERNIERE CLOTURE */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+        <button onClick={openDetailJour}
+          className="lg:col-span-2 text-left rounded-2xl p-6 text-white shadow-lg hover:shadow-xl transition-all"
+          style={{ background: `linear-gradient(135deg, ${COLORS.navy} 0%, #1e5f5f 60%, ${COLORS.teal} 100%)` }}>
+          <div className="flex items-baseline justify-between gap-3 flex-wrap mb-5">
+            <p className="text-[11px] font-bold uppercase tracking-widest opacity-70">
+              Aperçu du jour
+            </p>
+            <p className="text-sm font-bold opacity-90">
+              {magasinLabel || magasinName(magasin)}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex flex-col items-start">
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-2">
+                <Euro size={18} />
+              </div>
+              <p className="text-[10px] uppercase opacity-70 tracking-wide">CA du jour</p>
+              <p className="text-2xl font-bold mt-0.5">{Number(caTotal).toFixed(2)}€</p>
             </div>
             {showBenefice && (
-              <div>
-                <p className="text-[10px] uppercase opacity-70">Bénéfice du jour</p>
-                <p className="text-2xl font-bold mt-1">
-                  {detailJour || beneficeJour > 0
-                    ? `${Number(beneficeAffiche).toFixed(2)}€`
-                    : '—'}
+              <div className="flex flex-col items-start">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-2">
+                  <Briefcase size={18} />
+                </div>
+                <p className="text-[10px] uppercase opacity-70 tracking-wide">Bénéfice du jour</p>
+                <p className="text-2xl font-bold mt-0.5">
+                  {detailJour || beneficeJour > 0 ? `${Number(beneficeAffiche).toFixed(2)}€` : '—'}
                 </p>
               </div>
             )}
-            <div>
-              <p className="text-[10px] uppercase opacity-70">Tickets créés</p>
-              <p className="text-2xl font-bold mt-1">{ticketCount}</p>
+            <div className="flex flex-col items-start">
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-2">
+                <Ticket size={18} />
+              </div>
+              <p className="text-[10px] uppercase opacity-70 tracking-wide">Tickets créés</p>
+              <p className="text-2xl font-bold mt-0.5">{ticketCount}</p>
             </div>
-            <div>
-              <p className="text-[10px] uppercase opacity-70">Réparations en cours</p>
-              <p className="text-2xl font-bold mt-1">{repairsInProgress}</p>
+            <div className="flex flex-col items-start">
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mb-2">
+                <Wrench size={18} />
+              </div>
+              <p className="text-[10px] uppercase opacity-70 tracking-wide">Réparations en cours</p>
+              <p className="text-2xl font-bold mt-0.5">{repairsInProgress}</p>
             </div>
           </div>
-        </div>
+        </button>
 
-        {/* DERNIÈRE CLÔTURE */}
-        <Tile color={COLORS.amber} icon={ClipboardList}
-          title="Dernière clôture"
-          value={lastClosure
-            ? new Date(lastClosure.period_end).toLocaleDateString('fr-BE')
-            : 'Aucune'}
-          subtitle={lastClosure
-            ? `${Number(lastClosure.ca_total || 0).toFixed(2)}€`
-            : 'Cliquez pour détails'}
-          onClick={() => setShowClotureDetail(true)}
-        />
+        <button onClick={() => setShowClotureDetail(true)}
+          className="text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-all flex flex-col justify-between">
+          <div>
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
+              style={{ background: `${COLORS.amber}1a`, color: COLORS.amber }}>
+              <ClipboardList size={22} strokeWidth={2.2} />
+            </div>
+            <p className="text-[11px] font-bold uppercase text-gray-400 tracking-wide">Dernière clôture</p>
+            <p className="text-2xl font-bold mt-1" style={{ color: COLORS.navy }}>
+              {lastClosure ? new Date(lastClosure.period_end).toLocaleDateString('fr-BE') : 'Aucune'}
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              {lastClosure ? `${Number(lastClosure.ca_total || 0).toFixed(2)}€` : 'Cliquez pour détails'}
+            </p>
+          </div>
+          <span className="text-xs font-bold mt-4" style={{ color: COLORS.navy }}>
+            Voir l'historique →
+          </span>
+        </button>
+      </div>
 
-        {/* CHIFFRES D'AFFAIRES (admin uniquement) */}
+      {/* ACCES RAPIDES */}
+      <p className="text-[11px] font-bold uppercase text-gray-400 tracking-widest mb-3">
+        Accès rapides
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {showTresorerieTile && (
-          <Tile color={COLORS.emerald} icon={PiggyBank}
+          <QuickCard color={COLORS.emerald} icon={PiggyBank}
             title="Chiffres d'affaires"
-            subtitle="Cumul clôtures & dépenses"
-            onClick={onOpenTresorerie}
-          />
+            description="Consultez vos chiffres, clôtures & dépenses"
+            onClick={onOpenTresorerie} />
         )}
-
-        {/* VENTE CAISSE */}
-        <Tile color={COLORS.blue} icon={ShoppingCart}
+        <QuickCard color={COLORS.blue} icon={ShoppingCart}
           title="Caisse"
-          subtitle="Vente caisse"
-          onClick={onOpenCaisse}
-          span={2}
-        />
-
-        {/* FOURNISSEURS */}
-        <Tile color={COLORS.purple} icon={Truck}
+          description="Gérez vos ventes et mouvements de caisse"
+          onClick={onOpenCaisse} />
+        <QuickCard color={COLORS.purple} icon={Truck}
           title="Fournisseurs"
-          subtitle="Gérer les fournisseurs"
-          onClick={() => setShowFournisseurs(true)}
-        />
-
-        {/* GESTION DE STOCK */}
-        <Tile color={COLORS.cyan} icon={Boxes}
-          title="Gestion de stock"
-          subtitle="Catégories & inventaire"
-          onClick={onOpenGestion}
-        />
-
-        {/* PARAMÈTRES CAISSE */}
-        {showParametresCaisseTile && (
-          <Tile color={COLORS.slate} icon={Settings}
-            title="Paramètres"
-            subtitle="PIN, horaires, salaires"
-            onClick={onOpenParametresCaisse}
-          />
-        )}
-
-        {/* POINTAGE (toujours visible pour l'employé connecté) */}
-        <Tile color={COLORS.teal} icon={UserCheck}
-          title="Pointage"
-          subtitle="Mon planning & mes heures"
-          onClick={onOpenPointage}
-        />
-
-        {/* RÉPARATIONS (hub) */}
-        <Tile color={COLORS.amber} icon={Wrench}
+          description="Gérez vos fournisseurs et achats"
+          onClick={() => setShowFournisseurs(true)} />
+        <QuickCard color={COLORS.cyan} icon={Boxes}
+          title="Stock"
+          description="Catégories, produits & inventaire"
+          onClick={onOpenGestion} />
+        <QuickCard color={COLORS.green} icon={UserCheck}
+          title="Clients"
+          description="Liste de vos clients et informations"
+          onClick={() => setShowClientModal(true)} />
+        <QuickCard color={COLORS.indigo} icon={Calendar}
+          title="Planning"
+          description="Mon planning & mes heures"
+          onClick={onOpenPointage} />
+        <QuickCard color={COLORS.amber} icon={Wrench}
           title="Réparations"
-          subtitle="Rechercher, planifier, gérer"
-          onClick={onOpenReparationsHub}
-        />
+          description="Rechercher, planifier et suivre"
+          onClick={onOpenReparationsHub} />
+        {showParametresCaisseTile && (
+          <QuickCard color={COLORS.slate} icon={Settings}
+            title="Paramètres"
+            description="PIN, horaires, salaires & plus"
+            onClick={onOpenParametresCaisse} />
+        )}
+      </div>
+
+      {/* A NE PAS OUBLIER */}
+      <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center"
+            style={{ background: `${COLORS.blue}1a`, color: COLORS.blue }}>
+            <Bell size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <p className="text-[11px] font-bold uppercase text-gray-400 tracking-wide">À ne pas oublier</p>
+            <p className="text-sm text-gray-600 mt-0.5">
+              Pensez à vérifier vos tâches récurrentes et clôturer votre journée.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* MODAL CLIENT */}
