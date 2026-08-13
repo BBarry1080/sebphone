@@ -8437,7 +8437,11 @@ export default function StockMagasin() {
                 const isSelected = selectedCategoryView?.id === cat.id
                 return (
                   <div key={cat.id}
-                    onClick={() => setSelectedCategoryView(cat)}
+                    onClick={() => {
+                      setFilterCategory(cat.id)
+                      setSearch('')
+                      setActiveTab('stock')
+                    }}
                     className={`bg-white rounded-2xl border
                                p-4 flex items-center
                                justify-between cursor-pointer
