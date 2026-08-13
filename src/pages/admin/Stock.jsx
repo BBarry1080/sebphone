@@ -1653,19 +1653,59 @@ export default function Stock() {
   }
 
   const handleDelete = async (phoneId) => {
-    if (!window.confirm('Supprimer ce téléphone ? Cette action est irréversible.')) return
-    try {
-      await supabase.from('payments').delete().eq('phone_id', phoneId)
-      await supabase.from('orders').delete().eq('phone_id', phoneId)
-      await supabase.from('weekly_offer').delete().eq('phone_id', phoneId)
-      await supabase.from('best_sellers_config').delete().eq('phone_id', phoneId)
-      const { error } = await supabase.from('phones').delete().eq('id', phoneId)
-      if (error) throw error
-      setPhones((prev) => prev.filter((p) => p.id !== phoneId))
-    } catch (err) {
-      console.error('Erreur suppression:', err)
-      alert('Erreur lors de la suppression')
+    const phone = phones.find((p) => p.id === phoneId)
+    const label = phone ? `${phone.name || phone.model} (${phone.imei || 'sans IMEI'})` : 'ce téléphone'
+
+    // Ce qui existe en base pour ce telephone, pour informer avant d'effacer
+    const [ordersRes, paymentsRes] = await Promise.all([
+      supabase.from('orders').select('id, total_amount').eq('phone_id', phoneId),
+      supabase.from('payments').select('id, amount').eq('phone_id', phoneId),
+    ])
+    const nbVentes = (ordersRes.data || []).length
+    const totalEncaisse = (paymentsRes.data || []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
+
+    let message = `Supprimer ${label} ?\n\nCette action est irréversible.`
+    if (nbVentes > 0 || totalEncaisse > 0) {
+      message = `⚠️ ATTENTION — ${label}\n\n`
+        + `Ce téléphone a ${nbVentes} vente(s) enregistrée(s)`
+        + (totalEncaisse > 0 ? ` et ${totalEncaisse.toFixed(2)}€ encaissés.\n\n` : '.\n\n')
+        + `La suppression effacera AUSSI ces ventes et ces paiements de ta comptabilité,\n`
+        + `ainsi que l'entrée du registre d'achats.\n\n`
+        + `Continuer quand même ?`
     }
+    if (!window.confirm(message)) return
+
+    // Effacement des references, dans l'ordre : les tables qui pointent vers
+    // phones d'abord, phones en dernier
+    const tablesLiees = [
+      { table: 'phone_parts', col: 'phone_id' },
+      { table: 'weekly_offer', col: 'phone_id' },
+      { table: 'best_sellers_config', col: 'phone_id' },
+      { table: 'deliveries', col: 'phone_id' },
+      { table: 'pro_stock', col: 'phone_id' },
+      { table: 'purchase_registry', col: 'phone_id' },
+      { table: 'payments', col: 'phone_id' },
+      { table: 'orders', col: 'phone_id' },
+    ]
+    for (const { table, col } of tablesLiees) {
+      const { error } = await supabase.from(table).delete().eq(col, phoneId)
+      if (error) {
+        alert(`Suppression interrompue sur ${table} : ${error.message}\n\nLe téléphone n'a pas été supprimé.`)
+        return
+      }
+    }
+    // interested_clients : on delie sans supprimer le client
+    const { error: icErr } = await supabase.from('interested_clients')
+      .update({ matched_phone_id: null }).eq('matched_phone_id', phoneId)
+    if (icErr) {
+      alert(`Suppression interrompue sur interested_clients : ${icErr.message}\n\nLe téléphone n'a pas été supprimé.`)
+      return
+    }
+
+    const { error } = await supabase.from('phones').delete().eq('id', phoneId)
+    if (error) { alert('Erreur : ' + error.message); return }
+
+    fetchPhones()
   }
 
   const STOCK_ORDER = [
