@@ -372,6 +372,7 @@ export default function StockMagasin() {
   const [hubPieceTypeSel, setHubPieceTypeSel]     = useState(null)
   const [hubPieceMarqueSel, setHubPieceMarqueSel] = useState(null)
   const [hubPieceRowSel, setHubPieceRowSel]       = useState(null)
+  const [hubPieceBackup, setHubPieceBackup] = useState(null)
   const [showHubPiecePicker, setShowHubPiecePicker] = useState(false)
   const [showGarantieModal, setShowGarantieModal] = useState(false)
   const [garantieStep, setGarantieStep] = useState('recherche')
@@ -661,6 +662,7 @@ export default function StockMagasin() {
   }, [ecranCatalogList, hubPieceTypeSel, hubPieceMarqueSel])
 
   const openHubPiecePicker = () => {
+    setHubPieceBackup(hubPieceRowSel)
     if (ecranCatalogList.length === 0) fetchEcranCatalog()
     setHubPieceStep('type')
     setHubPieceTypeSel(null)
@@ -688,6 +690,7 @@ export default function StockMagasin() {
       type_panne: panneTexte,
       prix: String(row.prix_defaut || 0),
     }))
+    setHubPieceBackup(null)
     setShowHubPiecePicker(false)
   }
 
@@ -9456,7 +9459,11 @@ export default function StockMagasin() {
                   : hubPieceStep === 'marque' ? 'Marque'
                   : 'Modèle'}
               </h3>
-              <button onClick={() => setShowHubPiecePicker(false)} className="text-gray-400 hover:text-[#1B2A4A]">
+              <button onClick={() => {
+                  setHubPieceRowSel(hubPieceBackup)
+                  setHubPieceBackup(null)
+                  setShowHubPiecePicker(false)
+                }} className="text-gray-400 hover:text-[#1B2A4A]">
                 <X size={20} />
               </button>
             </div>
