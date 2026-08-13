@@ -356,6 +356,7 @@ export default function StockMagasin() {
   const [selectedJourReparations, setSelectedJourReparations] = useState(null)
   // Nouvelle réparation depuis le hub (modal simplifié)
   const [showNewRepairFromHub, setShowNewRepairFromHub]   = useState(false)
+  const [editingRepairId, setEditingRepairId] = useState(null)
   const [showRepairModelSugg, setShowRepairModelSugg] = useState(false)
   const [newRepairFromHubForm, setNewRepairFromHubForm]   = useState({
     nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
@@ -2965,6 +2966,104 @@ export default function StockMagasin() {
         setPosScreen('caisse')
       }
     }
+  }
+  // Rouvre la fiche d'une reparation existante pour la corriger.
+  // La piece d'origine est memorisee dans hubPieceRowSel afin de pouvoir
+  // rendre l'ancienne au stock si le vendeur en choisit une autre.
+  const openEditRepair = async (repair) => {
+    setEditingRepairId(repair.id)
+    setNewRepairFromHubForm({
+      nom: repair.client_nom || '',
+      appareil: repair.appareil || '',
+      imei: repair.imei || '',
+      type_panne: repair.type_panne || '',
+      prix: repair.prix != null ? String(repair.prix) : '',
+      tel: repair.tel || '',
+      email: repair.email || '',
+      article_offert: false,
+      technicien_carte_mere: repair.technicien_carte_mere || '',
+      panne_description: repair.panne_description || '',
+      type_appareil: repair.type_appareil || 'telephone',
+      marque_appareil: repair.marque_appareil || 'Apple',
+      suivi_long: repair.suivi_statut === 'en_cours',
+      encaisser: 'non',
+      montant_encaisse: '',
+    })
+    if (repair.ecran_id) {
+      const { data: piece } = await supabase.from('reparation_ecrans')
+        .select('*').eq('id', repair.ecran_id).maybeSingle()
+      setHubPieceRowSel(piece || null)
+    } else {
+      setHubPieceRowSel(null)
+    }
+    setShowPendingRepairsPanel(false)
+    setPendingRepairDetail(null)
+    setShowNewRepairFromHub(true)
+  }
+
+  const handleUpdateRepair = async () => {
+    if (!newRepairFromHubForm.nom.trim()) { alert('Nom du client obligatoire'); return }
+    if (!newRepairFromHubForm.prix || Number(newRepairFromHubForm.prix) <= 0) {
+      alert('Le prix est obligatoire')
+      return
+    }
+    setSavingNewRepairFromHub(true)
+
+    const { data: ancienne } = await supabase.from('repairs')
+      .select('ecran_id, magasin_id, montant_paye, prix')
+      .eq('id', editingRepairId).maybeSingle()
+
+    const nouvellePieceId = hubPieceRowSel?.id || null
+    const anciennePieceId = ancienne?.ecran_id || null
+    const prixRepair = Number(newRepairFromHubForm.prix) || 0
+    const dejaPaye = Number(ancienne?.montant_paye) || 0
+
+    const { error } = await supabase.from('repairs').update({
+      client_nom: newRepairFromHubForm.nom.trim(),
+      appareil: newRepairFromHubForm.appareil || null,
+      type_appareil: newRepairFromHubForm.type_appareil || null,
+      marque_appareil: newRepairFromHubForm.marque_appareil || null,
+      imei: newRepairFromHubForm.imei || null,
+      type_panne: newRepairFromHubForm.type_panne || null,
+      technicien_carte_mere: newRepairFromHubForm.technicien_carte_mere || null,
+      panne_description: newRepairFromHubForm.panne_description.trim() || null,
+      suivi_statut: newRepairFromHubForm.suivi_long ? 'en_cours' : 'termine',
+      prix: prixRepair,
+      tel: newRepairFromHubForm.tel || null,
+      email: newRepairFromHubForm.email || null,
+      ecran_id: nouvellePieceId,
+      ecran_modele: hubPieceRowSel?.modele || null,
+      ecran_qualite: hubPieceRowSel?.qualite || null,
+      status: (dejaPaye >= prixRepair - 0.01) ? 'termine' : 'en_attente',
+    }).eq('id', editingRepairId)
+
+    setSavingNewRepairFromHub(false)
+    if (error) { alert('Erreur : ' + error.message); return }
+
+    // La piece a change : l'ancienne revient au stock, la nouvelle en sort
+    if (anciennePieceId !== nouvellePieceId) {
+      if (anciennePieceId) {
+        await remettrePieceEnStock({
+          ecran_id: anciennePieceId,
+          magasin_id: ancienne?.magasin_id || magasin,
+        })
+      }
+      if (nouvellePieceId) {
+        await supabase.rpc('decrementer_stock_piece', {
+          p_ecran_id: nouvellePieceId,
+          p_magasin_id: ancienne?.magasin_id || magasin,
+          p_quantite: 1,
+        })
+      }
+      fetchEcranStockMagasin()
+    }
+
+    logActivity('repair_update', `Réparation modifiée — ${newRepairFromHubForm.nom.trim()}`)
+    setEditingRepairId(null)
+    setHubPieceRowSel(null)
+    setShowNewRepairFromHub(false)
+    fetchPendingRepairs()
+    fetchReparationsHubData()
   }
 
   // ─── Réparations en attente (à ajouter au panier caisse) ───
@@ -9479,8 +9578,10 @@ export default function StockMagasin() {
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 my-8">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-[#1B2A4A] text-lg">Nouvelle réparation</h3>
-              <button onClick={() => { setHubPieceRowSel(null); setShowNewRepairFromHub(false) }}
+              <h3 className="font-bold text-[#1B2A4A] text-lg">
+                {editingRepairId ? 'Modifier la réparation' : 'Nouvelle réparation'}
+              </h3>
+              <button onClick={() => { setHubPieceRowSel(null); setEditingRepairId(null); setShowNewRepairFromHub(false) }}
                 className="text-gray-400 hover:text-[#1B2A4A]">
                 <X size={20} />
               </button>
@@ -9673,6 +9774,7 @@ export default function StockMagasin() {
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                 </div>
               </div>
+              {!editingRepairId && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
                 <p className="text-xs font-bold text-emerald-800 mb-2">💰 Le client paie maintenant ?</p>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -9726,15 +9828,20 @@ export default function StockMagasin() {
                   </p>
                 )}
               </div>
+              )}
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => { setHubPieceRowSel(null); setShowNewRepairFromHub(false) }}
+              <button onClick={() => { setHubPieceRowSel(null); setEditingRepairId(null); setShowNewRepairFromHub(false) }}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
                 Annuler
               </button>
-              <button onClick={handleCreateNewRepairFromHub} disabled={savingNewRepairFromHub}
+              <button
+                onClick={editingRepairId ? handleUpdateRepair : handleCreateNewRepairFromHub}
+                disabled={savingNewRepairFromHub}
                 className="flex-1 py-2.5 bg-[#00B4CC] text-white rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                {savingNewRepairFromHub ? 'Création...' : 'Créer la réparation'}
+                {savingNewRepairFromHub
+                  ? 'Enregistrement...'
+                  : editingRepairId ? 'Enregistrer les modifications' : 'Créer la réparation'}
               </button>
             </div>
           </div>
@@ -9931,6 +10038,10 @@ export default function StockMagasin() {
                               }}
                               className="flex-1 py-2 bg-[#1B2A4A] text-white rounded-lg text-xs font-bold hover:bg-[#00B4CC]">
                               Encaisser {solde.toFixed(2)}€
+                            </button>
+                            <button onClick={() => openEditRepair(r)}
+                              className="px-3 py-2 border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:text-[#00B4CC]">
+                              Modifier
                             </button>
                             <button onClick={() => {
                                 setShowPendingRepairsPanel(false)
