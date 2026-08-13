@@ -351,13 +351,22 @@ export default function CaisseAccueil({
   }
 
   useEffect(() => {
+    // Une reparation est "en cours" tant qu'elle n'est pas soldee OU pas
+    // terminee techniquement. Les deux conditions doivent etre remplies
+    // pour qu'elle bascule dans l'historique.
     const fetchRepairsCount = async () => {
-      const { count } = await supabase
+      const { data } = await supabase
         .from('repairs')
-        .select('*', { count: 'exact', head: true })
+        .select('prix, montant_paye, suivi_statut')
         .eq('magasin_id', magasin)
-        .eq('status', 'en_attente')
-      setRepairsInProgress(count || 0)
+        .neq('status', 'abandonne')
+      const enCours = (data || []).filter((r) => {
+        const solde = (Number(r.prix) || 0) - (Number(r.montant_paye) || 0)
+        const pasSoldee = solde > 0.01
+        const pasTerminee = r.suivi_statut === 'en_cours'
+        return pasSoldee || pasTerminee
+      })
+      setRepairsInProgress(enCours.length)
     }
     if (magasin) fetchRepairsCount()
   }, [magasin, showRepairModal])

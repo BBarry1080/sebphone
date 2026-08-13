@@ -355,6 +355,7 @@ export default function StockMagasin() {
   const [newRepairFromHubForm, setNewRepairFromHubForm]   = useState({
     nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
     article_offert: false, technicien_carte_mere: '', panne_description: '',
+    suivi_long: false,
     encaisser: 'non',
     montant_encaisse: '',
   })
@@ -2880,7 +2881,9 @@ export default function StockMagasin() {
       technicien_carte_mere: newRepairFromHubForm.technicien_carte_mere || null,
       panne_description: newRepairFromHubForm.panne_description.trim() || null,
       delai_annonce: hubPieceRowSel?.type_piece === 'carte_mere' ? getDelaiPiece('carte_mere', getStockPourMagasin(hubPieceRowSel.id)) : null,
-      suivi_statut: newRepairFromHubForm.technicien_carte_mere ? 'en_cours' : null,
+      suivi_statut: (newRepairFromHubForm.suivi_long || newRepairFromHubForm.technicien_carte_mere)
+        ? 'en_cours'
+        : 'termine',
       pris_en_charge_par: currentSebUser?.name || null,
       prix: prixRepair,
       devis: false,
@@ -2906,7 +2909,7 @@ export default function StockMagasin() {
     }
 
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
-    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '', encaisser: 'non', montant_encaisse: '' })
+    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '', suivi_long: false, encaisser: 'non', montant_encaisse: '' })
     setHubPieceRowSel(null)
     setShowNewRepairFromHub(false)
     fetchReparationsHubData()
@@ -3088,8 +3091,13 @@ export default function StockMagasin() {
   }
 
   const handleTerminerSuivi = async (repairId) => {
-    await supabase.from('repairs').update({ suivi_statut: 'termine' }).eq('id', repairId)
+    const { error } = await supabase.from('repairs')
+      .update({ suivi_statut: 'termine' }).eq('id', repairId)
+    if (error) { alert('Erreur : ' + error.message); return }
+    logActivity('repair_suivi_termine', `Réparation marquée terminée`)
     fetchSuiviCarteMere()
+    fetchPendingRepairs()
+    fetchReparationsHubData()
   }
 
   const rembourserReparationAnnulee = async (repair) => {
@@ -4197,7 +4205,7 @@ export default function StockMagasin() {
         <div className="sticky top-0 z-40 -mx-2 md:-mx-8 mb-1 bg-purple-700 text-white px-4 py-2 flex items-center justify-between gap-3 shadow-lg flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-bold text-sm">
-              🔧 {suiviCarteMereList.length} suivi{suiviCarteMereList.length > 1 ? 's' : ''} carte mère en cours
+              🔧 {suiviCarteMereList.length} réparation{suiviCarteMereList.length > 1 ? 's' : ''} en atelier
             </span>
           </div>
           <button onClick={() => setShowSuiviCarteMere(true)}
@@ -7063,7 +7071,7 @@ export default function StockMagasin() {
               </h1>
               <p className="text-sm text-gray-500 mt-1">Recherche, planning et gestion des réparations</p>
             </div>
-            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', encaisser: 'non', montant_encaisse: '' }); setShowNewRepairFromHub(true) }}
+            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', suivi_long: false, encaisser: 'non', montant_encaisse: '' }); setShowNewRepairFromHub(true) }}
               className="flex items-center gap-1.5 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
               <Plus size={16} /> Nouvelle réparation
             </button>
@@ -9459,6 +9467,18 @@ export default function StockMagasin() {
                   </div>
                 )}
               </div>
+              <label className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-xl p-3 cursor-pointer">
+                <input type="checkbox" checked={newRepairFromHubForm.suivi_long}
+                  onChange={(e) => setNewRepairFromHubForm((f) => ({ ...f, suivi_long: e.target.checked }))}
+                  className="w-4 h-4 accent-purple-600" />
+                <div>
+                  <p className="text-xs font-bold text-purple-800">Réparation à suivre (appareil gardé)</p>
+                  <p className="text-[10px] text-purple-600">
+                    Carte mère, commande de pièce… — l'appareil reste chez nous.
+                    Sans cette case, la réparation est faite immédiatement.
+                  </p>
+                </div>
+              </label>
               {hubPieceRowSel && hubPieceRowSel.type_piece === 'carte_mere' && (
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
