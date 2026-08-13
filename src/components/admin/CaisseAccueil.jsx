@@ -65,6 +65,7 @@ function QuickCard({ color, icon: Icon, title, description, onClick }) {
 export default function CaisseAccueil({
   magasin,
   magasinLabel,
+  staffName = '',
   caTotal = 0,
   ticketCount = 0,
   beneficeJour = 0,
@@ -552,7 +553,7 @@ export default function CaisseAccueil({
       <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: COLORS.navy }}>
-            Bonjour, Admin 👋
+            Bonjour, {staffName || 'Admin'} 👋
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Voici un aperçu de votre activité aujourd'hui.
@@ -655,7 +656,7 @@ export default function CaisseAccueil({
           onClick={onOpenGestion} />
         <QuickCard color={COLORS.green} icon={UserCheck}
           title="Clients"
-          description="Liste de vos clients et informations"
+          description="Enregistrer un nouveau client"
           onClick={() => setShowClientModal(true)} />
         <QuickCard color={COLORS.indigo} icon={Calendar}
           title="Planning"

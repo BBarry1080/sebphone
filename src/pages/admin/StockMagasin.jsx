@@ -4512,6 +4512,7 @@ export default function StockMagasin() {
         <CaisseAccueil
           magasin={magasin}
           magasinLabel={MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
+          staffName={caisseSession?.staffName || ''}
           caTotal={caisseTotals?.total || 0}
           ticketCount={salesToday?.length || 0}
           lastClosure={lastClosure}
