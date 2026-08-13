@@ -124,6 +124,26 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
         .eq('date', todayDateStr)
         .maybeSingle()
 
+      // Un responsable ou admin qui passe hors de ses creneaux planifies fait
+      // une visite : la caisse s'ouvre, mais sans pointage — donc ni heures
+      // ni salaire comptabilises, et le pointage du technicien du jour reste
+      // intact. Un creneau planifie ce jour-la = poste normal, pointage cree.
+      const estResponsable = (emp.responsable_magasins || []).includes(magasin)
+        || emp.grade === 'responsable'
+        || emp.grade === 'admin'
+        || emp.is_admin === true
+      const aUnShiftAujourdhui = !!(schedDate && !schedDate.repos && schedDate.heure_debut)
+
+      if (estResponsable && !aUnShiftAujourdhui) {
+        setFeedback({
+          type: 'welcome', firstName, heure: nowT,
+          retardMin: 0, penalite: 0,
+        })
+        setTimeout(() => onUnlock(emp, null, nowISO), 1200)
+        setProcessing(false)
+        return
+      }
+
       let retardMin = 0
       let penalite = 0
       if (schedDate && !schedDate.repos && schedDate.heure_debut) {

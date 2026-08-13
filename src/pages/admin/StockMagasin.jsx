@@ -1097,6 +1097,7 @@ export default function StockMagasin() {
       responsableMagasins: staffRecord.responsable_magasins || [],
       grade: staffRecord.grade || null,
       pointageId,
+      estVisite: !pointageId,
       dateStr: new Date().toISOString().slice(0, 10),
       arrivalDisplay: arrivalTimeISO
         ? new Date(arrivalTimeISO).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
@@ -1171,6 +1172,15 @@ export default function StockMagasin() {
   const handleChangeUser = async () => {
     if (!caisseSession) return
 
+    // Visite d'un responsable : aucun pointage n'a ete cree, donc ni depart
+    // a enregistrer ni heures supplementaires a declarer.
+    if (!caisseSession.pointageId) {
+      if (!window.confirm('Terminer votre session sur ce poste ?')) return
+      localStorage.removeItem(`sebphone_caisse_session_${magasin}`)
+      setCaisseSession(null)
+      return
+    }
+
     const { data: todaySchedule } = await supabase
       .from('staff_schedule_dates')
       .select('heure_fin')
@@ -1208,9 +1218,10 @@ export default function StockMagasin() {
 
     if (!window.confirm('Terminer votre session sur ce poste ?')) return
 
-    await supabase.from('staff_pointages')
+    const { error: departErr } = await supabase.from('staff_pointages')
       .update({ heure_depart: new Date().toISOString() })
       .eq('id', caisseSession.pointageId)
+    if (departErr) alert('Erreur enregistrement du départ : ' + departErr.message)
 
     if (heuresSupData) {
       await supabase.from('staff_heures_sup').insert(heuresSupData)
@@ -4258,6 +4269,11 @@ export default function StockMagasin() {
                   👤 {(caisseSession.staffName || '').split(' ')[0]}
                   <span className="text-gray-500 font-normal">· {caisseSession.arrivalDisplay}</span>
                 </span>
+                {caisseSession.estVisite && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                    visite — sans pointage
+                  </span>
+                )}
                 <button onClick={handleChangeUser}
                   title="Changer d'utilisateur"
                   className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:border-red-300 hover:text-red-500">
