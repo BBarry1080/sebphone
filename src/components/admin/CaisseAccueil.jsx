@@ -179,8 +179,9 @@ export default function CaisseAccueil({
         .eq('magasin_id', magasin).gte('created_at', startISO)
         .order('created_at', { ascending: false }),
       supabase.from('repairs').select('*')
-        .eq('magasin_id', magasin).eq('date', todayDate)
-        .order('created_at', { ascending: false }),
+        .eq('magasin_id', magasin)
+        .neq('status', 'abandonne')
+        .order('date', { ascending: false }),
       supabase.from('orders').select('*, phones(purchase_price, model, storage, color, battery_health, imei)')
         .eq('magasin_id', magasin).gte('created_at', startISO)
         .eq('status', 'recupere')
@@ -237,7 +238,21 @@ export default function CaisseAccueil({
 
     setDetailJour({
       ticketsCaisse: salesWithItems,
-      reparationsJour: repairsJour,
+      reparationsJour: repairsJour.filter((r) => r.date === todayDate),
+      reparationsOuvertes: repairsJour
+        .filter((r) => {
+          const solde = (Number(r.prix) || 0) - (Number(r.montant_paye) || 0)
+          const pasSoldee = solde > 0.01
+          const pasTerminee = r.suivi_statut === 'en_cours'
+          return (pasSoldee || pasTerminee) && r.date !== todayDate
+        })
+        .map((r) => ({
+          ...r,
+          _joursDepuis: Math.floor(
+            (new Date(todayDate).getTime() - new Date(r.date).getTime()) / 86400000
+          ),
+          _solde: (Number(r.prix) || 0) - (Number(r.montant_paye) || 0),
+        })),
       ventesPhoneJour: orders,
       totalCash, totalBancontact, totalVirement,
       totalConsolide: totalCash + totalBancontact + totalVirement,
@@ -1372,6 +1387,45 @@ export default function CaisseAccueil({
                     </div>
                   )}
                 </div>
+
+                {/* d-bis) Réparations encore ouvertes des jours précédents */}
+                {detailJour.reparationsOuvertes?.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold text-amber-700 uppercase mb-1">
+                      ⏳ Encore ouvertes ({detailJour.reparationsOuvertes.length})
+                    </p>
+                    <p className="text-[11px] italic text-gray-400 mb-2">
+                      Déposées les jours précédents, pas encore soldées ou pas encore terminées
+                    </p>
+                    <div className="max-h-40 overflow-y-auto space-y-1">
+                      {detailJour.reparationsOuvertes.map((r) => {
+                        const solde = r._solde
+                        const jours = r._joursDepuis
+                        return (
+                          <div key={r.id}
+                            className="flex items-center justify-between gap-2 bg-amber-50 rounded-lg px-2 py-1.5">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold truncate" style={{ color: COLORS.navy }}>
+                                {r.bon_number} · {r.client_nom}
+                              </p>
+                              <p className="text-[10px] text-gray-500 truncate">
+                                {r.appareil || '—'}{r.type_panne ? ` · ${r.type_panne}` : ''}
+                              </p>
+                              <p className={`text-[10px] font-bold ${jours >= 7 ? 'text-red-500' : 'text-gray-400'}`}>
+                                Déposé le {new Date(r.date).toLocaleDateString('fr-BE')}
+                                {jours > 0 ? ` · il y a ${jours}j` : ''}
+                                {r.suivi_statut === 'en_cours' ? ' · en atelier' : ''}
+                              </p>
+                            </div>
+                            <span className="text-xs font-bold text-amber-700 whitespace-nowrap">
+                              {solde > 0.01 ? `${solde.toFixed(2)}€ dû` : 'payé'}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* e) Ventes téléphones */}
                 <div>
