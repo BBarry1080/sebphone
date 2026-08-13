@@ -9,6 +9,8 @@ import { Plus, X, Pencil, Trash2, Search, Receipt,
          Image as ImageIcon, Upload } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
+import { getBrands, getModels } from '../../data/catalogConstants'
+import { searchModels } from '../../data/phonesDatabase'
 import { useIsAdmin, usePermission } from '../../hooks/usePermissions'
 import ReceiptTicket from '../../components/admin/ReceiptTicket'
 import ZFinancierReport from '../../components/admin/ZFinancierReport'
@@ -352,9 +354,12 @@ export default function StockMagasin() {
   const [selectedJourReparations, setSelectedJourReparations] = useState(null)
   // Nouvelle réparation depuis le hub (modal simplifié)
   const [showNewRepairFromHub, setShowNewRepairFromHub]   = useState(false)
+  const [showRepairModelSugg, setShowRepairModelSugg] = useState(false)
   const [newRepairFromHubForm, setNewRepairFromHubForm]   = useState({
     nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '',
     article_offert: false, technicien_carte_mere: '', panne_description: '',
+    type_appareil: 'telephone',
+    marque_appareil: 'Apple',
     suivi_long: false,
     encaisser: 'non',
     montant_encaisse: '',
@@ -440,6 +445,15 @@ export default function StockMagasin() {
     reconditionne: 'bg-cyan-50 text-cyan-700',
     occasion: 'bg-gray-100 text-gray-700',
   }
+
+  const TYPES_APPAREIL = [
+    { value: 'telephone', label: '📱 Téléphone' },
+    { value: 'tablette', label: '📟 Tablette' },
+    { value: 'montre', label: '⌚ Montre' },
+    { value: 'ecouteur', label: '🎧 Écouteurs' },
+    { value: 'ordinateur', label: '💻 Ordinateur' },
+    { value: 'autre', label: '🔧 Autre' },
+  ]
 
   const TYPES_PIECE = [
     { id: 'ecran', label: 'Écran', aQualite: true },
@@ -661,9 +675,13 @@ export default function StockMagasin() {
       ? `${typeLabel} — ${qualiteLabel}`
       : typeLabel
     setHubPieceRowSel(row)
+    // La piece choisie fait autorite : elle aligne aussi le type et la
+    // marque, sinon on pourrait avoir "Tablette Samsung" avec un ecran d'iPhone
     setNewRepairFromHubForm((f) => ({
       ...f,
       appareil: row.modele,
+      type_appareil: 'telephone',
+      marque_appareil: row.marque || f.marque_appareil,
       type_panne: panneTexte,
       prix: String(row.prix_defaut || 0),
     }))
@@ -2213,6 +2231,18 @@ export default function StockMagasin() {
     return groups
   }, [ecranCatalogList, posEcranMarqueSel, posSelectedTypePiece])
 
+  const repairModelSuggestions = useMemo(() => {
+    const q = (newRepairFromHubForm.appareil || '').trim()
+    if (q.length < 1) return []
+    const type = newRepairFromHubForm.type_appareil
+    const marque = newRepairFromHubForm.marque_appareil
+    if (type === 'autre') return []
+    const source = type === 'telephone'
+      ? searchModels(marque, q)
+      : (getModels(type, marque) || []).filter((m) => m.toLowerCase().includes(q.toLowerCase()))
+    return source.slice(0, 8)
+  }, [newRepairFromHubForm.appareil, newRepairFromHubForm.type_appareil, newRepairFromHubForm.marque_appareil])
+
   const isPhoneCategory = selectedPosCategory === 'Téléphone'
 
   const posPhoneMarques = useMemo(() => {
@@ -2873,6 +2903,8 @@ export default function StockMagasin() {
       magasin_id: magasin,
       date: new Date().toISOString().slice(0, 10),
       appareil: newRepairFromHubForm.appareil || null,
+      type_appareil: newRepairFromHubForm.type_appareil || null,
+      marque_appareil: newRepairFromHubForm.marque_appareil || null,
       imei: newRepairFromHubForm.imei || null,
       type_panne: newRepairFromHubForm.type_panne || null,
       ecran_id: hubPieceRowSel?.id || null,
@@ -2909,7 +2941,7 @@ export default function StockMagasin() {
     }
 
     logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
-    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '', suivi_long: false, encaisser: 'non', montant_encaisse: '' })
+    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '', type_appareil: 'telephone', marque_appareil: 'Apple', suivi_long: false, encaisser: 'non', montant_encaisse: '' })
     setHubPieceRowSel(null)
     setShowNewRepairFromHub(false)
     fetchReparationsHubData()
@@ -7071,7 +7103,7 @@ export default function StockMagasin() {
               </h1>
               <p className="text-sm text-gray-500 mt-1">Recherche, planning et gestion des réparations</p>
             </div>
-            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', suivi_long: false, encaisser: 'non', montant_encaisse: '' }); setShowNewRepairFromHub(true) }}
+            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', type_appareil: 'telephone', marque_appareil: 'Apple', suivi_long: false, encaisser: 'non', montant_encaisse: '' }); setShowNewRepairFromHub(true) }}
               className="flex items-center gap-1.5 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
               <Plus size={16} /> Nouvelle réparation
             </button>
@@ -9466,6 +9498,73 @@ export default function StockMagasin() {
                     </p>
                   </div>
                 )}
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    Appareil du client
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TYPES_APPAREIL.map((t) => (
+                      <button key={t.value} type="button"
+                        onClick={() => setNewRepairFromHubForm((f) => ({
+                          ...f,
+                          type_appareil: t.value,
+                          marque_appareil: t.value === 'telephone' ? 'Apple' : (getBrands(t.value)?.[0] || 'Apple'),
+                          appareil: '',
+                        }))}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border-2 ${
+                          newRepairFromHubForm.type_appareil === t.value
+                            ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                            : 'bg-white text-gray-600 border-gray-200'
+                        }`}>
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {newRepairFromHubForm.type_appareil !== 'autre' && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {(getBrands(newRepairFromHubForm.type_appareil) || []).map((b) => (
+                      <button key={b} type="button"
+                        onClick={() => setNewRepairFromHubForm((f) => ({ ...f, marque_appareil: b, appareil: '' }))}
+                        className={`px-2.5 py-1 rounded-full text-xs font-bold border-2 ${
+                          newRepairFromHubForm.marque_appareil === b
+                            ? 'border-[#00B4CC] bg-cyan-50 text-[#00B4CC]'
+                            : 'border-gray-200 text-gray-600'
+                        }`}>
+                        {b}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
+                  <input type="text" value={newRepairFromHubForm.appareil}
+                    onChange={(e) => { setNewRepairFromHubForm((f) => ({ ...f, appareil: e.target.value })); setShowRepairModelSugg(true) }}
+                    onFocus={() => setShowRepairModelSugg(true)}
+                    placeholder={newRepairFromHubForm.type_appareil === 'autre'
+                      ? 'Décris l\'appareil…'
+                      : `Modèle — rechercher ${newRepairFromHubForm.marque_appareil}…`}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  {showRepairModelSugg && repairModelSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg mt-1 z-30 max-h-40 overflow-y-auto">
+                      {repairModelSuggestions.map((name) => (
+                        <div key={name}
+                          onMouseDown={() => { setNewRepairFromHubForm((f) => ({ ...f, appareil: name })); setShowRepairModelSugg(false) }}
+                          className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0">
+                          {name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {hubPieceRowSel && (
+                    <p className="text-[10px] text-gray-400 mt-1 italic">
+                      Prérempli depuis la pièce choisie — modifiable si l'appareil diffère
+                    </p>
+                  )}
+                </div>
               </div>
               <label className="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-xl p-3 cursor-pointer">
                 <input type="checkbox" checked={newRepairFromHubForm.suivi_long}
