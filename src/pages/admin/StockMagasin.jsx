@@ -7903,12 +7903,18 @@ export default function StockMagasin() {
                                 )}
                               </div>
 
-                              <div className="shrink-0 w-28 text-right">
-                                {isAilleurs && (
-                                  <p className="text-[10px] font-bold text-amber-700 mb-1">📍 {nomMag}</p>
-                                )}
+                              <div className="shrink-0 w-32 text-right space-y-1">
+                                <div>
+                                  <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wide">Magasin</p>
+                                  <p className={`text-[11px] font-bold ${isAilleurs ? 'text-amber-700' : 'text-[#1B2A4A]'}`}>
+                                    {isAilleurs ? `📍 ${nomMag}` : nomMag}
+                                  </p>
+                                </div>
                                 {trueIsAdmin && p.fournisseur && (
-                                  <p className="text-[10px] text-gray-400 mb-1 truncate">{p.fournisseur}</p>
+                                  <div>
+                                    <p className="text-[9px] font-bold uppercase text-gray-400 tracking-wide">Fournisseur</p>
+                                    <p className="text-[11px] text-gray-600 truncate">{p.fournisseur}</p>
+                                  </div>
                                 )}
                                 {isAilleurs ? (
                                   <button onClick={() => handleTransfererPhone(p)}
@@ -8166,31 +8172,45 @@ export default function StockMagasin() {
                   </div>
                 </div>
 
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-1.5">
-                  Mode de paiement
-                </p>
-                <div className="grid grid-cols-3 gap-1.5 mb-3">
-                  {[
-                    { key: 'cash', label: '💶 Cash' },
-                    { key: 'bancontact', label: '💳 Bancontact' },
-                    { key: 'virement', label: '🏦 Virement' },
-                  ].map((m) => (
-                    <button key={m.key}
-                      onClick={() => {
-                        if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) {
-                          alert('Panier vide'); return
-                        }
-                        setCurrentPaymentMethod(m.key)
-                        setCurrentPaymentAmount(String(remainingToPay))
-                        setShowPaymentModal(true)
-                      }}
-                      className="py-2 rounded-xl text-[11px] font-bold border-2 border-gray-200 bg-white text-gray-600 hover:border-[#00B4CC] hover:text-[#00B4CC] transition-all">
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+                {!modeDevis && (
+                  <>
+                    <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-1.5">
+                      Mode de paiement
+                    </p>
+                    <div className="grid grid-cols-3 gap-1.5 mb-3">
+                      {[
+                        { key: 'cash', label: '💶 Cash' },
+                        { key: 'bancontact', label: '💳 Bancontact' },
+                        { key: 'virement', label: '🏦 Virement' },
+                      ].map((m) => (
+                        <button key={m.key}
+                          onClick={() => {
+                            if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) {
+                              alert('Panier vide'); return
+                            }
+                            setCurrentPaymentMethod(m.key)
+                            setCurrentPaymentAmount(String(remainingToPay))
+                            setShowPaymentModal(true)
+                          }}
+                          className="py-2 rounded-xl text-[11px] font-bold border-2 border-gray-200 bg-white text-gray-600 hover:border-[#00B4CC] hover:text-[#00B4CC] transition-all">
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
 
-                <div className="grid grid-cols-2 gap-2 mb-2">
+                {modeDevis && (
+                  <button onClick={() => {
+                      if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) { alert('Panier vide'); return }
+                      setShowDevisForm(true)
+                    }}
+                    className="w-full py-2.5 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 mb-2">
+                    📧 Envoyer le devis
+                  </button>
+                )}
+
+                <div className="grid grid-cols-1 gap-2 mb-2">
                   <div className="relative">
                     <button
                       disabled={!canModifyPrices}
@@ -8249,30 +8269,7 @@ export default function StockMagasin() {
                       </div>
                     )}
                   </div>
-
-                  <button onClick={() => {
-                      if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) { alert('Panier vide'); return }
-                      if (modeDevis) setShowDevisForm(true)
-                      else setShowPaymentModal(true)
-                    }}
-                    disabled={cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0}
-                    className={`py-2.5 text-white rounded-xl font-bold transition-all disabled:opacity-50 ${
-                      modeDevis
-                        ? 'bg-amber-500 hover:bg-amber-600'
-                        : 'bg-[#00B4CC] hover:bg-[#1B2A4A]'
-                    }`}>
-                    {modeDevis ? '📧 Envoyer le devis' : 'Ticket →'}
-                  </button>
                 </div>
-
-                {/* Ancien bouton Ticket masqué (remplacé par la rangée à 2 colonnes) */}
-                {false && (
-                  <button onClick={() => setShowPaymentModal(true)}
-                    disabled={cart.length === 0}
-                    className="w-full py-3 bg-[#00B4CC] text-white rounded-xl font-bold hover:bg-[#1B2A4A] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    Ticket →
-                  </button>
-                )}
               </>
             )}
 
