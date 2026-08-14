@@ -3970,11 +3970,8 @@ export default function StockMagasin() {
         // orders.reservation_code est unique : un suffixe par appareil
         const reservationCode = `${lotCode}-${phonesSoldInfos.length + 1}`
 
-        const { error: phoneErr } = await supabase.from('phones')
-          .update({ status: 'vendu', price: finalPrice })
-          .eq('id', ph.phone_id)
-        if (phoneErr) { alert(`Erreur sur ${ph.name} : ${phoneErr.message}`); continue }
-
+        // La commande d'abord : si elle echoue, le telephone reste
+        // disponible au lieu de sortir du stock sans facture
         const { data: order, error: orderErr } = await supabase.from('orders')
           .insert([{
             phone_id: ph.phone_id,
@@ -4007,6 +4004,11 @@ export default function StockMagasin() {
           }])
           .select().single()
         if (orderErr) { alert(`Erreur commande ${ph.name} : ${orderErr.message}`); continue }
+
+        const { error: phoneErr } = await supabase.from('phones')
+          .update({ status: 'vendu', price: finalPrice })
+          .eq('id', ph.phone_id)
+        if (phoneErr) alert(`Commande créée mais statut non mis à jour pour ${ph.name} : ${phoneErr.message}`)
 
         // Le paiement du panier est global : on rattache le montant du
         // telephone a la premiere methode utilisee, pour la tracabilite
