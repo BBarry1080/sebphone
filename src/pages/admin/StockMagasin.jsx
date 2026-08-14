@@ -22,6 +22,7 @@ import { calcSalairePeriode, getWeekBounds, calcDureeHeures, isShiftFinished } f
 import { logActivity } from '../../lib/logActivity'
 import { lineTotal } from '../../utils/cart'
 import { generateTicketPdfBase64 } from '../../utils/generateTicketPdf'
+import { generateFactureParticulierPdf } from '../../utils/generateFactureParticulierPdf'
 import emailjs from '@emailjs/browser'
 import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
 
@@ -4052,7 +4053,6 @@ export default function StockMagasin() {
       // ── Facture unique pour tous les telephones du lot ──
       if (phoneCustomer.email && phonesSoldInfos.length > 0) {
         try {
-              const { generateFactureParticulierPdf } = await import('../../utils/generateFactureParticulierPdf')
           const now = new Date()
           const expiry = new Date(now)
           expiry.setMonth(expiry.getMonth() + 24)
