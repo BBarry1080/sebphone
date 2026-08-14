@@ -55,6 +55,27 @@ const generateBarcode = () => {
   return base + String(checkDigit)
 }
 
+
+// Vignette d'une ligne de panier : image si disponible, sinon pastille
+// coloree avec une icone selon le type
+function CartThumb({ imageUrl, kind }) {
+  const bg = kind === 'repair' ? '#f59e0b' : kind === 'phone' ? '#2563eb' : '#64748b'
+  const emoji = kind === 'repair' ? '🔧' : kind === 'phone' ? '📱' : '📦'
+  if (imageUrl) {
+    return (
+      <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+        <img src={imageUrl} alt="" className="w-full h-full object-contain p-1" />
+      </div>
+    )
+  }
+  return (
+    <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-lg"
+      style={{ background: `${bg}1a` }}>
+      {emoji}
+    </div>
+  )
+}
+
 export default function StockMagasin() {
   const isAdmin = useIsAdmin()
   const hasPermission = usePermission('stock_magasin')
@@ -3580,6 +3601,7 @@ export default function StockMagasin() {
       return [...prev, {
         item_id: item.id,
         item_name: item.name,
+        image_url: item.image_url || null,
         quantity: 1,
         unit_price: item.sale_price || 0,
         discount: 0,
@@ -3635,6 +3657,12 @@ export default function StockMagasin() {
     ? cartArticlesSubtotal * (Number(globalDiscountValue) / 100)
     : 0
   const cartTotal = Math.max(0, cartSubtotal - globalDiscountAmount)
+
+  // TVA affichee a titre indicatif dans le panier : les prix sont TTC,
+  // on retrocalcule la part de taxe au taux standard belge
+  const TVA_RATE = 0.21
+  const cartTotalHT = cartTotal / (1 + TVA_RATE)
+  const cartTVA = cartTotal - cartTotalHT
 
   const amountPaidSoFar = paymentSplits.reduce((s, p) => s + p.amount, 0)
   const remainingToPay = Math.max(0, cartTotal - amountPaidSoFar)
@@ -8064,71 +8092,102 @@ export default function StockMagasin() {
                   {cart.map((c) => (
                     <div key={c.item_id}
                       onClick={() => setSelectedCartItemId(c.item_id)}
-                      className={`bg-gray-50 rounded-xl p-2 cursor-pointer border-2 transition-all
+                      className={`bg-white rounded-xl p-3 cursor-pointer border-2 transition-all
                         ${selectedCartItemId === c.item_id
                           ? 'border-[#00B4CC]'
-                          : 'border-transparent'}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs font-bold text-[#1B2A4A] flex-1 line-clamp-1">
-                          {c.item_name}
-                        </p>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); removeFromCart(c.item_id) }}
-                          className="text-red-400 hover:text-red-600 ml-2">
-                          <X size={13}/>
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); updateCartQty(c.item_id, -1) }}
-                            className="w-5 h-5 rounded bg-white border border-gray-200 text-xs">−</button>
-                          <span className="w-5 text-center text-xs font-bold">
-                            {c.quantity}
-                          </span>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); updateCartQty(c.item_id, 1) }}
-                            className="w-5 h-5 rounded bg-white border border-gray-200 text-xs">+</button>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <input type="number" value={c.unit_price}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => updateCartPrice(c.item_id, e.target.value)}
-                            disabled={!canModifyPrices}
-                            title={!canModifyPrices ? "Vous n'avez pas le droit de modifier les prix" : undefined}
-                            className={`w-16 px-1.5 py-1 border border-gray-200 rounded-lg text-xs text-right font-bold ${!canModifyPrices ? 'opacity-50 cursor-not-allowed' : ''}`}/>
-                          <span className="text-xs text-gray-400">€</span>
-                        </div>
-                      </div>
-                      {(c.discountType || c.quantity > 1) && (
-                        <p className="text-right text-xs mt-1.5">
-                          {c.discountType ? (
-                            <>
-                              <span className="line-through text-gray-400 mr-1">
-                                {(c.unit_price * c.quantity).toFixed(2)}€
-                              </span>
-                              <span className="font-bold text-amber-600">
+                          : 'border-gray-100'}`}>
+                      <div className="flex items-start gap-3">
+                        <CartThumb imageUrl={c.image_url} kind="item" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-bold text-[#1B2A4A] line-clamp-2">
+                              {c.item_name}
+                            </p>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); removeFromCart(c.item_id) }}
+                              className="text-gray-300 hover:text-red-500 shrink-0">
+                              <Trash2 size={14}/>
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <input type="number" value={c.unit_price}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => updateCartPrice(c.item_id, e.target.value)}
+                              disabled={!canModifyPrices}
+                              title={!canModifyPrices ? "Vous n'avez pas le droit de modifier les prix" : undefined}
+                              className={`w-16 px-1 py-0.5 border border-gray-200 rounded text-xs text-right ${!canModifyPrices ? 'opacity-50 cursor-not-allowed' : ''}`}/>
+                            <span className="text-xs text-gray-400">€ / unité</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); updateCartQty(c.item_id, -1) }}
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-sm">−</button>
+                              <span className="w-6 text-center text-sm font-bold">{c.quantity}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); updateCartQty(c.item_id, 1) }}
+                                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-sm">+</button>
+                            </div>
+                            <div className="text-right">
+                              {c.discountType && (
+                                <span className="line-through text-gray-300 text-xs mr-1">
+                                  {(c.unit_price * c.quantity).toFixed(2)}€
+                                </span>
+                              )}
+                              <span className={`text-base font-bold ${c.discountType ? 'text-amber-600' : 'text-[#1B2A4A]'}`}>
                                 {lineTotal(c).toFixed(2)}€
                               </span>
-                            </>
-                          ) : (
-                            <span className="text-gray-400">
-                              = {lineTotal(c).toFixed(2)}€
-                            </span>
-                          )}
-                        </p>
-                      )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="border-t border-gray-100 pt-3 mb-3">
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total</span>
-                    <span className="text-[#00B4CC]">
-                      {cartTotal.toFixed(2)}€
-                    </span>
+                <div className="border-t border-gray-100 pt-3 mb-3 space-y-1.5">
+                  <div className="flex justify-between text-sm text-gray-500">
+                    <span>Sous-total</span>
+                    <span>{cartSubtotal.toFixed(2)}€</span>
                   </div>
+                  {globalDiscountAmount > 0 && (
+                    <div className="flex justify-between text-sm font-bold text-amber-600">
+                      <span>Remise {globalDiscountValue}%</span>
+                      <span>−{globalDiscountAmount.toFixed(2)}€</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm text-gray-500">
+                    <span>TVA {Math.round(TVA_RATE * 100)}% (incluse)</span>
+                    <span>{cartTVA.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-xl pt-1.5 border-t border-gray-100">
+                    <span className="text-[#1B2A4A]">Total</span>
+                    <span className="text-[#00B4CC]">{cartTotal.toFixed(2)}€</span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-1.5">
+                  Mode de paiement
+                </p>
+                <div className="grid grid-cols-3 gap-1.5 mb-3">
+                  {[
+                    { key: 'cash', label: '💶 Cash' },
+                    { key: 'bancontact', label: '💳 Bancontact' },
+                    { key: 'virement', label: '🏦 Virement' },
+                  ].map((m) => (
+                    <button key={m.key}
+                      onClick={() => {
+                        if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) {
+                          alert('Panier vide'); return
+                        }
+                        setCurrentPaymentMethod(m.key)
+                        setCurrentPaymentAmount(String(remainingToPay))
+                        setShowPaymentModal(true)
+                      }}
+                      className="py-2 rounded-xl text-[11px] font-bold border-2 border-gray-200 bg-white text-gray-600 hover:border-[#00B4CC] hover:text-[#00B4CC] transition-all">
+                      {m.label}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mb-2">
