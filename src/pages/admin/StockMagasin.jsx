@@ -22,6 +22,7 @@ import { calcSalairePeriode, getWeekBounds, calcDureeHeures, isShiftFinished } f
 import { logActivity } from '../../lib/logActivity'
 import { lineTotal } from '../../utils/cart'
 import { generateTicketPdfBase64 } from '../../utils/generateTicketPdf'
+import emailjs from '@emailjs/browser'
 import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
 
 const POS_CATEGORIES = [
@@ -2558,7 +2559,6 @@ export default function StockMagasin() {
       const itemsHtml = (lastSale.items || []).map((c) => {
         return `<tr><td>${c.quantity}× ${c.item_name}</td><td style="text-align:right">${lineTotal(c).toFixed(2)}€</td></tr>`
       }).join('')
-      const emailjs = (await import('@emailjs/browser')).default
       const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
       const pdfBase64 = await generateTicketPdfBase64(lastSale, magasinLabel)
       await emailjs.send('service_nn74puq', 'template_ticket', {
@@ -2595,7 +2595,6 @@ export default function StockMagasin() {
       }).join('')
       const html = `<table style="width:100%;border-collapse:collapse">${itemsHtml}</table>`
 
-      const emailjs = (await import('@emailjs/browser')).default
       const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
       const delaiChoisi = delaiTypesList.find((d) => d.id === devisDelaiId)
       const delaiTexteFinal = delaiChoisi ? `${delaiChoisi.label} : ${delaiChoisi.delai_texte}` : ''
@@ -4053,8 +4052,7 @@ export default function StockMagasin() {
       // ── Facture unique pour tous les telephones du lot ──
       if (phoneCustomer.email && phonesSoldInfos.length > 0) {
         try {
-          const emailjs = (await import('@emailjs/browser')).default
-          const { generateFactureParticulierPdf } = await import('../../utils/generateFactureParticulierPdf')
+              const { generateFactureParticulierPdf } = await import('../../utils/generateFactureParticulierPdf')
           const now = new Date()
           const expiry = new Date(now)
           expiry.setMonth(expiry.getMonth() + 24)
