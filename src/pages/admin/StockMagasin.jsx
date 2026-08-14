@@ -3961,11 +3961,14 @@ export default function StockMagasin() {
     const phonesSoldInfos = []
     if (phonesInCart.length > 0) {
       const saleDate = new Date().toISOString()
-      const reservationCode = `SP-${Date.now().toString(36).toUpperCase()}`
+      // Code commun au lot, pour retrouver les appareils d'une meme vente
+      const lotCode = `SP-${Date.now().toString(36).toUpperCase()}`
       const customerFullName = `${phoneCustomer.firstname} ${phoneCustomer.name}`.trim()
 
       for (const ph of phonesInCart) {
         const finalPrice = Number(ph.unit_price) || 0
+        // orders.reservation_code est unique : un suffixe par appareil
+        const reservationCode = `${lotCode}-${phonesSoldInfos.length + 1}`
 
         const { error: phoneErr } = await supabase.from('phones')
           .update({ status: 'vendu', price: finalPrice })
@@ -4081,9 +4084,9 @@ export default function StockMagasin() {
             tva_mention: "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)",
             magasin_nom: mag?.nom || 'SebPhone',
             magasin_adresse: mag?.adresse || 'sebphone.be',
-            reservation_code: reservationCode,
-            reservation_url: `https://sebphone.be/commande/${reservationCode}`,
-            invoice_url: `https://sebphone.be/facture/${reservationCode}`,
+            reservation_code: lotCode,
+            reservation_url: `https://sebphone.be/commande/${lotCode}`,
+            invoice_url: `https://sebphone.be/facture/${lotCode}`,
             pickup_date: now.toLocaleDateString('fr-BE'),
             warranty_expiry: expiry.toLocaleDateString('fr-BE'),
           }
