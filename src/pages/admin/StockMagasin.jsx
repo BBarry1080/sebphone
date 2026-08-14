@@ -6,7 +6,7 @@ import { Plus, X, Pencil, Trash2, Search, Receipt,
          Menu, Lock, Unlock, LogOut,
          Settings, Clock, Save, UserCheck, Send, Calendar, History,
          PiggyBank, ChevronLeft, ChevronRight, Percent,
-         Image as ImageIcon, Upload, Smartphone } from 'lucide-react'
+         Image as ImageIcon, Upload } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getBrands, getModels } from '../../data/catalogConstants'
@@ -2668,7 +2668,11 @@ export default function StockMagasin() {
         })
       })
     supabase.from('model_price_limits').select('*')
-      .then(({ data }) => setPhoneModelLimits(data || []))
+      .then(({ data }) => setPhoneModelLimits((data || []).map((l) => ({
+        ...l,
+        price_min: l.price_min != null ? Number(l.price_min) : null,
+        price_max: l.price_max != null ? Number(l.price_max) : null,
+      }))))
   }, [])
 
   // Fetch catalogue écrans à la première activation de l'onglet
@@ -3116,6 +3120,15 @@ export default function StockMagasin() {
 
   // montantPreRempli permet de proposer un acompte des l'ajout au panier,
   // sans fausser solde_total qui reste le vrai reste du
+  // Meme cascade que Stock.jsx : limite par modele, puis globale, puis defaut
+  const getPhonePriceLimits = (modelName) => {
+    const modelLimit = (phoneModelLimits || []).find((l) => l.model_name === modelName)
+    return {
+      min: modelLimit?.price_min ?? phonePriceSettings?.min ?? 0,
+      max: modelLimit?.price_max ?? phonePriceSettings?.max ?? 5000,
+    }
+  }
+
   // Un telephone est unique (IMEI) : pas de quantite, il y est ou pas
   const addPhoneToCart = (phone) => {
     if (phonesInCart.find((p) => p.phone_id === phone.id)) {
@@ -3134,6 +3147,9 @@ export default function StockMagasin() {
       magasin_id: phone.magasin_id,
       unit_price: Number(phone.price) || 0,
       prix_origine: Number(phone.price) || 0,
+      model: phone.model || phone.name,
+      prix_min: getPhonePriceLimits(phone.model || phone.name).min,
+      prix_max: getPhonePriceLimits(phone.model || phone.name).max,
     }])
   }
 
@@ -3142,8 +3158,12 @@ export default function StockMagasin() {
   }
 
   const updatePhoneCartPrice = (phoneId, newPrice) => {
-    setPhonesInCart((prev) => prev.map((p) =>
-      p.phone_id === phoneId ? { ...p, unit_price: Number(newPrice) || 0 } : p))
+    setPhonesInCart((prev) => prev.map((p) => {
+      if (p.phone_id !== phoneId) return p
+      // On laisse saisir librement, le blocage se fait a la validation :
+      // empecher la frappe rendrait le champ inutilisable
+      return { ...p, unit_price: Number(newPrice) || 0 }
+    }))
   }
 
   const addRepairToCart = (repair, montantPreRempli = null) => {
@@ -8301,8 +8321,13 @@ export default function StockMagasin() {
                   ))}
                   {phonesInCart.map((ph) => (
                     <div key={`ph-${ph.phone_id}`} className="flex items-center gap-2 py-2 border-b border-gray-100">
-                      <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                        <Smartphone size={16} className="text-blue-600" />
+                      <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
+                        <img
+                          src={getPhoneImage(ph.model || ph.name, ph.color)}
+                          alt={ph.name}
+                          className="w-full h-full object-contain p-0.5"
+                          onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER }}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-[#1B2A4A] truncate">{ph.name}</p>
@@ -8311,12 +8336,27 @@ export default function StockMagasin() {
                         </p>
                         {ph.imei && <p className="text-[9px] text-gray-300 font-mono truncate">IMEI {ph.imei}</p>}
                       </div>
-                      <input
-                        type="number"
-                        value={ph.unit_price}
-                        onChange={(e) => updatePhoneCartPrice(ph.phone_id, e.target.value)}
-                        className="w-16 px-1 py-1 border border-gray-200 rounded-lg text-xs font-bold text-right"
-                      />
+                      <div className="flex flex-col items-end shrink-0">
+                        <input
+                          type="number"
+                          value={ph.unit_price}
+                          onChange={(e) => updatePhoneCartPrice(ph.phone_id, e.target.value)}
+                          className={`w-16 px-1 py-1 border rounded-lg text-xs font-bold text-right ${
+                            (Number(ph.unit_price) || 0) < (Number(ph.prix_min) || 0)
+                              ? 'border-red-400 bg-red-50 text-red-600'
+                              : 'border-gray-200'
+                          }`}
+                        />
+                        {ph.prix_min > 0 && (
+                          <span className={`text-[9px] mt-0.5 ${
+                            (Number(ph.unit_price) || 0) < (Number(ph.prix_min) || 0)
+                              ? 'text-red-500 font-bold'
+                              : 'text-gray-400'
+                          }`}>
+                            min {Number(ph.prix_min).toFixed(2)}€
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={() => removePhoneFromCart(ph.phone_id)}
                         className="p-1 text-gray-300 hover:text-red-500 shrink-0"
@@ -8420,6 +8460,13 @@ export default function StockMagasin() {
                             }
                             setCurrentPaymentMethod(m.key)
                             setCurrentPaymentAmount(String(remainingToPay))
+                            const sousMin = phonesInCart.find(
+                              (ph) => (Number(ph.unit_price) || 0) < (Number(ph.prix_min) || 0)
+                            )
+                            if (sousMin) {
+                              alert(`${sousMin.name} : le prix ne peut pas être inférieur à ${Number(sousMin.prix_min).toFixed(2)}€`)
+                              return
+                            }
                             if (phonesInCart.length > 0 && !phoneCustomer.name.trim()) {
                               setShowPhoneCustomerForm(true)
                               return
