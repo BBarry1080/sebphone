@@ -6,7 +6,7 @@ import { Plus, X, Pencil, Trash2, Search, Receipt,
          Menu, Lock, Unlock, LogOut,
          Settings, Clock, Save, UserCheck, Send, Calendar, History,
          PiggyBank, ChevronLeft, ChevronRight, Percent,
-         Image as ImageIcon, Upload } from 'lucide-react'
+         Image as ImageIcon, Upload, Smartphone } from 'lucide-react'
 import { MAGASINS_ADMIN as MAGASINS_LIST } from '../../utils/magasins'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'
 import { getBrands, getModels } from '../../data/catalogConstants'
@@ -171,6 +171,14 @@ export default function StockMagasin() {
   const [cart, setCart] = useState([])
   const [cartSearch, setCartSearch] = useState('')
   const [repairsInCart, setRepairsInCart]                 = useState([])
+  const [phonesInCart, setPhonesInCart] = useState([])
+  const [showPhoneCustomerForm, setShowPhoneCustomerForm] = useState(false)
+  const [phoneCustomer, setPhoneCustomer] = useState({
+    firstname: '', name: '', phone: '', email: '',
+    is_company: false, company_name: '', company_vat: '',
+    company_address: '', company_email: '', company_phone: '',
+    company_tva_regime: 'marge',
+  })
   const [pendingRepairs, setPendingRepairs]               = useState([])
   const [loadingPendingRepairs, setLoadingPendingRepairs] = useState(false)
   const [allPhonesForCaisse, setAllPhonesForCaisse] = useState([])
@@ -3108,6 +3116,36 @@ export default function StockMagasin() {
 
   // montantPreRempli permet de proposer un acompte des l'ajout au panier,
   // sans fausser solde_total qui reste le vrai reste du
+  // Un telephone est unique (IMEI) : pas de quantite, il y est ou pas
+  const addPhoneToCart = (phone) => {
+    if (phonesInCart.find((p) => p.phone_id === phone.id)) {
+      alert('Ce téléphone est déjà dans le panier')
+      return
+    }
+    setPhonesInCart((prev) => [...prev, {
+      phone_id: phone.id,
+      name: phone.name || phone.model,
+      imei: phone.imei || '',
+      color: phone.color || '',
+      storage: phone.storage || '',
+      grade: phone.grade || '',
+      condition: phone.condition || '',
+      tva_regime: phone.tva_regime || 'marge',
+      magasin_id: phone.magasin_id,
+      unit_price: Number(phone.price) || 0,
+      prix_origine: Number(phone.price) || 0,
+    }])
+  }
+
+  const removePhoneFromCart = (phoneId) => {
+    setPhonesInCart((prev) => prev.filter((p) => p.phone_id !== phoneId))
+  }
+
+  const updatePhoneCartPrice = (phoneId, newPrice) => {
+    setPhonesInCart((prev) => prev.map((p) =>
+      p.phone_id === phoneId ? { ...p, unit_price: Number(newPrice) || 0 } : p))
+  }
+
   const addRepairToCart = (repair, montantPreRempli = null) => {
     if (repairsInCart.find((r) => r.repair_id === repair.id)) return
     const solde = (Number(repair.prix) || 0) - (Number(repair.montant_paye) || 0)
@@ -3652,7 +3690,8 @@ export default function StockMagasin() {
   const cartArticlesSubtotal = cart.reduce((sum, c) => sum + lineTotal(c), 0)
   const repairsSubtotal = repairsInCart.reduce((sum, r) => sum + Number(r.unit_price || 0), 0)
   const newRepairsSubtotal = newRepairsInCart.reduce((sum, r) => sum + Number(r.unit_price || 0), 0)
-  const cartSubtotal = cartArticlesSubtotal + repairsSubtotal + newRepairsSubtotal
+  const phonesSubtotal = phonesInCart.reduce((sum, p) => sum + Number(p.unit_price || 0), 0)
+  const cartSubtotal = cartArticlesSubtotal + repairsSubtotal + newRepairsSubtotal + phonesSubtotal
   const globalDiscountAmount = globalDiscountValue
     ? cartArticlesSubtotal * (Number(globalDiscountValue) / 100)
     : 0
@@ -3687,7 +3726,7 @@ export default function StockMagasin() {
   }
 
   const handleCheckout = async () => {
-    if ((cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) || !isFullyPaid) return
+    if ((cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0 && phonesInCart.length === 0) || !isFullyPaid) return
     setCheckoutLoading(true)
 
     const currentSebUser = JSON.parse(
@@ -3897,6 +3936,149 @@ export default function StockMagasin() {
         await supabase.from('shop_sale_items').insert(newRepairSaleItems)
       }
     }
+    // ── Vente des telephones du panier ──
+    // Un orders + un payments par telephone, une seule facture pour le lot
+    const phonesSoldInfos = []
+    if (phonesInCart.length > 0) {
+      const saleDate = new Date().toISOString()
+      const reservationCode = `SP-${Date.now().toString(36).toUpperCase()}`
+      const customerFullName = `${phoneCustomer.firstname} ${phoneCustomer.name}`.trim()
+
+      for (const ph of phonesInCart) {
+        const finalPrice = Number(ph.unit_price) || 0
+
+        const { error: phoneErr } = await supabase.from('phones')
+          .update({ status: 'vendu', price: finalPrice })
+          .eq('id', ph.phone_id)
+        if (phoneErr) { alert(`Erreur sur ${ph.name} : ${phoneErr.message}`); continue }
+
+        const { data: order, error: orderErr } = await supabase.from('orders')
+          .insert([{
+            phone_id: ph.phone_id,
+            customer_name: customerFullName,
+            customer_email: phoneCustomer.email || null,
+            customer_phone: phoneCustomer.phone || null,
+            phone_name: ph.name,
+            phone_storage: ph.storage,
+            phone_color: ph.color,
+            phone_grade: ph.grade,
+            delivery_mode: 'collect',
+            magasin_id: ph.magasin_id || magasin,
+            payment_mode: 'total',
+            total_amount: finalPrice,
+            deposit_amount: 0,
+            reservation_code: reservationCode,
+            status: 'recupere',
+            encaisse_at: saleDate,
+            notes: `Vente caisse — ticket ${(ticketNumber || 0) + 1}`,
+            discount_value: 0,
+            discount_type: 'fixed',
+            final_price: finalPrice,
+            is_company_sale: phoneCustomer.is_company,
+            company_name: phoneCustomer.company_name || null,
+            company_vat: phoneCustomer.company_vat || null,
+            company_address: phoneCustomer.company_address || null,
+            company_email: phoneCustomer.company_email || null,
+            company_phone: phoneCustomer.company_phone || null,
+            company_tva_regime: phoneCustomer.company_tva_regime,
+          }])
+          .select().single()
+        if (orderErr) { alert(`Erreur commande ${ph.name} : ${orderErr.message}`); continue }
+
+        // Le paiement du panier est global : on rattache le montant du
+        // telephone a la premiere methode utilisee, pour la tracabilite
+        await supabase.from('payments').insert([{
+          order_id: order.id,
+          phone_id: ph.phone_id,
+          amount: finalPrice,
+          payment_method: paymentSplits[0]?.method || 'cash',
+          magasin_id: ph.magasin_id || magasin,
+          payment_date: saleDate,
+          description: `Vente caisse ${ph.name} — ${customerFullName}`,
+        }])
+
+        phonesSoldInfos.push({
+          phone_name: ph.name,
+          phone_color: ph.color || '—',
+          phone_storage: ph.storage || '—',
+          phone_condition: ph.condition || '—',
+          phone_grade: ph.grade || '—',
+          phone_imei: ph.imei || '—',
+          price: `${finalPrice.toFixed(2)}€`,
+        })
+        const { error: lineErr } = await supabase.from('shop_sale_items').insert([{
+          sale_id: sale.id,
+          item_id: null,
+          item_name: `${ph.name}${ph.imei ? ` — IMEI ${ph.imei}` : ''}`,
+          quantity: 1,
+          unit_price: finalPrice,
+          total_price: finalPrice,
+          discount_type: null,
+          discount_value: 0,
+          tva_rate: 21,
+          line_type: 'telephone',
+        }])
+        if (lineErr) console.warn('Ligne de vente telephone non enregistree:', lineErr.message)
+
+
+        await logActivity('phone_sold_caisse',
+          `Téléphone vendu en caisse — ${ph.name} (${finalPrice.toFixed(2)}€) à ${customerFullName}`)
+      }
+
+      // ── Facture unique pour tous les telephones du lot ──
+      if (phoneCustomer.email && phonesSoldInfos.length > 0) {
+        try {
+          const emailjs = (await import('@emailjs/browser')).default
+          const { generateFactureParticulierPdf } = await import('../../utils/generateFactureParticulierPdf')
+          const now = new Date()
+          const expiry = new Date(now)
+          expiry.setMonth(expiry.getMonth() + 24)
+          const mag = MAGASINS_LIST.find((m) => m.id === magasin)
+          const totalPhones = phonesInCart.reduce((s, p) => s + (Number(p.unit_price) || 0), 0)
+
+          const facturePayload = {
+            to_email: phoneCustomer.email,
+            to_name: customerFullName,
+            email_type: 'facture',
+            devices: phonesSoldInfos,
+            phone_name: phonesSoldInfos.map((d) => d.phone_name).join(', '),
+            phone_imei: phonesSoldInfos.map((d) => d.phone_imei).join(', '),
+            phone_color: '—',
+            phone_storage: '—',
+            phone_condition: '—',
+            phone_grade: '—',
+            price_total: `${totalPhones.toFixed(2)}€`,
+            price_original: `${totalPhones.toFixed(2)}€`,
+            discount_amount: '0€',
+            deposit_paid: `${totalPhones.toFixed(2)}€`,
+            remaining: '0€',
+            payment_label: 'Montant total payé ✓',
+            accessories_total: '0€',
+            accessory_pack: 'Aucun',
+            battery_replace: 'Non',
+            warning_message: '',
+            payment_method: paymentSplits.map((p) => p.method).join(' + ') || 'Cash',
+            tva_mention: "Régime particulier — Biens d'occasion (Art. 313-343 Code TVA belge)",
+            magasin_nom: mag?.nom || 'SebPhone',
+            magasin_adresse: mag?.adresse || 'sebphone.be',
+            reservation_code: reservationCode,
+            reservation_url: `https://sebphone.be/commande/${reservationCode}`,
+            invoice_url: `https://sebphone.be/facture/${reservationCode}`,
+            pickup_date: now.toLocaleDateString('fr-BE'),
+            warranty_expiry: expiry.toLocaleDateString('fr-BE'),
+          }
+          const pdfBase64 = await generateFactureParticulierPdf(facturePayload)
+          await emailjs.send(
+            'service_nn74puq',
+            'template_pzv7w8d',
+            { ...facturePayload, my_attachment: pdfBase64 },
+            'rqbaYNMIGNP6IQB9O'
+          )
+        } catch (mailErr) {
+          console.warn('Facture téléphones non envoyée:', mailErr)
+        }
+      }
+    }
 
     if (staffId) {
       const { data: rules } = await supabase
@@ -3959,6 +4141,14 @@ export default function StockMagasin() {
           discount: 0,
           discountType: null,
         })),
+        ...phonesInCart.map((ph) => ({
+          item_id: null,
+          item_name: `📱 ${ph.name}${ph.imei ? ` — IMEI ${ph.imei}` : ''}`,
+          quantity: 1,
+          unit_price: ph.unit_price,
+          discount: 0,
+          discountType: null,
+        })),
       ],
       ticketNumber: (ticketNumber || 0) + 1,
       changeToGive: currentChange,
@@ -3970,12 +4160,20 @@ export default function StockMagasin() {
     setCart([])
     setRepairsInCart([])
     setNewRepairsInCart([])
+    setPhonesInCart([])
+    setPhoneCustomer({
+      firstname: '', name: '', phone: '', email: '',
+      is_company: false, company_name: '', company_vat: '',
+      company_address: '', company_email: '', company_phone: '',
+      company_tva_regime: 'marge',
+    })
     setPaymentSplits([])
     setCurrentPaymentAmount('')
     setGlobalDiscountValue('')
     fetchItems()
     fetchCaisseToday()
     fetchPendingRepairs()
+    fetchAllPhonesForCaisse()
     setCheckoutLoading(false)
 
     if (currentChange > 0) {
@@ -7923,10 +8121,16 @@ export default function StockMagasin() {
                                     {transferingPhoneId === p.id ? '...' : '↓ Transférer'}
                                   </button>
                                 ) : (
-                                  <button onClick={() => setPosPhoneSaleTarget(p)}
-                                    className="w-full px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
-                                    Vendre
-                                  </button>
+                                  <>
+                                    <button onClick={() => addPhoneToCart(p)}
+                                      className="w-full px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
+                                      + Panier
+                                    </button>
+                                    <button onClick={() => setPosPhoneSaleTarget(p)}
+                                      className="w-full mt-1 px-3 py-1 border border-gray-200 text-gray-500 rounded-lg text-[10px] font-bold hover:border-blue-400 hover:text-blue-600">
+                                      Vente directe
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -8032,7 +8236,7 @@ export default function StockMagasin() {
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 overflow-y-auto flex flex-col">
             <div className="flex items-center justify-between mb-3 gap-2">
               <h3 className="font-bold text-[#1B2A4A]">
-                {modeDevis ? 'Devis' : 'Ticket'} ({cart.length + repairsInCart.length + newRepairsInCart.length})
+                {modeDevis ? 'Devis' : 'Ticket'} ({cart.length + repairsInCart.length + newRepairsInCart.length + phonesInCart.length})
               </h3>
               <label className="relative inline-flex items-center cursor-pointer" title="Basculer en mode Devis (aucun impact CA/stock/commissions)">
                 <input type="checkbox" checked={modeDevis}
@@ -8046,7 +8250,7 @@ export default function StockMagasin() {
               </label>
             </div>
 
-            {cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0 ? (
+            {cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0 && phonesInCart.length === 0 ? (
               <p className="text-center text-gray-400 py-8 text-sm flex-1">
                 Sélectionnez des articles
               </p>
@@ -8092,6 +8296,32 @@ export default function StockMagasin() {
                       <button onClick={() => removeNewRepairFromCart(r.key)}
                         className="text-gray-400 hover:text-red-600">
                         <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {phonesInCart.map((ph) => (
+                    <div key={`ph-${ph.phone_id}`} className="flex items-center gap-2 py-2 border-b border-gray-100">
+                      <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                        <Smartphone size={16} className="text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-[#1B2A4A] truncate">{ph.name}</p>
+                        <p className="text-[10px] text-gray-400 truncate">
+                          {[ph.storage, ph.color, ph.grade].filter(Boolean).join(' · ') || 'Téléphone'}
+                        </p>
+                        {ph.imei && <p className="text-[9px] text-gray-300 font-mono truncate">IMEI {ph.imei}</p>}
+                      </div>
+                      <input
+                        type="number"
+                        value={ph.unit_price}
+                        onChange={(e) => updatePhoneCartPrice(ph.phone_id, e.target.value)}
+                        className="w-16 px-1 py-1 border border-gray-200 rounded-lg text-xs font-bold text-right"
+                      />
+                      <button
+                        onClick={() => removePhoneFromCart(ph.phone_id)}
+                        className="p-1 text-gray-300 hover:text-red-500 shrink-0"
+                      >
+                        <X size={14} />
                       </button>
                     </div>
                   ))}
@@ -8185,11 +8415,15 @@ export default function StockMagasin() {
                       ].map((m) => (
                         <button key={m.key}
                           onClick={() => {
-                            if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) {
+                            if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0 && phonesInCart.length === 0) {
                               alert('Panier vide'); return
                             }
                             setCurrentPaymentMethod(m.key)
                             setCurrentPaymentAmount(String(remainingToPay))
+                            if (phonesInCart.length > 0 && !phoneCustomer.name.trim()) {
+                              setShowPhoneCustomerForm(true)
+                              return
+                            }
                             setShowPaymentModal(true)
                           }}
                           className="py-2 rounded-xl text-[11px] font-bold border-2 border-gray-200 bg-white text-gray-600 hover:border-[#00B4CC] hover:text-[#00B4CC] transition-all">
@@ -8202,7 +8436,7 @@ export default function StockMagasin() {
 
                 {modeDevis && (
                   <button onClick={() => {
-                      if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0) { alert('Panier vide'); return }
+                      if (cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0 && phonesInCart.length === 0) { alert('Panier vide'); return }
                       setShowDevisForm(true)
                     }}
                     className="w-full py-2.5 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 mb-2">
@@ -9071,6 +9305,109 @@ export default function StockMagasin() {
       )}
 
       {/* MODAL PAIEMENT */}
+      {showPhoneCustomerForm && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 my-8">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">
+                📱 Client — {phonesInCart.length} téléphone{phonesInCart.length > 1 ? 's' : ''}
+              </h3>
+              <button onClick={() => setShowPhoneCustomerForm(false)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 mb-3">
+              Obligatoire pour la facture et la garantie 24 mois.
+            </p>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Prénom</label>
+                  <input type="text" value={phoneCustomer.firstname}
+                    onChange={(e) => setPhoneCustomer((f) => ({ ...f, firstname: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Nom *</label>
+                  <input type="text" autoFocus value={phoneCustomer.name}
+                    onChange={(e) => setPhoneCustomer((f) => ({ ...f, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Téléphone</label>
+                  <input type="tel" value={phoneCustomer.phone}
+                    onChange={(e) => setPhoneCustomer((f) => ({ ...f, phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Email</label>
+                  <input type="email" value={phoneCustomer.email}
+                    onChange={(e) => setPhoneCustomer((f) => ({ ...f, email: e.target.value }))}
+                    placeholder="pour la facture"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl p-3 cursor-pointer">
+                <input type="checkbox" checked={phoneCustomer.is_company}
+                  onChange={(e) => setPhoneCustomer((f) => ({ ...f, is_company: e.target.checked }))}
+                  className="w-4 h-4 accent-[#1B2A4A]" />
+                <span className="text-xs font-bold text-[#1B2A4A]">Vente à une société</span>
+              </label>
+
+              {phoneCustomer.is_company && (
+                <div className="space-y-2 bg-gray-50 rounded-xl p-3">
+                  <input type="text" value={phoneCustomer.company_name}
+                    onChange={(e) => setPhoneCustomer((f) => ({ ...f, company_name: e.target.value }))}
+                    placeholder="Nom de la société"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  <input type="text" value={phoneCustomer.company_vat}
+                    onChange={(e) => setPhoneCustomer((f) => ({ ...f, company_vat: e.target.value }))}
+                    placeholder="N° TVA"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  <input type="text" value={phoneCustomer.company_address}
+                    onChange={(e) => setPhoneCustomer((f) => ({ ...f, company_address: e.target.value }))}
+                    placeholder="Adresse"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="email" value={phoneCustomer.company_email}
+                      onChange={(e) => setPhoneCustomer((f) => ({ ...f, company_email: e.target.value }))}
+                      placeholder="Email société"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                    <select value={phoneCustomer.company_tva_regime}
+                      onChange={(e) => setPhoneCustomer((f) => ({ ...f, company_tva_regime: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                      <option value="marge">TVA sur marge</option>
+                      <option value="normale">TVA 21% normale</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setShowPhoneCustomerForm(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
+                Annuler
+              </button>
+              <button onClick={() => {
+                  if (!phoneCustomer.name.trim()) { alert('Le nom du client est obligatoire'); return }
+                  setShowPhoneCustomerForm(false)
+                  setCurrentPaymentAmount(String(remainingToPay))
+                  setShowPaymentModal(true)
+                }}
+                className="flex-1 py-2.5 bg-[#1B2A4A] text-white rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
+                Continuer vers le paiement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">

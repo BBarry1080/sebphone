@@ -25,14 +25,41 @@ export const generateFactureParticulierPdf = async (p) => {
   doc.setLineWidth(0.5)
   doc.line(15, y, pageWidth - 15, y)
   y += 6
-  doc.text('Appareil', 15, y)
+  // p.devices : liste d'appareils pour une vente multiple.
+  // Retrocompatible : si absent, on retombe sur les champs phone_* uniques.
+  const devices = Array.isArray(p.devices) && p.devices.length > 0
+    ? p.devices
+    : [{
+        phone_name: p.phone_name,
+        phone_color: p.phone_color,
+        phone_storage: p.phone_storage,
+        phone_condition: p.phone_condition,
+        phone_grade: p.phone_grade,
+        phone_imei: p.phone_imei,
+        price: p.price_total,
+      }]
+
+  doc.text(devices.length > 1 ? `Appareils (${devices.length})` : 'Appareil', 15, y)
   y += 6
   doc.setFont(undefined, 'normal')
   doc.setFontSize(10)
-  doc.text(`${p.phone_name || ''}`, 15, y); y += 5
-  doc.text(`Couleur : ${p.phone_color || '—'}   ·   Stockage : ${p.phone_storage || '—'}`, 15, y); y += 5
-  doc.text(`État : ${p.phone_condition || '—'}   ·   Grade : ${p.phone_grade || '—'}`, 15, y); y += 5
-  doc.text(`IMEI : ${p.phone_imei || '—'}`, 15, y); y += 8
+
+  devices.forEach((d, idx) => {
+    // Saut de page si on approche du bas de l'A4
+    if (y > 250) { doc.addPage(); y = 20 }
+    if (devices.length > 1) {
+      doc.setFont(undefined, 'bold')
+      doc.text(`${idx + 1}. ${d.phone_name || ''}`, 15, y)
+      if (d.price) doc.text(String(d.price), 195, y, { align: 'right' })
+      doc.setFont(undefined, 'normal')
+      y += 5
+    } else {
+      doc.text(`${d.phone_name || ''}`, 15, y); y += 5
+    }
+    doc.text(`Couleur : ${d.phone_color || '—'}   ·   Stockage : ${d.phone_storage || '—'}`, 20, y); y += 5
+    doc.text(`État : ${d.phone_condition || '—'}   ·   Grade : ${d.phone_grade || '—'}`, 20, y); y += 5
+    doc.text(`IMEI : ${d.phone_imei || '—'}`, 20, y); y += devices.length > 1 ? 7 : 8
+  })
 
   doc.line(15, y, pageWidth - 15, y); y += 6
   doc.setFont(undefined, 'bold'); doc.setFontSize(11)
