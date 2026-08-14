@@ -3962,7 +3962,7 @@ export default function StockMagasin() {
     if (phonesInCart.length > 0) {
       const saleDate = new Date().toISOString()
       // Code commun au lot, pour retrouver les appareils d'une meme vente
-      const lotCode = `SP-${Date.now().toString(36).toUpperCase()}`
+      const lotCode = `SP-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`
       const customerFullName = `${phoneCustomer.firstname} ${phoneCustomer.name}`.trim()
 
       for (const ph of phonesInCart) {
@@ -3970,8 +3970,6 @@ export default function StockMagasin() {
         // orders.reservation_code est unique : un suffixe par appareil
         const reservationCode = `${lotCode}-${phonesSoldInfos.length + 1}`
 
-        // La commande d'abord : si elle echoue, le telephone reste
-        // disponible au lieu de sortir du stock sans facture
         const { data: order, error: orderErr } = await supabase.from('orders')
           .insert([{
             phone_id: ph.phone_id,
@@ -4005,6 +4003,8 @@ export default function StockMagasin() {
           .select().single()
         if (orderErr) { alert(`Erreur commande ${ph.name} : ${orderErr.message}`); continue }
 
+        // Le statut ne change qu'une fois la commande enregistree :
+        // un echec laisse l'appareil disponible plutot que vendu sans facture
         const { error: phoneErr } = await supabase.from('phones')
           .update({ status: 'vendu', price: finalPrice })
           .eq('id', ph.phone_id)
