@@ -16,3 +16,14 @@ export const TYPES_PIECE = [
   { id: 'chassis', label: 'Châssis', aQualite: false },
   { id: 'capteur_flex', label: 'Capteur flex', aQualite: false },
 ]
+
+// Qualités d'une pièce : libellé + couleur du badge, au même endroit
+// pour éviter que les deux se désynchronisent d'un écran à l'autre.
+export const QUALITES = {
+  compatible:          { label: 'Compatible',       badge: 'bg-amber-50 text-amber-700' },
+  original_equivalent: { label: 'Qualité originale', badge: 'bg-cyan-50 text-cyan-700' },
+  original:            { label: '100% Original',    badge: 'bg-purple-50 text-purple-700' },
+}
+
+export const qualiteLabel = (q) => QUALITES[q]?.label || QUALITES.original.label
+export const qualiteBadge = (q) => QUALITES[q]?.badge || QUALITES.original.badge

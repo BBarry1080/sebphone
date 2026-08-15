@@ -13,7 +13,7 @@ import { TYPES_PIECE } from '../../utils/typesPiece'
 export default function PiecesNavigator({
   pieces = [],
   getStock = () => 0,
-  modelesConnus = {},
+  modelesConnus = [],
   onNewPiece = null,
   children,
 }) {
@@ -28,12 +28,15 @@ export default function PiecesNavigator({
     [pieces, typeSel]
   )
 
-  const marquesDuType = useMemo(
-    () => [...new Set(piecesDuType.map((p) => p.marque).filter(Boolean))].sort(),
-    [piecesDuType]
-  )
+  // Marques proposées = celles présentes en base pour ce type + celles de la
+  // liste de référence. Un type encore vide affiche donc quand même ses chips.
+  const marquesDuType = useMemo(() => {
+    const enBase = piecesDuType.map((p) => p.marque).filter(Boolean)
+    const enReference = modelesConnus.map((r) => r.marque).filter(Boolean)
+    return [...new Set([...enBase, ...enReference])].sort()
+  }, [piecesDuType, modelesConnus])
 
-  // Une seule marque pour ce type → pas de chips, on va droit aux modèles.
+  // Une seule marque disponible → pas de chips, on va droit aux modèles.
   const marqueActive = marquesDuType.length > 1 ? marqueFiltre : 'all'
 
   const modelesGroupes = useMemo(() => {
@@ -48,19 +51,21 @@ export default function PiecesNavigator({
     return groups
   }, [piecesDuType, marqueActive])
 
-  // Modèles connus pour ce type mais absents du catalogue : affichés grisés,
-  // cliquables pour pré-remplir la création.
-  // `modelesConnus` : { [typeId]: { marque, modeles: [] } } — la marque sert
-  // à pré-remplir la création et à masquer la liste si une autre marque est filtrée.
-  const referenceType = modelesConnus[typeSel] || null
-
+  // Modèles de référence absents du catalogue pour ce type : affichés grisés,
+  // cliquables pour pré-remplir la création (aucune ligne créée en base avant saisie).
+  // `modelesConnus` : [{ marque, modeles: [] }] — la même référence sert à tous
+  // les types, chaque entrée gardant sa marque pour pré-remplir correctement.
   const modelesManquants = useMemo(() => {
-    const attendus = referenceType?.modeles || []
-    if (attendus.length === 0) return []
-    if (marqueActive !== 'all' && marqueActive !== referenceType?.marque) return []
     const presents = new Set(Object.keys(modelesGroupes))
-    return attendus.filter((m) => !presents.has(m))
-  }, [referenceType, marqueActive, modelesGroupes])
+    const out = []
+    modelesConnus.forEach((ref) => {
+      if (marqueActive !== 'all' && marqueActive !== ref.marque) return
+      ;(ref.modeles || []).forEach((m) => {
+        if (!presents.has(m)) out.push({ modele: m, marque: ref.marque })
+      })
+    })
+    return out
+  }, [modelesConnus, marqueActive, modelesGroupes])
 
   const retourTypes = () => {
     setTypeSel(null)
@@ -160,17 +165,15 @@ export default function PiecesNavigator({
               </button>
             )
           })}
-          {modelesManquants.map((modele) => (
-            <button key={`manquant-${modele}`} type="button"
-              onClick={() => onNewPiece && onNewPiece(
-                typeSel,
-                modele,
-                marqueActive !== 'all' ? marqueActive : (referenceType?.marque || '')
-              )}
+          {modelesManquants.map(({ modele, marque }) => (
+            <button key={`manquant-${marque}-${modele}`} type="button"
+              onClick={() => onNewPiece && onNewPiece(typeSel, modele, marque)}
               disabled={!onNewPiece}
               className="text-left bg-gray-50 hover:bg-purple-50 rounded-xl p-3 transition-all border border-gray-100 hover:border-purple-300 disabled:cursor-not-allowed">
               <p className="font-bold text-xs text-gray-600 line-clamp-2">{modele}</p>
-              <p className="text-[10px] text-gray-400 mt-0.5">Non configuré</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                {marquesDuType.length > 1 ? `${marque} · ` : ''}Non configuré
+              </p>
             </button>
           ))}
         </div>

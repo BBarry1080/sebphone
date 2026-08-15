@@ -25,7 +25,7 @@ import { generateTicketPdfBase64 } from '../../utils/generateTicketPdf'
 import { generateFactureParticulierPdf } from '../../utils/generateFactureParticulierPdf'
 import emailjs from '@emailjs/browser'
 import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
-import { TYPES_PIECE } from '../../utils/typesPiece'
+import { TYPES_PIECE, qualiteLabel, qualiteBadge } from '../../utils/typesPiece'
 import PiecesNavigator from '../../components/admin/PiecesNavigator'
 
 const POS_CATEGORIES = [
@@ -37,6 +37,25 @@ const POS_CATEGORIES = [
 ]
 
 // Couleur par magasin — pastilles du calendrier et cartes du coffre
+const IPHONE_MODELES = [
+  'iPhone', 'iPhone 3G', 'iPhone 3GS',
+  'iPhone 4', 'iPhone 4S',
+  'iPhone 5', 'iPhone 5C', 'iPhone 5S',
+  'iPhone 6', 'iPhone 6 Plus', 'iPhone 6S', 'iPhone 6S Plus',
+  'iPhone SE (1re génération)',
+  'iPhone 7', 'iPhone 7 Plus', 'iPhone 8', 'iPhone 8 Plus',
+  'iPhone X', 'iPhone XR', 'iPhone XS', 'iPhone XS Max',
+  'iPhone 11', 'iPhone 11 Pro', 'iPhone 11 Pro Max',
+  'iPhone SE (2e génération)',
+  'iPhone 12 mini', 'iPhone 12', 'iPhone 12 Pro', 'iPhone 12 Pro Max',
+  'iPhone 13 mini', 'iPhone 13', 'iPhone 13 Pro', 'iPhone 13 Pro Max',
+  'iPhone SE (3e génération)',
+  'iPhone 14', 'iPhone 14 Plus', 'iPhone 14 Pro', 'iPhone 14 Pro Max',
+  'iPhone 15', 'iPhone 15 Plus', 'iPhone 15 Pro', 'iPhone 15 Pro Max',
+  'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max', 'iPhone 16e',
+  'iPhone 17', 'iPhone Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max', 'iPhone 17e',
+]
+
 const MAG_COLORS_CAL = {
   anderlecht: '#2563eb', molenbeek: '#16a34a',
   'rue-neuve': '#f59e0b', louise: '#8b5cf6',
@@ -450,25 +469,6 @@ export default function StockMagasin() {
 
   // Création d'un nouveau modèle d'écran
   const [showNewEcranForm, setShowNewEcranForm]   = useState(false)
-  const IPHONE_MODELES = [
-    'iPhone', 'iPhone 3G', 'iPhone 3GS',
-    'iPhone 4', 'iPhone 4S',
-    'iPhone 5', 'iPhone 5C', 'iPhone 5S',
-    'iPhone 6', 'iPhone 6 Plus', 'iPhone 6S', 'iPhone 6S Plus',
-    'iPhone SE (1re génération)',
-    'iPhone 7', 'iPhone 7 Plus', 'iPhone 8', 'iPhone 8 Plus',
-    'iPhone X', 'iPhone XR', 'iPhone XS', 'iPhone XS Max',
-    'iPhone 11', 'iPhone 11 Pro', 'iPhone 11 Pro Max',
-    'iPhone SE (2e génération)',
-    'iPhone 12 mini', 'iPhone 12', 'iPhone 12 Pro', 'iPhone 12 Pro Max',
-    'iPhone 13 mini', 'iPhone 13', 'iPhone 13 Pro', 'iPhone 13 Pro Max',
-    'iPhone SE (3e génération)',
-    'iPhone 14', 'iPhone 14 Plus', 'iPhone 14 Pro', 'iPhone 14 Pro Max',
-    'iPhone 15', 'iPhone 15 Plus', 'iPhone 15 Pro', 'iPhone 15 Pro Max',
-    'iPhone 16', 'iPhone 16 Plus', 'iPhone 16 Pro', 'iPhone 16 Pro Max', 'iPhone 16e',
-    'iPhone 17', 'iPhone Air', 'iPhone 17 Pro', 'iPhone 17 Pro Max', 'iPhone 17e',
-  ]
-
   const CONDITION_LABELS_PHONE = {
     neuf: 'Neuf',
     reconditionne: 'Reconditionné',
@@ -2114,9 +2114,6 @@ export default function StockMagasin() {
 
   const renderPieceCard = (row) => {
     const isEditing = editingEcran?.id === row.id
-    const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
-      : row.qualite === 'original_equivalent' ? 'Qualité originale'
-      : '100% Original'
     return (
       <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -2126,8 +2123,8 @@ export default function StockMagasin() {
               <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{row.modele_code}</p>
             )}
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700">
-                {qualiteLabel}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${qualiteBadge(row.qualite)}`}>
+                {qualiteLabel(row.qualite)}
               </span>
               {!row.disponible && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
@@ -2325,6 +2322,23 @@ export default function StockMagasin() {
     () => [...new Set(ecranCatalogList.map((e) => e.marque).filter(Boolean))].sort(),
     [ecranCatalogList]
   )
+
+  // Référence des modèles proposés dans la navigation pièces : tous les modèles
+  // distincts du catalogue, par marque et tous types confondus, enrichis des
+  // iPhone absents du catalogue. Sert de grille commune aux 14 types de pièce.
+  const modelesReference = useMemo(() => {
+    const parMarque = {}
+    ecranCatalogList.forEach((p) => {
+      if (!p.marque || !p.modele) return
+      if (!parMarque[p.marque]) parMarque[p.marque] = new Set()
+      parMarque[p.marque].add(p.modele)
+    })
+    if (!parMarque.Apple) parMarque.Apple = new Set()
+    IPHONE_MODELES.forEach((m) => parMarque.Apple.add(m))
+    return Object.entries(parMarque)
+      .map(([marque, set]) => ({ marque, modeles: [...set].sort() }))
+      .sort((a, b) => a.marque.localeCompare(b.marque))
+  }, [ecranCatalogList])
 
   const posSelectedTypePiece = selectedPosCategory === 'Réparations'
     ? posTypePieceSel
@@ -5067,7 +5081,7 @@ export default function StockMagasin() {
                 <PiecesNavigator
                   pieces={ecranCatalogList}
                   getStock={getStockPourMagasin}
-                  modelesConnus={{ ecran: { marque: 'Apple', modeles: IPHONE_MODELES } }}
+                  modelesConnus={modelesReference}
                   onNewPiece={(typeId, modele, marque) => {
                     setNewEcranForm((f) => ({
                       ...f,
@@ -8577,7 +8591,7 @@ export default function StockMagasin() {
                 <PiecesNavigator
                   pieces={ecranCatalogList}
                   getStock={getStockPourMagasin}
-                  modelesConnus={{ ecran: { marque: 'Apple', modeles: IPHONE_MODELES } }}>
+                  modelesConnus={modelesReference}>
                   {(rows) => rows.map(renderPieceCard)}
                 </PiecesNavigator>
               ) : (
