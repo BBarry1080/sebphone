@@ -6,7 +6,7 @@ import emailjs from '@emailjs/browser'
 import { useLanguage } from '../contexts/LanguageContext'
 import { generateRewardPdf } from '../utils/generateRewardPdf'
 
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_n3bi0nn'
 const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMIGNP6IQB9O'
 
 const MAGASINS_LIST = [

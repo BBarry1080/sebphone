@@ -98,7 +98,7 @@ export default function ClientsInteresses() {
       const magasinNom = phone.magasins?.[0]
         ? (MAGASINS[phone.magasins[0]]?.nom || 'SebPhone')
         : 'SebPhone'
-      await emailjs.send('service_nn74puq', 'template_interested', {
+      await emailjs.send('service_n3bi0nn', 'template_interested', {
         to_email: client.customer_email,
         to_name: client.customer_name,
         phone_name: phone.name || phone.model,
@@ -118,7 +118,7 @@ export default function ClientsInteresses() {
       const magasinNom = phone.magasins?.[0]
         ? (MAGASINS[phone.magasins[0]]?.nom || 'SebPhone')
         : 'SebPhone'
-      await emailjs.send('service_nn74puq', 'template_interested', {
+      await emailjs.send('service_n3bi0nn', 'template_interested', {
         to_email: client.customer_email,
         to_name: client.customer_name,
         phone_name: phone.name || phone.model,

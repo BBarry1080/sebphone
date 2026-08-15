@@ -8,7 +8,7 @@ import { generateFactureParticulierPdf } from '../../utils/generateFacturePartic
 import { generateFactureSocietePdf } from '../../utils/generateFactureSocietePdf'
 import { generateReviewGooglePdf } from '../../utils/generateReviewGooglePdf'
 
-const EMAILJS_SERVICE_ID   = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
+const EMAILJS_SERVICE_ID   = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_n3bi0nn'
 const EMAILJS_PUBLIC_KEY   = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMIGNP6IQB9O'
 const INVOICE_TEMPLATE_ID  = 'template_pzv7w8d'
 

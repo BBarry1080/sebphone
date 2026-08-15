@@ -18,7 +18,7 @@ import { PHONES_DATABASE, findPhoneModel, searchModels, BRANDS } from '../../dat
 import { MAGASINS_LIST, MAGASINS_PHYSIQUES, MAGASINS_ADMIN, MAGASINS as MAGASINS_MAP } from '../../utils/magasins'
 const MAGASINS = MAGASINS_PHYSIQUES
 
-const EMAILJS_SERVICE_ID   = import.meta.env.VITE_EMAILJS_SERVICE_ID         || 'service_nn74puq'
+const EMAILJS_SERVICE_ID   = import.meta.env.VITE_EMAILJS_SERVICE_ID         || 'service_n3bi0nn'
 const EMAILJS_PUBLIC_KEY   = import.meta.env.VITE_EMAILJS_PUBLIC_KEY         || 'rqbaYNMIGNP6IQB9O'
 const INVOICE_TEMPLATE_ID  = 'template_pzv7w8d'
 import { getPhoneImage, PLACEHOLDER } from '../../utils/phoneImage'

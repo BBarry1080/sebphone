@@ -1,7 +1,7 @@
 import emailjs from '@emailjs/browser'
 import { LOGO_SEBPHONE_BASE64 } from '../lib/logos'
 
-const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
+const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_n3bi0nn'
 const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_hfoq4dg'
 const PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY  || 'rqbaYNMIGNP6IQB9O'
 

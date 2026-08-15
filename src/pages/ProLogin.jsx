@@ -8,7 +8,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { generateProConfirmPdf } from '../utils/generateProConfirmPdf'
 
 const SALT = 'sebphone_salt_2026'
-const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_nn74puq'
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_n3bi0nn'
 const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'rqbaYNMIGNP6IQB9O'
 const PRO_TEMPLATE_ID = 'template_rs9zkwo'
 

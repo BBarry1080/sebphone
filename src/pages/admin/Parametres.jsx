@@ -21,7 +21,7 @@ import { generateOrderConfirmationPdf } from '../../utils/sendEmail'
 import { generateProConfirmPdf } from '../../utils/generateProConfirmPdf'
 import { generateRewardPdf } from '../../utils/generateRewardPdf'
 
-const EMAILJS_SERVICE_ID = 'service_nn74puq'
+const EMAILJS_SERVICE_ID = 'service_n3bi0nn'
 const EMAILJS_PUBLIC_KEY = 'rqbaYNMIGNP6IQB9O'
 
 const DOC_TYPES = [

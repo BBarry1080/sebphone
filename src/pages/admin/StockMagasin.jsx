@@ -2658,7 +2658,7 @@ export default function StockMagasin() {
       }).join('')
       const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
       const pdfBase64 = await generateTicketPdfBase64(lastSale, magasinLabel, magasin)
-      await emailjs.send('service_nn74puq', 'template_ticket', {
+      await emailjs.send('service_n3bi0nn', 'template_ticket', {
         to_email: ticketEmailInput.trim(),
         to_name: 'Client',
         items_html: itemsHtml,
@@ -2696,7 +2696,7 @@ export default function StockMagasin() {
       const delaiChoisi = delaiTypesList.find((d) => d.id === devisDelaiId)
       const delaiTexteFinal = delaiChoisi ? `${delaiChoisi.label} : ${delaiChoisi.delai_texte}` : ''
       const pdfBase64 = await generateDevisPdfBase64(cart, cartTotal, magasinLabel, delaiTexteFinal)
-      await emailjs.send('service_nn74puq', 'template_devis', {
+      await emailjs.send('service_n3bi0nn', 'template_devis', {
         to_email: email,
         to_name: (devisClientName || '').trim() || 'Client',
         items_html: html,
@@ -4194,7 +4194,7 @@ export default function StockMagasin() {
           }
           const pdfBase64 = await generateFactureParticulierPdf(facturePayload)
           await emailjs.send(
-            'service_nn74puq',
+            'service_n3bi0nn',
             'template_pzv7w8d',
             { ...facturePayload, my_attachment: pdfBase64 },
             'rqbaYNMIGNP6IQB9O'

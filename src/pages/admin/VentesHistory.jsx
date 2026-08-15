@@ -234,7 +234,7 @@ export default function VentesHistory() {
       if (addSaleForm.customer_email) {
         try {
           const emailjs = (await import('@emailjs/browser')).default
-          const SERVICE_ID = 'service_nn74puq'
+          const SERVICE_ID = 'service_n3bi0nn'
           const PUBLIC_KEY = 'rqbaYNMIGNP6IQB9O'
           const templateId = addSaleForm.is_company_sale
             ? 'template_qukek6a' : 'template_pzv7w8d'
