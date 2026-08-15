@@ -30,11 +30,8 @@ const POS_CATEGORIES = [
   'Téléphone',
   'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
   'Carte mémoire', 'Ordinateur', 'Tablette', 'PlayStation',
-  'Autre téléphone', 'Écran Samsung',
-  'Écran', 'Carte mère', 'Port de chargement', 'Vitre arrière',
-  'Batterie', 'Caméra lentille', 'Caméra avant', 'Caméra arrière',
-  'Boutons', 'Baffle du haut', 'Baffle du bas', 'Micro',
-  'Châssis', 'Capteur flex',
+  'Autre téléphone',
+  'Réparations',
 ]
 
 // Couleur par magasin — pastilles du calendrier et cartes du coffre
@@ -191,6 +188,7 @@ export default function StockMagasin() {
   const [phoneModelLimits, setPhoneModelLimits] = useState([])
   // Nouvelle réparation créée depuis la caisse (via clic écran catalogue)
   const [newRepairsInCart, setNewRepairsInCart]           = useState([])
+  const [posTypePieceSel, setPosTypePieceSel]             = useState(null)
   const [posEcranMarqueSel, setPosEcranMarqueSel]         = useState(null)
   const [posEcranQualiteChoices, setPosEcranQualiteChoices] = useState(null)
   const [showNewRepairForm, setShowNewRepairForm]         = useState(false)
@@ -2239,14 +2237,9 @@ export default function StockMagasin() {
     return groups
   }, [ecranCatalogFiltered])
 
-  const posCategorieToTypePiece = (catName) =>
-    TYPES_PIECE.find((t) => t.label === catName)?.id || null
-
-  const posSelectedTypePiece = useMemo(
-    () => posCategorieToTypePiece(selectedPosCategory),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedPosCategory]
-  )
+  const posSelectedTypePiece = selectedPosCategory === 'Réparations'
+    ? posTypePieceSel
+    : null
 
   const posEcranMarques = useMemo(() => {
     if (!posSelectedTypePiece) return []
@@ -7780,7 +7773,7 @@ export default function StockMagasin() {
 
           {/* COLONNE GAUCHE — Catégories + Réparations en attente */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-2 flex flex-col">
-            <button onClick={() => { setSelectedPosCategory('Tout'); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
+            <button onClick={() => { setSelectedPosCategory('Tout'); setPosTypePieceSel(null); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
               className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
                 ${selectedPosCategory === 'Tout'
                   ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
@@ -7789,7 +7782,7 @@ export default function StockMagasin() {
             </button>
             {POS_CATEGORIES.map((catName) => (
               <button key={catName}
-                onClick={() => { setSelectedPosCategory(catName); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
+                onClick={() => { setSelectedPosCategory(catName); setPosTypePieceSel(null); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
                   ${selectedPosCategory === catName
                     ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
@@ -8165,22 +8158,60 @@ export default function StockMagasin() {
                   </div>
                 )
               }
+              if (selectedPosCategory === 'Réparations' && !posTypePieceSel) {
+                return (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Type de pièce</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {TYPES_PIECE.map((t) => {
+                        const hasAny = ecranCatalogList.some(
+                          (e) => e.disponible !== false && e.type_piece === t.id
+                        )
+                        return (
+                          <button key={t.id}
+                            onClick={() => { if (hasAny) setPosTypePieceSel(t.id) }}
+                            disabled={!hasAny}
+                            className={`text-left rounded-xl p-4 transition-all border ${
+                              hasAny
+                                ? 'bg-purple-50 hover:bg-purple-100 border-purple-100 hover:border-purple-300'
+                                : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'
+                            }`}>
+                            <p className="font-bold text-sm text-[#1B2A4A] line-clamp-2">{t.label}</p>
+                            {!hasAny && (
+                              <p className="text-[10px] text-gray-400 mt-1">Non disponible</p>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }
               if (posSelectedTypePiece) {
                 const typePieceLabel = TYPES_PIECE.find((t) => t.id === posSelectedTypePiece)?.label || selectedPosCategory
                 if (!posEcranMarqueSel) {
-                  return posEcranMarques.length === 0 ? (
-                    <p className="text-center text-gray-400 py-8 text-sm">
-                      Aucune pièce "{typePieceLabel}" dans le catalogue — ajoute-les depuis
-                      Gestion de stock → 📱 Réparations
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2">
-                      {posEcranMarques.map((m) => (
-                        <button key={m} onClick={() => setPosEcranMarqueSel(m)}
-                          className="text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-4 transition-all border border-purple-100 hover:border-purple-300">
-                          <p className="font-bold text-sm text-[#1B2A4A]">{m}</p>
-                        </button>
-                      ))}
+                  return (
+                    <div>
+                      <button onClick={() => setPosTypePieceSel(null)}
+                        className="text-xs font-bold text-gray-500 hover:text-[#1B2A4A] mb-3">
+                        ← Types de pièce
+                      </button>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">{typePieceLabel} — Marques</p>
+                      {posEcranMarques.length === 0 ? (
+                        <p className="text-center text-gray-400 py-8 text-sm">
+                          Aucune pièce "{typePieceLabel}" dans le catalogue — ajoute-les depuis
+                          Gestion de stock → 📱 Réparations
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                          {posEcranMarques.map((m) => (
+                            <button key={m} onClick={() => setPosEcranMarqueSel(m)}
+                              className="text-left bg-purple-50 hover:bg-purple-100 rounded-xl p-4 transition-all border border-purple-100 hover:border-purple-300">
+                              <p className="font-bold text-sm text-[#1B2A4A]">{m}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )
                 }
