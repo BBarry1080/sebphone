@@ -27,6 +27,7 @@ import emailjs from '@emailjs/browser'
 import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
 import { TYPES_PIECE, qualiteLabel, qualiteBadge } from '../../utils/typesPiece'
 import PiecesNavigator from '../../components/admin/PiecesNavigator'
+import ImageLightbox from '../../components/admin/ImageLightbox'
 
 // Couleur par magasin — pastilles du calendrier et cartes du coffre
 const IPHONE_MODELES = [
@@ -70,13 +71,20 @@ const generateBarcode = () => {
 
 // Vignette d'une ligne de panier : image si disponible, sinon pastille
 // coloree avec une icone selon le type
-function CartThumb({ imageUrl, kind }) {
+// `onZoom` est fourni par le parent : ce composant est hors du corps de
+// StockMagasin et n'a donc pas accès au state de la lightbox.
+function CartThumb({ imageUrl, kind, alt, onZoom }) {
   const bg = kind === 'repair' ? '#f59e0b' : kind === 'phone' ? '#2563eb' : '#64748b'
   const emoji = kind === 'repair' ? '🔧' : kind === 'phone' ? '📱' : '📦'
   if (imageUrl) {
     return (
-      <div className="w-12 h-12 rounded-xl bg-gray-100 overflow-hidden shrink-0">
-        <img src={imageUrl} alt="" className="w-full h-full object-contain p-1" />
+      <div
+        // stopPropagation : la ligne du panier porte déjà un onClick
+        // (setSelectedCartItemId), zoomer ne doit pas la sélectionner.
+        onClick={onZoom ? (e) => { e.stopPropagation(); onZoom() } : undefined}
+        title={onZoom ? 'Agrandir' : undefined}
+        className={`w-12 h-12 rounded-xl bg-gray-100 overflow-hidden shrink-0 ${onZoom ? 'cursor-zoom-in' : ''}`}>
+        <img src={imageUrl} alt={alt || ''} className="w-full h-full object-contain p-1" />
       </div>
     )
   }
@@ -124,6 +132,8 @@ export default function StockMagasin() {
   const [activeTab, setActiveTab] = useState('stock') // stock | categories (dans posScreen='gestion')
 
   // Modals
+  // Visionneuse d'image, partagée par toute la page : { url, alt }
+  const [lightboxImage, setLightboxImage] = useState(null)
   const [showItemModal, setShowItemModal] = useState(false)
   const [showCatModal, setShowCatModal] = useState(false)
   // Suppression d'une catégorie encore rattachée à des produits
@@ -8242,16 +8252,38 @@ export default function StockMagasin() {
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {posFiltered.map((item) => (
-                    <button key={item.id}
+                    // <div role="button"> et non <button> : la vignette est elle-même
+                    // cliquable, or un <button> imbriqué dans un <button> est invalide.
+                    <div key={item.id} role="button" tabIndex={0}
                       onClick={() => addToCart(item)}
-                      className="text-left bg-gray-50 hover:bg-gray-100 rounded-xl p-3 transition-all border border-transparent hover:border-[#1B2A4A]">
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addToCart(item) }
+                      }}
+                      className="text-left bg-gray-50 hover:bg-gray-100 rounded-xl p-3 transition-all border border-transparent hover:border-[#1B2A4A] cursor-pointer">
+                      {item.image_url ? (
+                        <div
+                          // stopPropagation : sans lui, zoomer ajouterait aussi au panier.
+                          onClick={(e) => {
+                            e.stopPropagation(); e.preventDefault()
+                            setLightboxImage({ url: item.image_url, alt: item.name })
+                          }}
+                          title="Agrandir"
+                          className="w-full aspect-square bg-white rounded-lg mb-1.5 overflow-hidden border border-gray-100 cursor-zoom-in">
+                          <img src={item.image_url} alt={item.name}
+                            className="w-full h-full object-contain p-1" />
+                        </div>
+                      ) : (
+                        <div className="w-full aspect-square bg-gray-100 rounded-lg mb-1.5 flex items-center justify-center">
+                          <Package size={22} className="text-gray-300" />
+                        </div>
+                      )}
                       <p className="font-bold text-xs text-[#1B2A4A] mb-1 line-clamp-2">
                         {item.name}
                       </p>
                       <p className="text-sm font-bold text-[#00B4CC]">
                         {item.sale_price}€
                       </p>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )
@@ -8379,7 +8411,8 @@ export default function StockMagasin() {
                           ? 'border-[#00B4CC]'
                           : 'border-gray-100'}`}>
                       <div className="flex items-start gap-3">
-                        <CartThumb imageUrl={c.image_url} kind="item" />
+                        <CartThumb imageUrl={c.image_url} kind="item" alt={c.item_name}
+                          onZoom={() => setLightboxImage({ url: c.image_url, alt: c.item_name })} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <p className="text-sm font-bold text-[#1B2A4A] line-clamp-2">
@@ -8697,8 +8730,10 @@ export default function StockMagasin() {
                           className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                           <td className="px-4 py-3">
                             {item.image_url ? (
-                              <img src={item.image_url} alt=""
-                                className="w-9 h-9 rounded-lg object-cover border border-gray-200" />
+                              <img src={item.image_url} alt={item.name}
+                                onClick={() => setLightboxImage({ url: item.image_url, alt: item.name })}
+                                title="Agrandir"
+                                className="w-9 h-9 rounded-lg object-cover border border-gray-200 cursor-zoom-in" />
                             ) : (
                               <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
                                 <Package size={16} className="text-gray-400" />
@@ -10913,6 +10948,13 @@ export default function StockMagasin() {
           </div>
         </div>
       )}
+
+      {/* Visionneuse — montée en dernier, au-dessus de tout le reste */}
+      <ImageLightbox
+        url={lightboxImage?.url}
+        alt={lightboxImage?.alt}
+        onClose={() => setLightboxImage(null)}
+      />
     </div>
   )
 }
