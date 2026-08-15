@@ -1,108 +1,146 @@
-import { LOGO_SEBTELECOM_BASE64 } from '../lib/logos'
+import { LOGO_SEBPHONE_BASE64 } from '../lib/logos'
 import { lineTotal } from './cart'
-import { MAGASINS } from './magasins'
 
-export const generateTicketPdfBase64 = async (sale, magasinLabel, magasin = null) => {
-  const adresse = MAGASINS[magasin]?.adresse || MAGASINS.louise.adresse
-  const { jsPDF } = await import('jspdf')
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const pageWidth = 210
+const TICKET_CSS = `
+  * { box-sizing: border-box; }
+  body { margin:0; padding:0; background:#e9e9e9; font-family: Arial, Helvetica, sans-serif; color:#111; }
+  .page { width:210mm; min-height:297mm; background:#fff; padding:14mm 14mm 10mm 14mm; position:relative; overflow:hidden; }
+  :root { --blue:#1685c5; --cyan:#0fb4b2; --gradient: linear-gradient(90deg, #1678ba 0%, #0fb4b2 100%); }
+  .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px; }
+  .logo-area { width:40%; }
+  .logo { width:245px; max-width:100%; height:auto; display:block; }
+  .invoice-header { width:56%; padding-top:5px; }
+  .invoice-title { margin:0; font-size:30px; font-weight:800; letter-spacing:-0.5px; white-space:nowrap; }
+  .invoice-title .black { color:#111; }
+  .invoice-title .gradient { background: var(--gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .title-line { width:145px; height:4px; background:var(--gradient); margin-top:8px; margin-bottom:19px; border-radius:3px; }
+  .company-name { font-size:16px; font-weight:700; margin-bottom:5px; }
+  .company-info { font-size:13px; line-height:1.55; color:#333; margin-bottom:14px; }
+  .info-list { display:flex; flex-direction:column; gap:10px; }
+  .info-row { display:flex; align-items:center; gap:10px; font-size:13px; }
+  .info-icon { width:21px; height:21px; border:2px solid var(--blue); border-radius:5px; display:flex; justify-content:center; align-items:center; color:var(--blue); font-size:12px; font-weight:bold; }
+  .info-row strong { font-weight:700; }
+  .customer-message { background:#f7f8fa; border:1px solid #eeeeee; border-radius:9px; padding:21px 24px; margin-bottom:38px; }
+  .customer-message .hello { color:#1678b8; font-weight:700; font-size:15px; margin-bottom:10px; }
+  .customer-message p { margin:0; font-size:13px; line-height:1.55; color:#333; }
+  .items-table { width:100%; border-collapse:separate; border-spacing:0; margin-bottom:24px; overflow:hidden; border-radius:8px; }
+  .items-table thead { background:var(--gradient); color:white; }
+  .items-table th { padding:12px 14px; font-size:13px; text-transform:uppercase; font-weight:700; text-align:left; }
+  .items-table th:nth-child(2), .items-table th:nth-child(3), .items-table th:nth-child(4) { text-align:center; }
+  .items-table td { padding:17px 14px; font-size:13px; border-bottom:1px solid #ddd; }
+  .items-table td:nth-child(2), .items-table td:nth-child(3), .items-table td:nth-child(4) { text-align:center; }
+  .items-table tbody tr:last-child td { border-bottom:0; }
+  .totals-wrapper { width:48%; margin-left:auto; margin-top:2px; margin-bottom:40px; }
+  .total-line { height:40px; border:1px solid #cfcfcf; border-radius:7px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; margin-bottom:9px; font-size:13px; background:#fff; }
+  .total-line strong { font-size:14px; }
+  .total-final { height:44px; border:none; background:var(--gradient); color:white; font-weight:700; font-size:15px; margin-top:2px; }
+  .total-final .amount { font-size:17px; }
+  .thanks { border-top:1px solid #d5d5d5; padding-top:20px; margin-bottom:30px; display:flex; align-items:center; justify-content:center; gap:16px; }
+  .check-circle { width:45px; height:45px; border:3px solid var(--cyan); border-radius:50%; display:flex; justify-content:center; align-items:center; color:var(--blue); font-size:24px; font-weight:bold; }
+  .thanks-title { font-size:15px; font-weight:700; margin-bottom:5px; }
+  .thanks-text { font-size:13px; color:#444; }
+  .footer-info { background:#f7f8fa; border:1px solid #eeeeee; border-radius:8px; padding:19px 22px; display:grid; grid-template-columns:1fr 1fr 1fr; margin-bottom:12px; }
+  .footer-column { padding:0 18px; min-height:82px; }
+  .footer-column:first-child { padding-left:0; }
+  .footer-column:last-child { padding-right:0; }
+  .footer-column + .footer-column { border-left:1px solid #bbb; }
+  .footer-title { display:flex; align-items:center; gap:9px; font-weight:700; font-size:13px; margin-bottom:9px; }
+  .footer-icon { width:25px; height:25px; background:var(--gradient); color:white; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:12px; flex-shrink:0; }
+  .footer-column p { font-size:11.5px; line-height:1.55; margin:0; color:#333; }
+  .footer-link { color:#1678b8; font-weight:700; }
+  .legal-footer { min-height:57px; border-radius:7px; background:var(--gradient); color:white; display:flex; align-items:center; justify-content:space-between; padding:10px 20px; }
+  .legal-left { display:flex; align-items:center; gap:12px; }
+  .shield { width:29px; height:29px; border:2px solid white; clip-path: polygon(50% 0%, 90% 16%, 90% 60%, 50% 100%, 10% 60%, 10% 16%); display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .legal-text { font-size:11.5px; line-height:1.45; }
+  .thank-you { font-family:"Brush Script MT","Segoe Script",cursive; font-size:27px; transform:rotate(-4deg); white-space:nowrap; }
+`
 
-  doc.setFillColor(27, 42, 74)
-  doc.rect(0, 0, pageWidth, 35, 'F')
-  doc.addImage(LOGO_SEBTELECOM_BASE64, 'PNG', 15, 7, 21, 21)
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(20)
-  doc.setFont(undefined, 'bold')
-  doc.text('Facture', 42, 20)
-  doc.setFontSize(9)
-  doc.setFont(undefined, 'normal')
-  doc.text('SLT GROUP (SRL)', pageWidth - 15, 14, { align: 'right' })
-  doc.text(adresse, pageWidth - 15, 19, { align: 'right' })
-  doc.text('TVA BE 1028.764.677', pageWidth - 15, 24, { align: 'right' })
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]))
 
-  doc.setTextColor(0, 0, 0)
-  let y = 48
-
-  if (sale.clientNom) {
-    doc.setFontSize(9)
-    doc.setFont(undefined, 'bold')
-    doc.text('CLIENT', 15, y)
-    doc.setFont(undefined, 'normal')
-    doc.setFontSize(11)
-    doc.text(sale.clientNom, 15, y + 6)
-  }
-  doc.setFontSize(9)
-  doc.setFont(undefined, 'normal')
-  doc.text(`Date : ${new Date(sale.created_at || Date.now()).toLocaleDateString('fr-BE')}`, pageWidth - 15, y, { align: 'right' })
-  doc.text(`Ticket n° ${sale.ticketNumber || ''}`, pageWidth - 15, y + 5, { align: 'right' })
-  doc.text(`Magasin : ${magasinLabel || ''}`, pageWidth - 15, y + 10, { align: 'right' })
-  if (sale.staffName) {
-    doc.text(`Vendeur : ${sale.staffName}`, pageWidth - 15, y + 15, { align: 'right' })
-  }
-
-  y += 28
-  doc.setFontSize(9)
-  doc.setFont(undefined, 'bold')
-  doc.setDrawColor(27, 42, 74)
-  doc.setLineWidth(0.5)
-  doc.line(15, y, pageWidth - 15, y)
-  y += 5
-  doc.text('Description', 15, y)
-  doc.text('Qté', 120, y, { align: 'center' })
-  doc.text('Prix HT', 155, y, { align: 'right' })
-  doc.text('Total TTC', pageWidth - 15, y, { align: 'right' })
-  y += 2
-  doc.line(15, y, pageWidth - 15, y)
-  y += 6
-
-  doc.setFont(undefined, 'normal')
+const buildTicketHtml = (sale, magasinLabel, magasinAdresse) => {
   const rate = 21
   let totalTTC = 0
-  ;(sale.items || []).forEach((c) => {
+  const rows = (sale.items || []).map((c) => {
     const tot = lineTotal(c)
     totalTTC += tot
     const totHT = tot / (1 + rate / 100)
-    doc.text(String(c.item_name || '').slice(0, 55), 15, y)
-    doc.text(String(c.quantity), 120, y, { align: 'center' })
-    doc.text(`${totHT.toFixed(2)}€`, 155, y, { align: 'right' })
-    doc.text(`${tot.toFixed(2)}€`, pageWidth - 15, y, { align: 'right' })
-    y += 6
-    if (y > 260) { doc.addPage(); y = 20 }
-  })
-
-  y += 6
+    return `<tr>
+      <td>${escapeHtml(c.item_name)}</td>
+      <td>${escapeHtml(c.quantity)}</td>
+      <td>${totHT.toFixed(2)} €</td>
+      <td>${tot.toFixed(2)} €</td>
+    </tr>`
+  }).join('')
   const totalHT = totalTTC / (1 + rate / 100)
   const totalTVA = totalTTC - totalHT
+  const dateStr = new Date(sale.created_at || Date.now()).toLocaleDateString('fr-BE')
 
-  doc.setFontSize(10)
-  doc.text('Total HT', 155, y, { align: 'right' })
-  doc.text(`${totalHT.toFixed(2)}€`, pageWidth - 15, y, { align: 'right' })
-  y += 5
-  doc.text(`TVA (${rate}%)`, 155, y, { align: 'right' })
-  doc.text(`${totalTVA.toFixed(2)}€`, pageWidth - 15, y, { align: 'right' })
-  y += 2
-  doc.setDrawColor(200, 200, 200)
-  doc.setLineWidth(0.2)
-  doc.line(140, y, pageWidth - 15, y)
-  y += 6
-  doc.setFontSize(13)
-  doc.setFont(undefined, 'bold')
-  doc.setTextColor(0, 180, 204)
-  doc.text('Total TTC', 155, y, { align: 'right' })
-  doc.text(`${totalTTC.toFixed(2)}€`, pageWidth - 15, y, { align: 'right' })
+  return `<div class="page">
+    <header class="header">
+      <div class="logo-area"><img src="${LOGO_SEBPHONE_BASE64}" alt="SEBPHONE" class="logo"></div>
+      <div class="invoice-header">
+        <h1 class="invoice-title"><span class="black">TICKET / </span><span class="gradient">FACTURE</span></h1>
+        <div class="title-line"></div>
+        <div class="company-name">SLT GROUP (SRL)</div>
+        <div class="company-info">Rue du Bailli 22, 1000 Bruxelles<br>TVA BE 1028.764.677</div>
+        <div class="info-list">
+          <div class="info-row"><div class="info-icon">▣</div><span><strong>Date :</strong> ${dateStr}</span></div>
+          <div class="info-row"><div class="info-icon">#</div><span><strong>Ticket n°</strong> ${escapeHtml(sale.ticketNumber)}</span></div>
+          <div class="info-row"><div class="info-icon">⌂</div><span><strong>Magasin :</strong> Seb Telecom — ${escapeHtml(magasinLabel)}${magasinAdresse ? ', ' + escapeHtml(magasinAdresse) : ''}</span></div>
+          <div class="info-row"><div class="info-icon">●</div><span><strong>Vendeur :</strong> ${escapeHtml(sale.staffName || 'Staff')}</span></div>
+        </div>
+      </div>
+    </header>
+    <section class="customer-message">
+      <div class="hello">Bonjour,</div>
+      <p>Merci pour votre confiance et votre achat chez SEBPHONE.<br>Vous trouverez ci-dessous le récapitulatif de votre commande.<br>À très bientôt !</p>
+    </section>
+    <table class="items-table">
+      <thead><tr><th style="width:48%">Description</th><th style="width:15%">Qté</th><th style="width:18%">Prix HT</th><th style="width:19%">Total TTC</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="totals-wrapper">
+      <div class="total-line"><span>Total HT</span><strong>${totalHT.toFixed(2)} €</strong></div>
+      <div class="total-line"><span>TVA (${rate}%)</span><strong>${totalTVA.toFixed(2)} €</strong></div>
+      <div class="total-line total-final"><span>TOTAL TTC</span><span class="amount">${totalTTC.toFixed(2)} €</span></div>
+    </div>
+    <section class="thanks">
+      <div class="check-circle">✓</div>
+      <div><div class="thanks-title">Merci pour votre achat !</div><div class="thanks-text">Nous espérons vous revoir très bientôt.</div></div>
+    </section>
+    <section class="footer-info">
+      <div class="footer-column"><div class="footer-title"><div class="footer-icon">●</div><span>SLT GROUP (SRL)</span></div><p>Rue du Bailli 22,<br>1000 Bruxelles<br>TVA BE 1028.764.677</p></div>
+      <div class="footer-column"><div class="footer-title"><div class="footer-icon">☎</div><span class="footer-link">Besoin d'aide ?</span></div><p>0472 72 85 24<br>contact@sebphone.be</p></div>
+      <div class="footer-column"><div class="footer-title"><div class="footer-icon">@</div><span class="footer-link">Suivez-nous !</span></div><p><span class="footer-link">@sebtelecom</span><br>Instagram / TikTok / Snapchat</p></div>
+    </section>
+    <footer class="legal-footer">
+      <div class="legal-left"><div class="shield">✓</div><div class="legal-text"><strong>Garantie légale conforme à la législation en vigueur.</strong><br>Conservez ce ticket comme preuve d'achat.</div></div>
+      <div class="thank-you">Thank you!</div>
+    </footer>
+  </div>`
+}
 
-  doc.setTextColor(120, 120, 120)
-  doc.setFontSize(8)
-  doc.setFont(undefined, 'normal')
-  doc.text(
-    `SLT GROUP (SRL) — ${adresse} — TVA BE 1028.764.677`,
-    pageWidth / 2, 285, { align: 'center' }
-  )
-  doc.text(
-    '@sebtelecom — Instagram / TikTok / Snapchat',
-    pageWidth / 2, 290, { align: 'center' }
-  )
+export const generateTicketPdfBase64 = async (sale, magasinLabel, magasinAdresse) => {
+  const html2canvas = (await import('html2canvas')).default
+  const { jsPDF } = await import('jspdf')
 
-  return doc.output('datauristring').split(',')[1]
+  const container = document.createElement('div')
+  container.style.position = 'fixed'
+  container.style.left = '-9999px'
+  container.style.top = '0'
+  container.style.width = '210mm'
+  container.innerHTML = `<style>${TICKET_CSS}</style>${buildTicketHtml(sale, magasinLabel, magasinAdresse)}`
+  document.body.appendChild(container)
+
+  try {
+    const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+    const imgData = canvas.toDataURL('image/jpeg', 0.95)
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    const pageWidth = 210
+    const pageHeight = (canvas.height * pageWidth) / canvas.width
+    doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight)
+    return doc.output('datauristring').split(',')[1]
+  } finally {
+    document.body.removeChild(container)
+  }
 }

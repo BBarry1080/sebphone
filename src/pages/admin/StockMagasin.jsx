@@ -2653,8 +2653,10 @@ export default function StockMagasin() {
       const itemsHtml = (lastSale.items || []).map((c) => {
         return `<tr><td>${c.quantity}× ${c.item_name}</td><td style="text-align:right">${lineTotal(c).toFixed(2)}€</td></tr>`
       }).join('')
-      const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
-      const pdfBase64 = await generateTicketPdfBase64(lastSale, magasinLabel, magasin)
+      const magasinInfo = MAGASINS_LIST.find((m) => m.id === magasin)
+      const magasinLabel = magasinInfo?.nom || magasin
+      const magasinAdresse = magasinInfo?.adresse || ''
+      const pdfBase64 = await generateTicketPdfBase64(lastSale, magasinLabel, magasinAdresse)
       await emailjs.send('service_n3bi0nn', 'template_ticket', {
         to_email: ticketEmailInput.trim(),
         to_name: 'Client',
