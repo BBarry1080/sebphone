@@ -4,7 +4,7 @@ import { lineTotal } from './cart'
 const TICKET_CSS = `
   * { box-sizing: border-box; }
   body { margin:0; padding:0; background:#e9e9e9; font-family: Arial, Helvetica, sans-serif; color:#111; }
-  .page { width:210mm; min-height:297mm; background:#fff; padding:14mm 14mm 10mm 14mm; position:relative; overflow:hidden; }
+  .page { width:210mm; background:#fff; padding:14mm 14mm 10mm 14mm; position:relative; overflow:hidden; }
   :root { --blue:#1685c5; --cyan:#0fb4b2; --gradient: linear-gradient(90deg, #1678ba 0%, #0fb4b2 100%); }
   .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px; }
   .logo-area { width:40%; }
@@ -16,27 +16,27 @@ const TICKET_CSS = `
   .title-line { width:145px; height:4px; background:var(--gradient); margin-top:8px; margin-bottom:19px; border-radius:3px; }
   .company-name { font-size:16px; font-weight:700; margin-bottom:5px; }
   .company-info { font-size:13px; line-height:1.55; color:#333; margin-bottom:14px; }
-  .info-list { display:flex; flex-direction:column; gap:10px; }
+  .info-list { display:flex; flex-direction:column; gap:8px; }
   .info-row { display:flex; align-items:center; gap:10px; font-size:13px; }
-  .info-icon { width:21px; height:21px; border:2px solid var(--blue); border-radius:5px; display:flex; justify-content:center; align-items:center; color:var(--blue); font-size:12px; font-weight:bold; }
+  .info-icon { width:24px; height:24px; border:2px solid var(--blue); border-radius:5px; display:flex; justify-content:center; align-items:center; color:var(--blue); font-size:11px; line-height:1; flex-shrink:0; }
   .info-row strong { font-weight:700; }
-  .customer-message { background:#f7f8fa; border:1px solid #eeeeee; border-radius:9px; padding:21px 24px; margin-bottom:38px; }
+  .customer-message { background:#f7f8fa; border:1px solid #eeeeee; border-radius:9px; padding:21px 24px; margin-bottom:30px; }
   .customer-message .hello { color:#1678b8; font-weight:700; font-size:15px; margin-bottom:10px; }
   .customer-message p { margin:0; font-size:13px; line-height:1.55; color:#333; }
   .items-table { width:100%; border-collapse:separate; border-spacing:0; margin-bottom:24px; overflow:hidden; border-radius:8px; }
   .items-table thead { background:var(--gradient); color:white; }
   .items-table th { padding:12px 14px; font-size:13px; text-transform:uppercase; font-weight:700; text-align:left; }
   .items-table th:nth-child(2), .items-table th:nth-child(3), .items-table th:nth-child(4) { text-align:center; }
-  .items-table td { padding:17px 14px; font-size:13px; border-bottom:1px solid #ddd; }
+  .items-table td { border-bottom:1px solid #ddd; }
   .items-table td:nth-child(2), .items-table td:nth-child(3), .items-table td:nth-child(4) { text-align:center; }
   .items-table tbody tr:last-child td { border-bottom:0; }
   .totals-wrapper { width:48%; margin-left:auto; margin-top:2px; margin-bottom:40px; }
-  .total-line { height:40px; border:1px solid #cfcfcf; border-radius:7px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; margin-bottom:9px; font-size:13px; background:#fff; }
+  .total-line { height:36px; border:1px solid #cfcfcf; border-radius:7px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; margin-bottom:8px; font-size:13px; background:#fff; }
   .total-line strong { font-size:14px; }
-  .total-final { height:44px; border:none; background:var(--gradient); color:white; font-weight:700; font-size:15px; margin-top:2px; }
+  .total-final { height:40px; border:none; background:var(--gradient); color:white; font-weight:700; font-size:15px; margin-top:2px; }
   .total-final .amount { font-size:17px; }
   .thanks { border-top:1px solid #d5d5d5; padding-top:20px; margin-bottom:30px; display:flex; align-items:center; justify-content:center; gap:16px; }
-  .check-circle { width:45px; height:45px; border:3px solid var(--cyan); border-radius:50%; display:flex; justify-content:center; align-items:center; color:var(--blue); font-size:24px; font-weight:bold; }
+  .check-circle { width:45px; height:45px; border:3px solid var(--cyan); border-radius:50%; display:flex; justify-content:center; align-items:center; color:var(--blue); font-size:24px; font-weight:bold; flex-shrink:0; }
   .thanks-title { font-size:15px; font-weight:700; margin-bottom:5px; }
   .thanks-text { font-size:13px; color:#444; }
   .footer-info { background:#f7f8fa; border:1px solid #eeeeee; border-radius:8px; padding:19px 22px; display:grid; grid-template-columns:1fr 1fr 1fr; margin-bottom:12px; }
@@ -50,25 +50,36 @@ const TICKET_CSS = `
   .footer-link { color:#1678b8; font-weight:700; }
   .legal-footer { min-height:57px; border-radius:7px; background:var(--gradient); color:white; display:flex; align-items:center; justify-content:space-between; padding:10px 20px; }
   .legal-left { display:flex; align-items:center; gap:12px; }
-  .shield { width:29px; height:29px; border:2px solid white; clip-path: polygon(50% 0%, 90% 16%, 90% 60%, 50% 100%, 10% 60%, 10% 16%); display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .shield { width:29px; height:29px; border:2px solid white; clip-path: polygon(50% 0%, 90% 16%, 90% 60%, 50% 100%, 10% 60%, 10% 16%); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
   .legal-text { font-size:11.5px; line-height:1.45; }
   .thank-you { font-family:"Brush Script MT","Segoe Script",cursive; font-size:27px; transform:rotate(-4deg); white-space:nowrap; }
 `
 
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]))
 
+// Retrecit chaque ligne produit si le ticket a beaucoup d'articles,
+// pour que ca tienne sur 1 page tant qu'il y en a 10 ou moins.
+const getRowStyle = (itemCount) => {
+  if (itemCount <= 4) return 'padding:10px 14px;font-size:13px'
+  if (itemCount <= 7) return 'padding:7px 14px;font-size:12.5px'
+  if (itemCount <= 10) return 'padding:4px 14px;font-size:12px'
+  return 'padding:8px 14px;font-size:13px' // >10 : on autorise une 2e page, donc retour a une taille confortable
+}
+
 const buildTicketHtml = (sale, magasinLabel, magasinAdresse) => {
   const rate = 21
   let totalTTC = 0
-  const rows = (sale.items || []).map((c) => {
+  const items = sale.items || []
+  const rowStyle = getRowStyle(items.length)
+  const rows = items.map((c) => {
     const tot = lineTotal(c)
     totalTTC += tot
     const totHT = tot / (1 + rate / 100)
     return `<tr>
-      <td>${escapeHtml(c.item_name)}</td>
-      <td>${escapeHtml(c.quantity)}</td>
-      <td>${totHT.toFixed(2)} €</td>
-      <td>${tot.toFixed(2)} €</td>
+      <td style="${rowStyle}">${escapeHtml(c.item_name)}</td>
+      <td style="${rowStyle}">${escapeHtml(c.quantity)}</td>
+      <td style="${rowStyle}">${totHT.toFixed(2)} €</td>
+      <td style="${rowStyle}">${tot.toFixed(2)} €</td>
     </tr>`
   }).join('')
   const totalHT = totalTTC / (1 + rate / 100)
@@ -86,7 +97,7 @@ const buildTicketHtml = (sale, magasinLabel, magasinAdresse) => {
         <div class="info-list">
           <div class="info-row"><div class="info-icon">▣</div><span><strong>Date :</strong> ${dateStr}</span></div>
           <div class="info-row"><div class="info-icon">#</div><span><strong>Ticket n°</strong> ${escapeHtml(sale.ticketNumber)}</span></div>
-          <div class="info-row"><div class="info-icon">⌂</div><span><strong>Magasin :</strong> Seb Telecom — ${escapeHtml(magasinLabel)}${magasinAdresse ? ', ' + escapeHtml(magasinAdresse) : ''}</span></div>
+          <div class="info-row"><div class="info-icon">⌂</div><span><strong>Magasin :</strong> ${escapeHtml(magasinLabel)}${magasinAdresse ? ' — ' + escapeHtml(magasinAdresse) : ''}</span></div>
           <div class="info-row"><div class="info-icon">●</div><span><strong>Vendeur :</strong> ${escapeHtml(sale.staffName || 'Staff')}</span></div>
         </div>
       </div>
@@ -133,26 +144,32 @@ export const generateTicketPdfBase64 = async (sale, magasinLabel, magasinAdresse
   document.body.appendChild(container)
 
   try {
-    const attempts = [
-      { scale: 1.5, quality: 0.85 },
-      { scale: 1.2, quality: 0.75 },
-      { scale: 1, quality: 0.6 },
-    ]
-    let base64 = null
-    let finalSizeKB = 0
-    for (const { scale, quality } of attempts) {
-      const canvas = await html2canvas(container, { scale, backgroundColor: '#ffffff', useCORS: true })
-      const imgData = canvas.toDataURL('image/jpeg', quality)
-      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-      const pageWidth = 210
-      const pageHeight = (canvas.height * pageWidth) / canvas.width
-      doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight)
-      const candidate = doc.output('datauristring').split(',')[1]
-      finalSizeKB = Math.round((candidate.length * 0.75) / 1024)
-      base64 = candidate
-      if (finalSizeKB <= 45) break
+    const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
+    const imgData = canvas.toDataURL('image/jpeg', 0.95)
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    const pageWidthMM = 210
+    const pageHeightMM = 297
+    const imgHeightMM = (canvas.height * pageWidthMM) / canvas.width
+
+    if (imgHeightMM <= pageHeightMM) {
+      doc.addImage(imgData, 'JPEG', 0, 0, pageWidthMM, imgHeightMM)
+    } else {
+      let positionMM = 0
+      let heightLeftMM = imgHeightMM
+      doc.addImage(imgData, 'JPEG', 0, positionMM, pageWidthMM, imgHeightMM)
+      heightLeftMM -= pageHeightMM
+      while (heightLeftMM > 0) {
+        positionMM -= pageHeightMM
+        doc.addPage()
+        doc.addImage(imgData, 'JPEG', 0, positionMM, pageWidthMM, imgHeightMM)
+        heightLeftMM -= pageHeightMM
+      }
     }
-    console.log(`PDF ticket genere : ~${finalSizeKB} Ko`)
+
+    const base64 = doc.output('datauristring').split(',')[1]
+    const sizeKB = Math.round((base64.length * 0.75) / 1024)
+    const pageCount = doc.internal.getNumberOfPages()
+    console.log(`PDF ticket genere : ~${sizeKB} Ko sur ${pageCount} page(s), ${(sale.items || []).length} articles`)
     return base64
   } finally {
     document.body.removeChild(container)
