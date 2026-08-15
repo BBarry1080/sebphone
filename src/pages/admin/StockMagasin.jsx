@@ -25,6 +25,8 @@ import { generateTicketPdfBase64 } from '../../utils/generateTicketPdf'
 import { generateFactureParticulierPdf } from '../../utils/generateFactureParticulierPdf'
 import emailjs from '@emailjs/browser'
 import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
+import { TYPES_PIECE } from '../../utils/typesPiece'
+import PiecesNavigator from '../../components/admin/PiecesNavigator'
 
 const POS_CATEGORIES = [
   'Téléphone',
@@ -107,6 +109,7 @@ export default function StockMagasin() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState(null)
+  const [stockViewPieces, setStockViewPieces] = useState(false)
   const [activeTab, setActiveTab] = useState('stock') // stock | categories (dans posScreen='gestion')
 
   // Modals
@@ -437,8 +440,6 @@ export default function StockMagasin() {
   const [ecranCatalogList, setEcranCatalogList]   = useState([])
   const [ecranStockParMagasin, setEcranStockParMagasin] = useState({})
   const [loadingEcranCatalog, setLoadingEcranCatalog] = useState(false)
-  const [ecranMarqueFilter, setEcranMarqueFilter] = useState('Samsung')
-  const [ecranSearch, setEcranSearch]             = useState('')
   const [editingEcran, setEditingEcran]           = useState(null)
   const [ecranForm, setEcranForm]                 = useState({
     prix_min: '', prix_defaut: '', prix_max: '',
@@ -486,23 +487,6 @@ export default function StockMagasin() {
     { value: 'ecouteur', label: '🎧 Écouteurs' },
     { value: 'ordinateur', label: '💻 Ordinateur' },
     { value: 'autre', label: '🔧 Autre' },
-  ]
-
-  const TYPES_PIECE = [
-    { id: 'ecran', label: 'Écran', aQualite: true },
-    { id: 'carte_mere', label: 'Carte mère', aQualite: false },
-    { id: 'port_chargement', label: 'Port de chargement', aQualite: false },
-    { id: 'vitre_arriere', label: 'Vitre arrière', aQualite: false },
-    { id: 'batterie', label: 'Batterie', aQualite: false },
-    { id: 'camera_lens', label: 'Caméra lentille', aQualite: false },
-    { id: 'camera_avant', label: 'Caméra avant', aQualite: false },
-    { id: 'camera_arriere', label: 'Caméra arrière', aQualite: false },
-    { id: 'boutons', label: 'Boutons', aQualite: false },
-    { id: 'baffle_haut', label: 'Baffle du haut', aQualite: false },
-    { id: 'baffle_bas', label: 'Baffle du bas', aQualite: false },
-    { id: 'micro', label: 'Micro', aQualite: false },
-    { id: 'chassis', label: 'Châssis', aQualite: false },
-    { id: 'capteur_flex', label: 'Capteur flex', aQualite: false },
   ]
 
   const TECHNICIENS_CARTE_MERE = [
@@ -2127,6 +2111,131 @@ export default function StockMagasin() {
     })
   }
 
+
+  const renderPieceCard = (row) => {
+    const isEditing = editingEcran?.id === row.id
+    const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
+      : row.qualite === 'original_equivalent' ? 'Qualité originale'
+      : '100% Original'
+    return (
+      <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-[#1B2A4A]">{row.modele}</p>
+            {row.modele_code && (
+              <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{row.modele_code}</p>
+            )}
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700">
+                {qualiteLabel}
+              </span>
+              {!row.disponible && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                  Non disponible
+                </span>
+              )}
+            </div>
+          </div>
+          {!isEditing && (
+            <>
+              <div className="flex gap-4 text-xs">
+                <div>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
+                  <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
+                  <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
+                  <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-gray-400 uppercase">Stock ici</p>
+                  <p className={`font-bold ${getStockPourMagasin(row.id) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
+                    {getStockPourMagasin(row.id)}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => openEditEcran(row)}
+                className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                <Pencil size={14} />
+              </button>
+            </>
+          )}
+        </div>
+        {isEditing && (
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+            <div className="grid grid-cols-4 gap-2">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
+                <input type="number" step="0.5" min="0" value={ecranForm.cout_achat}
+                  onChange={(e) => setEcranForm((f) => ({ ...f, cout_achat: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
+                <input type="number" step="0.5" min="0" value={ecranForm.prix_defaut}
+                  onChange={(e) => setEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
+                <input type="number" step="0.5" min="0" value={ecranForm.prix_min}
+                  onChange={(e) => setEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
+                <input type="number" step="0.5" min="0" value={ecranForm.prix_max}
+                  onChange={(e) => setEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+            </div>
+            <div className="flex gap-3 items-end flex-wrap">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                  Quantité — {MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
+                </label>
+                <input key={editingEcran?.id} type="number" step="1" min="0"
+                  defaultValue={getStockPourMagasin(editingEcran?.id)}
+                  onBlur={(e) => setStockPourMagasin(editingEcran?.id, e.target.value)}
+                  className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+              </div>
+              <div className="flex-1 min-w-[180px]">
+                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
+                <select value={ecranForm.fournisseur_id}
+                  onChange={(e) => setEcranForm((f) => ({ ...f, fournisseur_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                  <option value="">Aucun</option>
+                  {fournisseursList.map((f) => (
+                    <option key={f.id} value={f.id}>{f.nom}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-gray-600">
+              <input type="checkbox" checked={ecranForm.disponible_sur_commande}
+                onChange={(e) => setEcranForm((f) => ({ ...f, disponible_sur_commande: e.target.checked }))}
+                className="w-4 h-4 accent-[#00B4CC]" />
+              Disponible sur commande
+            </label>
+            <div className="flex gap-2">
+              <button onClick={handleSaveEcran} disabled={savingEcran}
+                className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
+                {savingEcran ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+              <button onClick={() => setEditingEcran(null)}
+                className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
   const handleSaveEcran = async () => {
     if (!editingEcran) return
     setSavingEcran(true)
@@ -2216,26 +2325,6 @@ export default function StockMagasin() {
     () => [...new Set(ecranCatalogList.map((e) => e.marque).filter(Boolean))].sort(),
     [ecranCatalogList]
   )
-
-  const ecranCatalogFiltered = useMemo(() => (
-    ecranCatalogList.filter((row) => {
-      if (ecranMarqueFilter !== 'all' && row.marque !== ecranMarqueFilter) return false
-      const q = ecranSearch.trim().toLowerCase()
-      if (!q) return true
-      return (row.modele || '').toLowerCase().includes(q)
-        || (row.modele_code || '').toLowerCase().includes(q)
-    })
-  ), [ecranCatalogList, ecranMarqueFilter, ecranSearch])
-
-  const ecranGroupedByGamme = useMemo(() => {
-    const groups = {}
-    ecranCatalogFiltered.forEach((row) => {
-      const g = row.gamme || '—'
-      if (!groups[g]) groups[g] = []
-      groups[g].push(row)
-    })
-    return groups
-  }, [ecranCatalogFiltered])
 
   const posSelectedTypePiece = selectedPosCategory === 'Réparations'
     ? posTypePieceSel
@@ -4820,25 +4909,6 @@ export default function StockMagasin() {
           </div>
           {activeTab === 'pieces' && trueIsAdmin && (
             <>
-              {/* Barre filtres */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-4 flex flex-col md:flex-row gap-2 items-stretch md:items-center">
-                <select value={ecranMarqueFilter}
-                  onChange={(e) => setEcranMarqueFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white md:w-48">
-                  <option value="all">Toutes les marques</option>
-                  {ecranMarquesDistinct.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-                <input type="text" value={ecranSearch}
-                  onChange={(e) => setEcranSearch(e.target.value)}
-                  placeholder="Rechercher un modèle..."
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                <span className="text-xs font-bold text-gray-400 uppercase whitespace-nowrap md:ml-2">
-                  {ecranCatalogFiltered.length} résultat{ecranCatalogFiltered.length > 1 ? 's' : ''}
-                </span>
-              </div>
-
               {!showNewEcranForm ? (
                 <button onClick={() => setShowNewEcranForm(true)}
                   className="mb-4 flex items-center gap-1.5 bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
@@ -4993,177 +5063,23 @@ export default function StockMagasin() {
                 <div className="flex items-center justify-center h-40">
                   <div className="w-7 h-7 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
                 </div>
-              ) : ecranCatalogFiltered.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center text-gray-400 text-sm">
-                  Aucun écran trouvé.
-                </div>
               ) : (
-                <div className="space-y-5">
-                  {ecranMarqueFilter === 'Apple' && (() => {
-                    const configuredModeles = new Set(
-                      ecranCatalogList.filter((e) => e.marque === 'Apple' && e.type_piece === 'ecran').map((e) => e.modele)
-                    )
-                    const missing = IPHONE_MODELES.filter((m) => !configuredModeles.has(m))
-                    if (missing.length === 0) return null
-                    return (
-                      <div className="mb-5">
-                        <p className="text-xs font-bold uppercase text-gray-400 mb-2">
-                          Modèles non configurés ({missing.length})
-                        </p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                          {missing.map((m) => (
-                            <button key={m} type="button"
-                              onClick={() => {
-                                setNewEcranForm((f) => ({
-                                  ...f,
-                                  type_piece: 'ecran',
-                                  marque: 'Apple',
-                                  marqueMode: 'existing',
-                                  modele: m,
-                                }))
-                                setShowNewEcranForm(true)
-                              }}
-                              className="text-left bg-gray-50 hover:bg-purple-50 rounded-xl p-3 border border-gray-100 hover:border-purple-300 transition-all">
-                              <p className="text-xs font-bold text-gray-600">{m}</p>
-                              <p className="text-[10px] text-gray-400 mt-0.5">Non disponible</p>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })()}
-                  {Object.entries(ecranGroupedByGamme).map(([gamme, rows]) => (
-                    <div key={gamme}>
-                      <p className="text-xs font-bold uppercase text-gray-400 mb-2">{gamme}</p>
-                      <div className="space-y-2">
-                        {rows.map((row) => {
-                          const isEditing = editingEcran?.id === row.id
-                          const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
-                            : row.qualite === 'original_equivalent' ? 'Qualité originale'
-                            : '100% Original'
-                          return (
-                            <div key={row.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                              <div className="flex items-center justify-between gap-3 flex-wrap">
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-bold text-[#1B2A4A]">{row.modele}</p>
-                                  {row.modele_code && (
-                                    <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{row.modele_code}</p>
-                                  )}
-                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 text-cyan-700">
-                                      {qualiteLabel}
-                                    </span>
-                                    {!row.disponible && (
-                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                                        Non disponible
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                {!isEditing && (
-                                  <>
-                                    <div className="flex gap-4 text-xs">
-                                      <div>
-                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Défaut</p>
-                                        <p className="font-bold text-[#00B4CC]">{Number(row.prix_defaut || 0).toFixed(2)}€</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Min</p>
-                                        <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
-                                        <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-[9px] text-gray-400 uppercase">Stock ici</p>
-                                        <p className={`font-bold ${getStockPourMagasin(row.id) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
-                                          {getStockPourMagasin(row.id)}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <button onClick={() => openEditEcran(row)}
-                                      className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
-                                      <Pencil size={14} />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                              {isEditing && (
-                                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
-                                  <div className="grid grid-cols-4 gap-2">
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
-                                      <input type="number" step="0.5" min="0" value={ecranForm.cout_achat}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, cout_achat: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
-                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_defaut}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
-                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_min}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
-                                      <input type="number" step="0.5" min="0" value={ecranForm.prix_max}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-3 items-end flex-wrap">
-                                    <div>
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
-                                        Quantité — {MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
-                                      </label>
-                                      <input key={editingEcran?.id} type="number" step="1" min="0"
-                                        defaultValue={getStockPourMagasin(editingEcran?.id)}
-                                        onBlur={(e) => setStockPourMagasin(editingEcran?.id, e.target.value)}
-                                        className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                                    </div>
-                                    <div className="flex-1 min-w-[180px]">
-                                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
-                                      <select value={ecranForm.fournisseur_id}
-                                        onChange={(e) => setEcranForm((f) => ({ ...f, fournisseur_id: e.target.value }))}
-                                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
-                                        <option value="">Aucun</option>
-                                        {fournisseursList.map((f) => (
-                                          <option key={f.id} value={f.id}>{f.nom}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  </div>
-                                  <label className="flex items-center gap-2 text-xs text-gray-600">
-                                    <input type="checkbox" checked={ecranForm.disponible_sur_commande}
-                                      onChange={(e) => setEcranForm((f) => ({ ...f, disponible_sur_commande: e.target.checked }))}
-                                      className="w-4 h-4 accent-[#00B4CC]" />
-                                    Disponible sur commande
-                                  </label>
-                                  <div className="flex gap-2">
-                                    <button onClick={handleSaveEcran} disabled={savingEcran}
-                                      className="flex-1 bg-[#00B4CC] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#1B2A4A] disabled:opacity-50">
-                                      {savingEcran ? 'Enregistrement...' : 'Enregistrer'}
-                                    </button>
-                                    <button onClick={() => setEditingEcran(null)}
-                                      className="px-3 py-2 border border-gray-200 rounded-xl text-sm font-bold text-gray-600">
-                                      Annuler
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <PiecesNavigator
+                  pieces={ecranCatalogList}
+                  getStock={getStockPourMagasin}
+                  modelesConnus={{ ecran: { marque: 'Apple', modeles: IPHONE_MODELES } }}
+                  onNewPiece={(typeId, modele, marque) => {
+                    setNewEcranForm((f) => ({
+                      ...f,
+                      type_piece: typeId,
+                      marque: marque || '',
+                      marqueMode: 'existing',
+                      modele,
+                    }))
+                    setShowNewEcranForm(true)
+                  }}>
+                  {(rows) => rows.map(renderPieceCard)}
+                </PiecesNavigator>
               )}
             </>
           )}
@@ -8626,28 +8542,46 @@ export default function StockMagasin() {
             {/* COLONNE GAUCHE — Catégories */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-y-auto p-2 flex flex-col"
                  style={{ maxHeight: 'calc(100vh - 280px)' }}>
-              <button onClick={() => setFilterCategory(null)}
+              <button onClick={() => { setFilterCategory(null); setStockViewPieces(false) }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
-                  ${!filterCategory
+                  ${!filterCategory && !stockViewPieces
                     ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
                     : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
                 Tout
               </button>
               {categories.map(cat => (
                 <button key={cat.id}
-                  onClick={() => setFilterCategory(filterCategory === cat.id ? null : cat.id)}
+                  onClick={() => { setStockViewPieces(false); setFilterCategory(filterCategory === cat.id ? null : cat.id) }}
                   className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
-                    ${filterCategory === cat.id
+                    ${filterCategory === cat.id && !stockViewPieces
                       ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
                       : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
                   {cat.name}
                 </button>
               ))}
+              {trueIsAdmin && (
+                <button onClick={() => { setStockViewPieces(true); setFilterCategory(null) }}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mt-2 pt-2 border-t transition-all border
+                    ${stockViewPieces
+                      ? 'bg-purple-600 text-white border-purple-600'
+                      : 'bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100 hover:border-purple-300'}`}>
+                  🔧 Pièces de réparation
+                </button>
+              )}
             </div>
 
             {/* COLONNE DROITE — Recherche + bouton Ajouter + Tableau */}
             <div className="min-w-0">
 
+              {stockViewPieces ? (
+                <PiecesNavigator
+                  pieces={ecranCatalogList}
+                  getStock={getStockPourMagasin}
+                  modelesConnus={{ ecran: { marque: 'Apple', modeles: IPHONE_MODELES } }}>
+                  {(rows) => rows.map(renderPieceCard)}
+                </PiecesNavigator>
+              ) : (
+              <>
               <div className="flex gap-2 mb-4 items-center">
                 <div className="relative flex-1 min-w-48">
                   <Search size={14}
@@ -8779,6 +8713,8 @@ export default function StockMagasin() {
                   </tbody>
                 </table>
               </div>
+              </>
+              )}
 
             </div>
           </div>
