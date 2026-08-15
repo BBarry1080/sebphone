@@ -3023,80 +3023,86 @@ export default function StockMagasin() {
       }
     }
     setSavingNewRepairFromHub(true)
-    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
-    const { count: repairCount } = await supabase
-      .from('repairs').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
-    const { count: clientCount } = await supabase
-      .from('clients').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
-    const bonNumber = 'BON-' + String((repairCount || 0) + 1).padStart(4, '0')
-    const clientNumber = 'CL-' + String((clientCount || 0) + 1).padStart(4, '0')
-    const prixRepair = Number(newRepairFromHubForm.prix) || 0
-    const { data: createdRepair, error } = await supabase.from('repairs').insert({
-      bon_number: bonNumber,
-      client_nom: newRepairFromHubForm.nom.trim(),
-      client_number: clientNumber,
-      magasin_id: magasin,
-      date: new Date().toISOString().slice(0, 10),
-      appareil: newRepairFromHubForm.appareil || null,
-      type_appareil: newRepairFromHubForm.type_appareil || null,
-      marque_appareil: newRepairFromHubForm.marque_appareil || null,
-      imei: newRepairFromHubForm.imei || null,
-      type_panne: newRepairFromHubForm.type_panne || null,
-      ecran_id: hubPieceRowSel?.id || null,
-      ecran_modele: hubPieceRowSel?.modele || null,
-      ecran_qualite: hubPieceRowSel?.qualite || null,
-      technicien_carte_mere: newRepairFromHubForm.technicien_carte_mere || null,
-      panne_description: newRepairFromHubForm.panne_description.trim() || null,
-      delai_annonce: hubPieceRowSel?.type_piece === 'carte_mere' ? getDelaiPiece('carte_mere', getStockPourMagasin(hubPieceRowSel.id)) : null,
-      suivi_statut: (newRepairFromHubForm.suivi_long || newRepairFromHubForm.technicien_carte_mere)
-        ? 'en_cours'
-        : 'termine',
-      pris_en_charge_par: currentSebUser?.name || null,
-      prix: prixRepair,
-      devis: false,
-      tel: newRepairFromHubForm.tel || null,
-      email: newRepairFromHubForm.email || null,
-      status: 'en_attente',
-      montant_paye: 0,
-      staff_name: currentSebUser?.name || 'Staff',
-    }).select().single()
-    setSavingNewRepairFromHub(false)
-    if (error) { alert('Erreur : ' + error.message); return }
+    try {
+      const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+      const { count: repairCount } = await supabase
+        .from('repairs').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
+      const { count: clientCount } = await supabase
+        .from('clients').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
+      const bonNumber = 'BON-' + String((repairCount || 0) + 1).padStart(4, '0')
+      const clientNumber = 'CL-' + String((clientCount || 0) + 1).padStart(4, '0')
+      const prixRepair = Number(newRepairFromHubForm.prix) || 0
+      const { data: createdRepair, error } = await supabase.from('repairs').insert({
+        bon_number: bonNumber,
+        client_nom: newRepairFromHubForm.nom.trim(),
+        client_number: clientNumber,
+        magasin_id: magasin,
+        date: new Date().toISOString().slice(0, 10),
+        appareil: newRepairFromHubForm.appareil || null,
+        type_appareil: newRepairFromHubForm.type_appareil || null,
+        marque_appareil: newRepairFromHubForm.marque_appareil || null,
+        imei: newRepairFromHubForm.imei || null,
+        type_panne: newRepairFromHubForm.type_panne || null,
+        ecran_id: hubPieceRowSel?.id || null,
+        ecran_modele: hubPieceRowSel?.modele || null,
+        ecran_qualite: hubPieceRowSel?.qualite || null,
+        technicien_carte_mere: newRepairFromHubForm.technicien_carte_mere || null,
+        panne_description: newRepairFromHubForm.panne_description.trim() || null,
+        delai_annonce: hubPieceRowSel?.type_piece === 'carte_mere' ? getDelaiPiece('carte_mere', getStockPourMagasin(hubPieceRowSel.id)) : null,
+        suivi_statut: (newRepairFromHubForm.suivi_long || newRepairFromHubForm.technicien_carte_mere)
+          ? 'en_cours'
+          : 'termine',
+        pris_en_charge_par: currentSebUser?.name || null,
+        prix: prixRepair,
+        devis: false,
+        tel: newRepairFromHubForm.tel || null,
+        email: newRepairFromHubForm.email || null,
+        status: 'en_attente',
+        montant_paye: 0,
+        staff_name: currentSebUser?.name || 'Staff',
+      }).select().single()
+      if (error) { alert('Erreur : ' + error.message); return }
 
-    // La piece est reservee des la creation du bon : elle sort du stock
-    // maintenant, et y retournera si la reparation est annulee
-    if (hubPieceRowSel?.id) {
-      const { error: stockErr } = await supabase.rpc('decrementer_stock_piece', {
-        p_ecran_id: hubPieceRowSel.id,
-        p_magasin_id: magasin,
-        p_quantite: 1,
-      })
-      if (stockErr) alert('Réparation créée, mais le stock n\'a pas pu être décrémenté : ' + stockErr.message)
-      else fetchEcranStockMagasin()
-    }
-
-    logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
-    setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '', type_appareil: 'telephone', marque_appareil: 'Apple', suivi_long: false, encaisser: 'non', montant_encaisse: '' })
-    setHubPieceRowSel(null)
-    setShowNewRepairFromHub(false)
-    fetchReparationsHubData()
-    await fetchPendingRepairs()
-
-    // Encaissement immediat selon le choix fait dans la fiche
-    if (newRepairFromHubForm.encaisser !== 'non') {
-      const montantVoulu = newRepairFromHubForm.encaisser === 'total'
-        ? prixRepair
-        : Math.min(Number(newRepairFromHubForm.montant_encaisse) || 0, prixRepair)
-      if (montantVoulu > 0) {
-        addRepairToCart({
-          id: createdRepair?.id,
-          bon_number: bonNumber,
-          client_nom: newRepairFromHubForm.nom.trim(),
-          prix: prixRepair,
-          montant_paye: 0,
-        }, montantVoulu)
-        setPosScreen('caisse')
+      // La piece est reservee des la creation du bon : elle sort du stock
+      // maintenant, et y retournera si la reparation est annulee
+      if (hubPieceRowSel?.id) {
+        const { error: stockErr } = await supabase.rpc('decrementer_stock_piece', {
+          p_ecran_id: hubPieceRowSel.id,
+          p_magasin_id: magasin,
+          p_quantite: 1,
+        })
+        if (stockErr) alert('Réparation créée, mais le stock n\'a pas pu être décrémenté : ' + stockErr.message)
+        else fetchEcranStockMagasin()
       }
+
+      logActivity('repair_create_from_hub', `Nouvelle réparation ${bonNumber} — ${newRepairFromHubForm.nom.trim()}`)
+      setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '', type_appareil: 'telephone', marque_appareil: 'Apple', suivi_long: false, encaisser: 'non', montant_encaisse: '' })
+      setHubPieceRowSel(null)
+      setShowNewRepairFromHub(false)
+      fetchReparationsHubData()
+      await fetchPendingRepairs()
+
+      // Encaissement immediat selon le choix fait dans la fiche
+      if (newRepairFromHubForm.encaisser !== 'non') {
+        const montantVoulu = newRepairFromHubForm.encaisser === 'total'
+          ? prixRepair
+          : Math.min(Number(newRepairFromHubForm.montant_encaisse) || 0, prixRepair)
+        if (montantVoulu > 0) {
+          addRepairToCart({
+            id: createdRepair?.id,
+            bon_number: bonNumber,
+            client_nom: newRepairFromHubForm.nom.trim(),
+            prix: prixRepair,
+            montant_paye: 0,
+          }, montantVoulu)
+          setPosScreen('caisse')
+        }
+      }
+    } catch (err) {
+      console.error('Erreur creation reparation:', err)
+      alert('Erreur : ' + (err.message || 'une erreur inattendue est survenue'))
+    } finally {
+      setSavingNewRepairFromHub(false)
     }
   }
   // Rouvre la fiche d'une reparation existante pour la corriger.
@@ -7401,7 +7407,7 @@ export default function StockMagasin() {
               </h1>
               <p className="text-sm text-gray-500 mt-1">Recherche, planning et gestion des réparations</p>
             </div>
-            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', type_appareil: 'telephone', marque_appareil: 'Apple', suivi_long: false, encaisser: 'non', montant_encaisse: '' }); setShowNewRepairFromHub(true) }}
+            <button onClick={() => { setNewRepairFromHubForm({ nom: '', appareil: '', imei: '', type_panne: '', prix: '', tel: '', email: '', article_offert: false, technicien_carte_mere: '', panne_description: '', type_appareil: 'telephone', marque_appareil: 'Apple', suivi_long: false, encaisser: 'non', montant_encaisse: '' }); setShowNewRepairFromHub(true) }}
               className="flex items-center gap-1.5 bg-[#1B2A4A] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
               <Plus size={16} /> Nouvelle réparation
             </button>
