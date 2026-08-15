@@ -27,7 +27,7 @@ const TICKET_CSS = `
   .items-table thead { background:var(--gradient); color:white; }
   .items-table th { padding:12px 14px; font-size:13px; text-transform:uppercase; font-weight:700; text-align:left; }
   .items-table th:nth-child(2), .items-table th:nth-child(3), .items-table th:nth-child(4) { text-align:center; }
-  .items-table td { border-bottom:1px solid #ddd; }
+  .items-table td { padding:10px 14px; font-size:13px; border-bottom:1px solid #ddd; }
   .items-table td:nth-child(2), .items-table td:nth-child(3), .items-table td:nth-child(4) { text-align:center; }
   .items-table tbody tr:last-child td { border-bottom:0; }
   .totals-wrapper { width:48%; margin-left:auto; margin-top:2px; margin-bottom:40px; }
@@ -53,33 +53,54 @@ const TICKET_CSS = `
   .shield { width:29px; height:29px; border:2px solid white; clip-path: polygon(50% 0%, 90% 16%, 90% 60%, 50% 100%, 10% 60%, 10% 16%); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
   .legal-text { font-size:11.5px; line-height:1.45; }
   .thank-you { font-family:"Brush Script MT","Segoe Script",cursive; font-size:27px; transform:rotate(-4deg); white-space:nowrap; }
+
+  /* Mode compact : applique uniquement si mesure > 1 page, tasse TOUT (pas juste le tableau) */
+  .page.compact .header { margin-bottom:16px; }
+  .page.compact .logo { width:185px; }
+  .page.compact .invoice-header { padding-top:0; }
+  .page.compact .invoice-title { font-size:23px; }
+  .page.compact .title-line { margin-top:4px; margin-bottom:9px; height:3px; }
+  .page.compact .company-info { margin-bottom:8px; }
+  .page.compact .info-list { gap:4px; }
+  .page.compact .info-row { font-size:12px; }
+  .page.compact .customer-message { padding:10px 16px; margin-bottom:14px; }
+  .page.compact .customer-message .hello { font-size:13px; margin-bottom:4px; }
+  .page.compact .customer-message p { font-size:12px; line-height:1.4; }
+  .page.compact .items-table { margin-bottom:12px; }
+  .page.compact .items-table th { padding:7px 14px; font-size:11.5px; }
+  .page.compact .items-table td { padding:4px 14px; font-size:11.5px; }
+  .page.compact .totals-wrapper { margin-bottom:16px; }
+  .page.compact .total-line { height:28px; margin-bottom:4px; font-size:12px; }
+  .page.compact .total-final { height:32px; }
+  .page.compact .thanks { padding-top:10px; margin-bottom:14px; gap:10px; }
+  .page.compact .check-circle { width:32px; height:32px; font-size:16px; }
+  .page.compact .thanks-title { font-size:13px; margin-bottom:2px; }
+  .page.compact .thanks-text { font-size:11.5px; }
+  .page.compact .footer-info { padding:12px 16px; margin-bottom:8px; }
+  .page.compact .footer-column { min-height:56px; }
+  .page.compact .footer-title { margin-bottom:5px; }
+  .page.compact .footer-icon { width:20px; height:20px; font-size:10px; }
+  .page.compact .footer-column p { font-size:10.5px; }
+  .page.compact .legal-footer { min-height:40px; padding:7px 16px; }
+  .page.compact .shield { width:24px; height:24px; }
+  .page.compact .legal-text { font-size:10.5px; }
+  .page.compact .thank-you { font-size:22px; }
 `
 
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]))
 
-// Retrecit chaque ligne produit si le ticket a beaucoup d'articles,
-// pour que ca tienne sur 1 page tant qu'il y en a 10 ou moins.
-const getRowStyle = (itemCount) => {
-  if (itemCount <= 4) return 'padding:10px 14px;font-size:13px'
-  if (itemCount <= 7) return 'padding:7px 14px;font-size:12.5px'
-  if (itemCount <= 10) return 'padding:4px 14px;font-size:12px'
-  return 'padding:8px 14px;font-size:13px' // >10 : on autorise une 2e page, donc retour a une taille confortable
-}
-
 const buildTicketHtml = (sale, magasinLabel, magasinAdresse) => {
   const rate = 21
   let totalTTC = 0
-  const items = sale.items || []
-  const rowStyle = getRowStyle(items.length)
-  const rows = items.map((c) => {
+  const rows = (sale.items || []).map((c) => {
     const tot = lineTotal(c)
     totalTTC += tot
     const totHT = tot / (1 + rate / 100)
     return `<tr>
-      <td style="${rowStyle}">${escapeHtml(c.item_name)}</td>
-      <td style="${rowStyle}">${escapeHtml(c.quantity)}</td>
-      <td style="${rowStyle}">${totHT.toFixed(2)} €</td>
-      <td style="${rowStyle}">${tot.toFixed(2)} €</td>
+      <td>${escapeHtml(c.item_name)}</td>
+      <td>${escapeHtml(c.quantity)}</td>
+      <td>${totHT.toFixed(2)} €</td>
+      <td>${tot.toFixed(2)} €</td>
     </tr>`
   }).join('')
   const totalHT = totalTTC / (1 + rate / 100)
@@ -144,6 +165,19 @@ export const generateTicketPdfBase64 = async (sale, magasinLabel, magasinAdresse
   document.body.appendChild(container)
 
   try {
+    const pageEl = container.querySelector('.page')
+    const itemCount = (sale.items || []).length
+    const measureHeightMM = () => (pageEl.scrollHeight / pageEl.scrollWidth) * 210
+
+    const heightBefore = measureHeightMM()
+    let usedCompact = false
+    if (itemCount <= 10 && heightBefore > 280) {
+      pageEl.classList.add('compact')
+      usedCompact = true
+    }
+    const heightAfter = measureHeightMM()
+    console.log(`PDF ticket - hauteur mesuree : ${heightBefore.toFixed(0)}mm brut, ${heightAfter.toFixed(0)}mm ${usedCompact ? '(mode compact applique)' : '(mode normal)'}, ${itemCount} articles`)
+
     const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
     const imgData = canvas.toDataURL('image/jpeg', 0.95)
     const doc = new jsPDF({ unit: 'mm', format: 'a4' })
@@ -169,7 +203,7 @@ export const generateTicketPdfBase64 = async (sale, magasinLabel, magasinAdresse
     const base64 = doc.output('datauristring').split(',')[1]
     const sizeKB = Math.round((base64.length * 0.75) / 1024)
     const pageCount = doc.internal.getNumberOfPages()
-    console.log(`PDF ticket genere : ~${sizeKB} Ko sur ${pageCount} page(s), ${(sale.items || []).length} articles`)
+    console.log(`PDF ticket genere : ~${sizeKB} Ko sur ${pageCount} page(s), ${itemCount} articles`)
     return base64
   } finally {
     document.body.removeChild(container)
