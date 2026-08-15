@@ -1,7 +1,9 @@
 import { LOGO_SEBTELECOM_BASE64 } from '../lib/logos'
 import { lineTotal } from './cart'
+import { MAGASINS } from './magasins'
 
-export const generateTicketPdfBase64 = async (sale, magasinLabel) => {
+export const generateTicketPdfBase64 = async (sale, magasinLabel, magasin = null) => {
+  const adresse = MAGASINS[magasin]?.adresse || MAGASINS.louise.adresse
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const pageWidth = 210
@@ -16,7 +18,7 @@ export const generateTicketPdfBase64 = async (sale, magasinLabel) => {
   doc.setFontSize(9)
   doc.setFont(undefined, 'normal')
   doc.text('SLT GROUP (SRL)', pageWidth - 15, 14, { align: 'right' })
-  doc.text('Rue du Bailli 22, 1000 Bruxelles', pageWidth - 15, 19, { align: 'right' })
+  doc.text(adresse, pageWidth - 15, 19, { align: 'right' })
   doc.text('TVA BE 1028.764.677', pageWidth - 15, 24, { align: 'right' })
 
   doc.setTextColor(0, 0, 0)
@@ -94,7 +96,7 @@ export const generateTicketPdfBase64 = async (sale, magasinLabel) => {
   doc.setFontSize(8)
   doc.setFont(undefined, 'normal')
   doc.text(
-    'SLT GROUP (SRL) — Rue du Bailli 22, 1000 Bruxelles — TVA BE 1028.764.677',
+    `SLT GROUP (SRL) — ${adresse} — TVA BE 1028.764.677`,
     pageWidth / 2, 285, { align: 'center' }
   )
   doc.text(

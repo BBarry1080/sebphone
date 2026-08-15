@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { MAGASINS } from "../../utils/magasins";
 
 const STORE = {
   name: "SLT GROUP",
-  address1: "RUE DU BAILLI 22",
-  address2: "1000 Bruxelles",
   tel: "0492/40.54.57",
   tva: "BE1028.764.677",
   terminalCode: "GK6YPW0P JMMT",
@@ -75,7 +74,10 @@ export default function ReceiptTicket({
   repairInfoList = null,
   extraLines = null,
   totalOverride = null,
+  magasin = null,
 }) {
+  const adresseComplete = MAGASINS[magasin]?.adresse || MAGASINS.louise.adresse
+  const [adresseLigne1, adresseLigne2] = adresseComplete.split(', ')
   const [signature, setSignature] = useState("");
   const computedTotal = items.reduce((s, i) => s + i.tot, 0);
   const total = totalOverride != null ? Number(totalOverride) : computedTotal;
@@ -126,8 +128,8 @@ export default function ReceiptTicket({
         }}
       >
         <div className="text-center font-bold" style={{ fontSize: "14px" }}>{STORE.name}</div>
-        <div className="text-center">{STORE.address1}</div>
-        <div className="text-center">{STORE.address2}</div>
+        <div className="text-center">{adresseLigne1}</div>
+        <div className="text-center">{adresseLigne2}</div>
         <div className="text-center">Tel : {STORE.tel}</div>
         <div className="text-center">N&deg; TVA : {STORE.tva}</div>
 

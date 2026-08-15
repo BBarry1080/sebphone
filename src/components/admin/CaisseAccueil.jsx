@@ -1222,6 +1222,7 @@ export default function CaisseAccueil({
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
             <ReceiptTicket
+              magasin={magasin}
               ticketNumber={detailJour.ticketsCaisse.findIndex((t) => t.id === factureToShow.id) + 1}
               vendeur={factureToShow.staff_name || 'Admin'}
               dateTime={new Date(factureToShow.created_at)}
@@ -1621,6 +1622,7 @@ export default function CaisseAccueil({
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto print:!hidden">
           <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
             <ReceiptTicket
+              magasin={magasin}
               ticketNumber={repairTicketData.ticketNumber}
               vendeur={repairTicketData.vendeur}
               dateTime={repairTicketData.dateTime}

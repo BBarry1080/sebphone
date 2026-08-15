@@ -2,9 +2,9 @@ export const MAGASINS = {
   anderlecht: {
     id:      'anderlecht',
     nom:     'Seb Telecom — Anderlecht',
-    adresse: 'Bergensesteenweg 711, 1070 Anderlecht',
+    adresse: 'Chaussée de Mons 711, 1070 Anderlecht',
     tel:     '+32(0)492 40.54.57',
-    gmaps:   'https://maps.google.com/?q=Bergensesteenweg+711+Anderlecht',
+    gmaps:   'https://maps.google.com/?q=Chaussee+de+Mons+711+Anderlecht',
   },
   molenbeek: {
     id:      'molenbeek',

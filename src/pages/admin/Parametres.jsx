@@ -29,7 +29,7 @@ const DOC_TYPES = [
     key: 'ticket',
     label: 'Ticket de caisse',
     templateId: 'template_ticket',
-    generatePdf: (data) => generateTicketPdfBase64(data.sale, data.magasinLabel),
+    generatePdf: (data) => generateTicketPdfBase64(data.sale, data.magasinLabel, data.magasin),
     sampleData: {
       sale: {
         clientNom: 'Aliou Ngom',
@@ -43,6 +43,7 @@ const DOC_TYPES = [
         ],
       },
       magasinLabel: 'Seb Telecom — Anderlecht',
+      magasin: 'anderlecht',
       to_name: 'Aliou Ngom',
       items_html: '<tr><td>1× Coque iPhone 15 Silicone Noir</td><td style="text-align:right">29.99€</td></tr><tr><td>3× Verre trempé iPhone 15</td><td style="text-align:right">45.00€</td></tr>',
       total: '74.99€',

@@ -2561,7 +2561,7 @@ export default function StockMagasin() {
         return `<tr><td>${c.quantity}× ${c.item_name}</td><td style="text-align:right">${lineTotal(c).toFixed(2)}€</td></tr>`
       }).join('')
       const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
-      const pdfBase64 = await generateTicketPdfBase64(lastSale, magasinLabel)
+      const pdfBase64 = await generateTicketPdfBase64(lastSale, magasinLabel, magasin)
       await emailjs.send('service_nn74puq', 'template_ticket', {
         to_email: ticketEmailInput.trim(),
         to_name: 'Client',
@@ -6758,6 +6758,7 @@ export default function StockMagasin() {
               </button>
             </div>
             <ReceiptTicket
+              magasin={selectedTicket.magasin_id || magasin}
               ticketNumber={searchResults.findIndex((s) => s.id === selectedTicket.id) + 1}
               vendeur={selectedTicket.staff_name || 'Admin'}
               dateTime={new Date(selectedTicket.created_at)}
@@ -9636,6 +9637,7 @@ export default function StockMagasin() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl my-8 p-4">
             <ReceiptTicket
+              magasin={magasin}
               ticketNumber={lastSale.ticketNumber}
               vendeur={lastSale.staffName || 'Admin'}
               dateTime={new Date(lastSale.created_at || Date.now())}
