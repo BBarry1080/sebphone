@@ -1,10 +1,22 @@
 import { LOGO_SEBPHONE_BASE64 } from '../lib/logos'
 import { lineTotal } from './cart'
 
+const ICONS = {
+  calendar: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="3" x2="7" y2="7"/><line x1="17" y1="3" x2="17" y2="7"/></svg>',
+  hash: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>',
+  store: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12 L12 4 L21 12"/><path d="M5 10 L5 20 L19 20 L19 10"/></svg>',
+  user: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20 C4 15 8 13 12 13 C16 13 20 15 20 20"/></svg>',
+  pin: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21 C12 21 5 14 5 9 C5 5 8 2 12 2 C16 2 19 5 19 9 C19 14 12 21 12 21 Z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+  chat: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="12" rx="3"/><path d="M8 17 L8 21 L12 17"/></svg>',
+  share: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.5"/><circle cx="6" cy="16" r="2.5"/><circle cx="18" cy="16" r="2.5"/><line x1="10.5" y1="7" x2="7.5" y2="14"/><line x1="13.5" y1="7" x2="16.5" y2="14"/></svg>',
+}
+
 const TICKET_CSS = `
   * { box-sizing: border-box; }
   body { margin:0; padding:0; background:#e9e9e9; font-family: Arial, Helvetica, sans-serif; color:#111; }
-  .page { width:210mm; background:#fff; padding:14mm 14mm 10mm 14mm; position:relative; overflow:hidden; }
+  .page { width:210mm; background:#fff; padding:14mm 14mm 10mm 14mm; position:relative; overflow:hidden; display:flex; flex-direction:column; }
+  .page.fill-page { min-height:297mm; }
+  .bottom-block { margin-top:auto; }
   :root { --blue:#1685c5; --cyan:#0fb4b2; --gradient: linear-gradient(90deg, #1678ba 0%, #0fb4b2 100%); }
   .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:34px; }
   .logo-area { width:40%; }
@@ -18,7 +30,7 @@ const TICKET_CSS = `
   .company-info { font-size:13px; line-height:1.55; color:#333; margin-bottom:14px; }
   .info-list { display:flex; flex-direction:column; gap:8px; }
   .info-row { display:flex; align-items:center; gap:10px; font-size:13px; }
-  .info-icon { width:24px; height:24px; border:2px solid var(--blue); border-radius:5px; display:flex; justify-content:center; align-items:center; color:var(--blue); font-size:11px; line-height:1; flex-shrink:0; }
+  .info-icon { width:24px; height:24px; border:2px solid var(--blue); border-radius:5px; display:flex; justify-content:center; align-items:center; color:var(--blue); flex-shrink:0; }
   .info-row strong { font-weight:700; }
   .customer-message { background:#f7f8fa; border:1px solid #eeeeee; border-radius:9px; padding:21px 24px; margin-bottom:30px; }
   .customer-message .hello { color:#1678b8; font-weight:700; font-size:15px; margin-bottom:10px; }
@@ -45,7 +57,7 @@ const TICKET_CSS = `
   .footer-column:last-child { padding-right:0; }
   .footer-column + .footer-column { border-left:1px solid #bbb; }
   .footer-title { display:flex; align-items:center; gap:9px; font-weight:700; font-size:13px; margin-bottom:9px; }
-  .footer-icon { width:25px; height:25px; background:var(--gradient); color:white; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:12px; flex-shrink:0; }
+  .footer-icon { width:25px; height:25px; background:var(--gradient); color:white; border-radius:50%; display:flex; justify-content:center; align-items:center; flex-shrink:0; }
   .footer-column p { font-size:11.5px; line-height:1.55; margin:0; color:#333; }
   .footer-link { color:#1678b8; font-weight:700; }
   .legal-footer { min-height:57px; border-radius:7px; background:var(--gradient); color:white; display:flex; align-items:center; justify-content:space-between; padding:10px 20px; }
@@ -54,7 +66,6 @@ const TICKET_CSS = `
   .legal-text { font-size:11.5px; line-height:1.45; }
   .thank-you { font-family:"Brush Script MT","Segoe Script",cursive; font-size:27px; transform:rotate(-4deg); white-space:nowrap; }
 
-  /* Mode compact : applique uniquement si mesure > 1 page, tasse TOUT (pas juste le tableau) */
   .page.compact .header { margin-bottom:16px; }
   .page.compact .logo { width:185px; }
   .page.compact .invoice-header { padding-top:0; }
@@ -79,7 +90,7 @@ const TICKET_CSS = `
   .page.compact .footer-info { padding:12px 16px; margin-bottom:8px; }
   .page.compact .footer-column { min-height:56px; }
   .page.compact .footer-title { margin-bottom:5px; }
-  .page.compact .footer-icon { width:20px; height:20px; font-size:10px; }
+  .page.compact .footer-icon { width:20px; height:20px; }
   .page.compact .footer-column p { font-size:10.5px; }
   .page.compact .legal-footer { min-height:40px; padding:7px 16px; }
   .page.compact .shield { width:24px; height:24px; }
@@ -116,10 +127,10 @@ const buildTicketHtml = (sale, magasinLabel, magasinAdresse) => {
         <div class="company-name">SLT GROUP (SRL)</div>
         <div class="company-info">Rue du Bailli 22, 1000 Bruxelles<br>TVA BE 1028.764.677</div>
         <div class="info-list">
-          <div class="info-row"><div class="info-icon">▣</div><span><strong>Date :</strong> ${dateStr}</span></div>
-          <div class="info-row"><div class="info-icon">#</div><span><strong>Ticket n°</strong> ${escapeHtml(sale.ticketNumber)}</span></div>
-          <div class="info-row"><div class="info-icon">⌂</div><span><strong>Magasin :</strong> ${escapeHtml(magasinLabel)}${magasinAdresse ? ' — ' + escapeHtml(magasinAdresse) : ''}</span></div>
-          <div class="info-row"><div class="info-icon">●</div><span><strong>Vendeur :</strong> ${escapeHtml(sale.staffName || 'Staff')}</span></div>
+          <div class="info-row"><div class="info-icon">${ICONS.calendar}</div><span><strong>Date :</strong> ${dateStr}</span></div>
+          <div class="info-row"><div class="info-icon">${ICONS.hash}</div><span><strong>Ticket n°</strong> ${escapeHtml(sale.ticketNumber)}</span></div>
+          <div class="info-row"><div class="info-icon">${ICONS.store}</div><span><strong>Magasin :</strong> ${escapeHtml(magasinLabel)}${magasinAdresse ? ' — ' + escapeHtml(magasinAdresse) : ''}</span></div>
+          <div class="info-row"><div class="info-icon">${ICONS.user}</div><span><strong>Vendeur :</strong> ${escapeHtml(sale.staffName || 'Staff')}</span></div>
         </div>
       </div>
     </header>
@@ -136,19 +147,21 @@ const buildTicketHtml = (sale, magasinLabel, magasinAdresse) => {
       <div class="total-line"><span>TVA (${rate}%)</span><strong>${totalTVA.toFixed(2)} €</strong></div>
       <div class="total-line total-final"><span>TOTAL TTC</span><span class="amount">${totalTTC.toFixed(2)} €</span></div>
     </div>
-    <section class="thanks">
-      <div class="check-circle">✓</div>
-      <div><div class="thanks-title">Merci pour votre achat !</div><div class="thanks-text">Nous espérons vous revoir très bientôt.</div></div>
-    </section>
-    <section class="footer-info">
-      <div class="footer-column"><div class="footer-title"><div class="footer-icon">●</div><span>SLT GROUP (SRL)</span></div><p>Rue du Bailli 22,<br>1000 Bruxelles<br>TVA BE 1028.764.677</p></div>
-      <div class="footer-column"><div class="footer-title"><div class="footer-icon">☎</div><span class="footer-link">Besoin d'aide ?</span></div><p>0472 72 85 24<br>contact@sebphone.be</p></div>
-      <div class="footer-column"><div class="footer-title"><div class="footer-icon">@</div><span class="footer-link">Suivez-nous !</span></div><p><span class="footer-link">@sebtelecom</span><br>Instagram / TikTok / Snapchat</p></div>
-    </section>
-    <footer class="legal-footer">
-      <div class="legal-left"><div class="shield">✓</div><div class="legal-text"><strong>Garantie légale conforme à la législation en vigueur.</strong><br>Conservez ce ticket comme preuve d'achat.</div></div>
-      <div class="thank-you">Thank you!</div>
-    </footer>
+    <div class="bottom-block">
+      <section class="thanks">
+        <div class="check-circle">✓</div>
+        <div><div class="thanks-title">Merci pour votre achat !</div><div class="thanks-text">Nous espérons vous revoir très bientôt.</div></div>
+      </section>
+      <section class="footer-info">
+        <div class="footer-column"><div class="footer-title"><div class="footer-icon">${ICONS.pin}</div><span>SLT GROUP (SRL)</span></div><p>Rue du Bailli 22,<br>1000 Bruxelles<br>TVA BE 1028.764.677</p></div>
+        <div class="footer-column"><div class="footer-title"><div class="footer-icon">${ICONS.chat}</div><span class="footer-link">Besoin d'aide ?</span></div><p>0472 72 85 24<br>contact@sebphone.be</p></div>
+        <div class="footer-column"><div class="footer-title"><div class="footer-icon">${ICONS.share}</div><span class="footer-link">Suivez-nous !</span></div><p><span class="footer-link">@sebtelecom</span><br>Instagram / TikTok / Snapchat</p></div>
+      </section>
+      <footer class="legal-footer">
+        <div class="legal-left"><div class="shield">✓</div><div class="legal-text"><strong>Garantie légale conforme à la législation en vigueur.</strong><br>Conservez ce ticket comme preuve d'achat.</div></div>
+        <div class="thank-you">Thank you!</div>
+      </footer>
+    </div>
   </div>`
 }
 
@@ -175,8 +188,15 @@ export const generateTicketPdfBase64 = async (sale, magasinLabel, magasinAdresse
       pageEl.classList.add('compact')
       usedCompact = true
     }
-    const heightAfter = measureHeightMM()
-    console.log(`PDF ticket - hauteur mesuree : ${heightBefore.toFixed(0)}mm brut, ${heightAfter.toFixed(0)}mm ${usedCompact ? '(mode compact applique)' : '(mode normal)'}, ${itemCount} articles`)
+    const heightAfterCompact = measureHeightMM()
+
+    let filled = false
+    if (heightAfterCompact <= 290) {
+      pageEl.classList.add('fill-page')
+      filled = true
+    }
+
+    console.log(`PDF ticket - mesure : ${heightBefore.toFixed(0)}mm brut -> ${heightAfterCompact.toFixed(0)}mm ${usedCompact ? '(compact)' : '(normal)'} -> ${filled ? 'page etiree a 297mm, bloc final ancre en bas' : 'pagination multi-page (contenu > 1 page)'}, ${itemCount} articles`)
 
     const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
     const imgData = canvas.toDataURL('image/jpeg', 0.95)
