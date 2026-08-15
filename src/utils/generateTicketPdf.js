@@ -133,13 +133,27 @@ export const generateTicketPdfBase64 = async (sale, magasinLabel, magasinAdresse
   document.body.appendChild(container)
 
   try {
-    const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true })
-    const imgData = canvas.toDataURL('image/jpeg', 0.95)
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-    const pageWidth = 210
-    const pageHeight = (canvas.height * pageWidth) / canvas.width
-    doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight)
-    return doc.output('datauristring').split(',')[1]
+    const attempts = [
+      { scale: 1.5, quality: 0.85 },
+      { scale: 1.2, quality: 0.75 },
+      { scale: 1, quality: 0.6 },
+    ]
+    let base64 = null
+    let finalSizeKB = 0
+    for (const { scale, quality } of attempts) {
+      const canvas = await html2canvas(container, { scale, backgroundColor: '#ffffff', useCORS: true })
+      const imgData = canvas.toDataURL('image/jpeg', quality)
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+      const pageWidth = 210
+      const pageHeight = (canvas.height * pageWidth) / canvas.width
+      doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight)
+      const candidate = doc.output('datauristring').split(',')[1]
+      finalSizeKB = Math.round((candidate.length * 0.75) / 1024)
+      base64 = candidate
+      if (finalSizeKB <= 45) break
+    }
+    console.log(`PDF ticket genere : ~${finalSizeKB} Ko`)
+    return base64
   } finally {
     document.body.removeChild(container)
   }
