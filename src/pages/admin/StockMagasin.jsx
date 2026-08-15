@@ -28,14 +28,6 @@ import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
 import { TYPES_PIECE, qualiteLabel, qualiteBadge } from '../../utils/typesPiece'
 import PiecesNavigator from '../../components/admin/PiecesNavigator'
 
-const POS_CATEGORIES = [
-  'Téléphone',
-  'Coque', 'Vitre de protection', 'Audio', 'Chargeur',
-  'Carte mémoire', 'Ordinateur', 'Tablette', 'PlayStation',
-  'Autre téléphone',
-  'Réparations',
-]
-
 // Couleur par magasin — pastilles du calendrier et cartes du coffre
 const IPHONE_MODELES = [
   'iPhone', 'iPhone 3G', 'iPhone 3GS',
@@ -134,6 +126,11 @@ export default function StockMagasin() {
   // Modals
   const [showItemModal, setShowItemModal] = useState(false)
   const [showCatModal, setShowCatModal] = useState(false)
+  // Suppression d'une catégorie encore rattachée à des produits
+  const [catToDelete, setCatToDelete] = useState(null)      // { id, name }
+  const [catToDeleteCount, setCatToDeleteCount] = useState(0)
+  const [catMigrationTargetId, setCatMigrationTargetId] = useState('')
+  const [savingCatDelete, setSavingCatDelete] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [editCat, setEditCat] = useState(null)
 
@@ -2832,7 +2829,7 @@ export default function StockMagasin() {
 
   useEffect(() => {
     if (magasin) {
-      fetchCategories().then(() => ensurePosCategories())
+      fetchCategories()
       fetchItems()
       fetchCaisseToday()
       fetchFournisseursList()
@@ -2863,21 +2860,6 @@ export default function StockMagasin() {
     }, minInterval * 60 * 1000)
     return () => clearInterval(timer)
   }, [tachesDuJour])
-
-  const ensurePosCategories = async () => {
-    const { data: existing } = await supabase
-      .from('shop_categories')
-      .select('name')
-      .eq('magasin_id', magasin)
-    const existingNames = (existing || []).map((c) => c.name)
-    const missing = POS_CATEGORIES.filter((n) => !existingNames.includes(n))
-    if (missing.length > 0) {
-      await supabase.from('shop_categories').insert(
-        missing.map((name) => ({ name, color: 'gray', magasin_id: magasin }))
-      )
-      fetchCategories()
-    }
-  }
 
   const fetchLastClosure = async () => {
     const { data } = await supabase
@@ -3700,12 +3682,53 @@ export default function StockMagasin() {
     fetchItems()
   }
 
-  const handleDeleteCat = async (id) => {
-    if (!window.confirm(
-      'Supprimer cette catégorie ? Les articles ne seront pas supprimés.'
-    )) return
-    await supabase.from('shop_categories').delete().eq('id', id)
+  // Supprime la catégorie si elle est vide ; sinon ouvre la modale de migration.
+  const handleDeleteCat = async (cat) => {
+    const { count, error: countErr } = await supabase
+      .from('produits_catalogue')
+      .select('id', { count: 'exact', head: true })
+      .eq('category_id', cat.id)
+    if (countErr) {
+      alert('Impossible de vérifier les produits : ' + countErr.message)
+      return
+    }
+    const nb = count || 0
+    if (nb > 0) {
+      setCatToDelete(cat)
+      setCatToDeleteCount(nb)
+      setCatMigrationTargetId('')
+      return
+    }
+    if (!window.confirm(`Supprimer la catégorie « ${cat.name} » ?`)) return
+    const { error } = await supabase.from('shop_categories').delete().eq('id', cat.id)
+    if (error) { alert('Suppression impossible : ' + error.message); return }
     fetchCategories()
+    fetchItems()
+  }
+
+  // Migre les produits vers une autre catégorie (ou aucune), puis supprime.
+  const handleMigrateAndDeleteCat = async () => {
+    if (!catToDelete) return
+    setSavingCatDelete(true)
+    const { error: majErr } = await supabase
+      .from('produits_catalogue')
+      .update({ category_id: catMigrationTargetId || null })
+      .eq('category_id', catToDelete.id)
+    if (majErr) {
+      setSavingCatDelete(false)
+      alert('Migration impossible : ' + majErr.message)
+      return
+    }
+    const { error } = await supabase.from('shop_categories').delete().eq('id', catToDelete.id)
+    setSavingCatDelete(false)
+    if (error) { alert('Suppression impossible : ' + error.message); return }
+    logActivity('shop_category_delete',
+      `Catégorie « ${catToDelete.name} » supprimée — ${catToDeleteCount} produit(s) migré(s)`)
+    setCatToDelete(null)
+    setCatToDeleteCount(0)
+    setCatMigrationTargetId('')
+    fetchCategories()
+    fetchItems()
   }
 
   // Scan code-barres : quand l'utilisateur tape dans search
@@ -7716,16 +7739,26 @@ export default function StockMagasin() {
                   : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
               Tout
             </button>
-            {POS_CATEGORIES.map((catName) => (
-              <button key={catName}
-                onClick={() => { setSelectedPosCategory(catName); setPosTypePieceSel(null); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
+            {categories.map((cat) => (
+              <button key={cat.id}
+                onClick={() => { setSelectedPosCategory(cat.name); setPosTypePieceSel(null); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
-                  ${selectedPosCategory === catName
+                  ${selectedPosCategory === cat.name
                     ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
                     : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
-                {catName}
+                {cat.name}
               </button>
             ))}
+            {/* Tuile en dur : 'Réparations' n'est pas une catégorie en base,
+                mais reste la porte d'entrée du catalogue de pièces. */}
+            <button key="Réparations"
+              onClick={() => { setSelectedPosCategory('Réparations'); setPosTypePieceSel(null); setPosEcranMarqueSel(null); setPosPhoneMarqueSel(null) }}
+              className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold mb-1 transition-all border
+                ${selectedPosCategory === 'Réparations'
+                  ? 'bg-[#1B2A4A] text-white border-[#1B2A4A]'
+                  : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}`}>
+              Réparations
+            </button>
 
             <div className="mt-3 pt-3 border-t border-gray-100">
               <p className="text-[9px] font-bold text-gray-400 uppercase mb-2 px-1">
@@ -8800,7 +8833,7 @@ export default function StockMagasin() {
                                    text-blue-400 hover:text-blue-600">
                         <Pencil size={14}/>
                       </button>
-                      <button onClick={() => handleDeleteCat(cat.id)}
+                      <button onClick={() => handleDeleteCat(cat)}
                         className="p-1.5 hover:bg-red-50 rounded-lg
                                    text-red-400 hover:text-red-600">
                         <Trash2 size={14}/>
@@ -9126,6 +9159,46 @@ export default function StockMagasin() {
       )}
 
       {/* MODAL CATEGORIE */}
+      {catToDelete && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-[#1B2A4A] text-lg">Supprimer « {catToDelete.name} »</h3>
+              <button onClick={() => setCatToDelete(null)}
+                className="text-gray-400 hover:text-[#1B2A4A]">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-600 mb-3">
+              <strong>{catToDeleteCount}</strong> produit{catToDeleteCount > 1 ? 's sont rattachés' : ' est rattaché'} à
+              cette catégorie. Choisis où {catToDeleteCount > 1 ? 'les' : 'le'} déplacer avant suppression —
+              aucun produit ne sera supprimé.
+            </p>
+            <div className="mb-4">
+              <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Déplacer vers</label>
+              <select value={catMigrationTargetId}
+                onChange={(e) => setCatMigrationTargetId(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white">
+                <option value="">Aucune catégorie</option>
+                {categories.filter((c) => c.id !== catToDelete.id).map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setCatToDelete(null)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-bold">
+                Annuler
+              </button>
+              <button onClick={handleMigrateAndDeleteCat} disabled={savingCatDelete}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 disabled:opacity-50">
+                {savingCatDelete ? 'Migration...' : 'Migrer et supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCatModal && (
         <div className="fixed inset-0 bg-black/50 z-50
                         flex items-center justify-center p-4">
