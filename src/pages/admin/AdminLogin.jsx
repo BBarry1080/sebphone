@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { sha256 } from 'js-sha256'
+import { dateBelge } from '../../utils/session'
 
 const SALT = 'sebphone_salt_2026'
 
@@ -41,6 +42,7 @@ export default function AdminLogin() {
           magasin_id: null,
           responsable_magasins: null,
           permissions: null,
+          loginDate: dateBelge(),
         }))
         localStorage.setItem('sebphone_admin', 'true')
         navigate('/admin/stock-magasin')
@@ -70,6 +72,7 @@ export default function AdminLogin() {
             magasin_id: staffData.magasin_id,
             responsable_magasins: staffData.responsable_magasins || [],
             permissions: staffData.permissions,
+            loginDate: dateBelge(),
           }))
           localStorage.setItem('sebphone_admin', 'true')
 

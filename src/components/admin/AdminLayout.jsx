@@ -8,6 +8,8 @@ import {
 import { supabase, isSupabaseReady } from '../../lib/supabase'
 import { useStaffCheck } from '../../hooks/useStaffCheck'
 import { useAdminNotifications } from '../../hooks/useAdminNotifications'
+import { useAutoLogoutMinuit } from '../../hooks/useAutoLogoutMinuit'
+import { purgeSessionLocale } from '../../utils/session'
 
 function SidebarContent({ onClose }) {
   const navigate = useNavigate()
@@ -20,8 +22,10 @@ function SidebarContent({ onClose }) {
 
   const handleSignOut = async () => {
     if (isSupabaseReady) await supabase.auth.signOut()
-    localStorage.removeItem('sebphone_admin')
-    localStorage.removeItem('sebphone_user')
+    // Purge partagée : vide aussi les sessions caisse de chaque magasin, que
+    // la déconnexion manuelle laissait jusqu'ici derrière elle — la caisse
+    // restait alors déverrouillée au nom de la personne partie.
+    purgeSessionLocale()
     navigate('/admin/login')
   }
 
@@ -204,6 +208,7 @@ function SidebarContent({ onClose }) {
 
 export default function AdminLayout() {
   useStaffCheck()
+  const avertissementMinuit = useAutoLogoutMinuit()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { notifications, unreadCount, markAllRead } = useAdminNotifications()
@@ -222,6 +227,11 @@ export default function AdminLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F8F9FA]">
+      {avertissementMinuit && (
+        <div className="fixed top-0 left-0 right-0 z-[120] bg-amber-500 text-white text-center py-2 px-4 text-xs font-bold shadow-lg">
+          Déconnexion automatique à minuit — finalise l&apos;encaissement en cours.
+        </div>
+      )}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-[#1B2A4A] flex items-center justify-between px-4 py-3">
         <button onClick={() => setSidebarOpen(true)} className="text-white p-1">
           <Menu size={24} />

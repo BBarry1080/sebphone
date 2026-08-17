@@ -28,6 +28,7 @@ import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
 import { TYPES_PIECE, qualiteLabel, qualiteBadge } from '../../utils/typesPiece'
 import PiecesNavigator from '../../components/admin/PiecesNavigator'
 import ImageLightbox from '../../components/admin/ImageLightbox'
+import { dateBelge } from '../../utils/session'
 
 // Couleur par magasin — pastilles du calendrier et cartes du coffre
 const IPHONE_MODELES = [
@@ -1163,7 +1164,9 @@ export default function StockMagasin() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw)
-        const today = new Date().toISOString().slice(0, 10)
+        // Heure belge et non `toISOString()` (date UTC) : entre minuit et 1h ou
+        // 2h du matin, l'UTC est encore la veille et la session survivait.
+        const today = dateBelge()
         if (parsed.dateStr === today) {
           setCaisseSession(parsed)
           return
@@ -1181,7 +1184,7 @@ export default function StockMagasin() {
       grade: staffRecord.grade || null,
       pointageId,
       estVisite: !pointageId,
-      dateStr: new Date().toISOString().slice(0, 10),
+      dateStr: dateBelge(),
       arrivalDisplay: arrivalTimeISO
         ? new Date(arrivalTimeISO).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
         : new Date().toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }),
