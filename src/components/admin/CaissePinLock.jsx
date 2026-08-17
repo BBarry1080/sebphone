@@ -25,12 +25,22 @@ const heureBelge = () => Number(
   }).format(new Date())
 )
 
-// Accès total 24h/24, sans contrôle de planning.
-const estResponsablePour = (emp, magasin) =>
-  (emp.responsable_magasins || []).includes(magasin)
-  || emp.grade === 'responsable'
-  || emp.grade === 'admin'
-  || emp.is_admin === true
+// Accès total 24h/24, sans contrôle de planning — mais magasin par magasin.
+// Les patrons (is_admin / grade 'admin') sont responsables partout ; un
+// responsable ne l'est que sur les magasins listés dans responsable_magasins.
+// Le grade 'responsable' ne donne donc plus, à lui seul, l'accès aux 4 magasins.
+const estResponsablePour = (emp, magasin) => {
+  if (emp.is_admin === true || emp.grade === 'admin') return true
+  return (emp.responsable_magasins || []).includes(magasin)
+}
+
+// Magasins où la personne peut ouvrir une caisse. Repli sur le rattachement
+// fixe tant que magasins_autorises n'est pas renseigné, pour ne bloquer
+// personne pendant la reprise des données.
+const magasinsOuvrablesPar = (emp) => {
+  const liste = emp.magasins_autorises || []
+  return liste.length > 0 ? liste : [emp.magasin_id].filter(Boolean)
+}
 
 const HEURE_DEBUT_DEFAUT = '10:00'
 const HEURE_FIN_DEFAUT = '20:00'
@@ -232,9 +242,9 @@ export default function CaissePinLock({ magasin, magasinLabel, onUnlock }) {
         }
 
         // Le planning ne porte pas de magasin : le rattachement passe par
-        // staff.magasin_id. Un remplaçant d'un autre magasin n'est donc pas
-        // reconnu ici — il passe par le flux de remplacement de la caisse.
-        if (emp.magasin_id !== magasin || !aUnShiftAujourdhui) {
+        // magasins_autorises (repli sur magasin_id). Un remplaçant d'un autre
+        // magasin n'est reconnu que si ce magasin figure dans sa liste.
+        if (!magasinsOuvrablesPar(emp).includes(magasin) || !aUnShiftAujourdhui) {
           const prevus = await fetchPrevusDuJour(today)
           setFeedback({
             type: 'refus',
