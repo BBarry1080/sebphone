@@ -96,6 +96,18 @@ function CartThumb({ imageUrl, kind, alt, onZoom }) {
   )
 }
 
+// Vendabilité d'un article de stock :
+//   stock > 0                        → oui
+//   stock 0 + disponible sur commande → oui, avec mention
+//   stock 0 sans commande possible    → non (rupture)
+// `sans_stock` (services, forfaits) porte quantity = 0 par conception : ces
+// articles ne suivent pas de stock et restent toujours vendables.
+const enRupture = (item) =>
+  !item.sans_stock && (item.quantity ?? 0) <= 0 && !item.disponible_sur_commande
+
+const surCommande = (item) =>
+  !item.sans_stock && (item.quantity ?? 0) <= 0 && !!item.disponible_sur_commande
+
 export default function StockMagasin() {
   const isAdmin = useIsAdmin()
   const hasPermission = usePermission('stock_magasin')
@@ -624,7 +636,7 @@ export default function StockMagasin() {
     if (!garantieForm.client_nom.trim()) { alert('Nom du client obligatoire'); return }
     if (!garantiePieceSel) { alert('Choisis la pièce utilisée pour la garantie'); return }
     setSavingGarantie(true)
-    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const { staffName: garantieStaffName } = getSaleIdentity()
     const { error } = await supabase.from('garanties').insert({
       repair_id: garantieRepairSel?.id || null,
       magasin_id: magasin,
@@ -636,7 +648,7 @@ export default function StockMagasin() {
       fournisseur_id: garantieFournisseurId || null,
       date_retour: new Date().toISOString().slice(0, 10),
       motif: garantieForm.motif.trim() || null,
-      staff_name: currentSebUser?.name || 'Staff',
+      staff_name: garantieStaffName,
     })
     if (!error) {
       const actuel = getStockPourMagasin(garantiePieceSel.id)
@@ -745,6 +757,32 @@ export default function StockMagasin() {
 
   // Verrou PIN caisse
   const [caisseSession, setCaisseSession] = useState(null)
+
+  // Qui regarde : la personne de shift (PIN) d'abord, sinon le compte connecté.
+  // Déclarée ici — donc avant tous ses points d'usage — pour que les handlers
+  // définis plus haut dans le corps puissent l'appeler sans garde.
+  const getViewerIdentity = () => {
+    if (caisseSession?.staffId) return { id: caisseSession.staffId, name: caisseSession.staffName }
+    const su = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    return su?.id ? { id: su.id, name: su.name } : null
+  }
+
+  // Identité créditée d'une écriture comptable (vente, remboursement, mouvement
+  // de caisse, clôture). Même priorité que ci-dessus, mais `staffId` doit être
+  // une ligne de `staff` : l'admin Supabase a bien un `id` dans sebphone_user,
+  // sauf que c'est un uuid d'auth, pas un staff.id — on le laisse à null plutôt
+  // que d'écrire une référence inexistante. La session caisse, elle, porte
+  // toujours un vrai staff.id : aucune condition de rôle à lui appliquer.
+  const getSaleIdentity = () => {
+    if (caisseSession?.staffId) {
+      return { staffId: caisseSession.staffId, staffName: caisseSession.staffName }
+    }
+    const su = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    return {
+      staffId: su?.role === 'employe' ? (su?.id || null) : null,
+      staffName: su?.name || 'Staff',
+    }
+  }
   const [todayScheduleForLive, setTodayScheduleForLive] = useState(null)
   // Détection remplacement à la connexion
   const [scheduledTodayMismatch, setScheduledTodayMismatch] = useState([])
@@ -1500,13 +1538,13 @@ export default function StockMagasin() {
   }
 
   const handleCompleteTache = async (tacheId, statut = 'fait', motif = null) => {
-    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+    const { staffName: tacheStaffName } = getSaleIdentity()
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Brussels' })
     const { error } = await supabase.from('taches_recurrentes_completions').upsert({
       tache_id: tacheId,
       date_tache: todayStr,
       magasin_id: magasin,
-      completed_by: currentSebUser?.name || 'Staff',
+      completed_by: tacheStaffName,
       statut,
       motif,
     }, { onConflict: 'tache_id,date_tache,magasin_id' })
@@ -2569,9 +2607,7 @@ export default function StockMagasin() {
     const montantRemboursement = -round2(linesToRefund.reduce((s, l) =>
       s + Number(l.unit_price) * Number(l.qteRembourse), 0))
 
-    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
-    const staffNameNow = currentSebUser?.name || 'Staff'
-    const staffIdNow = currentSebUser?.role === 'employe' ? currentSebUser?.id : null
+    const { staffId: staffIdNow, staffName: staffNameNow } = getSaleIdentity()
 
     const { data: refundSale, error: refundErr } = await supabase.from('shop_sales').insert({
       magasin_id: selectedTicket.magasin_id,
@@ -2887,11 +2923,17 @@ export default function StockMagasin() {
 
   const fetchTodaysClosure = async () => {
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Brussels' })
+    // Depuis l'ajout du type ('normale' | 'apres_fermeture'), l'unicité porte
+    // sur (magasin_id, closure_date, type) : il peut y avoir 2 clôtures le même
+    // jour. `.maybeSingle()` levait alors une erreur et laissait la caisse se
+    // croire non clôturée — on garde la plus récente.
     const { data, error } = await supabase
       .from('cash_closures')
       .select('*')
       .eq('magasin_id', magasin)
       .eq('closure_date', todayStr)
+      .order('period_end', { ascending: false })
+      .limit(1)
       .maybeSingle()
     if (error) console.error('fetchTodaysClosure error:', error)
     setTodaysClosure(data || null)
@@ -2948,7 +2990,7 @@ export default function StockMagasin() {
         *,
         produits_catalogue (
           name, reference, category_id, sous_categorie, image_url,
-          fournisseur_id, description, tva_rate,
+          fournisseur_id, description, tva_rate, disponible_sur_commande,
           shop_categories (name, color),
           fournisseurs (nom)
         )
@@ -2972,6 +3014,7 @@ export default function StockMagasin() {
       category_id: row.produits_catalogue?.category_id,
       sous_categorie: row.produits_catalogue?.sous_categorie,
       image_url: row.produits_catalogue?.image_url,
+      disponible_sur_commande: row.produits_catalogue?.disponible_sur_commande || false,
       fournisseur_id: row.produits_catalogue?.fournisseur_id,
       description: row.produits_catalogue?.description,
       tva_rate: row.produits_catalogue?.tva_rate,
@@ -3018,7 +3061,7 @@ export default function StockMagasin() {
     }
     setSavingNewRepairFromHub(true)
     try {
-      const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
+      const { staffName: repairStaffName } = getSaleIdentity()
       const { count: repairCount } = await supabase
         .from('repairs').select('*', { count: 'exact', head: true }).eq('magasin_id', magasin)
       const { count: clientCount } = await supabase
@@ -3046,14 +3089,14 @@ export default function StockMagasin() {
         suivi_statut: (newRepairFromHubForm.suivi_long || newRepairFromHubForm.technicien_carte_mere)
           ? 'en_cours'
           : 'termine',
-        pris_en_charge_par: currentSebUser?.name || null,
+        pris_en_charge_par: repairStaffName,
         prix: prixRepair,
         devis: false,
         tel: newRepairFromHubForm.tel || null,
         email: newRepairFromHubForm.email || null,
         status: 'en_attente',
         montant_paye: 0,
-        staff_name: currentSebUser?.name || 'Staff',
+        staff_name: repairStaffName,
       }).select().single()
       if (error) { alert('Erreur : ' + error.message); return }
 
@@ -3370,12 +3413,6 @@ export default function StockMagasin() {
     fetchAllPhonesForCaisse()
   }
 
-  const getViewerIdentity = () => {
-    if (caisseSession?.staffId) return { id: caisseSession.staffId, name: caisseSession.staffName }
-    const su = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
-    return su?.id ? { id: su.id, name: su.name } : null
-  }
-
   const fetchCurrentStaffResponsable = async () => {
     const identity = getViewerIdentity()
     if (!identity?.id) { setCurrentStaffResponsable([]); return [] }
@@ -3426,9 +3463,7 @@ export default function StockMagasin() {
     if (!originalSale) {
       return { ok: false, message: "Vente d'origine introuvable — rembourse manuellement via Rechercher un ticket." }
     }
-    const currentSebUser = JSON.parse(localStorage.getItem('sebphone_user') || '{}')
-    const staffNameNow = currentSebUser?.name || 'Staff'
-    const staffIdNow = currentSebUser?.role === 'employe' ? currentSebUser?.id : null
+    const { staffId: staffIdNow, staffName: staffNameNow } = getSaleIdentity()
     const refundPM = originalSale.payment_method === 'mixed' ? 'cash' : (originalSale.payment_method || 'cash')
     const montantNeg = -montant
     const { data: refundSale, error: refundErr } = await supabase.from('shop_sales').insert({
@@ -3628,6 +3663,9 @@ export default function StockMagasin() {
       fournisseur_id: itemForm.fournisseur_id || null,
       description: itemForm.description || null,
       tva_rate: Number(itemForm.tva_rate) || 21,
+      // Propriété du produit, commune aux 4 magasins : elle vit sur le
+      // catalogue, pas sur la ligne de stock d'un magasin.
+      disponible_sur_commande: itemForm.disponible_sur_commande,
     }
 
     const stockParts = {
@@ -3639,7 +3677,6 @@ export default function StockMagasin() {
       price_max: itemForm.price_max || 0,
       barcode: finalBarcode,
       sans_stock: itemForm.sans_stock,
-      disponible_sur_commande: itemForm.disponible_sur_commande,
     }
 
     if (editItem) {
@@ -3786,6 +3823,12 @@ export default function StockMagasin() {
   const cartSearchResults = [...cartSearchArticles, ...cartSearchEcrans, ...cartSearchPhones]
 
   const addToCart = (item) => {
+    // Seul garde-fou de stock du parcours article : il n'en existait aucun
+    // avant. Couvre aussi la recherche par code-barres, qui passe par ici.
+    if (enRupture(item)) {
+      alert(`« ${item.name} » est en rupture de stock.\n\nPour le vendre malgré tout, coche « Disponible sur commande » dans sa fiche article.`)
+      return
+    }
     setCart(prev => {
       const existing = prev.find(c => c.item_id === item.id)
       if (existing) {
@@ -3886,13 +3929,7 @@ export default function StockMagasin() {
     if ((cart.length === 0 && repairsInCart.length === 0 && newRepairsInCart.length === 0 && phonesInCart.length === 0) || !isFullyPaid) return
     setCheckoutLoading(true)
 
-    const currentSebUser = JSON.parse(
-      localStorage.getItem('sebphone_user') || '{}'
-    )
-    const staffName = currentSebUser?.name || 'Staff'
-    const staffId = currentSebUser?.role === 'employe'
-      ? currentSebUser?.id
-      : null
+    const { staffId, staffName } = getSaleIdentity()
 
     const cashRaw = paymentSplits
       .filter(p => p.method === 'cash')
@@ -4399,9 +4436,9 @@ export default function StockMagasin() {
       alert('Indique une raison')
       return
     }
-    const staffName = JSON.parse(
-      localStorage.getItem('sebphone_user') || '{}'
-    )?.nom || 'Staff'
+    // Lisait `?.nom` — champ inexistant (c'est `name`) : tous les mouvements
+    // étaient enregistrés sous « Staff ».
+    const { staffName } = getSaleIdentity()
 
     await supabase.from('cash_movements').insert({
       magasin_id: magasin,
@@ -4523,10 +4560,7 @@ export default function StockMagasin() {
   const confirmClosure = async () => {
     if (!closureData) return
     setClosureLoading(true)
-    const currentSebUser = JSON.parse(
-      localStorage.getItem('sebphone_user') || '{}'
-    )
-    const staffName = currentSebUser?.name || 'Staff'
+    const { staffName } = getSaleIdentity()
     const prelevementFinal = Number(prelevementAmount) || 0
 
     const { data: newClosure, error: closureErr } = await supabase
@@ -8251,15 +8285,24 @@ export default function StockMagasin() {
                 </p>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
-                  {posFiltered.map((item) => (
+                  {posFiltered.map((item) => {
+                    const rupture = enRupture(item)
+                    const commande = surCommande(item)
+                    return (
                     // <div role="button"> et non <button> : la vignette est elle-même
                     // cliquable, or un <button> imbriqué dans un <button> est invalide.
-                    <div key={item.id} role="button" tabIndex={0}
-                      onClick={() => addToCart(item)}
+                    <div key={item.id} role="button" tabIndex={rupture ? -1 : 0}
+                      aria-disabled={rupture}
+                      onClick={rupture ? undefined : () => addToCart(item)}
                       onKeyDown={(e) => {
+                        if (rupture) return
                         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addToCart(item) }
                       }}
-                      className="text-left bg-gray-50 hover:bg-gray-100 rounded-xl p-3 transition-all border border-transparent hover:border-[#1B2A4A] cursor-pointer">
+                      className={`text-left rounded-xl p-3 transition-all border ${
+                        rupture
+                          ? 'bg-gray-100 border-transparent opacity-50 cursor-not-allowed'
+                          : 'bg-gray-50 hover:bg-gray-100 border-transparent hover:border-[#1B2A4A] cursor-pointer'
+                      }`}>
                       {item.image_url ? (
                         <div
                           // stopPropagation : sans lui, zoomer ajouterait aussi au panier.
@@ -8283,8 +8326,19 @@ export default function StockMagasin() {
                       <p className="text-sm font-bold text-[#00B4CC]">
                         {item.sale_price}€
                       </p>
+                      {commande && (
+                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-bold">
+                          Sur commande
+                        </span>
+                      )}
+                      {rupture && (
+                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-gray-200 text-gray-500 text-[10px] font-bold">
+                          Rupture
+                        </span>
+                      )}
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )
             })()}
@@ -8776,13 +8830,20 @@ export default function StockMagasin() {
                             {item.sans_stock ? (
                               <span className="text-gray-400 text-sm">—</span>
                             ) : (
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
-                                ${isLow
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-gray-100 text-gray-600'}`}>
-                                {isLow && <AlertTriangle size={11} />}
-                                {item.quantity ?? 0}
-                              </span>
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold
+                                  ${isLow
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-gray-100 text-gray-600'}`}>
+                                  {isLow && <AlertTriangle size={11} />}
+                                  {item.quantity ?? 0}
+                                </span>
+                                {item.disponible_sur_commande && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-bold whitespace-nowrap">
+                                    Sur commande
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td className="px-4 py-3">
