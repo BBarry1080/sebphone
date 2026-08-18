@@ -1168,6 +1168,7 @@ export default function StockMagasin() {
   // Charge la session caisse depuis localStorage à chaque changement de magasin
   useEffect(() => {
     if (!magasin) return
+    if (caisseSession) return // une session active ne doit JAMAIS être écrasée par une navigation de magasin — seul "Changer" peut la terminer
     const key = `sebphone_caisse_session_${magasin}`
     const raw = localStorage.getItem(key)
     if (raw) {
@@ -1206,22 +1207,23 @@ export default function StockMagasin() {
 
   const checkPlanningMismatch = async (session) => {
     if (!session?.staffId || !magasin) return
-    // Un responsable du magasin y est toujours legitime : pas de controle
-    // de planning pour lui, il n'a pas de creneau fixe sur ses magasins.
     if (session.responsableMagasins?.includes(magasin)) return
     if (session.grade === 'admin' || session.grade === 'responsable') return
     const todayStr = new Date().toISOString().slice(0, 10)
     const { data: staffData } = await supabase
-      .from('staff').select('id, name')
-      .eq('magasin_id', magasin).eq('active', true)
-    const staffIds = (staffData || []).map((s) => s.id)
+      .from('staff').select('id, name, magasin_id, responsable_magasins')
+      .eq('active', true)
+    const staffAtThisStore = (staffData || []).filter(
+      (s) => s.magasin_id === magasin || (s.responsable_magasins || []).includes(magasin)
+    )
+    const staffIds = staffAtThisStore.map((s) => s.id)
     if (staffIds.length === 0) return
     const { data: schedData } = await supabase
       .from('staff_schedule_dates').select('staff_id, heure_debut, heure_fin')
       .in('staff_id', staffIds).eq('date', todayStr).eq('repos', false)
       .not('heure_debut', 'is', null)
     const scheduled = (schedData || [])
-      .map((s) => ({ ...s, name: staffData.find((st) => st.id === s.staff_id)?.name }))
+      .map((s) => ({ ...s, name: staffAtThisStore.find((st) => st.id === s.staff_id)?.name }))
       .filter((s) => s.name)
     if (scheduled.length === 0) return
     const isExpected = scheduled.some((s) => s.staff_id === session.staffId)
@@ -1264,9 +1266,47 @@ export default function StockMagasin() {
     setScheduledTodayMismatch([])
   }
 
-  const handleChangeUser = async () => {
-    if (!caisseSession) return
+  const [showConfirmPin, setShowConfirmPin] = useState(false)
+  const [confirmPin, setConfirmPin] = useState('')
+  const [confirmPinError, setConfirmPinError] = useState(false)
 
+  const handleChangeUser = () => {
+    if (!caisseSession) return
+    setConfirmPin('')
+    setConfirmPinError(false)
+    setShowConfirmPin(true)
+  }
+
+  const handleConfirmPinDigit = (digit) => {
+    if (confirmPinError) return
+    setConfirmPin((prev) => {
+      if (prev.length >= 4) return prev
+      const next = prev + String(digit)
+      if (next.length === 4) setTimeout(() => verifyConfirmPin(next), 100)
+      return next
+    })
+  }
+  const handleConfirmPinErase = () => {
+    if (confirmPinError) return
+    setConfirmPin((prev) => prev.slice(0, -1))
+  }
+
+  const verifyConfirmPin = async (submittedPin) => {
+    const { data: emp } = await supabase
+      .from('staff').select('id')
+      .eq('pin_code', submittedPin).eq('active', true).maybeSingle()
+    if (emp && emp.id === caisseSession?.staffId) {
+      setShowConfirmPin(false)
+      setConfirmPin('')
+      executeChangeUser()
+    } else {
+      setConfirmPinError(true)
+      setTimeout(() => { setConfirmPinError(false); setConfirmPin('') }, 1200)
+    }
+  }
+
+  const executeChangeUser = async () => {
+    if (!caisseSession) return
     // Visite d'un responsable : aucun pointage n'a ete cree, donc ni depart
     // a enregistrer ni heures supplementaires a declarer.
     if (!caisseSession.pointageId) {
@@ -1275,14 +1315,12 @@ export default function StockMagasin() {
       setCaisseSession(null)
       return
     }
-
     const { data: todaySchedule } = await supabase
       .from('staff_schedule_dates')
       .select('heure_fin')
       .eq('staff_id', caisseSession.staffId)
       .eq('date', new Date().toISOString().slice(0, 10))
       .maybeSingle()
-
     let heuresSupData = null
     if (todaySchedule?.heure_fin) {
       const now = new Date()
@@ -1310,18 +1348,14 @@ export default function StockMagasin() {
         }
       }
     }
-
     if (!window.confirm('Terminer votre session sur ce poste ?')) return
-
     const { error: departErr } = await supabase.from('staff_pointages')
       .update({ heure_depart: new Date().toISOString() })
       .eq('id', caisseSession.pointageId)
     if (departErr) alert('Erreur enregistrement du départ : ' + departErr.message)
-
     if (heuresSupData) {
       await supabase.from('staff_heures_sup').insert(heuresSupData)
     }
-
     localStorage.removeItem(`sebphone_caisse_session_${magasin}`)
     setCaisseSession(null)
   }
@@ -4793,6 +4827,62 @@ export default function StockMagasin() {
             magasinLabel={MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
             onUnlock={handleUnlock}
           />
+        </div>
+      )}
+
+      {showConfirmPin && (
+        <div className="fixed inset-0 z-[150] backdrop-blur-md bg-black/40 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl px-6 py-6 w-full max-w-xs text-center">
+            <p className="text-sm font-semibold text-gray-700 mb-1">
+              Confirme ton code, {caisseSession?.staffName?.split(' ')[0]}
+            </p>
+            <p className="text-xs text-gray-400 mb-4">
+              Seul ton code peut liberer ce poste
+            </p>
+            <div className="flex justify-center gap-2 mb-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={`w-3 h-3 rounded-full ${
+                    confirmPinError ? 'bg-red-500' : i < confirmPin.length ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+            {confirmPinError && (
+              <p className="text-xs text-red-500 mb-3">Code incorrect</p>
+            )}
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => handleConfirmPinDigit(n)}
+                  className="h-12 rounded-lg bg-gray-100 hover:bg-gray-200 text-lg font-semibold"
+                >
+                  {n}
+                </button>
+              ))}
+              <div />
+              <button
+                onClick={() => handleConfirmPinDigit(0)}
+                className="h-12 rounded-lg bg-gray-100 hover:bg-gray-200 text-lg font-semibold"
+              >
+                0
+              </button>
+              <button
+                onClick={handleConfirmPinErase}
+                className="h-12 rounded-lg bg-gray-100 hover:bg-gray-200 text-lg"
+              >
+                ⌫
+              </button>
+            </div>
+            <button
+              onClick={() => { setShowConfirmPin(false); setConfirmPin(''); setConfirmPinError(false) }}
+              className="text-xs text-gray-400 underline"
+            >
+              Annuler
+            </button>
+          </div>
         </div>
       )}
 
