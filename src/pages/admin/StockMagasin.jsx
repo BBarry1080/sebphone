@@ -275,7 +275,16 @@ export default function StockMagasin() {
   const [movementPayment, setMovementPayment] = useState('cash')
   const [movements, setMovements] = useState([])
   const [lastClosure, setLastClosure] = useState(null)
-  const [todaysClosure, setTodaysClosure] = useState(null)
+  // Deux clôtures possibles par jour depuis l'index (magasin_id, closure_date,
+  // type) : la normale, puis éventuellement une « vente après fermeture ».
+  const [todaysClosures, setTodaysClosures] = useState([])
+  const [ventesApresFermeture, setVentesApresFermeture] = useState(0)
+  // `type` est nul sur les clôtures antérieures à la colonne : on les traite
+  // comme normales, sans quoi elles disparaîtraient de l'affichage.
+  const todaysClosureNormale = todaysClosures.find((c) => c.type !== 'apres_fermeture') || null
+  const todaysClosureApres = todaysClosures.find((c) => c.type === 'apres_fermeture') || null
+  const peutCloturerApresFermeture =
+    !!todaysClosureNormale && !todaysClosureApres && ventesApresFermeture > 0
   const [nowTick, setNowTick] = useState(Date.now())
   const [showClosureModal, setShowClosureModal] = useState(false)
   const [closureData, setClosureData] = useState(null)
@@ -1498,7 +1507,7 @@ export default function StockMagasin() {
     setLoadingClosuresTreso(true)
     const { data } = await supabase
       .from('cash_closures')
-      .select('id, closure_date, ca_total, staff_name')
+      .select('id, closure_date, ca_total, staff_name, type')
       .eq('magasin_id', magasinId)
       .order('closure_date', { ascending: false })
       .limit(60)
@@ -2928,19 +2937,31 @@ export default function StockMagasin() {
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Brussels' })
     // Depuis l'ajout du type ('normale' | 'apres_fermeture'), l'unicité porte
     // sur (magasin_id, closure_date, type) : il peut y avoir 2 clôtures le même
-    // jour. `.maybeSingle()` levait alors une erreur et laissait la caisse se
-    // croire non clôturée — on garde la plus récente.
+    // jour. On remonte les deux et l'appelant dérive celle qui l'intéresse.
     const { data, error } = await supabase
       .from('cash_closures')
       .select('*')
       .eq('magasin_id', magasin)
       .eq('closure_date', todayStr)
       .order('period_end', { ascending: false })
-      .limit(1)
-      .maybeSingle()
     if (error) console.error('fetchTodaysClosure error:', error)
-    setTodaysClosure(data || null)
-    return data
+    const liste = data || []
+    setTodaysClosures(liste)
+
+    // Ventes postérieures à la clôture normale : elles seules justifient une
+    // seconde clôture. Comptage en `head` — on n'a besoin que du nombre.
+    const normale = liste.find((c) => c.type !== 'apres_fermeture')
+    if (normale) {
+      const { count } = await supabase
+        .from('shop_sales')
+        .select('id', { count: 'exact', head: true })
+        .eq('magasin_id', magasin)
+        .gt('created_at', normale.period_end)
+      setVentesApresFermeture(count || 0)
+    } else {
+      setVentesApresFermeture(0)
+    }
+    return liste
   }
 
   const fetchMovementsSince = async (sinceDate) => {
@@ -4459,7 +4480,10 @@ export default function StockMagasin() {
     fetchMovementsSince(lastClosure?.period_end || '1970-01-01T00:00:00Z')
   }
 
-  const openClosureModal = async () => {
+  // `type` : 'normale' ou 'apres_fermeture'. La période part toujours du
+  // period_end de la dernière clôture — qui est justement la normale du jour
+  // dans le second cas, donc seules les ventes postérieures sont comptées.
+  const openClosureModal = async (type = 'normale') => {
     const periodStart = lastClosure?.period_end || '1970-01-01T00:00:00Z'
     const periodEnd = new Date().toISOString()
 
@@ -4548,6 +4572,7 @@ export default function StockMagasin() {
       }))
 
     setClosureData({
+      type,
       periodStart, periodEnd, caTotal, ticketCount, ticketMoyen,
       cashTotal, bancontactTotal, virementTotal, categoryTotals,
       tvaBase21, tvaMontant21, movements: movs,
@@ -4570,6 +4595,7 @@ export default function StockMagasin() {
       .from('cash_closures')
       .insert({
         magasin_id: magasin,
+        type: closureData.type || 'normale',
         period_start: closureData.periodStart,
         period_end: closureData.periodEnd,
         ca_total: closureData.caTotal,
@@ -4598,7 +4624,9 @@ export default function StockMagasin() {
 
     if (closureErr) {
       if (closureErr.code === '23505') {
-        alert('Caisse déjà clôturée aujourd\'hui pour ce magasin. Une seule clôture par jour est autorisée.')
+        alert(closureData.type === 'apres_fermeture'
+          ? 'Une clôture « vente après fermeture » existe déjà aujourd\'hui pour ce magasin.'
+          : 'Caisse déjà clôturée aujourd\'hui pour ce magasin. Une seule clôture normale par jour est autorisée.')
         await fetchTodaysClosure()
       } else {
         alert('Erreur : ' + closureErr.message)
@@ -4610,13 +4638,16 @@ export default function StockMagasin() {
     const magasinLabel = MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin
     const holderDefaut = `Magasin — ${magasinLabel}`
     const dateLabel = new Date(closureData.periodEnd).toLocaleDateString('fr-BE')
+    // Sans ce suffixe, les lignes des deux clôtures d'une même journée sont
+    // indistinguables en trésorerie — seul le reference_id les sépare.
+    const suffixeType = closureData.type === 'apres_fermeture' ? ' (après fermeture)' : ''
     const treasoRows = []
     if (prelevementFinal > 0) {
       treasoRows.push({
         type: 'entree', source: 'cloture', payment_method: 'cash',
         magasin_id: magasin, holder: holderDefaut, amount: prelevementFinal,
         reference_id: newClosure.id,
-        description: `Clôture caisse (cash) — ${dateLabel}`,
+        description: `Clôture caisse (cash) — ${dateLabel}${suffixeType}`,
         created_by: staffName,
       })
     }
@@ -4625,7 +4656,7 @@ export default function StockMagasin() {
         type: 'entree', source: 'cloture', payment_method: 'bancontact',
         magasin_id: magasin, holder: holderDefaut, amount: closureData.bancontactTotal,
         reference_id: newClosure.id,
-        description: `Clôture caisse (bancontact) — ${dateLabel}`,
+        description: `Clôture caisse (bancontact) — ${dateLabel}${suffixeType}`,
         created_by: staffName,
       })
     }
@@ -4634,7 +4665,7 @@ export default function StockMagasin() {
         type: 'entree', source: 'cloture', payment_method: 'virement',
         magasin_id: magasin, holder: holderDefaut, amount: closureData.virementTotal,
         reference_id: newClosure.id,
-        description: `Clôture caisse (virement) — ${dateLabel}`,
+        description: `Clôture caisse (virement) — ${dateLabel}${suffixeType}`,
         created_by: staffName,
       })
     }
@@ -4643,7 +4674,7 @@ export default function StockMagasin() {
         type: 'entree', source: 'cloture', payment_method: 'cash',
         magasin_id: magasin, holder: holderDefaut, amount: 0,
         reference_id: newClosure.id,
-        description: `Clôture caisse (aucun encaissement) — ${dateLabel}`,
+        description: `Clôture caisse (aucun encaissement) — ${dateLabel}${suffixeType}`,
         created_by: staffName,
       })
     }
@@ -4698,6 +4729,7 @@ export default function StockMagasin() {
     }
     printClosureViaAgent({
       reportNumber: (lastClosure ? 1 : 0) + 1,
+      typeCloture: closureData.type || 'normale',
       companyName: 'SLT GROUP (SRL)',
       tva: 'BE1028.764.677',
       caisse: magasin,
@@ -5577,18 +5609,33 @@ export default function StockMagasin() {
               className="py-3 border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-[#1B2A4A]">
               Imprimer récap du jour
             </button>
-            {todaysClosure ? (
+            {peutCloturerApresFermeture ? (
+              // Pas soumis à canCloseNow : par définition on est déjà après la
+              // clôture du soir, et une vente à 00h30 doit rester clôturable.
+              <button onClick={() => openClosureModal('apres_fermeture')}
+                className="py-3 bg-amber-500 text-white rounded-xl text-sm font-bold hover:opacity-90">
+                Clôture — vente après fermeture
+                <span className="block text-[10px] font-normal opacity-90">
+                  {ventesApresFermeture} vente{ventesApresFermeture > 1 ? 's' : ''} depuis la clôture
+                </span>
+              </button>
+            ) : todaysClosureNormale ? (
               <div className="bg-gray-100 border border-gray-200 rounded-2xl p-4 text-center">
                 <p className="text-gray-500 text-sm mb-1">
                   🔒 Caisse déjà clôturée aujourd'hui
                 </p>
                 <p className="text-[#1B2A4A] font-bold">
-                  Par {todaysClosure.staff_name || 'Admin'} à{' '}
-                  {new Date(todaysClosure.period_end).toLocaleTimeString('fr-BE')}
+                  Par {todaysClosureNormale.staff_name || 'Admin'} à{' '}
+                  {new Date(todaysClosureNormale.period_end).toLocaleTimeString('fr-BE')}
                 </p>
                 <p className="text-[#00B4CC] font-bold text-lg mt-1">
-                  CA {Number(todaysClosure.ca_total).toFixed(2)}€
+                  CA {Number(todaysClosureNormale.ca_total).toFixed(2)}€
                 </p>
+                {todaysClosureApres && (
+                  <p className="text-amber-700 text-xs font-bold mt-2 bg-amber-50 rounded-lg py-1">
+                    + Après fermeture : {Number(todaysClosureApres.ca_total).toFixed(2)}€
+                  </p>
+                )}
               </div>
             ) : !canCloseNow ? (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
@@ -6258,6 +6305,7 @@ export default function StockMagasin() {
                           {closuresListTreso.map((c) => (
                             <option key={c.id} value={c.id}>
                               {new Date(c.closure_date).toLocaleDateString('fr-BE')} — {Number(c.ca_total).toFixed(2)}€ ({c.staff_name || 'Admin'})
+                              {c.type === 'apres_fermeture' ? ' — après fermeture' : ''}
                             </option>
                           ))}
                         </select>
@@ -7053,7 +7101,14 @@ export default function StockMagasin() {
                       const selectedNewHolder = assignHolderForClosure[c.id] ?? ''
                       return (
                         <div key={c.id} className="bg-gray-50 rounded-xl p-3">
-                          <p className="font-bold text-[#1B2A4A] mb-2">{magNom}</p>
+                          <p className="font-bold text-[#1B2A4A] mb-2">
+                            {magNom}
+                            {c.type === 'apres_fermeture' && (
+                              <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-bold align-middle">
+                                Après fermeture
+                              </span>
+                            )}
+                          </p>
                           <div className="grid grid-cols-3 gap-2 text-xs mb-2">
                             <div>
                               <p className="text-[9px] text-gray-500 uppercase">💵 Cash</p>
@@ -7738,7 +7793,14 @@ export default function StockMagasin() {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-[#1B2A4A]">Ticket de clôture</h3>
+              <h3 className="font-bold text-[#1B2A4A]">
+                Ticket de clôture
+                {ticketToShow.type === 'apres_fermeture' && (
+                  <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-bold align-middle">
+                    Après fermeture
+                  </span>
+                )}
+              </h3>
               <button onClick={() => { setShowTicketModal(false); setTicketToShow(null) }}>
                 <X size={18} className="text-gray-400" />
               </button>
@@ -7746,6 +7808,7 @@ export default function StockMagasin() {
             <div className="p-4">
               <ZFinancierReport
                 reportNumber={reportNum}
+                typeCloture={ticketToShow.type || 'normale'}
                 caisse={1}
                 dateTime={new Date(ticketToShow.period_end)}
                 periodStart={new Date(ticketToShow.period_start)}
@@ -8654,11 +8717,24 @@ export default function StockMagasin() {
               className="w-full mt-2 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:border-[#1B2A4A]">
               Imprimer récap du jour
             </button>
-            {todaysClosure ? (
+            {peutCloturerApresFermeture ? (
+              <button onClick={() => openClosureModal('apres_fermeture')}
+                className="w-full mt-2 py-2.5 bg-amber-500 text-white rounded-xl text-xs font-bold hover:opacity-90">
+                Clôture — vente après fermeture
+                <span className="block text-[10px] font-normal opacity-90">
+                  {ventesApresFermeture} vente{ventesApresFermeture > 1 ? 's' : ''} depuis la clôture
+                </span>
+              </button>
+            ) : todaysClosureNormale ? (
               <div className="w-full mt-2 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-center">
                 <p className="text-gray-500 text-xs">
-                  🔒 Déjà clôturé aujourd'hui — {Number(todaysClosure.ca_total).toFixed(2)}€
+                  🔒 Déjà clôturé aujourd'hui — {Number(todaysClosureNormale.ca_total).toFixed(2)}€
                 </p>
+                {todaysClosureApres && (
+                  <p className="text-amber-700 text-[10px] font-bold mt-0.5">
+                    + après fermeture {Number(todaysClosureApres.ca_total).toFixed(2)}€
+                  </p>
+                )}
               </div>
             ) : !canCloseNow ? (
               <div className="w-full mt-2 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-center">
@@ -9446,6 +9522,7 @@ export default function StockMagasin() {
             )}
             <ZFinancierReport
               reportNumber={(lastClosure ? 1 : 0) + 1}
+              typeCloture={closureData.type || 'normale'}
               caisse={magasin}
               dateTime={new Date(closureData.periodEnd)}
               periodStart={new Date(closureData.periodStart)}

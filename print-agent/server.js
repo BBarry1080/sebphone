@@ -120,6 +120,10 @@ async function buildAndPrintClosure(data) {
   printer.alignCenter();
   printer.bold(true);
   printer.println(`Z FINANCIER #${data.reportNumber}`);
+  // Deux Z peuvent porter la meme date : la mention les distingue sur papier.
+  if (data.typeCloture === "apres_fermeture") {
+    printer.println("*** VENTE APRES FERMETURE ***");
+  }
   printer.println(data.companyName || "SLT GROUP");
   printer.bold(false);
   printer.println(data.tva || "BE1028.764.677");

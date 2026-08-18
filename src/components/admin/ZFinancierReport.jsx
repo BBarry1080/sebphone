@@ -82,6 +82,7 @@ export default function ZFinancierReport({
   totalCashEnCaisse = 0,
   totalCompte = 0,
   paperWidth = "80mm",
+  typeCloture = "normale",
   onPrint,
 }) {
   const boxWidth = paperWidth === "58mm" ? "220px" : "300px";
@@ -134,6 +135,12 @@ export default function ZFinancierReport({
         <div className="text-center font-bold" style={{ fontSize: "14px" }}>
           Z FINANCIER #{reportNumber}
         </div>
+        {/* Deux Z peuvent porter la même date : la mention les distingue. */}
+        {typeCloture === "apres_fermeture" && (
+          <div className="text-center font-bold" style={{ fontSize: "11px" }}>
+            *** VENTE APRES FERMETURE ***
+          </div>
+        )}
         <div className="text-center font-bold">{STORE.name}</div>
         <div className="text-center">{STORE.tva}</div>
         <div className="text-center" style={{ marginTop: "6px" }}>Caisse : {caisse}</div>
