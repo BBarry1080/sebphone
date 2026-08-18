@@ -493,10 +493,10 @@ export default function Planning() {
             <div className="flex items-center justify-center h-40">
               <div className="w-6 h-6 border-2 border-[#00B4CC] border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : staffList.filter((s) => staffMagasinFilter === 'tous' || s.magasin_id === staffMagasinFilter).length === 0 ? (
+          ) : staffList.filter((s) => staffMagasinFilter === 'tous' || s.magasin_id === staffMagasinFilter || (s.responsable_magasins || []).includes(staffMagasinFilter)).length === 0 ? (
             <p className="text-center text-gray-400 text-sm py-8">Aucun employé dans ce magasin</p>
           ) : (
-            staffList.filter((s) => staffMagasinFilter === 'tous' || s.magasin_id === staffMagasinFilter).map((s) => {
+            staffList.filter((s) => staffMagasinFilter === 'tous' || s.magasin_id === staffMagasinFilter || (s.responsable_magasins || []).includes(staffMagasinFilter)).map((s) => {
               const initials = s.name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || '??'
               const isSel = selectedStaff?.id === s.id
               return (
