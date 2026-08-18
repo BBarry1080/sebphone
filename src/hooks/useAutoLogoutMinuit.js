@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseReady } from '../lib/supabase'
-import {
-  dateBelge, msJusquaMinuitBelge, purgeSessionLocale, estAdminSession,
-} from '../utils/session'
+import { dateBelge, msJusquaMinuitBelge, purgeSessionLocale } from '../utils/session'
 
 const MS_AVERTISSEMENT = 5 * 60 * 1000 // bandeau 5 min avant minuit
 
@@ -13,7 +11,8 @@ const lireUser = () => {
 
 // Déconnecte le compte à minuit (heure belge) pour que la personne du lendemain
 // soit obligée d'ouvrir sa propre session au lieu de reprendre celle de la
-// veille. Les admins en sont exemptés.
+// veille. Sans exception : admins et responsables sont déconnectés comme les
+// autres.
 //
 // Deux mécanismes complémentaires : un minuteur pour le poste resté allumé, et
 // une comparaison de dates au montage pour le poste éteint ou mis en veille —
@@ -25,7 +24,6 @@ export function useAutoLogoutMinuit() {
   useEffect(() => {
     const user = lireUser()
     if (!user || Object.keys(user).length === 0) return
-    if (estAdminSession(user)) return
 
     const deconnecter = async () => {
       if (isSupabaseReady) await supabase.auth.signOut()

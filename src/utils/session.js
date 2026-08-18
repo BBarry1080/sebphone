@@ -39,7 +39,3 @@ export const purgeSessionLocale = () => {
   }
   clesCaisse.forEach((cle) => localStorage.removeItem(cle))
 }
-
-// Les patrons ne sont jamais déconnectés automatiquement : accès 24h/24.
-export const estAdminSession = (user) =>
-  user?.is_admin === true || user?.grade === 'admin' || user?.role === 'admin'
