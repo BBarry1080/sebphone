@@ -46,6 +46,16 @@ const getBrandsForCategory = (categorie) => {
 
 const usesImei = (categorie) => categorie === 'telephone'
 
+// Prix de vente proposé par défaut au rachat — l'employé reste libre de le
+// modifier, sa saisie fige alors la valeur (voir sale_price_touched).
+const SALE_PRICE_MULTIPLIER = 1.5
+
+const computeSalePrice = (purchasePrice) => {
+  const base = parseFloat(purchasePrice)
+  if (!base || base <= 0) return ''
+  return String(Math.round(base * SALE_PRICE_MULTIPLIER))
+}
+
 export default function Registre() {
   const currentUser = useCurrentUser()
   const isAdmin = useIsAdmin()
@@ -141,6 +151,8 @@ export default function Registre() {
     phone_condition: 'occasion',
     phone_grade: 'Bon état',
     battery_health: '',
+    sale_price: '',
+    sale_price_touched: false,
     showSuggestions: false,
   })
   const [phones, setPhones] = useState([emptyPhone()])
@@ -151,7 +163,18 @@ export default function Registre() {
     setPhones((prev) => prev.filter((_, i) => i !== index))
   }
   const updatePhone = (index, field, value) => {
-    setPhones((prev) => prev.map((p, i) => i === index ? { ...p, [field]: value } : p))
+    setPhones((prev) => prev.map((p, i) => {
+      if (i !== index) return p
+      const next = { ...p, [field]: value }
+      // Le prix de vente suit le prix d'achat tant que l'employé ne l'a pas
+      // saisi lui-même — y compris quand purchase_price est recalculé
+      // automatiquement en paiement mixte (cash + virement).
+      if (field === 'purchase_price' && !p.sale_price_touched) {
+        next.sale_price = computeSalePrice(value)
+      }
+      if (field === 'sale_price') next.sale_price_touched = true
+      return next
+    }))
   }
   const togglePhonePaymentMethod = (index, method) => {
     const current = phones[index].payment_method || ''
@@ -356,6 +379,12 @@ export default function Registre() {
         setError(`Appareil ${i + 1} : prix d'achat obligatoire`); return
       }
       if (!p.payment_method) { setError(`Appareil ${i + 1} : mode de paiement obligatoire`); return }
+      // Les appareils à reconditionner n'ont pas de prix de vente ici : il est
+      // fixé à la sortie du reconditionnement.
+      if (!editingEntry && p.phone_condition !== 'reconditionne' &&
+          (!p.sale_price || parseFloat(p.sale_price) <= 0)) {
+        setError(`Appareil ${i + 1} : prix de vente obligatoire`); return
+      }
     }
 
     console.log('Nb téléphones à insérer:', phones.length, phones)
@@ -425,21 +454,86 @@ export default function Registre() {
             phone_grade:      p.phone_condition !== 'neuf' ? p.phone_grade : null,
             reconditioning_status: p.phone_condition === 'reconditionne' ? 'en_attente' : null,
             added_to_stock:   false,
+            // Persisté au registre pour que le rattrapage manuel via
+            // « + Ajouter au stock » ne perde pas la valeur saisie.
+            battery_health:   p.battery_health || null,
             notes:            mixedNotes,
           }
         })
-        const { error: insertError } = await supabase
+        // Le registre est écrit en premier : c'est l'obligation légale. La mise
+        // en stock qui suit peut échouer sans remettre en cause le rachat.
+        const { data: insertedEntries, error: insertError } = await supabase
           .from('purchase_registry')
           .insert(inserts)
+          .select()
         if (insertError) throw insertError
 
+        // Entrée automatique en stock — sauf les appareils à reconditionner,
+        // dont la ligne phones est créée par StockReconditionnement à la fin
+        // du reconditionnement.
+        const stockFailures = []
+        let nbEnStock = 0
+        for (let i = 0; i < phones.length; i++) {
+          const p = phones[i]
+          if (p.phone_condition === 'reconditionne') continue
+          const registryRow = insertedEntries?.[i]
+          if (!registryRow) {
+            stockFailures.push(`${p.brand || ''} ${p.model}`.trim())
+            continue
+          }
+
+          const { data: newPhone, error: phoneErr } = await supabase
+            .from('phones')
+            .insert({
+              name:             `${p.brand || ''} ${p.model}`.trim(),
+              model:            p.model,
+              brand:            p.brand || '',
+              color:            p.color || '—',
+              storage:          p.storage || '—',
+              imei:             p.imei || null,
+              condition:        p.phone_condition || 'occasion',
+              grade:            p.phone_grade || '',
+              purchase_price:   Number(p.purchase_price) || 0,
+              price:            Number(p.sale_price),
+              status:           'disponible',
+              visible_on_site:  false,
+              magasins:         [sharedSeller.magasin_id],
+              added_by_magasin: sharedSeller.magasin_id,
+              fournisseur:      `${form.seller_first_name || ''} ${form.seller_last_name || ''}`.trim() || 'Rachat client',
+              tva_regime:       'marge',
+              parts_replaced:   [],
+              battery_health:   p.battery_health || null,
+              face_id_status:   p.face_id_status || null,
+              categorie:        p.categorie || 'telephone',
+            })
+            .select()
+            .single()
+
+          if (phoneErr || !newPhone) {
+            stockFailures.push(`${p.brand || ''} ${p.model}`.trim())
+            continue
+          }
+
+          await supabase
+            .from('purchase_registry')
+            .update({ added_to_stock: true, phone_id: newPhone.id })
+            .eq('id', registryRow.id)
+          nbEnStock++
+        }
+
         const nbRecond = phones.filter((p) => p.phone_condition === 'reconditionne').length
-        const nbRegistre = phones.length - nbRecond
         const parts    = []
-        if (nbRegistre > 0) parts.push(`${nbRegistre} téléphone${nbRegistre > 1 ? 's' : ''} enregistré${nbRegistre > 1 ? 's' : ''} au registre ✅`)
+        if (nbEnStock > 0)  parts.push(`${nbEnStock} téléphone${nbEnStock > 1 ? 's' : ''} enregistré${nbEnStock > 1 ? 's' : ''} au registre et ajouté${nbEnStock > 1 ? 's' : ''} au stock ✅`)
         if (nbRecond > 0)   parts.push(`${nbRecond} téléphone${nbRecond > 1 ? 's' : ''} envoyé${nbRecond > 1 ? 's' : ''} en reconditionnement 🔧`)
-        parts.push("Cliquez 'Ajouter au stock' pour les rendre disponibles à la vente.")
         setSuccess(parts.join(' · '))
+
+        if (stockFailures.length > 0) {
+          alert(
+            `⚠️ Rachat bien enregistré au registre, mais la mise en stock a échoué pour :\n` +
+            `${stockFailures.map((f) => `• ${f}`).join('\n')}\n\n` +
+            `Utilise le bouton « + Ajouter au stock » dans la liste pour les ajouter manuellement.`
+          )
+        }
       }
 
       setShowForm(false)
@@ -772,7 +866,15 @@ export default function Registre() {
                         <span className="text-xs text-green-600 font-medium whitespace-nowrap">
                           ✓ Dans le stock
                         </span>
+                      ) : entry.phone_condition === 'reconditionne' ? (
+                        <span className="text-xs text-amber-600 font-medium whitespace-nowrap">
+                          🔧 En reconditionnement
+                        </span>
                       ) : (
+                        /* Rattrapage : entrées antérieures à l'entrée en stock
+                           automatique, et rachats dont la création de la ligne
+                           phones a échoué. Le cas normal n'affiche plus ce
+                           bouton — added_to_stock est déjà vrai. */
                         <button
                           onClick={() => handleAddToStock(entry)}
                           className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-xl text-xs font-bold hover:bg-green-700 transition-all whitespace-nowrap cursor-pointer"
@@ -1393,6 +1495,37 @@ export default function Registre() {
                             </div>
                           )}
                         </div>
+
+                        {/* Prix de vente — l'appareil entre directement en stock.
+                            Sans objet pour un reconditionnement : le prix sera
+                            fixé à la sortie de l'atelier. */}
+                        {!editingEntry && (
+                          <div className="col-span-2">
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">
+                              Prix de vente (€) {phone.phone_condition !== 'reconditionne' && '*'}
+                            </label>
+                            {phone.phone_condition === 'reconditionne' ? (
+                              <div className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-xl text-xs text-gray-500">
+                                🔧 Fixé à la sortie du reconditionnement
+                              </div>
+                            ) : (
+                              <>
+                                <input
+                                  type="number"
+                                  value={phone.sale_price}
+                                  onChange={(e) => updatePhone(index, 'sale_price', e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:border-[#00B4CC] outline-none"
+                                  placeholder="225"
+                                />
+                                <p className="text-[10px] text-gray-400 mt-1">
+                                  {phone.sale_price_touched
+                                    ? 'Prix saisi manuellement — il ne suivra plus le prix d\'achat.'
+                                    : `Proposé automatiquement (prix d'achat × ${SALE_PRICE_MULTIPLIER}) — modifiable.`}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
