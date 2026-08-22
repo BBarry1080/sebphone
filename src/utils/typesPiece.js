@@ -19,11 +19,16 @@ export const TYPES_PIECE = [
 
 // Qualités d'une pièce : libellé + couleur du badge, au même endroit
 // pour éviter que les deux se désynchronisent d'un écran à l'autre.
+// Les clés sont les valeurs acceptées par la contrainte CHECK de
+// reparation_ecrans.qualite — la base fait référence.
+// labelCourt sert aux pastilles compactes, où le libellé complet casserait
+// la mise en page — il vit ici pour ne pas se désynchroniser de label.
 export const QUALITES = {
-  compatible:          { label: 'Compatible',       badge: 'bg-amber-50 text-amber-700' },
-  original_equivalent: { label: 'Qualité originale', badge: 'bg-cyan-50 text-cyan-700' },
-  original:            { label: '100% Original',    badge: 'bg-purple-50 text-purple-700' },
+  compatible:          { label: 'Compatible',        labelCourt: 'Compatible',    badge: 'bg-amber-50 text-amber-700' },
+  original_equivalent: { label: 'Qualité originale', labelCourt: 'Qualité orig.', badge: 'bg-cyan-50 text-cyan-700' },
+  '100_original':      { label: '100% Original',     labelCourt: '100% Orig.',    badge: 'bg-purple-50 text-purple-700' },
 }
 
-export const qualiteLabel = (q) => QUALITES[q]?.label || QUALITES.original.label
-export const qualiteBadge = (q) => QUALITES[q]?.badge || QUALITES.original.badge
+export const qualiteLabel = (q) => QUALITES[q]?.label || QUALITES['100_original'].label
+export const qualiteBadge = (q) => QUALITES[q]?.badge || QUALITES['100_original'].badge
+export const qualiteLabelCourt = (q) => QUALITES[q]?.labelCourt || QUALITES['100_original'].labelCourt

@@ -25,7 +25,7 @@ import { generateTicketPdfBase64 } from '../../utils/generateTicketPdf'
 import { generateFactureParticulierPdf } from '../../utils/generateFactureParticulierPdf'
 import emailjs from '@emailjs/browser'
 import { generateDevisPdfBase64 } from '../../utils/generateDevisPdf'
-import { TYPES_PIECE, qualiteLabel, qualiteBadge } from '../../utils/typesPiece'
+import { TYPES_PIECE, QUALITES, qualiteLabel, qualiteLabelCourt, qualiteBadge } from '../../utils/typesPiece'
 import PiecesNavigator from '../../components/admin/PiecesNavigator'
 import ImageLightbox from '../../components/admin/ImageLightbox'
 import { dateBelge } from '../../utils/session'
@@ -721,11 +721,8 @@ export default function StockMagasin() {
 
   const selectHubPieceRow = (row) => {
     const typeLabel = TYPES_PIECE.find((t) => t.id === row.type_piece)?.label || row.type_piece
-    const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
-      : row.qualite === 'original_equivalent' ? 'Qualité originale'
-      : '100% Original'
     const panneTexte = TYPES_PIECE.find((t) => t.id === row.type_piece)?.aQualite
-      ? `${typeLabel} — ${qualiteLabel}`
+      ? `${typeLabel} — ${qualiteLabel(row.qualite)}`
       : typeLabel
     setHubPieceRowSel(row)
     // La piece choisie fait autorite : elle aligne aussi le type et la
@@ -2373,7 +2370,7 @@ export default function StockMagasin() {
     }
     const typePieceInfo = TYPES_PIECE.find((t) => t.id === newEcranForm.type_piece)
     const qualiteAEnvoyer = typePieceInfo?.aQualite ? newEcranForm.qualite : 'compatible'
-    if (typePieceInfo?.aQualite && !['compatible', 'original_equivalent', 'original'].includes(newEcranForm.qualite)) {
+    if (typePieceInfo?.aQualite && !Object.keys(QUALITES).includes(newEcranForm.qualite)) {
       alert('Qualité invalide')
       return
     }
@@ -3424,10 +3421,6 @@ export default function StockMagasin() {
       alert('Choisis le technicien qui fera la réparation carte mère')
       return
     }
-    const qualiteLabel =
-      newRepairEcran.qualite === 'compatible' ? 'Compatible'
-      : newRepairEcran.qualite === 'original_equivalent' ? 'Qualité originale'
-      : '100% Original'
     const typePieceLabel = TYPES_PIECE.find((t) => t.id === newRepairEcran.type_piece)?.label || 'Pièce'
     setNewRepairsInCart((prev) => [...prev, {
       key: `${newRepairEcran.id}-${Date.now()}`,
@@ -3436,7 +3429,7 @@ export default function StockMagasin() {
       typePieceLabel,
       modele: newRepairEcran.modele,
       qualite: newRepairEcran.qualite,
-      qualiteLabel,
+      qualiteLabel: qualiteLabel(newRepairEcran.qualite),
       unit_price: Number(newRepairEcran.prix_defaut) || 0,
       clientNom: newRepairClientData.nom.trim(),
       tel: newRepairClientData.tel.trim() || null,
@@ -5192,9 +5185,9 @@ export default function StockMagasin() {
                         <select value={newEcranForm.qualite}
                           onChange={(e) => setNewEcranForm((f) => ({ ...f, qualite: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm">
-                          <option value="compatible">Compatible</option>
-                          <option value="original_equivalent">Qualité originale</option>
-                          <option value="original">100% Original</option>
+                          {Object.entries(QUALITES).map(([key, q]) => (
+                            <option key={key} value={key}>{q.label}</option>
+                          ))}
                         </select>
                       </div>
                     )}
@@ -5332,9 +5325,9 @@ export default function StockMagasin() {
                 ) : (
                   <div className="space-y-2">
                     {filtered.map((g) => {
-                      const qLabel = g.reparation_ecrans?.qualite === 'compatible' ? 'Compatible'
-                        : g.reparation_ecrans?.qualite === 'original_equivalent' ? 'Qualité originale'
-                        : g.reparation_ecrans?.qualite === 'original' ? '100% Original' : ''
+                      const qLabel = g.reparation_ecrans?.qualite
+                        ? qualiteLabel(g.reparation_ecrans.qualite)
+                        : ''
                       return (
                         <div key={g.id} className="bg-white rounded-2xl border border-gray-100 p-4">
                           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -5542,9 +5535,7 @@ export default function StockMagasin() {
                         <div>
                           <p className="text-sm font-bold text-[#1B2A4A]">{garantiePieceSel.modele}</p>
                           <p className="text-xs text-purple-700">
-                            {garantiePieceSel.qualite === 'compatible' ? 'Compatible'
-                              : garantiePieceSel.qualite === 'original_equivalent' ? 'Qualité originale'
-                              : '100% Original'}
+                            {qualiteLabel(garantiePieceSel.qualite)}
                           </p>
                         </div>
                         <button onClick={() => { setGarantiePieceSel(null); setGarantiePieceStep('type') }}
@@ -5609,8 +5600,7 @@ export default function StockMagasin() {
                           <div key={modele} className="bg-gray-50 rounded-lg p-1.5">
                             <p className="text-[10px] font-bold text-gray-600 px-1">{modele}</p>
                             {rows.map((row) => {
-                              const qLabel = row.qualite === 'compatible' ? 'Compatible'
-                                : row.qualite === 'original_equivalent' ? 'Qualité originale' : '100% Original'
+                              const qLabel = qualiteLabel(row.qualite)
                               return (
                                 <button key={row.id} onClick={() => setGarantiePieceSel(row)}
                                   className="w-full text-left hover:bg-purple-50 rounded px-1 py-1 text-[11px] text-gray-600 hover:text-purple-700 flex justify-between">
@@ -8149,9 +8139,6 @@ export default function StockMagasin() {
                         </div>
                       )
                     }
-                    const qualiteLabel = result.qualite === 'compatible' ? 'Compatible'
-                      : result.qualite === 'original_equivalent' ? 'Qualité originale'
-                      : '100% Original'
                     const stockEcran = getStockPourMagasin(result.id)
                     return (
                       <div key={`ecr-${result.id}`}
@@ -8164,7 +8151,7 @@ export default function StockMagasin() {
                         <p className="font-bold text-xs text-[#1B2A4A] line-clamp-2">
                           {result.modele}
                         </p>
-                        <p className="text-[10px] text-purple-700 font-bold mb-1">{qualiteLabel}</p>
+                        <p className="text-[10px] text-purple-700 font-bold mb-1">{qualiteLabel(result.qualite)}</p>
                         <p className="text-sm font-bold text-purple-700">
                           {Number(result.prix_defaut || 0).toFixed(2)}€
                         </p>
@@ -10070,9 +10057,6 @@ export default function StockMagasin() {
             <p className="text-xs text-gray-500 mb-3">Stock disponible dans ce magasin</p>
             <div className="space-y-2">
               {posEcranQualiteChoices.rows.map((row) => {
-                const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
-                  : row.qualite === 'original_equivalent' ? 'Qualité originale'
-                  : '100% Original'
                 const stockDisponible = getStockPourMagasin(row.id)
                 return (
                   <div key={row.id}
@@ -10082,7 +10066,7 @@ export default function StockMagasin() {
                         : 'bg-gray-50 border-gray-100'
                     }`}>
                     <div>
-                      <span className="text-sm font-bold text-[#1B2A4A] block">{qualiteLabel}</span>
+                      <span className="text-sm font-bold text-[#1B2A4A] block">{qualiteLabel(row.qualite)}</span>
                       <span className={`text-[10px] font-bold ${stockDisponible <= 0 ? 'text-red-500' : 'text-gray-500'}`}>
                         {stockDisponible} en stock
                       </span>
@@ -10105,9 +10089,6 @@ export default function StockMagasin() {
       )}
 
       {showNewRepairForm && newRepairEcran && (() => {
-        const qualiteLabel = newRepairEcran.qualite === 'compatible' ? 'Compatible'
-          : newRepairEcran.qualite === 'original_equivalent' ? 'Qualité originale'
-          : '100% Original'
         const autresQualites = ecranCatalogList.filter((e) =>
           e.marque === newRepairEcran.marque &&
           e.modele === newRepairEcran.modele &&
@@ -10122,7 +10103,7 @@ export default function StockMagasin() {
                     Réparation — {newRepairEcran.modele}
                   </h3>
                   <p className="text-xs text-purple-700 font-bold mt-0.5">
-                    {qualiteLabel} · {Number(newRepairEcran.prix_defaut || 0).toFixed(2)}€
+                    {qualiteLabel(newRepairEcran.qualite)} · {Number(newRepairEcran.prix_defaut || 0).toFixed(2)}€
                   </p>
                   <p className={`text-[10px] font-bold mt-0.5 ${getStockPourMagasin(newRepairEcran.id) <= 0 ? 'text-red-500' : 'text-gray-500'}`}>
                     {getStockPourMagasin(newRepairEcran.id)} en stock ici
@@ -10130,9 +10111,7 @@ export default function StockMagasin() {
                   {autresQualites.length > 1 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {autresQualites.map((row) => {
-                        const label = row.qualite === 'compatible' ? 'Compatible'
-                          : row.qualite === 'original_equivalent' ? 'Qualité orig.'
-                          : '100% Orig.'
+                        const label = qualiteLabelCourt(row.qualite)
                         const isCurrent = row.id === newRepairEcran.id
                         return (
                           <button key={row.id}
@@ -10337,14 +10316,11 @@ export default function StockMagasin() {
                           </div>
                           <div className="space-y-1.5">
                             {rows.map((row) => {
-                              const qualiteLabel = row.qualite === 'compatible' ? 'Compatible'
-                                : row.qualite === 'original_equivalent' ? 'Qualité originale'
-                                : '100% Original'
                               return (
                                 <button key={row.id} onClick={() => selectHubPieceRow(row)}
                                   className="w-full text-left bg-white hover:bg-purple-50 rounded-lg p-2 border border-gray-200 hover:border-purple-300 flex items-center justify-between">
                                   <div>
-                                    <span className="text-xs font-bold text-gray-700 block">{qualiteLabel}</span>
+                                    <span className="text-xs font-bold text-gray-700 block">{qualiteLabel(row.qualite)}</span>
                                     <span className={`text-[10px] font-bold ${getStockPourMagasin(row.id) > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                                       {getStockPourMagasin(row.id)} en stock
                                     </span>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { MAGASINS_PHYSIQUES } from '../../utils/magasins'
+import { qualiteLabel } from '../../utils/typesPiece'
 import { logActivity } from '../../lib/logActivity'
 import ReceiptTicket from './ReceiptTicket'
 import {
@@ -976,9 +977,7 @@ export default function CaisseAccueil({
                                 : row.disponible
                                   ? 'bg-white text-gray-600 border-gray-200 hover:border-[#00B4CC]'
                                   : 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'}`}>
-                            {row.qualite === 'compatible' ? 'Compatible'
-                              : row.qualite === 'original_equivalent' ? 'Qualité originale'
-                              : '100% Original'}
+                            {qualiteLabel(row.qualite)}
                             {!row.disponible && ' (indispo)'}
                           </button>
                         ))}
