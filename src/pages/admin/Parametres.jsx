@@ -250,7 +250,31 @@ const PERMISSION_GROUPS = [
       { key: 'stock_magasin', label: 'Stock magasin' },
       { key: 'rappel_ticket', label: 'Rappel ticket' },
       { key: 'modifier_prix_remises', label: 'Modifier prix et remises' },
+    ],
+  },
+  {
+    label: 'Caisse',
+    icon: '🧾',
+    perms: [
+      { key: 'caisse', label: 'Accès à la caisse' },
+      { key: 'cloturer_caisse', label: 'Clôturer la caisse' },
       { key: 'cloture_limitee', label: 'Clôture caisse limitée (ticket non imprimé)' },
+    ],
+  },
+  {
+    label: 'Catalogue réparation',
+    icon: '🔧',
+    perms: [
+      { key: 'voir_catalogue_pieces', label: 'Voir le catalogue des pièces' },
+      { key: 'modifier_prix_pieces', label: 'Modifier les prix des pièces (achat / défaut / min / max)' },
+      { key: 'modifier_stock_pieces', label: 'Modifier les quantités de pièces' },
+    ],
+  },
+  {
+    label: 'Garanties',
+    icon: '🛡️',
+    perms: [
+      { key: 'voir_garanties', label: 'Voir les garanties' },
     ],
   },
   {
@@ -319,7 +343,19 @@ const GRADES = [
 const GRADE_TO_LEGACY_PERMS = {
   admin: Object.fromEntries(ALL_PERMISSIONS.map((p) => [p, true])),
   responsable: Object.fromEntries(ALL_PERMISSIONS.map((p) => [p, true])),
-  technicien: { stock_magasin: true, caisse: true, voir_clients: true, voir_clients_interesses: true },
+  technicien: {
+    stock_magasin: true,
+    caisse: true,
+    voir_clients: true,
+    voir_clients_interesses: true,
+    modifier_prix_remises: true,   // remise en caisse jusqu'au prix min
+    cloturer_caisse: true,
+    voir_stock: true,              // téléphones : consulter
+    ajouter_stock: true,           // téléphones : ajouter
+    rappel_ticket: true,
+    voir_catalogue_pieces: true,   // catalogue : consulter, pas éditer
+    voir_garanties: true,
+  },
   vendeur: { stock_magasin: true, caisse: true, voir_clients: true, voir_clients_interesses: true },
   stagiaire: { stock_magasin: true, caisse: true },
 }
@@ -484,6 +520,25 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState(null)
 
+  // Cases à cocher : à l'édition on reflète les permissions réelles en base,
+  // à la création on part du preset du grade par défaut.
+  const [perms, setPerms] = useState(() => ({
+    ...DEFAULT_PERMS,
+    ...(isEdit
+      ? (employee.permissions || {})
+      : (GRADE_TO_LEGACY_PERMS[grade] || {})),
+  }))
+
+  const togglePerm = (key) =>
+    setPerms((prev) => ({ ...prev, [key]: !prev[key] }))
+
+  // Changer de grade ré-applique le preset ; l'utilisateur peut ensuite
+  // ajuster case par case sans que rien ne l'écrase.
+  const applyGrade = (nextGrade) => {
+    setGrade(nextGrade)
+    setPerms({ ...DEFAULT_PERMS, ...(GRADE_TO_LEGACY_PERMS[nextGrade] || {}) })
+  }
+
   useEffect(() => {
     if (!emailEdited && firstName && lastName) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -527,7 +582,9 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
       pin_code:   pinCode || null,
       hourly_wage: Number(hourlyWage) || 0,
       telephone:  telephone || null,
-      permissions: GRADE_TO_LEGACY_PERMS[grade] || {},
+      // On enregistre l'état réel des cases, pas le preset du grade —
+      // sinon toute personnalisation serait perdue à chaque sauvegarde.
+      permissions: grade === 'admin' ? GRADE_TO_LEGACY_PERMS.admin : perms,
       is_admin:   grade === 'admin',
       active:     true,
     }
@@ -691,7 +748,7 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
             <div className="grid grid-cols-2 gap-2">
               {GRADES.map((g) => (
                 <button key={g.id} type="button"
-                  onClick={() => setGrade(g.id)}
+                  onClick={() => applyGrade(g.id)}
                   disabled={g.id === 'admin' && !currentUserIsAdmin}
                   className={`px-3 py-2.5 rounded-xl text-sm font-bold border-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
                     grade === g.id
@@ -723,6 +780,42 @@ function EmployeeModal({ employee, onClose, onSaved, currentUserIsAdmin = false 
               </p>
             )}
           </div>
+
+          {grade !== 'admin' && (
+            <div>
+              <div className="flex items-baseline justify-between mb-2">
+                <label className="text-xs font-semibold text-[#1B2A4A]">Permissions</label>
+                <span className="text-[10px] text-gray-400">
+                  {Object.values(perms).filter(Boolean).length} / {ALL_PERMISSIONS.length} activées
+                </span>
+              </div>
+              <p className="text-[10px] text-gray-400 mb-2">
+                Pré-cochées selon le grade — ajuste librement case par case.
+              </p>
+              <div className="flex flex-col gap-3">
+                {PERMISSION_GROUPS.map((group) => (
+                  <div key={group.label} className="border border-gray-200 rounded-xl p-3">
+                    <p className="text-[11px] font-bold text-[#1B2A4A] mb-2">
+                      {group.icon} {group.label}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {group.perms.map((p) => (
+                        <label key={p.key} className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={perms[p.key] === true}
+                            onChange={() => togglePerm(p.key)}
+                            className="w-4 h-4 mt-0.5 accent-[#00B4CC] shrink-0"
+                          />
+                          <span>{p.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">{error}</p>

@@ -118,6 +118,12 @@ export default function StockMagasin() {
   const canRappelTicket  = isAdmin || usePermission('rappel_ticket')
   const canClotureLimitee = usePermission('cloture_limitee')
   const canSeeTresorerie = usePermission('voir_tresorerie')
+  const canCloturerCaisse    = usePermission('cloturer_caisse')
+  const canSeePieceCatalog   = usePermission('voir_catalogue_pieces')
+  const canModifyPiecePrices = usePermission('modifier_prix_pieces')
+  const canModifyPieceStock  = usePermission('modifier_stock_pieces')
+  const canEditPiece         = canModifyPiecePrices || canModifyPieceStock
+  const canSeeGaranties      = usePermission('voir_garanties')
 
   const [magasin, setMagasin] = useState('')
 
@@ -2246,15 +2252,18 @@ export default function StockMagasin() {
                   </p>
                 </div>
               </div>
-              <button onClick={() => openEditEcran(row)}
-                className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
-                <Pencil size={14} />
-              </button>
+              {canEditPiece && (
+                <button onClick={() => openEditEcran(row)}
+                  className="p-2 text-gray-400 hover:text-[#1B2A4A] hover:bg-gray-50 rounded-lg">
+                  <Pencil size={14} />
+                </button>
+              )}
             </>
           )}
         </div>
         {isEditing && (
           <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+            {canModifyPiecePrices && (
             <div className="grid grid-cols-4 gap-2">
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
@@ -2281,16 +2290,19 @@ export default function StockMagasin() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
               </div>
             </div>
+            )}
             <div className="flex gap-3 items-end flex-wrap">
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
-                  Quantité — {MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
-                </label>
-                <input key={editingEcran?.id} type="number" step="1" min="0"
-                  defaultValue={getStockPourMagasin(editingEcran?.id)}
-                  onBlur={(e) => setStockPourMagasin(editingEcran?.id, e.target.value)}
-                  className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-              </div>
+              {canModifyPieceStock && (
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">
+                    Quantité — {MAGASINS_LIST.find((m) => m.id === magasin)?.nom || magasin}
+                  </label>
+                  <input key={editingEcran?.id} type="number" step="1" min="0"
+                    defaultValue={getStockPourMagasin(editingEcran?.id)}
+                    onBlur={(e) => setStockPourMagasin(editingEcran?.id, e.target.value)}
+                    className="w-32 px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                </div>
+              )}
               <div className="flex-1 min-w-[180px]">
                 <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Fournisseur</label>
                 <select value={ecranForm.fournisseur_id}
@@ -2326,12 +2338,16 @@ export default function StockMagasin() {
   }
   const handleSaveEcran = async () => {
     if (!editingEcran) return
+    if (!canEditPiece) return
     setSavingEcran(true)
     const { error } = await supabase.from('reparation_ecrans').update({
-      prix_min: Number(ecranForm.prix_min) || 0,
-      prix_defaut: Number(ecranForm.prix_defaut) || 0,
-      prix_max: Number(ecranForm.prix_max) || 0,
-      cout_achat: Number(ecranForm.cout_achat) || 0,
+      // Sans la permission prix, on ne réécrit pas la grille tarifaire.
+      ...(canModifyPiecePrices ? {
+        prix_min: Number(ecranForm.prix_min) || 0,
+        prix_defaut: Number(ecranForm.prix_defaut) || 0,
+        prix_max: Number(ecranForm.prix_max) || 0,
+        cout_achat: Number(ecranForm.cout_achat) || 0,
+      } : {}),
       fournisseur_id: ecranForm.fournisseur_id || null,
       disponible: ecranForm.disponible,
       disponible_sur_commande: ecranForm.disponible_sur_commande,
@@ -4518,6 +4534,7 @@ export default function StockMagasin() {
   // period_end de la dernière clôture — qui est justement la normale du jour
   // dans le second cas, donc seules les ventes postérieures sont comptées.
   const openClosureModal = async (type = 'normale') => {
+    if (!canCloturerCaisse) { alert("Tu n'as pas la permission de clôturer la caisse"); return }
     const periodStart = lastClosure?.period_end || '1970-01-01T00:00:00Z'
     const periodEnd = new Date().toISOString()
 
@@ -5108,7 +5125,9 @@ export default function StockMagasin() {
             {[
               { key: 'stock', label: 'Stock' },
               { key: 'categories', label: 'Catégories' },
-              ...(trueIsAdmin ? [{ key: 'pieces', label: '📱 Réparations' }, { key: 'garanties', label: '🛡️ Garanties' }, { key: 'taches', label: '✅ Tâches clôture' }] : []),
+              ...((trueIsAdmin || canSeePieceCatalog) ? [{ key: 'pieces', label: '📱 Réparations' }] : []),
+              ...((trueIsAdmin || canSeeGaranties) ? [{ key: 'garanties', label: '🛡️ Garanties' }] : []),
+              ...(trueIsAdmin ? [{ key: 'taches', label: '✅ Tâches clôture' }] : []),
             ].map(tab => (
               <button key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
@@ -5121,9 +5140,9 @@ export default function StockMagasin() {
               </button>
             ))}
           </div>
-          {activeTab === 'pieces' && trueIsAdmin && (
+          {activeTab === 'pieces' && (trueIsAdmin || canSeePieceCatalog) && (
             <>
-              {!showNewEcranForm ? (
+              {!canModifyPiecePrices ? null : !showNewEcranForm ? (
                 <button onClick={() => setShowNewEcranForm(true)}
                   className="mb-4 flex items-center gap-1.5 bg-[#1B2A4A] text-white px-3 py-2 rounded-xl text-sm font-bold hover:bg-[#00B4CC]">
                   <Plus size={16}/> Nouveau modèle
@@ -5282,7 +5301,7 @@ export default function StockMagasin() {
                   pieces={ecranCatalogList}
                   getStock={getStockPourMagasin}
                   modelesConnus={modelesReference}
-                  onNewPiece={(typeId, modele, marque) => {
+                  onNewPiece={!canModifyPiecePrices ? undefined : (typeId, modele, marque) => {
                     setNewEcranForm((f) => ({
                       ...f,
                       type_piece: typeId,
@@ -5297,7 +5316,7 @@ export default function StockMagasin() {
               )}
             </>
           )}
-          {activeTab === 'garanties' && trueIsAdmin && (
+          {activeTab === 'garanties' && (trueIsAdmin || canSeeGaranties) && (
             <div>
               <div className="flex gap-2 mb-4">
                 {[
@@ -5734,6 +5753,13 @@ export default function StockMagasin() {
                 </p>
                 <p className="text-gray-500 text-xs mt-1">
                   Repasse après 19h pour clôturer la caisse.
+                </p>
+              </div>
+            ) : !canCloturerCaisse ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-center">
+                <p className="text-gray-500 text-sm font-bold">🔒 Clôture non autorisée</p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Demande à un responsable de clôturer la caisse.
                 </p>
               </div>
             ) : (
@@ -8833,6 +8859,13 @@ export default function StockMagasin() {
                 </p>
                 <p className="text-gray-500 text-xs mt-1">
                   Repasse après 19h pour clôturer la caisse.
+                </p>
+              </div>
+            ) : !canCloturerCaisse ? (
+              <div className="w-full mt-2 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-center">
+                <p className="text-gray-500 text-sm font-bold">🔒 Clôture non autorisée</p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Demande à un responsable de clôturer la caisse.
                 </p>
               </div>
             ) : (

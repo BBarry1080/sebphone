@@ -17,6 +17,11 @@ export const ALL_PERMISSIONS = [
   'rappel_ticket',
   'modifier_prix_remises',
   'cloture_limitee',
+  'cloturer_caisse',
+  'voir_catalogue_pieces',
+  'modifier_prix_pieces',
+  'modifier_stock_pieces',
+  'voir_garanties',
 
   // Commandes
   'voir_commandes',
