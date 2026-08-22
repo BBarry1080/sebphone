@@ -496,7 +496,7 @@ export default function StockMagasin() {
   const [loadingEcranCatalog, setLoadingEcranCatalog] = useState(false)
   const [editingEcran, setEditingEcran]           = useState(null)
   const [ecranForm, setEcranForm]                 = useState({
-    prix_min: '', prix_defaut: '', prix_max: '',
+    prix_min: '', prix_defaut: '',
     cout_achat: '', fournisseur_id: '',
     disponible: true, disponible_sur_commande: false, notes: '',
   })
@@ -560,7 +560,7 @@ export default function StockMagasin() {
     gamme: '', modele: '', modele_code: '',
     qualite: 'compatible',
     fournisseur_id: '',
-    cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
+    cout_achat: '', prix_min: '', prix_defaut: '',
     disponible: true, disponible_sur_commande: false, notes: '',
     magasin_id: magasin || '',
     quantite_initiale: 0,
@@ -2199,7 +2199,6 @@ export default function StockMagasin() {
     setEcranForm({
       prix_min: String(row.prix_min ?? ''),
       prix_defaut: String(row.prix_defaut ?? ''),
-      prix_max: String(row.prix_max ?? ''),
       cout_achat: String(row.cout_achat ?? ''),
       fournisseur_id: row.fournisseur_id || '',
       disponible: row.disponible !== false,
@@ -2242,10 +2241,6 @@ export default function StockMagasin() {
                   <p className="font-bold text-gray-600">{Number(row.prix_min || 0).toFixed(2)}€</p>
                 </div>
                 <div>
-                  <p className="text-[9px] font-bold text-gray-500 uppercase">Max</p>
-                  <p className="font-bold text-gray-600">{Number(row.prix_max || 0).toFixed(2)}€</p>
-                </div>
-                <div>
                   <p className="text-[9px] text-gray-400 uppercase">Stock ici</p>
                   <p className={`font-bold ${getStockPourMagasin(row.id) <= 0 ? 'text-red-500' : 'text-gray-700'}`}>
                     {getStockPourMagasin(row.id)}
@@ -2264,7 +2259,7 @@ export default function StockMagasin() {
         {isEditing && (
           <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
             {canModifyPiecePrices && (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
                 <input type="number" step="0.5" min="0" value={ecranForm.cout_achat}
@@ -2281,12 +2276,6 @@ export default function StockMagasin() {
                 <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Min (€)</label>
                 <input type="number" step="0.5" min="0" value={ecranForm.prix_min}
                   onChange={(e) => setEcranForm((f) => ({ ...f, prix_min: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
-                <input type="number" step="0.5" min="0" value={ecranForm.prix_max}
-                  onChange={(e) => setEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
               </div>
             </div>
@@ -2345,7 +2334,6 @@ export default function StockMagasin() {
       ...(canModifyPiecePrices ? {
         prix_min: Number(ecranForm.prix_min) || 0,
         prix_defaut: Number(ecranForm.prix_defaut) || 0,
-        prix_max: Number(ecranForm.prix_max) || 0,
         cout_achat: Number(ecranForm.cout_achat) || 0,
       } : {}),
       fournisseur_id: ecranForm.fournisseur_id || null,
@@ -2368,7 +2356,7 @@ export default function StockMagasin() {
       gamme: '', modele: '', modele_code: '',
       qualite: 'compatible',
       fournisseur_id: '',
-      cout_achat: '', prix_min: '', prix_defaut: '', prix_max: '',
+      cout_achat: '', prix_min: '', prix_defaut: '',
       disponible: true, disponible_sur_commande: false, notes: '',
       magasin_id: magasin || '',
       quantite_initiale: 0,
@@ -2402,7 +2390,6 @@ export default function StockMagasin() {
       cout_achat: Number(newEcranForm.cout_achat) || 0,
       prix_min: Number(newEcranForm.prix_min) || 0,
       prix_defaut: Number(newEcranForm.prix_defaut) || 0,
-      prix_max: Number(newEcranForm.prix_max) || 0,
       fournisseur_id: newEcranForm.fournisseur_id || null,
       notes: newEcranForm.notes.trim() || null,
     }).select().single()
@@ -5231,7 +5218,7 @@ export default function StockMagasin() {
                       </label>
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Achat (€)</label>
                       <input type="number" step="0.5" min="0" value={newEcranForm.cout_achat}
@@ -5248,12 +5235,6 @@ export default function StockMagasin() {
                       <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Défaut (€)</label>
                       <input type="number" step="0.5" min="0" value={newEcranForm.prix_defaut}
                         onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_defaut: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Max (€)</label>
-                      <input type="number" step="0.5" min="0" value={newEcranForm.prix_max}
-                        onChange={(e) => setNewEcranForm((f) => ({ ...f, prix_max: e.target.value }))}
                         className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
                     </div>
                   </div>
@@ -10432,7 +10413,7 @@ export default function StockMagasin() {
                       </button>
                     </div>
                     <p className="text-[10px] text-gray-500 mt-1">
-                      Fourchette : {Number(hubPieceRowSel.prix_min || 0).toFixed(2)}€ – {Number(hubPieceRowSel.prix_max || 0).toFixed(2)}€
+                      Prix min : {Number(hubPieceRowSel.prix_min || 0).toFixed(2)}€
                     </p>
                     <p className="text-[10px] text-gray-500">
                       Délai : {getDelaiPiece(hubPieceRowSel.type_piece, getStockPourMagasin(hubPieceRowSel.id))}

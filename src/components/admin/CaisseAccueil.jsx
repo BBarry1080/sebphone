@@ -988,7 +988,7 @@ export default function CaisseAccueil({
                         if (!sel) return null
                         return (
                           <p className="text-[10px] text-gray-500 mt-1">
-                            Fourchette : {Number(sel.prix_min).toFixed(2)}€ - {Number(sel.prix_max).toFixed(2)}€
+                            Prix min : {Number(sel.prix_min).toFixed(2)}€
                           </p>
                         )
                       })()}
